@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "capturedAt": "2026-08-13T18:54:41.167Z",
+  "capturedAt": "2026-08-13T19:15:13.491Z",
   "dsh": {
     "repository": "deepseek-ai/deepseek-harness",
     "commit": "47f943859bef60e4160492346772ded9b24f765a",
@@ -13,6 +13,7 @@
   "fixture": {
     "piPackage": "@pi2dsh-fixtures/complete@1.2.3",
     "generatedBundle": "dsh-pi-pi2dsh-fixtures-complete",
+    "runtimePackaging": "embedded",
     "tool": "pi_greet"
   },
   "checks": {

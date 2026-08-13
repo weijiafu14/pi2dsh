@@ -1,5 +1,5 @@
 import { execFile as execFileCallback } from 'node:child_process'
-import { chmod, mkdir, mkdtemp, readFile, realpath, rm, stat, writeFile } from 'node:fs/promises'
+import { chmod, mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
@@ -51,7 +51,7 @@ describe('generated bundle through the official DSH plugin manager', () => {
     const pkg = await resolvePiPackage(fixtureRoot)
     let packageName = ''
     try {
-      packageName = (await generateBundle(pkg, { outDir: bundle, runtimeSpec: `file:${projectRoot}` })).packageName
+      packageName = (await generateBundle(pkg, { outDir: bundle })).packageName
     } finally {
       await pkg.dispose()
     }
@@ -67,9 +67,14 @@ describe('generated bundle through the official DSH plugin manager', () => {
     expect(profileManifest.dependencies?.[packageName]).toBeDefined()
     expect(profileManifest.dsh?.profile?.bundles).toContain(packageName)
     const installedBundle = join(profileRoot, 'node_modules', packageName)
-    expect(await readFile(join(installedBundle, 'index.js'), 'utf8')).toContain('applyPiPackage')
-    const installedBundleRealPath = await realpath(installedBundle)
-    await stat(join(installedBundleRealPath, '..', 'pi2dsh', 'dist/runtime.mjs'))
+    expect(await readFile(join(installedBundle, 'index.js'), 'utf8')).toContain('./runtime/pi2dsh-runtime.mjs')
+    await stat(join(installedBundle, 'runtime/pi2dsh-runtime.mjs'))
+    await stat(join(installedBundle, 'runtime/compat/pi-coding-agent.mjs'))
+    const installedManifest = JSON.parse(await readFile(join(installedBundle, 'package.json'), 'utf8')) as {
+      dependencies?: Record<string, string>
+    }
+    expect(installedManifest.dependencies?.pi2dsh).toBeUndefined()
+    expect(installedManifest.dependencies?.jiti).toBe('^2.7.0')
 
     const dumped = await runDsh(home, ['--profile', 'headless', '--dump-config'])
     expect(dumped.stdout).toContain(`# == ${packageName}`)

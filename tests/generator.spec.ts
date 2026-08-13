@@ -53,8 +53,15 @@ describe('DSH bundle generator', () => {
         allowUnsupported: true,
       })
       expect(result.report.verdict).toBe('blocked')
-      expect(JSON.parse(await readFile(join(result.outDir, 'package.json'), 'utf8')).dependencies.pi2dsh)
-        .toBe('https://github.com/weijiafu14/pi2dsh/releases/download/v0.1.1/pi2dsh-0.1.1.tgz')
+      const generatedPackage = JSON.parse(await readFile(join(result.outDir, 'package.json'), 'utf8'))
+      expect(generatedPackage.dependencies.pi2dsh).toBeUndefined()
+      expect(generatedPackage.dependencies.jiti).toBe('^2.7.0')
+      expect(generatedPackage.peerDependencies).toMatchObject({
+        '@deepseek-ai/dsh-llm': '^0.1.0-rc.6',
+        '@deepseek-ai/dsh-system-prompt': '^0.1.0-rc.6',
+      })
+      expect(await readFile(join(result.outDir, 'runtime/pi2dsh-runtime.mjs'), 'utf8')).toContain('applyPiPackage')
+      expect(await readFile(join(result.outDir, 'PI2DSH-LICENSE'), 'utf8')).toContain('MIT License')
       expect(JSON.parse(await readFile(join(result.outDir, 'pi2dsh.report.json'), 'utf8'))).toMatchObject({
         verdict: 'blocked',
       })

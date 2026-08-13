@@ -43,7 +43,6 @@ if (generateBundles) {
     try {
       await generateBundle(pkg, {
         outDir,
-        runtimeSpec: `file:${projectRoot}`,
       })
     } finally {
       await pkg.dispose()
@@ -316,6 +315,7 @@ try {
     schemaVersion: 1,
     generatedAt: new Date().toISOString(),
     dshCommit,
+    runtimePackaging: 'embedded',
     runtime: runtimeResults,
     officialPluginManager: managerResults,
     counts: {

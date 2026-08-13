@@ -47,7 +47,6 @@ try {
   try {
     generatedPackage = (await generateBundle(pkg, {
       outDir: bundle,
-      runtimeSpec: `file:${projectRoot}`,
     })).packageName
   } finally {
     await pkg.dispose()
@@ -119,6 +118,7 @@ try {
     fixture: {
       piPackage: '@pi2dsh-fixtures/complete@1.2.3',
       generatedBundle: generatedPackage,
+      runtimePackaging: 'embedded',
       tool: 'pi_greet',
     },
     checks: {

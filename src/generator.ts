@@ -1,5 +1,6 @@
 import { cp, lstat, mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises'
 import { basename, dirname, extname, join, relative, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { parse as parseYaml } from 'yaml'
 import { analyzePackage } from './analyzer.js'
 import { collectLocalClosure, runtimeExternalPackages, SCRIPT_EXTENSIONS } from './module-graph.js'
@@ -152,7 +153,7 @@ async function copyNotices(pkg: ResolvedPiPackage, outDir: string): Promise<stri
 function generatedPackageJson(
   pkg: ResolvedPiPackage,
   generatedName: string,
-  runtimeSpec: string,
+  runtimeSpec: string | undefined,
   runtimePackages: ReadonlySet<string>,
   hasSkills: boolean,
 ): Record<string, unknown> {
@@ -168,8 +169,9 @@ function generatedPackageJson(
   }
   const dependencies = {
     ...Object.fromEntries(externalRuntimePackages.sort().map(name => [name, declaredDependencies[name]])),
+    ...(runtimeSpec === undefined ? { jiti: '^2.7.0' } : {}),
     ...(hasSkills ? { '@deepseek-ai/dsh-skill-filesystem': '^0.1.0-rc.6' } : {}),
-    pi2dsh: runtimeSpec,
+    ...(runtimeSpec !== undefined ? { pi2dsh: runtimeSpec } : {}),
   }
   return {
     name: generatedName,
@@ -177,8 +179,16 @@ function generatedPackageJson(
     description: `DeepSeek Harness adapter generated from ${pkg.identity.name}`,
     type: 'module',
     main: './index.js',
-    files: ['index.js', 'cordis.patch.yml', 'pi2dsh.manifest.json', 'pi2dsh.report.json', 'README.md', 'LICENSE*', 'NOTICE*', 'COPYING*', 'vendor', 'skills', 'prompts'],
+    files: ['index.js', 'cordis.patch.yml', 'pi2dsh.manifest.json', 'pi2dsh.report.json', 'README.md', 'LICENSE*', 'NOTICE*', 'COPYING*', 'PI2DSH-LICENSE', 'runtime', 'vendor', 'skills', 'prompts'],
     dependencies,
+    ...(runtimeSpec === undefined
+      ? {
+          peerDependencies: {
+            '@deepseek-ai/dsh-llm': '^0.1.0-rc.6',
+            '@deepseek-ai/dsh-system-prompt': '^0.1.0-rc.6',
+          },
+        }
+      : {}),
     keywords: ['dsh-plugin', 'deepseek-harness', 'pi-package', 'pi2dsh'],
     license: typeof pkg.packageJson.license === 'string' ? pkg.packageJson.license : 'UNLICENSED',
     dsh: { bundle: { patch: './cordis.patch.yml' } },
@@ -194,19 +204,48 @@ function generatedReadme(pkg: ResolvedPiPackage, packageName: string, report: Co
     + `\`\`\`sh\ndsh plugin --profile headless add file:$PWD\ndsh --profile headless --dump-config\n\`\`\`\n`
 }
 
-function pluginSource(manifest: GeneratedRuntimeManifest): string {
+function pluginSource(manifest: GeneratedRuntimeManifest, runtimeImport: string): string {
   const injections = ['tools', 'systemPrompt']
   if (manifest.prompts.length > 0 || manifest.report.findings.some(item => item.capability === 'registerCommand')) {
     injections.push('commands')
   }
   if (manifest.skillDirs.length > 0) injections.push('skills')
-  return `import { applyPiPackage } from 'pi2dsh/runtime'\n\n`
+  return `import { applyPiPackage } from ${JSON.stringify(runtimeImport)}\n\n`
     + `export const name = ${JSON.stringify(`pi2dsh:${packageSlug(manifest.package.name)}`)}\n`
     + `export const inject = ${JSON.stringify(injections)}\n\n`
     + `const manifest = ${JSON.stringify(manifest, null, 2)}\n\n`
     + `export async function apply(ctx, config = {}) {\n`
     + `  await applyPiPackage(ctx, { rootUrl: new URL('.', import.meta.url), manifest, config })\n`
     + `}\n`
+}
+
+async function firstExisting(paths: string[]): Promise<string> {
+  for (const path of paths) {
+    try {
+      await stat(path)
+      return path
+    } catch {
+      // Try the next package/source layout.
+    }
+  }
+  throw new Error(`cannot locate pi2dsh runtime artifact; tried: ${paths.join(', ')}`)
+}
+
+async function copyEmbeddedRuntime(outDir: string): Promise<void> {
+  const moduleDir = dirname(fileURLToPath(import.meta.url))
+  const runtimeSource = await firstExisting([
+    join(moduleDir, 'runtime.mjs'),
+    join(moduleDir, '../dist/runtime.mjs'),
+  ])
+  const runtimeRoot = dirname(runtimeSource)
+  const targetRoot = join(outDir, 'runtime')
+  await mkdir(join(targetRoot, 'compat'), { recursive: true })
+  await cp(runtimeSource, join(targetRoot, 'pi2dsh-runtime.mjs'))
+  for (const shim of ['pi-coding-agent.mjs', 'pi-tui.mjs', 'pi-ai.mjs']) {
+    await cp(join(runtimeRoot, 'compat', shim), join(targetRoot, 'compat', shim))
+  }
+  const license = await firstExisting([join(moduleDir, '../LICENSE'), join(moduleDir, '../../LICENSE')])
+  await cp(license, join(outDir, 'PI2DSH-LICENSE'))
 }
 
 function patchSource(generatedName: string, slug: string): string {
@@ -250,13 +289,13 @@ export async function generateBundle(
     report,
   }
   const runtimeSpec = options.runtimeSpec
-    ?? 'https://github.com/weijiafu14/pi2dsh/releases/download/v0.1.1/pi2dsh-0.1.1.tgz'
+  if (runtimeSpec === undefined) await copyEmbeddedRuntime(outDir)
 
   await Promise.all([
     writeFile(join(outDir, 'package.json'), `${JSON.stringify(generatedPackageJson(pkg, packageName, runtimeSpec, extensionSnapshot.runtimePackages, skillDirs.length > 0), null, 2)}\n`),
     writeFile(join(outDir, 'pi2dsh.manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`),
     writeFile(join(outDir, 'pi2dsh.report.json'), `${JSON.stringify(report, null, 2)}\n`),
-    writeFile(join(outDir, 'index.js'), pluginSource(manifest)),
+    writeFile(join(outDir, 'index.js'), pluginSource(manifest, runtimeSpec === undefined ? './runtime/pi2dsh-runtime.mjs' : 'pi2dsh/runtime')),
     writeFile(join(outDir, 'cordis.patch.yml'), patchSource(packageName, slug)),
     writeFile(join(outDir, 'README.md'), generatedReadme(pkg, packageName, report)),
   ])

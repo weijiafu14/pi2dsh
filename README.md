@@ -101,7 +101,7 @@ Each conversion creates a normal DSH bundle containing:
 - copied `skills/`, `prompts/`, and license/notice files;
 - `pi2dsh.manifest.json` and `pi2dsh.report.json` for review and provenance.
 
-Generated bundles use `pi2dsh` as a runtime dependency. The default is the immutable `v0.1.1` GitHub Release tarball, so conversion works before npm publication. During local bridge development, pass `--runtime file:/absolute/path/to/pi2dsh`; a future npm release can be selected explicitly with `--runtime '<version>'`.
+Generated bundles embed the small, tested pi2dsh runtime and host shims, plus a separate `PI2DSH-LICENSE`; they do not depend on an unpublished package or an exotic URL dependency. This satisfies DSH's `blockExoticSubdeps` supply-chain policy. During bridge development, `--runtime file:/absolute/path/to/pi2dsh` can still replace the embedded adapter with a local runtime dependency.
 
 ## Development and verification
 
