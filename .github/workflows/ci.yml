@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - run: corepack enable
+      - run: corepack prepare pnpm@11.7.0 --activate
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.19.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Checkout pinned DeepSeek Harness
+        run: |
+          git clone https://github.com/deepseek-ai/deepseek-harness.git ../deepseek-harness
+          git -C ../deepseek-harness checkout 47f943859bef60e4160492346772ded9b24f765a
+          corepack pnpm@11.7.0 --dir ../deepseek-harness install --frozen-lockfile --ignore-scripts
+      - run: pnpm verify
+        env:
+          PI2DSH_DSH_ROOT: ${{ github.workspace }}/../deepseek-harness

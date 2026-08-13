@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-08-13T18:54:41.167Z",
+  "dsh": {
+    "repository": "deepseek-ai/deepseek-harness",
+    "commit": "47f943859bef60e4160492346772ded9b24f765a",
+    "profile": "headless"
+  },
+  "model": {
+    "provider": "deepseek-official",
+    "model": "deepseek-v4-flash"
+  },
+  "fixture": {
+    "piPackage": "@pi2dsh-fixtures/complete@1.2.3",
+    "generatedBundle": "dsh-pi-pi2dsh-fixtures-complete",
+    "tool": "pi_greet"
+  },
+  "checks": {
+    "officialPluginManagerInstall": "passed",
+    "officialHeadlessModelRun": "passed",
+    "durableToolCallCount": 1,
+    "durableToolCallArguments": {
+      "name": "Ada"
+    },
+    "durableToolResult": {
+      "isError": false,
+      "texts": [
+        "Hello, Ada!",
+        "Result passed through migrated Pi hook."
+      ]
+    },
+    "turnEndReason": "completed"
+  },
+  "security": {
+    "credentialPersisted": false,
+    "credentialIncludedInEvidence": false
+  }
+}

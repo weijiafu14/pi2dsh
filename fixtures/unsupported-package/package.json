@@ -1,0 +1,8 @@
+{
+  "name": "@pi2dsh-fixtures/unsupported",
+  "version": "1.0.0",
+  "type": "module",
+  "pi": {
+    "extensions": ["extensions/index.ts"]
+  }
+}

@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-13T19:04:18.499Z",
+  "dshCommit": "47f943859bef60e4160492346772ded9b24f765a",
+  "runtime": [
+    {
+      "package": "@narumitw/pi-lsp@0.49.4",
+      "generatedPackage": "dsh-pi-narumitw-pi-lsp",
+      "registeredTools": [
+        "lsp_diagnostics",
+        "lsp_fix"
+      ],
+      "checks": [
+        "spawned a fixture LSP server and executed diagnostics plus fix through DSH"
+      ],
+      "status": "passed"
+    },
+    {
+      "package": "pi-ask-user@0.14.0",
+      "generatedPackage": "dsh-pi-pi-ask-user",
+      "registeredTools": [
+        "ask_user"
+      ],
+      "checks": [
+        "registered ask_user and returned its explicit headless fallback; copied ask-user skill"
+      ],
+      "status": "passed"
+    },
+    {
+      "package": "@juicesharp/rpiv-web-tools@2.4.0",
+      "generatedPackage": "dsh-pi-juicesharp-rpiv-web-tools",
+      "registeredTools": [
+        "web_fetch",
+        "web_search"
+      ],
+      "checks": [
+        "executed web_search through fixture SearXNG and web_fetch against example.com"
+      ],
+      "status": "passed"
+    },
+    {
+      "package": "@amaster.ai/pi-image-gen@0.1.8",
+      "generatedPackage": "dsh-pi-amaster.ai-pi-image-gen",
+      "registeredTools": [
+        "image_generate"
+      ],
+      "checks": [
+        "called a local OpenAI-compatible image endpoint, materialized PNG output, and copied image-gen skill"
+      ],
+      "status": "passed"
+    }
+  ],
+  "officialPluginManager": [
+    {
+      "package": "dsh-pi-narumitw-pi-lsp",
+      "install": "passed",
+      "activation": "passed",
+      "remove": "passed"
+    },
+    {
+      "package": "dsh-pi-pi-ask-user",
+      "install": "passed",
+      "activation": "passed",
+      "remove": "passed"
+    },
+    {
+      "package": "dsh-pi-juicesharp-rpiv-web-tools",
+      "install": "passed",
+      "activation": "passed",
+      "remove": "passed"
+    },
+    {
+      "package": "dsh-pi-amaster.ai-pi-image-gen",
+      "install": "passed",
+      "activation": "passed",
+      "remove": "passed"
+    }
+  ],
+  "counts": {
+    "runtimePassed": 4,
+    "installActivateRemovePassed": 4
+  }
+}

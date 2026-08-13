@@ -1,0 +1,117 @@
+{
+  "name": "pi2dsh",
+  "version": "0.1.0",
+  "description": "Convert Pi packages into installable DeepSeek Harness plugins with an explicit compatibility report.",
+  "type": "module",
+  "bin": {
+    "pi2dsh": "./dist/cli.mjs"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "default": "./dist/index.mjs"
+    },
+    "./runtime": {
+      "types": "./dist/runtime.d.mts",
+      "default": "./dist/runtime.mjs"
+    },
+    "./compat/pi-coding-agent": {
+      "types": "./dist/compat/pi-coding-agent.d.mts",
+      "default": "./dist/compat/pi-coding-agent.mjs"
+    },
+    "./compat/pi-tui": {
+      "types": "./dist/compat/pi-tui.d.mts",
+      "default": "./dist/compat/pi-tui.mjs"
+    },
+    "./compat/pi-ai": {
+      "types": "./dist/compat/pi-ai.d.mts",
+      "default": "./dist/compat/pi-ai.mjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsdown",
+    "prepare": "tsdown",
+    "check": "tsc --noEmit",
+    "test": "pnpm build && vitest run",
+    "test:coverage": "pnpm build && vitest run --coverage",
+    "test:dsh": "pnpm build && vitest run tests/dsh-runtime.spec.ts tests/generated-bundle.spec.ts",
+    "audit:community": "pnpm build && node scripts/audit-community.mjs",
+    "test:community": "pnpm build && node scripts/verify-community.mjs --generate community/runtime-results.json",
+    "test:live": "pnpm build && node scripts/verify-live-deepseek.mjs community/live-deepseek-results.json",
+    "check:pack": "pnpm build && publint && node scripts/check-pack.mjs",
+    "verify": "pnpm check && pnpm test:coverage && pnpm check:pack"
+  },
+  "keywords": [
+    "deepseek-harness",
+    "dsh-plugin",
+    "pi-package",
+    "migration",
+    "compatibility"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/weijiafu14/pi2dsh.git"
+  },
+  "homepage": "https://github.com/weijiafu14/pi2dsh#readme",
+  "bugs": {
+    "url": "https://github.com/weijiafu14/pi2dsh/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  },
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "packageManager": "pnpm@11.7.0",
+  "dependencies": {
+    "jiti": "^2.7.0",
+    "pacote": "^21.0.0",
+    "tinyglobby": "^0.2.15",
+    "typescript": "^5.9.3",
+    "yaml": "^2.8.1"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.1",
+    "@deepseek-ai/dsh-commands": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-llm": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-skill-filesystem": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-system-prompt": "^0.1.0-rc.6",
+    "@deepseek-ai/dsh-tools": "^0.1.0-rc.6"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/dsh-commands": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-skill-filesystem": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "4.0.1",
+    "@deepseek-ai/dsh-agent": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-commands": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-llm": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-scope": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-session": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-skill": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-skill-filesystem": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-system-prompt": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-tools": "0.1.0-rc.6",
+    "@earendil-works/pi-ai": "0.84.1",
+    "@earendil-works/pi-coding-agent": "0.84.1",
+    "@types/node": "^24.10.0",
+    "@types/pacote": "^11.1.8",
+    "@vitest/coverage-v8": "^4.1.10",
+    "publint": "^0.3.23",
+    "tsdown": "^0.22.14",
+    "typebox": "^1.0.4",
+    "vitest": "^4.1.10"
+  }
+}

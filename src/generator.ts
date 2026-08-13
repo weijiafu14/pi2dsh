@@ -1,0 +1,263 @@
+import { cp, lstat, mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises'
+import { basename, dirname, extname, join, relative, resolve } from 'node:path'
+import { parse as parseYaml } from 'yaml'
+import { analyzePackage } from './analyzer.js'
+import { collectLocalClosure, runtimeExternalPackages, SCRIPT_EXTENSIONS } from './module-graph.js'
+import type {
+  CompatibilityReport,
+  GenerateOptions,
+  GeneratedRuntimeManifest,
+  ResolvedPiPackage,
+} from './types.js'
+
+interface PromptMetadata {
+  name: string
+  description: string
+  argumentHint?: string
+  path: string
+}
+
+const SHIMMED_PI_HOST_PACKAGES = new Set([
+  '@earendil-works/pi-coding-agent',
+  '@mariozechner/pi-coding-agent',
+  '@earendil-works/pi-tui',
+  '@mariozechner/pi-tui',
+  '@earendil-works/pi-ai',
+  '@mariozechner/pi-ai',
+])
+
+function packageSlug(name: string): string {
+  const slug = name.replace(/^@/u, '').replaceAll('/', '-').replace(/[^a-zA-Z0-9._-]+/gu, '-').toLowerCase()
+  return slug.replace(/^-+|-+$/gu, '') || 'package'
+}
+
+function stringRecord(value: unknown): Record<string, string> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return {}
+  return Object.fromEntries(Object.entries(value).filter((entry): entry is [string, string] => typeof entry[1] === 'string'))
+}
+
+async function assertEmptyOrMissing(path: string): Promise<void> {
+  try {
+    const info = await stat(path)
+    if (!info.isDirectory()) throw new Error(`output exists and is not a directory: ${path}`)
+    const entries = await readdir(path)
+    if (entries.length > 0) throw new Error(`output directory is not empty: ${path}`)
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+  }
+}
+
+function parseFrontmatter(text: string): { attributes: Record<string, string>; body: string } {
+  const normalized = text.replace(/\r\n?/gu, '\n')
+  if (!normalized.startsWith('---')) return { attributes: {}, body: normalized }
+  const endIndex = normalized.indexOf('\n---', 3)
+  if (endIndex === -1) return { attributes: {}, body: normalized }
+  const raw: unknown = parseYaml(normalized.slice(4, endIndex))
+  const attributes = typeof raw === 'object' && raw !== null && !Array.isArray(raw)
+    ? stringRecord(raw)
+    : {}
+  return { attributes, body: normalized.slice(endIndex + 4).trim() }
+}
+
+async function assertNoSymlinks(path: string): Promise<void> {
+  const info = await lstat(path)
+  if (info.isSymbolicLink()) throw new Error(`refusing to copy symbolic link from Pi package: ${path}`)
+  if (!info.isDirectory()) return
+  for (const entry of await readdir(path)) await assertNoSymlinks(join(path, entry))
+}
+
+async function copyExtensions(pkg: ResolvedPiPackage, outDir: string): Promise<{ entries: string[]; runtimePackages: Set<string> }> {
+  const copied: string[] = []
+  const runtimePackages = new Set<string>()
+  const closure = await collectLocalClosure(pkg.rootDir, pkg.resources.extensions)
+  if (closure.issues.length > 0) {
+    throw new Error(`cannot snapshot extension closure:\n${closure.issues.map(issue => `- ${issue.file}: ${issue.detail}`).join('\n')}`)
+  }
+  for (const source of closure.files) {
+    if (SCRIPT_EXTENSIONS.has(extname(source))) {
+      const text = await readFile(source, 'utf8')
+      for (const packageName of runtimeExternalPackages(source, text)) runtimePackages.add(packageName)
+    }
+    const sourceRelative = relative(pkg.rootDir, source).replaceAll('\\', '/')
+    const targetRelative = `vendor/${sourceRelative}`
+    const target = join(outDir, targetRelative)
+    await mkdir(dirname(target), { recursive: true })
+    await cp(source, target, { dereference: false })
+    if (pkg.resources.extensions.map(entry => resolve(entry)).includes(source)) copied.push(targetRelative)
+  }
+  for (const source of pkg.resources.skills) {
+    if (!SCRIPT_EXTENSIONS.has(extname(source))) continue
+    const text = await readFile(source, 'utf8')
+    for (const packageName of runtimeExternalPackages(source, text)) runtimePackages.add(packageName)
+  }
+  return { entries: copied, runtimePackages }
+}
+
+async function copySkills(pkg: ResolvedPiPackage, outDir: string): Promise<string[]> {
+  const entryFiles = pkg.resources.skills.filter(file => basename(file) === 'SKILL.md' || file.endsWith('.md'))
+  if (entryFiles.length === 0) return []
+  const names = new Set<string>()
+  for (const entry of entryFiles) {
+    const isBundle = basename(entry) === 'SKILL.md'
+    const name = isBundle ? basename(dirname(entry)) : basename(entry, '.md')
+    if (names.has(name)) throw new Error(`skill name collision while flattening Pi package: ${name}`)
+    names.add(name)
+    const target = join(outDir, 'skills', isBundle ? name : `${name}.md`)
+    await mkdir(dirname(target), { recursive: true })
+    const source = isBundle ? dirname(entry) : entry
+    await assertNoSymlinks(source)
+    await cp(source, target, { recursive: isBundle, dereference: false })
+  }
+  return ['skills']
+}
+
+async function copyPrompts(pkg: ResolvedPiPackage, outDir: string): Promise<PromptMetadata[]> {
+  const prompts: PromptMetadata[] = []
+  const names = new Set<string>()
+  for (const source of pkg.resources.prompts) {
+    const name = basename(source, '.md').toLowerCase().replace(/[^a-z0-9_-]+/gu, '-')
+    if (names.has(name)) throw new Error(`prompt command name collision while flattening Pi package: ${name}`)
+    names.add(name)
+    const targetRelative = `prompts/${name}.md`
+    const target = join(outDir, targetRelative)
+    await mkdir(dirname(target), { recursive: true })
+    await assertNoSymlinks(source)
+    await cp(source, target, { dereference: false })
+    const { attributes, body } = parseFrontmatter(await readFile(source, 'utf8'))
+    const firstLine = body.split(/\r?\n/u).map(line => line.trim()).find(Boolean)
+    prompts.push({
+      name,
+      description: attributes.description ?? firstLine ?? `Run migrated Pi prompt ${name}`,
+      ...(attributes['argument-hint'] !== undefined ? { argumentHint: attributes['argument-hint'] } : {}),
+      path: targetRelative,
+    })
+  }
+  return prompts
+}
+
+async function copyNotices(pkg: ResolvedPiPackage, outDir: string): Promise<string[]> {
+  const copied: string[] = []
+  for (const entry of await readdir(pkg.rootDir)) {
+    if (!/^(?:licen[cs]e|notice|copying)(?:[._-].*)?$/iu.test(entry)) continue
+    const source = join(pkg.rootDir, entry)
+    const info = await lstat(source)
+    if (info.isSymbolicLink()) throw new Error(`refusing to copy symbolic link from Pi package: ${source}`)
+    if (!info.isFile()) continue
+    await cp(source, join(outDir, entry), { dereference: false })
+    copied.push(entry)
+  }
+  return copied.sort()
+}
+
+function generatedPackageJson(
+  pkg: ResolvedPiPackage,
+  generatedName: string,
+  runtimeSpec: string,
+  runtimePackages: ReadonlySet<string>,
+  hasSkills: boolean,
+): Record<string, unknown> {
+  const declaredDependencies = {
+    ...stringRecord(pkg.packageJson.dependencies),
+    ...stringRecord(pkg.packageJson.optionalDependencies),
+    ...stringRecord(pkg.packageJson.peerDependencies),
+  }
+  const externalRuntimePackages = [...runtimePackages].filter(name => !SHIMMED_PI_HOST_PACKAGES.has(name))
+  const missing = externalRuntimePackages.filter(name => declaredDependencies[name] === undefined)
+  if (missing.length > 0) {
+    throw new Error(`runtime dependencies are imported but not declared by the Pi package: ${missing.join(', ')}`)
+  }
+  const dependencies = {
+    ...Object.fromEntries(externalRuntimePackages.sort().map(name => [name, declaredDependencies[name]])),
+    ...(hasSkills ? { '@deepseek-ai/dsh-skill-filesystem': '^0.1.0-rc.6' } : {}),
+    pi2dsh: runtimeSpec,
+  }
+  return {
+    name: generatedName,
+    version: pkg.identity.version,
+    description: `DeepSeek Harness adapter generated from ${pkg.identity.name}`,
+    type: 'module',
+    main: './index.js',
+    files: ['index.js', 'cordis.patch.yml', 'pi2dsh.manifest.json', 'pi2dsh.report.json', 'README.md', 'LICENSE*', 'NOTICE*', 'COPYING*', 'vendor', 'skills', 'prompts'],
+    dependencies,
+    keywords: ['dsh-plugin', 'deepseek-harness', 'pi-package', 'pi2dsh'],
+    license: typeof pkg.packageJson.license === 'string' ? pkg.packageJson.license : 'UNLICENSED',
+    dsh: { bundle: { patch: './cordis.patch.yml' } },
+  }
+}
+
+function generatedReadme(pkg: ResolvedPiPackage, packageName: string, report: CompatibilityReport): string {
+  return `# ${packageName}\n\n`
+    + `Generated by [pi2dsh](https://github.com/weijiafu14/pi2dsh) from \`${pkg.identity.name}@${pkg.identity.version}\`.\n\n`
+    + `Compatibility verdict: **${report.verdict}** (full ${report.summary.full}, partial ${report.summary.partial}, unsupported ${report.summary.unsupported}).\n\n`
+    + `Review \`pi2dsh.report.json\` before installation. This bundle executes the original Pi extension source and should only be installed when that source is trusted.\n\n`
+    + `Install with DeepSeek Harness (keep the \`file:\` prefix so pnpm installs this bundle's dependencies instead of creating a bare link):\n\n`
+    + `\`\`\`sh\ndsh plugin --profile headless add file:$PWD\ndsh --profile headless --dump-config\n\`\`\`\n`
+}
+
+function pluginSource(manifest: GeneratedRuntimeManifest): string {
+  const injections = ['tools', 'systemPrompt']
+  if (manifest.prompts.length > 0 || manifest.report.findings.some(item => item.capability === 'registerCommand')) {
+    injections.push('commands')
+  }
+  if (manifest.skillDirs.length > 0) injections.push('skills')
+  return `import { applyPiPackage } from 'pi2dsh/runtime'\n\n`
+    + `export const name = ${JSON.stringify(`pi2dsh:${packageSlug(manifest.package.name)}`)}\n`
+    + `export const inject = ${JSON.stringify(injections)}\n\n`
+    + `const manifest = ${JSON.stringify(manifest, null, 2)}\n\n`
+    + `export async function apply(ctx, config = {}) {\n`
+    + `  await applyPiPackage(ctx, { rootUrl: new URL('.', import.meta.url), manifest, config })\n`
+    + `}\n`
+}
+
+function patchSource(generatedName: string, slug: string): string {
+  return `- insert:\n    - id: pi2dsh-${slug}\n      name: ${JSON.stringify(generatedName)}\n`
+}
+
+function enforceReport(report: CompatibilityReport, options: GenerateOptions): void {
+  if (!options.allowUnsupported && report.summary.unsupported > 0) {
+    throw new Error(
+      `conversion blocked: ${report.summary.unsupported} unsupported Pi API use(s); `
+      + 'run inspect for details or pass --allow-unsupported to generate an explicitly degraded bundle',
+    )
+  }
+  if (options.strict && (report.summary.partial > 0 || report.summary.unsupported > 0)) {
+    throw new Error('strict conversion requires every detected Pi API use to have full compatibility')
+  }
+}
+
+export async function generateBundle(
+  pkg: ResolvedPiPackage,
+  options: GenerateOptions,
+): Promise<{ outDir: string; report: CompatibilityReport; packageName: string }> {
+  const outDir = resolve(options.outDir)
+  const report = await analyzePackage(pkg)
+  enforceReport(report, options)
+  await assertEmptyOrMissing(outDir)
+  await mkdir(outDir, { recursive: true })
+
+  const slug = packageSlug(pkg.identity.name)
+  const packageName = `dsh-pi-${slug}`
+  const extensionSnapshot = await copyExtensions(pkg, outDir)
+  const skillDirs = await copySkills(pkg, outDir)
+  const prompts = await copyPrompts(pkg, outDir)
+  await copyNotices(pkg, outDir)
+  const manifest: GeneratedRuntimeManifest = {
+    schemaVersion: 1,
+    package: pkg.identity,
+    extensions: extensionSnapshot.entries,
+    skillDirs,
+    prompts,
+    report,
+  }
+  const runtimeSpec = options.runtimeSpec ?? '^0.1.0'
+
+  await Promise.all([
+    writeFile(join(outDir, 'package.json'), `${JSON.stringify(generatedPackageJson(pkg, packageName, runtimeSpec, extensionSnapshot.runtimePackages, skillDirs.length > 0), null, 2)}\n`),
+    writeFile(join(outDir, 'pi2dsh.manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`),
+    writeFile(join(outDir, 'pi2dsh.report.json'), `${JSON.stringify(report, null, 2)}\n`),
+    writeFile(join(outDir, 'index.js'), pluginSource(manifest)),
+    writeFile(join(outDir, 'cordis.patch.yml'), patchSource(packageName, slug)),
+    writeFile(join(outDir, 'README.md'), generatedReadme(pkg, packageName, report)),
+  ])
+  return { outDir, report, packageName }
+}
