@@ -249,7 +249,8 @@ export async function generateBundle(
     prompts,
     report,
   }
-  const runtimeSpec = options.runtimeSpec ?? '^0.1.0'
+  const runtimeSpec = options.runtimeSpec
+    ?? 'https://github.com/weijiafu14/pi2dsh/releases/download/v0.1.1/pi2dsh-0.1.1.tgz'
 
   await Promise.all([
     writeFile(join(outDir, 'package.json'), `${JSON.stringify(generatedPackageJson(pkg, packageName, runtimeSpec, extensionSnapshot.runtimePackages, skillDirs.length > 0), null, 2)}\n`),

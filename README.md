@@ -21,8 +21,12 @@ The full machine-readable matrix is available with `pi2dsh matrix --json`.
 Requires Node.js 22.19 or newer and DeepSeek Harness.
 
 ```sh
-pnpm dlx pi2dsh inspect @narumitw/pi-lsp
-pnpm dlx pi2dsh convert @narumitw/pi-lsp --out ./dsh-pi-lsp
+git clone https://github.com/weijiafu14/pi2dsh.git
+cd pi2dsh
+corepack pnpm@11.7.0 install
+pnpm build
+node dist/cli.mjs inspect @narumitw/pi-lsp
+node dist/cli.mjs convert @narumitw/pi-lsp --out ./dsh-pi-lsp
 dsh plugin --profile headless add file:$PWD/dsh-pi-lsp
 dsh --profile headless --dump-config
 ```
@@ -97,7 +101,7 @@ Each conversion creates a normal DSH bundle containing:
 - copied `skills/`, `prompts/`, and license/notice files;
 - `pi2dsh.manifest.json` and `pi2dsh.report.json` for review and provenance.
 
-Generated bundles use `pi2dsh` as a runtime dependency. During local bridge development, pass `--runtime file:/absolute/path/to/pi2dsh`; ordinary published conversions use the compatible npm release automatically.
+Generated bundles use `pi2dsh` as a runtime dependency. The default is the immutable `v0.1.1` GitHub Release tarball, so conversion works before npm publication. During local bridge development, pass `--runtime file:/absolute/path/to/pi2dsh`; a future npm release can be selected explicitly with `--runtime '<version>'`.
 
 ## Development and verification
 

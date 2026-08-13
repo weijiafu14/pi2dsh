@@ -53,6 +53,8 @@ describe('DSH bundle generator', () => {
         allowUnsupported: true,
       })
       expect(result.report.verdict).toBe('blocked')
+      expect(JSON.parse(await readFile(join(result.outDir, 'package.json'), 'utf8')).dependencies.pi2dsh)
+        .toBe('https://github.com/weijiafu14/pi2dsh/releases/download/v0.1.1/pi2dsh-0.1.1.tgz')
       expect(JSON.parse(await readFile(join(result.outDir, 'pi2dsh.report.json'), 'utf8'))).toMatchObject({
         verdict: 'blocked',
       })
