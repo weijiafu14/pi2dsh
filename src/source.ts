@@ -1,7 +1,6 @@
 import { access, mkdtemp, readFile, rm, stat } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { basename, dirname, isAbsolute, join, resolve } from 'node:path'
-import pacote from 'pacote'
 import { glob } from 'tinyglobby'
 import type { ResolvedPiPackage, ResourceInventory } from './types.js'
 
@@ -148,6 +147,9 @@ export async function resolvePiPackage(source: string, cwd = process.cwd()): Pro
     rootDir = await mkdtemp(join(tmpdir(), 'pi2dsh-source-'))
     temporary = true
     try {
+      // Lazy: only npm-spec resolution needs the registry client. Host
+      // bundles resolve installed directories and never load pacote.
+      const { default: pacote } = await import('pacote')
       await pacote.extract(source, rootDir)
       packageJson = await readPackageJson(rootDir)
     } catch (error) {

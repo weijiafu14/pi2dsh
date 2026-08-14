@@ -1274,18 +1274,19 @@ async function loadExtensions(
   // Pi's loader hands extensions the host's typebox without a declaration;
   // mirror that by resolving every typebox entry the whitelist names to the
   // bridge's own copy.
-  try {
-    const require = createRequire(import.meta.url)
-    const typeboxRoot = dirname(require.resolve('typebox/package.json'))
-    for (const name of ['typebox', '@sinclair/typebox']) {
-      aliases[name] = join(typeboxRoot, 'build', 'index.mjs')
-      for (const sub of ['value', 'compile']) {
-        aliases[`${name}/${sub}`] = join(typeboxRoot, 'build', sub, 'index.mjs')
-      }
+  // typebox restricts its exports map (no ./package.json), so resolve each
+  // public entry directly; resolution anchors at this runtime file, which in a
+  // generated bundle sits next to the bundle's own node_modules.
+  const require = createRequire(import.meta.url)
+  for (const entry of ['typebox', 'typebox/value', 'typebox/compile']) {
+    try {
+      const resolved = require.resolve(entry)
+      aliases[entry] = resolved
+      aliases[entry.replace('typebox', '@sinclair/typebox')] = resolved
+    } catch {
+      // Without a resolvable typebox entry extensions fall back to normal
+      // resolution against their own dependencies.
     }
-  } catch {
-    // Without a resolvable typebox the aliases stay unset and extensions fall
-    // back to normal resolution.
   }
   const jiti = createJiti(import.meta.url, {
     interopDefault: true,
