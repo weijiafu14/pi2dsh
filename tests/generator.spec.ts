@@ -44,15 +44,13 @@ describe('DSH bundle generator', () => {
     }
   })
 
-  it('refuses unsupported packages unless explicit degraded generation is requested', async () => {
+  it('generates degraded-but-load-safe bundles and hard-refuses fatal findings', async () => {
     const pkg = await resolvePiPackage(join(fixtures, 'unsupported-package'))
     try {
-      await expect(generateBundle(pkg, { outDir: await outputDir('blocked') })).rejects.toThrow('conversion blocked')
-      const result = await generateBundle(pkg, {
-        outDir: await outputDir('allowed'),
-        allowUnsupported: true,
-      })
-      expect(result.report.verdict).toBe('blocked')
+      // Unsupported findings are explicit, load-safe degradations: the bundle
+      // generates and installs; the black-box run decides real usability.
+      const result = await generateBundle(pkg, { outDir: await outputDir('degraded') })
+      expect(result.report.verdict).toBe('review')
       const generatedPackage = JSON.parse(await readFile(join(result.outDir, 'package.json'), 'utf8'))
       expect(generatedPackage.dependencies.pi2dsh).toBeUndefined()
       expect(generatedPackage.dependencies.jiti).toBe('^2.7.0')
@@ -63,10 +61,25 @@ describe('DSH bundle generator', () => {
       expect(await readFile(join(result.outDir, 'runtime/pi2dsh-runtime.mjs'), 'utf8')).toContain('applyPiPackage')
       expect(await readFile(join(result.outDir, 'PI2DSH-LICENSE'), 'utf8')).toContain('MIT License')
       expect(JSON.parse(await readFile(join(result.outDir, 'pi2dsh.report.json'), 'utf8'))).toMatchObject({
-        verdict: 'blocked',
+        verdict: 'review',
       })
     } finally {
       await pkg.dispose()
+    }
+
+    // Fatal findings (here: an undeclared runtime dependency) have no flag
+    // escape — the bundle cannot be built or trusted.
+    const root = await mkdtemp(join(tmpdir(), 'pi2dsh-fatal-'))
+    cleanup.push(root)
+    await writeFile(join(root, 'index.ts'), [
+      'import missing from "missing-runtime"',
+      'export default pi => { void missing; pi.registerCommand("x", { description: "x", handler() {} }) }',
+    ].join('\n'))
+    const fatalPkg = await resolvePiPackage(join(root, 'index.ts'))
+    try {
+      await expect(generateBundle(fatalPkg, { outDir: await outputDir('fatal') })).rejects.toThrow('conversion blocked')
+    } finally {
+      await fatalPkg.dispose()
     }
   })
 

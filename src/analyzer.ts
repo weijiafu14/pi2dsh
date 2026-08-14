@@ -439,7 +439,7 @@ export async function analyzePackage(pkg: ResolvedPiPackage): Promise<Compatibil
   for (const issue of extensionClosure.issues) {
     findings.push({
       capability: `${issue.kind}(${issue.specifier})`,
-      level: 'unsupported',
+      level: 'fatal',
       file: relative(pkg.rootDir, issue.file).replaceAll('\\', '/'),
       line: 1,
       detail: `The local extension closure is incomplete: ${issue.detail}`,
@@ -453,7 +453,7 @@ export async function analyzePackage(pkg: ResolvedPiPackage): Promise<Compatibil
       if (PI_HOST_PACKAGES.has(packageName) || declaredDependencies.has(packageName)) continue
       findings.push({
         capability: `undeclared-runtime-dependency(${packageName})`,
-        level: 'unsupported',
+        level: 'fatal',
         file: relative(pkg.rootDir, file).replaceAll('\\', '/'),
         line: 1,
         detail: `The extension imports ${JSON.stringify(packageName)} at runtime, but the Pi package does not declare it as a dependency.`,
@@ -479,9 +479,12 @@ export async function analyzePackage(pkg: ResolvedPiPackage): Promise<Compatibil
   }
   findings.sort((left, right) => left.file.localeCompare(right.file) || left.line - right.line || left.capability.localeCompare(right.capability))
 
-  const summary: Record<CompatibilityLevel, number> = { full: 0, partial: 0, unsupported: 0 }
+  const summary: Record<CompatibilityLevel, number> = { full: 0, partial: 0, unsupported: 0, fatal: 0 }
   for (const finding of findings) summary[finding.level] += 1
-  const verdict = summary.unsupported > 0 ? 'blocked' : summary.partial > 0 ? 'review' : 'ready'
+  // Static analysis screens; it does not certify. Only fatal findings block a
+  // bundle (it cannot be built or trusted). Everything else installs: verify
+  // real behavior with the black-box run instead of trusting this verdict.
+  const verdict = summary.fatal > 0 ? 'blocked' : summary.partial > 0 || summary.unsupported > 0 ? 'review' : 'ready'
 
   return {
     schemaVersion: 1,

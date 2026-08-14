@@ -1,7 +1,9 @@
+import { writeFileSync } from 'node:fs'
 import { parseArgs } from 'node:util'
 import { analyzePackage } from './analyzer.js'
 import { API_RULES, CONTEXT_RULES, EVENT_RULES, HOST_IMPORT_RULES, UI_CONTEXT_RULES } from './compatibility.js'
 import { generateBundle } from './generator.js'
+import { convertPiMcpConfig, renderMcpPatch } from './mcp-config.js'
 import { resolvePiPackage } from './source.js'
 import type { CompatibilityReport } from './types.js'
 
@@ -10,7 +12,14 @@ function usage(): string {
     + `Usage:\n`
     + `  pi2dsh inspect <package-or-path> [--json]\n`
     + `  pi2dsh convert <package-or-path> --out <directory> [--runtime <spec>] [--strict] [--allow-unsupported]\n`
-    + `  pi2dsh matrix [--json]\n`
+    + `  pi2dsh mcp-config [--cwd <dir>] [--out <file>] [--json]\n`
+    + `  pi2dsh host --packages <spec,spec,...> --out <directory> [--name <bundle-name>]\n`
+    + `  pi2dsh matrix [--json]\n\n`
+    + `host generates ONE installable DSH bundle that mounts the listed Pi\n`
+    + `packages as ordinary npm dependencies — no per-package conversion.\n\n`
+    + `mcp-config reads Pi's standard mcpServers files (six-layer precedence)\n`
+    + `and emits DSH cordis.patch.yml entries for the official dsh-mcp-client —\n`
+    + `Pi's MCP adapter code is never executed.\n`
 }
 
 function reportText(report: CompatibilityReport): string {
@@ -58,6 +67,9 @@ async function main(): Promise<void> {
     options: {
       json: { type: 'boolean', default: false },
       out: { type: 'string' },
+      cwd: { type: 'string' },
+      packages: { type: 'string' },
+      name: { type: 'string' },
       runtime: { type: 'string' },
       strict: { type: 'boolean', default: false },
       'allow-unsupported': { type: 'boolean', default: false },
@@ -71,6 +83,32 @@ async function main(): Promise<void> {
   }
   if (command === 'matrix') {
     matrix(parsed.values.json)
+    return
+  }
+  if (command === 'host') {
+    if (parsed.values.out === undefined) throw new Error('host requires --out <directory>')
+    if (parsed.values.packages === undefined) throw new Error('host requires --packages <spec,spec,...>')
+    const { generateHostBundle } = await import('./host.js')
+    const result = await generateHostBundle({
+      outDir: parsed.values.out,
+      packages: parsed.values.packages.split(',').map(spec => spec.trim()).filter(Boolean),
+      ...(parsed.values.name === undefined ? {} : { bundleName: parsed.values.name }),
+    })
+    console.log(`Generated host bundle ${result.packageName} in ${result.outDir}`)
+    console.log(`Install with: dsh plugin --profile headless add file:${result.outDir}`)
+    return
+  }
+  if (command === 'mcp-config') {
+    const result = convertPiMcpConfig(parsed.values.cwd ?? process.cwd())
+    for (const warning of result.warnings) {
+      console.error(`warning: ${warning.server}: ${warning.message}`)
+    }
+    const output = parsed.values.json ? `${JSON.stringify(result, null, 2)}\n` : renderMcpPatch(result)
+    if (parsed.values.out === undefined) process.stdout.write(output)
+    else {
+      writeFileSync(parsed.values.out, output)
+      console.error(`wrote ${result.entries.length} MCP server entr${result.entries.length === 1 ? 'y' : 'ies'} from ${result.sources.length} Pi config file(s) to ${parsed.values.out}`)
+    }
     return
   }
   if ((command !== 'inspect' && command !== 'convert') || source === undefined) {

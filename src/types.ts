@@ -1,4 +1,9 @@
-export type CompatibilityLevel = 'full' | 'partial' | 'unsupported'
+// full: equivalent mapping. partial: mapped with documented degradation.
+// unsupported: no mapping — the registration is accepted or the call fails
+// explicitly, but the package still installs; the black-box run decides real
+// usability. fatal: the bundle cannot be built or trusted at all (incomplete
+// module closure, undeclared runtime dependency, resource-manifest escape).
+export type CompatibilityLevel = 'full' | 'partial' | 'unsupported' | 'fatal'
 
 export interface CompatibilityFinding {
   capability: string
@@ -50,7 +55,9 @@ export interface GeneratedRuntimeManifest {
     argumentHint?: string
     path: string
   }>
-  report: CompatibilityReport
+  // Present in converted bundles for review provenance; host-mode manifests
+  // are built at load time from the installed package and carry none.
+  report?: CompatibilityReport
 }
 
 export interface GenerateOptions {

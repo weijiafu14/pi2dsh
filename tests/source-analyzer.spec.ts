@@ -54,11 +54,11 @@ describe('Pi package discovery and compatibility analysis', () => {
     }
   })
 
-  it('blocks terminal UI APIs and unknown dynamically named events', async () => {
+  it('reports terminal UI APIs and unknown dynamically named events as reviewable degradations', async () => {
     const pkg = await resolvePiPackage(join(fixtures, 'unsupported-package'))
     try {
       const report = await analyzePackage(pkg)
-      expect(report.verdict).toBe('blocked')
+      expect(report.verdict).toBe('review')
       expect(report.findings).toEqual(expect.arrayContaining([
         expect.objectContaining({ capability: 'registerShortcut', level: 'partial' }),
         expect.objectContaining({ capability: 'on(<dynamic>)', level: 'unsupported' }),
@@ -99,7 +99,7 @@ describe('Pi package discovery and compatibility analysis', () => {
     ].join('\n'))
     const pkg = await resolvePiPackage(file)
     const report = await analyzePackage(pkg)
-    expect(report.verdict).toBe('blocked')
+    expect(report.verdict).toBe('review')
     expect(report.findings).toEqual(expect.arrayContaining([
       expect.objectContaining({ capability: 'registerTool', level: 'partial' }),
       expect.objectContaining({ capability: 'events.emit', level: 'full' }),
@@ -175,7 +175,7 @@ describe('Pi package discovery and compatibility analysis', () => {
       expect.objectContaining({ capability: 'host-import(@earendil-works/pi-tui:Text)', level: 'partial' }),
       expect.objectContaining({ capability: 'host-import(@earendil-works/pi-ai:StringEnum)', level: 'full' }),
       expect.objectContaining({ capability: 'host-import(@earendil-works/pi-coding-agent:MissingHostExport)', level: 'unsupported' }),
-      expect.objectContaining({ capability: 'undeclared-runtime-dependency(missing-runtime)', level: 'unsupported' }),
+      expect.objectContaining({ capability: 'undeclared-runtime-dependency(missing-runtime)', level: 'fatal' }),
     ]))
     expect(report.findings.some(finding => finding.capability.includes(':ExtensionAPI)'))).toBe(false)
     expect(report.findings.some(finding => finding.capability.includes(':Theme)'))).toBe(false)
@@ -200,7 +200,7 @@ describe('Pi package discovery and compatibility analysis', () => {
       '}',
     ].join('\n'))
     const report = await analyzePackage(await resolvePiPackage(file))
-    expect(report.verdict).toBe('blocked')
+    expect(report.verdict).toBe('review')
     expect(report.findings).toEqual(expect.arrayContaining([
       expect.objectContaining({ capability: 'ctx.hasUI', level: 'full' }),
       expect.objectContaining({ capability: 'ctx.cwd', level: 'full' }),
@@ -220,11 +220,11 @@ describe('Pi package discovery and compatibility analysis', () => {
     expect(report.verdict).toBe('blocked')
     expect(report.findings).toEqual(expect.arrayContaining([
       expect.objectContaining({ capability: 'static-audit', level: 'unsupported' }),
-      expect.objectContaining({ capability: 'module(./missing.js)', level: 'unsupported' }),
+      expect.objectContaining({ capability: 'module(./missing.js)', level: 'fatal' }),
     ]))
   })
 
-  it('blocks Pi terminal themes instead of silently dropping them', async () => {
+  it('reports Pi terminal themes as explicit degradations instead of silently dropping them', async () => {
     const root = await mkdtemp(join(tmpdir(), 'pi2dsh-theme-'))
     cleanup.push(root)
     await mkdir(join(root, 'themes'))
@@ -232,7 +232,7 @@ describe('Pi package discovery and compatibility analysis', () => {
     await writeFile(join(root, 'themes/dark.json'), '{}')
     const pkg = await resolvePiPackage(root)
     const report = await analyzePackage(pkg)
-    expect(report.verdict).toBe('blocked')
+    expect(report.verdict).toBe('review')
     expect(report.findings).toContainEqual(expect.objectContaining({ capability: 'theme', level: 'unsupported' }))
   })
 

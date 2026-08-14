@@ -23,7 +23,10 @@ async function auditOnce(entry) {
       verdict: report.verdict,
       summary: report.summary,
       partialCapabilities: [...new Set(report.findings.filter(item => item.level === 'partial').map(item => item.capability))],
-      blockers: [...new Set(report.findings.filter(item => item.level === 'unsupported').map(item => item.capability))],
+      // blockers = fatal findings only: the bundle cannot be built or trusted.
+      blockers: [...new Set(report.findings.filter(item => item.level === 'fatal').map(item => item.capability))],
+      // degraded = explicit load-safe degradations; the black-box run decides usability.
+      degraded: [...new Set(report.findings.filter(item => item.level === 'unsupported').map(item => item.capability))],
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
@@ -32,9 +35,10 @@ async function auditOnce(entry) {
         ...entry,
         status: 'audited',
         verdict: 'blocked',
-        summary: { full: 0, partial: 0, unsupported: 1 },
+        summary: { full: 0, partial: 0, unsupported: 0, fatal: 1 },
         partialCapabilities: [],
         blockers: ['invalid-resource-manifest'],
+        degraded: [],
         error: message,
       }
     }

@@ -1,7 +1,7 @@
 import { defineConfig } from 'tsdown'
 
 export default defineConfig({
-  entry: ['src/index.ts', 'src/runtime.ts', 'src/cli.ts', 'src/compat/pi-coding-agent.ts', 'src/compat/pi-tui.ts', 'src/compat/pi-ai.ts'],
+  entry: ['src/index.ts', 'src/runtime.ts', 'src/host.ts', 'src/cli.ts', 'src/compat/pi-coding-agent.ts', 'src/compat/pi-tui.ts', 'src/compat/pi-ai.ts'],
   format: ['esm'],
   dts: true,
   sourcemap: true,

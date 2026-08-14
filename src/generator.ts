@@ -206,7 +206,7 @@ function generatedReadme(pkg: ResolvedPiPackage, packageName: string, report: Co
 
 function pluginSource(manifest: GeneratedRuntimeManifest, runtimeImport: string): string {
   const injections = ['tools', 'systemPrompt']
-  if (manifest.prompts.length > 0 || manifest.report.findings.some(item => item.capability === 'registerCommand')) {
+  if (manifest.prompts.length > 0 || manifest.report?.findings.some(item => item.capability === 'registerCommand') === true) {
     injections.push('commands')
   }
   if (manifest.skillDirs.length > 0) injections.push('skills')
@@ -253,10 +253,13 @@ function patchSource(generatedName: string, slug: string): string {
 }
 
 function enforceReport(report: CompatibilityReport, options: GenerateOptions): void {
-  if (!options.allowUnsupported && report.summary.unsupported > 0) {
+  // Fatal findings (incomplete module closure, undeclared runtime deps,
+  // resource escapes) mean the bundle cannot be built or trusted; no flag
+  // bypasses them. Unsupported findings are explicit, load-safe degradations
+  // — the bundle installs and the black-box run decides real usability.
+  if (report.summary.fatal > 0) {
     throw new Error(
-      `conversion blocked: ${report.summary.unsupported} unsupported Pi API use(s); `
-      + 'run inspect for details or pass --allow-unsupported to generate an explicitly degraded bundle',
+      `conversion blocked: ${report.summary.fatal} fatal finding(s) — the bundle cannot be built or trusted; run inspect for details`,
     )
   }
   if (options.strict && (report.summary.partial > 0 || report.summary.unsupported > 0)) {

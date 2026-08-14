@@ -815,7 +815,16 @@ function registerTool(ctx: Context, state: RuntimeState, tool: PiTool): void {
           String(exec.callId),
           prepared,
           exec.signal,
-          update => logger(ctx).debug(`[pi2dsh] tool ${tool.name} emitted a partial update: ${JSON.stringify(jsonValue(update))}`),
+          update => {
+            void dispatch(state, 'tool_execution_update', {
+              type: 'tool_execution_update',
+              toolCallId: String(exec.callId),
+              toolName: tool.name,
+              args: prepared,
+              partialResult: jsonValue(update),
+            }, contextFor(ctx, state, agent, exec.signal))
+              .catch(error => logger(ctx).warn(`[pi2dsh] tool_execution_update handler failed: ${String(error)}`))
+          },
           contextFor(ctx, state, agent, exec.signal),
         )))
       if (result.terminate === true) exec.concludeTurn()
