@@ -176,7 +176,16 @@ function generatedPackageJson(
   if (missing.length > 0) {
     throw new Error(`runtime dependencies are imported but not declared by the Pi package: ${missing.join(', ')}`)
   }
+  // Carry EVERY declared runtime dependency, not only statically detected
+  // imports: packages load their own deps dynamically (computed require,
+  // optional native backends) and the original manifest is the authority on
+  // what they need.
+  const declaredRuntime = {
+    ...stringRecord(pkg.packageJson.dependencies),
+    ...stringRecord(pkg.packageJson.optionalDependencies),
+  }
   const dependencies = {
+    ...Object.fromEntries(Object.entries(declaredRuntime).filter(([name]) => !SHIMMED_PI_HOST_PACKAGES.has(name))),
     ...Object.fromEntries(externalRuntimePackages.sort().map(name => [name, declaredDependencies[name]])),
     // The embedded runtime's own runtime dependencies (vendored Pi width math
     // uses get-east-asian-width; the pi-tui shim re-exports marked; typebox is

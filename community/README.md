@@ -1,49 +1,24 @@
-# Pi community audit
+# Pi community corpus: evidence, not claims
 
-This directory separates three questions that are often incorrectly collapsed into “compatible”:
+This directory holds the machine-readable results for the top-50 Pi extensions (official catalog, sorted by monthly downloads, captured 2026-08-14; pinned in [`corpus.json`](corpus.json)). It separates four questions that are often collapsed into one word, "compatible":
 
-1. Can the package be analyzed without unknown or unsupported Pi API use?
-2. Can its bundle be installed, activated, and removed by the official DSH plugin manager?
-3. Does its important capability actually execute through DSH?
+1. **Static screening** — does analysis find fatal supply-chain findings (incomplete module closure, undeclared runtime dependencies, resource escapes)? Anything non-fatal installs; screening never certifies. → [`audit-results.json`](audit-results.json)
+2. **Black-box certification** — does the package actually mount in a real DSH runtime composition, and what registration surface (tools/commands/skills) comes alive? With `--exercise`, representative tools and commands are then **executed** with schema-derived arguments against local fixture services, and each attempt is graded:
+   - `working` — a real invocation returned success
+   - `executed-input-validation` — the package's own business logic ran and rejected the synthetic probe arguments (execution path proven end-to-end)
+   - `callable-needs-config` — the call executed but wants credentials/services the harness doesn't provide
+   - `failed` — something else broke; the message is an attributed gap
+   → [`blackbox-results.json`](blackbox-results.json)
+3. **Deep runtime + official manager** — four pinned packages execute their real capability paths (LSP subprocess over JSON-RPC, web search/fetch, PNG generation, ask_user), pass official `dsh plugin` add/activate/remove, and one **host bundle** mounts two unmodified packages through the same official flow. → [`runtime-results.json`](runtime-results.json)
+4. **Real model acceptance** — `deepseek-official/deepseek-v4-flash` calls a migrated Pi tool; the durable session log is asserted (exact call count, arguments, result, turn completion) and the credential is proven absent from every artifact. → [`live-deepseek-results.json`](live-deepseek-results.json)
 
-## Corpus and results
-
-- Source: official [Pi package catalog](https://pi.dev/packages?type=extension)
-- Captured: 2026-08-14
-- Selection: first 50 extensions sorted by monthly downloads
-- Static audit: 0 ready, 4 review, 46 blocked, 0 errors
-- Runtime candidates: 4/4 loaded and executed their stated checks
-- Official plugin manager: 4/4 install, activation, and removal checks passed
-- Full-fidelity packages in the top 50: 0
-
-The pinned corpus is in [`corpus.json`](corpus.json). [`audit-results.json`](audit-results.json) contains every package, exact resolved version, download rank, repository, finding counts, partial capabilities, and blockers.
-
-## Direct-use classification
-
-| Rank | Package | Downloads/month | What was actually executed | Classification |
-|---:|---|---:|---|---|
-| 21 | `@narumitw/pi-lsp@0.49.4` | 16,300 | Spawned a fixture JSON-RPC LSP; ran diagnostics and fix | Directly usable core tools |
-| 34 | `pi-ask-user@0.14.0` | 10,400 | Registered tool, returned explicit headless fallback, discovered skill | Degraded; not interaction-equivalent |
-| 35 | `@juicesharp/rpiv-web-tools@2.4.0` | 9,876 | SearXNG-backed search plus real HTTP fetch | Directly usable core tools |
-| 47 | `@amaster.ai/pi-image-gen@0.1.8` | 8,204 | OpenAI-compatible image endpoint, real PNG file, discovered skill | Directly usable core tool and skill |
-
-“Directly usable core” is deliberately narrower than “fully compatible.” All four remain `review` because at least one used capability is partial. `pi-ask-user` is not counted among the three direct-use packages because DSH headless does not provide Pi's terminal interaction surface.
-
-## Evidence files
-
-- [`audit-results.json`](audit-results.json): reproducible static result for all 50 packages.
-- [`runtime-results.json`](runtime-results.json): sanitized runtime checks and official DSH plugin-manager results.
-- [`live-deepseek-results.json`](live-deepseek-results.json): sanitized real-model call/result evidence. It contains no credential or raw session transcript.
-
-The runtime and live-model evidence were produced against DSH commit `47f943859bef60e4160492346772ded9b24f765a`. Results describe those pinned package versions and that DSH revision; rerun after relevant upstream changes.
-
-## Reproduce
+Regenerate any layer:
 
 ```sh
-pnpm build
-node scripts/audit-community.mjs
-node scripts/verify-community.mjs --generate community/runtime-results.json
-DEEPSEEK_API_KEY=... node scripts/verify-live-deepseek.mjs community/live-deepseek-results.json
+pnpm audit:community
+node scripts/blackbox-community.mjs community/blackbox-results.json --exercise
+pnpm test:community
+DEEPSEEK_API_KEY=… pnpm test:live
 ```
 
-`verify-community.mjs --generate` downloads the four exact versions above into a temporary directory, converts them, performs runtime checks, and removes the artifacts. The live test reads the key only from process environment and rejects evidence if the credential appears in captured output or the durable session.
+Safety notes for the exercise layer: tools whose names indicate mutation of shared state are skipped; exec-style tools run a harmless `echo` through the real subprocess seam; everything runs in an isolated scratch workspace with no real credentials, so external-service tools naturally land in `callable-needs-config` rather than performing outbound actions.

@@ -5,8 +5,16 @@
 //   - loaded:      the bundle mounted; registration surface recorded
 //   - load-failed: the error message is a concrete ABI gap to fix
 //   - fatal:       conversion refused (supply-chain/closure findings)
-// Usage: node scripts/blackbox-community.mjs [output.json] [--only name,name]
+// Usage: node scripts/blackbox-community.mjs [output.json] [--only name,name] [--exercise]
+//   --exercise: after mounting, EXECUTE representative tools/commands with
+//   schema-derived minimal arguments against local fixture services. Grades:
+//     working              — a real invocation returned success
+//     callable-needs-config — the call executed but wants credentials/config
+//     failed               — invocation errored for another reason
+//   Mutating/destructive tool names are skipped (skipped-unsafe) except exec,
+//   which runs a harmless echo through the real subprocess seam.
 import { execFile as execFileCallback } from 'node:child_process'
+import { createServer } from 'node:http'
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
@@ -16,6 +24,7 @@ import { Context } from '@deepseek-ai/cordis'
 import AgentRegistry from '@deepseek-ai/dsh-agent'
 import LocalAttachmentStore from '@deepseek-ai/dsh-attachment-local'
 import CommandRuntime from '@deepseek-ai/dsh-commands'
+import { CallId } from '@deepseek-ai/dsh-llm'
 import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
 import SkillRegistry from '@deepseek-ai/dsh-skill'
 import LocalSubprocessRuntime from '@deepseek-ai/dsh-subprocess-local'
@@ -31,10 +40,40 @@ const outputPath = resolve(positional[0] ?? 'community/blackbox-results.json')
 const onlyArg = process.argv.find(arg => arg.startsWith('--only'))
 const only = onlyArg === undefined ? undefined : new Set((onlyArg.split('=')[1] ?? '').split(',').filter(Boolean))
 
+const exercise = process.argv.includes('--exercise')
+
 const corpus = JSON.parse(await readFile(join(projectRoot, 'community/corpus.json'), 'utf8'))
 const scratch = await mkdtemp(join(tmpdir(), 'pi2dsh-blackbox-'))
 const workspace = join(scratch, 'workspace')
 await mkdir(workspace, { recursive: true })
+await writeFile(join(workspace, 'sample.txt'), 'pi2dsh exercise probe file\nline two\n')
+await writeFile(join(workspace, 'sample.ts'), 'export const probe = 1\n')
+
+// Local fixture endpoints so network-shaped tools can really succeed without
+// external services. SearXNG-compatible search + a plain HTML page + an
+// OpenAI-images-compatible endpoint.
+const tinyPng = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl2nX8AAAAASUVORK5CYII='
+const fixtureServer = createServer((request, response) => {
+  if (request.url?.startsWith('/search')) {
+    response.writeHead(200, { 'content-type': 'application/json' })
+    response.end(JSON.stringify({ results: [{ title: 'pi2dsh exercise result', url: 'http://127.0.0.1/result', content: 'PI2DSH_EXERCISE_OK' }] }))
+    return
+  }
+  if (request.url === '/v1/images/generations' && request.method === 'POST') {
+    response.writeHead(200, { 'content-type': 'application/json' })
+    response.end(JSON.stringify({ data: [{ b64_json: tinyPng, revised_prompt: 'PI2DSH_EXERCISE_OK' }] }))
+    return
+  }
+  response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' })
+  response.end('<html><head><title>pi2dsh exercise page</title></head><body><h1>PI2DSH_EXERCISE_OK</h1></body></html>')
+})
+await new Promise((resolveListen, reject) => {
+  fixtureServer.once('error', reject)
+  fixtureServer.listen(0, '127.0.0.1', resolveListen)
+})
+const fixtureBase = `http://127.0.0.1:${fixtureServer.address().port}`
+process.env.WEB_SEARCH_PROVIDER = 'searxng'
+process.env.SEARXNG_URL = fixtureBase
 
 // Pi state (settings, sidecars) stays inside the scratch dir.
 process.env.PI_CODING_AGENT_DIR = join(scratch, 'pi-agent')
@@ -50,6 +89,114 @@ function classifyGap(message) {
   if (/parameters must use an object-root/iu.test(message)) return 'tool-schema-root'
   if (/already registered/iu.test(message)) return 'duplicate-registration'
   return 'other'
+}
+
+// ---- exercise support ------------------------------------------------------
+
+// Never invoke tools whose name suggests mutation of shared state. exec-like
+// tools DO run — through the real subprocess seam with a harmless echo.
+const UNSAFE_TOOL = /kill|delete|remove|reset|clear|write|edit|patch|steer|publish|deploy|install|upload/iu
+const EXECISH_TOOL = /^(exec|exec_command|bash|shell|run_command)$/iu
+const CONFIG_ERROR = /api.?key|token|credential|auth|login|unauthorized|forbidden|403|401|not configured|missing.*(key|config|env)|no provider|env(ironment)? variable|ECONNREFUSED|ENOTFOUND|EAI_AGAIN|fetch failed|network|Set .*_KEY|configure/iu
+
+function valueForString(name) {
+  const key = name.toLowerCase()
+  if (/url|link|endpoint/u.test(key)) return `${fixtureBase}/page`
+  if (/query|search|prompt|question|text|message|content|instruction|description/u.test(key)) return 'pi2dsh exercise probe'
+  if (/dir|cwd|root|workspace/u.test(key)) return workspace
+  if (/path|file/u.test(key)) return join(workspace, 'sample.txt')
+  if (/command|cmd/u.test(key)) return 'echo'
+  if (/name|title|label|id\b|identifier/u.test(key)) return 'pi2dsh-probe'
+  if (/lang|language/u.test(key)) return 'typescript'
+  return 'pi2dsh'
+}
+
+function minimalArguments(schema, toolName) {
+  if (typeof schema !== 'object' || schema === null) return {}
+  const output = {}
+  const properties = schema.properties ?? {}
+  const required = Array.isArray(schema.required) ? schema.required : []
+  for (const key of required) {
+    const spec = properties[key] ?? {}
+    if (Array.isArray(spec.enum) && spec.enum.length > 0) output[key] = spec.enum[0]
+    else if (spec.type === 'number' || spec.type === 'integer') output[key] = 1
+    else if (spec.type === 'boolean') output[key] = false
+    else if (spec.type === 'array') output[key] = spec.items?.type === 'string' ? [valueForString(key)] : []
+    else if (spec.type === 'object') output[key] = minimalArguments(spec, toolName)
+    else output[key] = valueForString(key)
+  }
+  if (EXECISH_TOOL.test(toolName)) {
+    if ('command' in properties) output.command = 'echo'
+    if ('args' in properties) output.args = ['pi2dsh-exercise']
+    if ('cmd' in properties) output.cmd = 'echo pi2dsh-exercise'
+  }
+  return output
+}
+
+// Package business logic rejecting the synthetic probe arguments proves the
+// execution path end-to-end; grade it as executed rather than failed.
+const INPUT_VALIDATION = /unknown .* (id|task)|does not know|no valid|provide exactly|no current model|not found|no such|invalid (argument|input|value)|must (be|match|specify)|required|missing (argument|parameter|field)|expected/iu
+
+function gradeOutcome(result) {
+  if (result.isError !== true) return 'working'
+  const text = (result.content ?? []).map(block => String(block.text ?? '')).join('\n')
+    + JSON.stringify(result.error ?? '')
+  if (CONFIG_ERROR.test(text)) return 'callable-needs-config'
+  return INPUT_VALIDATION.test(text) ? 'executed-input-validation' : 'failed'
+}
+
+async function exerciseSurface(ctx, agent, assembly, commands) {
+  const attempts = []
+  const candidates = assembly.tools
+    .filter(tool => !tool.name.startsWith('bb-'))
+    .filter(tool => EXECISH_TOOL.test(tool.name) || !UNSAFE_TOOL.test(tool.name))
+    .slice(0, 3)
+  for (const tool of candidates) {
+    const args = minimalArguments(tool.parameters ?? {}, tool.name)
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(new Error('exercise timeout')), 20_000)
+    try {
+      const result = await ctx.tools.execute({
+        signal: controller.signal,
+        agent,
+        callId: CallId(`exercise-${tool.name}-${Date.now()}`),
+        name: tool.name,
+        arguments: args,
+      })
+      const text = (result.content ?? []).map(block => String(block.text ?? '')).join(' ').slice(0, 160)
+      attempts.push({ kind: 'tool', name: tool.name, args, outcome: gradeOutcome(result), evidence: text })
+    } catch (error) {
+      const message = String(error?.message ?? error)
+      attempts.push({
+        kind: 'tool', name: tool.name, args,
+        outcome: CONFIG_ERROR.test(message) ? 'callable-needs-config' : 'failed',
+        evidence: message.slice(0, 160),
+      })
+    } finally {
+      clearTimeout(timer)
+    }
+  }
+  // Command-only packages: prove one harmless command handler actually runs.
+  if (attempts.length === 0 && commands.length > 0 && typeof ctx.commands?.execute === 'function') {
+    const name = commands.find(candidate => !UNSAFE_TOOL.test(candidate))
+    if (name !== undefined) {
+      try {
+        await ctx.commands.execute(agent, name, new AbortController().signal)
+        attempts.push({ kind: 'command', name, outcome: 'working', evidence: 'command handler completed' })
+      } catch (error) {
+        const message = String(error?.message ?? error)
+        attempts.push({
+          kind: 'command', name,
+          outcome: CONFIG_ERROR.test(message) ? 'callable-needs-config' : 'failed',
+          evidence: message.slice(0, 160),
+        })
+      }
+    }
+  }
+  const order = ['working', 'executed-input-validation', 'callable-needs-config']
+  const grade = order.find(level => attempts.some(item => item.outcome === level))
+    ?? (attempts.length === 0 ? 'nothing-exercisable' : 'failed')
+  return { grade, attempts }
 }
 
 async function loadBundle(bundleDir) {
@@ -91,10 +238,18 @@ async function loadBundle(bundleDir) {
   } catch {
     skills = []
   }
+  let exercised
+  if (exercise) {
+    try {
+      exercised = await exerciseSurface(ctx, agent, assembly, commands)
+    } catch (error) {
+      exercised = { grade: 'failed', attempts: [{ kind: 'harness', outcome: 'failed', evidence: String(error?.message ?? error).slice(0, 160) }] }
+    }
+  }
   ctx.emit('agent/disposed', { agent })
   await delay(30)
   await fiber.dispose()
-  return { tools, commands, skills }
+  return { tools, commands, skills, exercised }
 }
 
 async function verifyOne(entry) {
@@ -137,6 +292,7 @@ async function verifyOne(entry) {
         tools: surface.tools.filter(name => !name.startsWith('bb-')),
         commands: surface.commands,
         skills: surface.skills,
+        ...(surface.exercised === undefined ? {} : { exercised: surface.exercised }),
         degraded: [...new Set(report.findings.filter(item => item.level === 'unsupported').map(item => item.capability))],
       }
     } catch (error) {
@@ -166,15 +322,26 @@ for (const item of results) {
   if (item.status !== 'load-failed') continue
   gaps[item.gap] = (gaps[item.gap] ?? 0) + 1
 }
+const exerciseCounts = {}
+if (exercise) {
+  for (const item of results) {
+    if (item.status !== 'loaded') continue
+    const grade = item.exercised?.grade ?? 'nothing-exercisable'
+    exerciseCounts[grade] = (exerciseCounts[grade] ?? 0) + 1
+  }
+}
 const value = {
   schemaVersion: 1,
   generatedAt: new Date().toISOString(),
-  method: 'convert + real DSH runtime load (Cordis composition with official service plugins); registration surfaces recorded; failures classified as ABI gaps',
+  method: 'convert + real DSH runtime load (Cordis composition with official service plugins); registration surfaces recorded; failures classified as ABI gaps'
+    + (exercise ? '; representative tools/commands EXECUTED with schema-derived arguments against local fixtures' : ''),
   counts,
+  ...(exercise ? { exerciseCounts } : {}),
   gapHistogram: gaps,
   results,
 }
 await writeFile(outputPath, `${JSON.stringify(value, null, 2)}\n`)
-console.log(JSON.stringify(counts))
+console.log(JSON.stringify({ ...counts, ...(exercise ? { exercise: exerciseCounts } : {}) }))
 console.log(outputPath)
+await new Promise(resolveClose => fixtureServer.close(resolveClose))
 if (process.env.PI2DSH_KEEP_TEST_ARTIFACTS !== '1') await rm(scratch, { recursive: true, force: true })

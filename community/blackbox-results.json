@@ -1,15 +1,22 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-14T01:58:18.219Z",
-  "method": "convert + real DSH runtime load (Cordis composition with official service plugins); registration surfaces recorded; failures classified as ABI gaps",
+  "generatedAt": "2026-08-14T02:52:14.216Z",
+  "method": "convert + real DSH runtime load (Cordis composition with official service plugins); registration surfaces recorded; failures classified as ABI gaps; representative tools/commands EXECUTED with schema-derived arguments against local fixtures",
   "counts": {
-    "loaded": 38,
-    "loadFailed": 6,
+    "loaded": 39,
+    "loadFailed": 5,
     "fatal": 6
+  },
+  "exerciseCounts": {
+    "working": 29,
+    "executed-input-validation": 3,
+    "callable-needs-config": 3,
+    "nothing-exercisable": 3,
+    "failed": 1
   },
   "gapHistogram": {
     "explicit-degradation-hit-at-load": 1,
-    "other": 3,
+    "other": 2,
     "missing-abi-export-or-shape": 2
   },
   "results": [
@@ -30,6 +37,27 @@
       "skills": [
         "mcp-scripting"
       ],
+      "exercised": {
+        "grade": "working",
+        "attempts": [
+          {
+            "kind": "tool",
+            "name": "mcp",
+            "args": {},
+            "outcome": "working",
+            "evidence": "MCP: 0/0 servers, 0 tools"
+          },
+          {
+            "kind": "tool",
+            "name": "mcpScript",
+            "args": {
+              "code": "pi2dsh"
+            },
+            "outcome": "working",
+            "evidence": "ReferenceError: pi2dsh is not defined"
+          }
+        ]
+      },
       "degraded": [
         "ctx.reload"
       ]
@@ -81,6 +109,17 @@
         "wooyun-legacy",
         "zeroize-audit"
       ],
+      "exercised": {
+        "grade": "working",
+        "attempts": [
+          {
+            "kind": "command",
+            "name": "piolium-balanced",
+            "outcome": "working",
+            "evidence": "command handler completed"
+          }
+        ]
+      },
       "degraded": [
         "host-import(@earendil-works/pi-coding-agent:DefaultResourceLoader)",
         "host-import(@earendil-works/pi-coding-agent:createAgentSession)",
@@ -108,6 +147,36 @@
         "websearch"
       ],
       "skills": [],
+      "exercised": {
+        "grade": "working",
+        "attempts": [
+          {
+            "kind": "tool",
+            "name": "fetch_content",
+            "args": {},
+            "outcome": "working",
+            "evidence": "Error: No URL provided."
+          },
+          {
+            "kind": "tool",
+            "name": "get_search_content",
+            "args": {
+              "responseId": "pi2dsh-probe"
+            },
+            "outcome": "working",
+            "evidence": "Error: No stored results for \"pi2dsh-probe\""
+          },
+          {
+            "kind": "tool",
+            "name": "source_check",
+            "args": {
+              "claim": "pi2dsh"
+            },
+            "outcome": "working",
+            "evidence": "# Source check: pi2dsh\n\n**Status:** missing-evidence (confidence 0.20)\n**Rationale:** No passages available that discuss the claim's terms.\n\n## Sources\n1. [unkn"
+          }
+        ]
+      },
       "degraded": []
     },
     {
@@ -121,6 +190,20 @@
       ],
       "commands": [],
       "skills": [],
+      "exercised": {
+        "grade": "working",
+        "attempts": [
+          {
+            "kind": "tool",
+            "name": "ask_user_question",
+            "args": {
+              "questions": []
+            },
+            "outcome": "working",
+            "evidence": "Error: At least one question is required"
+          }
+        ]
+      },
       "degraded": []
     },
     {
@@ -136,6 +219,20 @@
         "todos"
       ],
       "skills": [],
+      "exercised": {
+        "grade": "working",
+        "attempts": [
+          {
+            "kind": "tool",
+            "name": "todo",
+            "args": {
+              "action": "create"
+            },
+            "outcome": "working",
+            "evidence": "Error: subject required for create"
+          }
+        ]
+      },
       "degraded": []
     },
     {
@@ -171,6 +268,29 @@
         "fff-rescan"
       ],
       "skills": [],
+      "exercised": {
+        "grade": "working",
+        "attempts": [
+          {
+            "kind": "tool",
+            "name": "fffind",
+            "args": {
+              "pattern": "pi2dsh"
+            },
+            "outcome": "working",
+            "evidence": "No files found matching pattern"
+          },
+          {
+            "kind": "tool",
+            "name": "ffgrep",
+            "args": {
+              "pattern": "pi2dsh"
+            },
+            "outcome": "working",
+            "evidence": "sample.txt\n 1: pi2dsh exercise probe file"
+          }
+        ]
+      },
       "degraded": []
     },
     {
@@ -184,6 +304,17 @@
         "simplify"
       ],
       "skills": [],
+      "exercised": {
+        "grade": "working",
+        "attempts": [
+          {
+            "kind": "command",
+            "name": "simplify",
+            "outcome": "working",
+            "evidence": "command handler completed"
+          }
+        ]
+      },
       "degraded": []
     },
     {
@@ -201,6 +332,43 @@
         "goal"
       ],
       "skills": [],
+      "exercised": {
+        "grade": "working",
+        "attempts": [
+          {
+            "kind": "tool",
+            "name": "goal_blocked",
+            "args": {
+              "goal_id": "pi2dsh-probe",
+              "reason": "pi2dsh",
+              "evidence": "pi2dsh",
+              "repeated_turns": 1
+            },
+            "outcome": "working",
+            "evidence": "goal_blocked rejected: no active goal."
+          },
+          {
+            "kind": "tool",
+            "name": "goal_complete",
+            "args": {
+              "goal_id": "pi2dsh-probe",
+              "summary": "pi2dsh"
+            },
+            "outcome": "working",
+            "evidence": "Goal completion rejected: no active goal."
+          },
+          {
+            "kind": "tool",
+            "name": "goal_wait",
+            "args": {
+              "goal_id": "pi2dsh-probe",
+              "reason": "pi2dsh"
+            },
+            "outcome": "working",
+            "evidence": "goal_wait rejected: no active goal."
+          }
+        ]
+      },
       "degraded": [
         "on(context)"
       ]
@@ -237,6 +405,36 @@
         "review"
       ],
       "skills": [],
+      "exercised": {
+        "grade": "working",
+        "attempts": [
+          {
+            "kind": "tool",
+            "name": "complete_goal",
+            "args": {},
+            "outcome": "working",
+            "evidence": "This tool changes goal/loop/list state, which only the MAIN session owns — you are running in a subagent session. Report back to the main agent; it owns the goa"
+          },
+          {
+            "kind": "tool",
+            "name": "complete_task",
+            "args": {
+              "id": "pi2dsh-probe"
+            },
+            "outcome": "working",
+            "evidence": "This tool changes goal/loop/list state, which only the MAIN session owns — you are running in a subagent session. Report back to the main agent; it owns the goa"
+          },
+          {
+            "kind": "tool",
+            "name": "list_activate",
+            "args": {
+              "n": 1
+            },
+            "outcome": "working",
+            "evidence": "This tool changes goal/loop/list state, which only the MAIN session owns — you are running in a subagent session. Report back to the main agent; it owns the goa"
+          }
+        ]
+      },
       "degraded": [
         "trim"
       ]
@@ -247,7 +445,7 @@
       "downloadsPerMonth": 28300,
       "status": "fatal",
       "stage": "convert",
-      "error": "conversion blocked: 3 fatal finding(s) \u2014 the bundle cannot be built or trusted; run inspect for details"
+      "error": "conversion blocked: 3 fatal finding(s) — the bundle cannot be built or trusted; run inspect for details"
     },
     {
       "rank": 13,
@@ -260,6 +458,17 @@
         "permission-system"
       ],
       "skills": [],
+      "exercised": {
+        "grade": "working",
+        "attempts": [
+          {
+            "kind": "command",
+            "name": "permission-system",
+            "outcome": "working",
+            "evidence": "command handler completed"
+          }
+        ]
+      },
       "degraded": [
         "on(resources_discover)"
       ]
@@ -297,6 +506,39 @@
         "tasks"
       ],
       "skills": [],
+      "exercised": {
+        "grade": "executed-input-validation",
+        "attempts": [
+          {
+            "kind": "tool",
+            "name": "bg_delegate",
+            "args": {
+              "name": "pi2dsh-probe",
+              "prompt": "pi2dsh exercise probe"
+            },
+            "outcome": "executed-input-validation",
+            "evidence": "Error: bg_delegate cannot pin a route: the parent session has no current model and no explicit route was given. No child was created."
+          },
+          {
+            "kind": "tool",
+            "name": "bg_logs",
+            "args": {
+              "taskId": "pi2dsh-probe"
+            },
+            "outcome": "executed-input-validation",
+            "evidence": "Error: Unknown background task ID: pi2dsh-probe"
+          },
+          {
+            "kind": "tool",
+            "name": "bg_result",
+            "args": {
+              "taskId": "pi2dsh-probe"
+            },
+            "outcome": "executed-input-validation",
+            "evidence": "Error: bg_result does not know task pi2dsh-probe: Unknown background task ID: pi2dsh-probe"
+          }
+        ]
+      },
       "degraded": [
         "on(before_provider_request)"
       ]
@@ -307,7 +549,7 @@
       "downloadsPerMonth": 23700,
       "status": "fatal",
       "stage": "convert",
-      "error": "conversion blocked: 3 fatal finding(s) \u2014 the bundle cannot be built or trusted; run inspect for details"
+      "error": "conversion blocked: 3 fatal finding(s) — the bundle cannot be built or trusted; run inspect for details"
     },
     {
       "rank": 16,
@@ -315,7 +557,7 @@
       "downloadsPerMonth": 22500,
       "status": "fatal",
       "stage": "convert",
-      "error": "conversion blocked: 1 fatal finding(s) \u2014 the bundle cannot be built or trusted; run inspect for details"
+      "error": "conversion blocked: 1 fatal finding(s) — the bundle cannot be built or trusted; run inspect for details"
     },
     {
       "rank": 17,
@@ -331,6 +573,29 @@
         "plan"
       ],
       "skills": [],
+      "exercised": {
+        "grade": "working",
+        "attempts": [
+          {
+            "kind": "tool",
+            "name": "plan_mode_complete",
+            "args": {
+              "plan": "pi2dsh"
+            },
+            "outcome": "failed",
+            "evidence": "Error: plan_mode_complete is only available while Plan mode is active"
+          },
+          {
+            "kind": "tool",
+            "name": "plan_mode_question",
+            "args": {
+              "questions": []
+            },
+            "outcome": "working",
+            "evidence": "{\n  \"cancelled\": true,\n  \"reason\": \"plan_mode_inactive\",\n  \"message\": \"Error: plan_mode_question is only available while Plan mode is active.\"\n}"
+          }
+        ]
+      },
       "degraded": [
         "ctx.newSession",
         "on(context)"
@@ -354,6 +619,17 @@
         "vibe"
       ],
       "skills": [],
+      "exercised": {
+        "grade": "working",
+        "attempts": [
+          {
+            "kind": "command",
+            "name": "bash-mode",
+            "outcome": "working",
+            "evidence": "command handler completed"
+          }
+        ]
+      },
       "degraded": [
         "ctx.switchSession",
         "ctx.settingsManager",
@@ -373,6 +649,17 @@
         "voice"
       ],
       "skills": [],
+      "exercised": {
+        "grade": "working",
+        "attempts": [
+          {
+            "kind": "command",
+            "name": "voice",
+            "outcome": "working",
+            "evidence": "command handler completed"
+          }
+        ]
+      },
       "degraded": []
     },
     {
@@ -395,6 +682,38 @@
         "codex"
       ],
       "skills": [],
+      "exercised": {
+        "grade": "working",
+        "attempts": [
+          {
+            "kind": "tool",
+            "name": "exec",
+            "args": {
+              "code": "pi2dsh"
+            },
+            "outcome": "failed",
+            "evidence": "Error: failed to download https://github.com/openai/codex/releases/download/rust-v0.145.0/codex-code-mode-host-aarch64-apple-darwin.tar.gz: The operation was ab"
+          },
+          {
+            "kind": "tool",
+            "name": "exec_command",
+            "args": {
+              "cmd": "echo pi2dsh-exercise"
+            },
+            "outcome": "working",
+            "evidence": "Command: echo pi2dsh-exercise\nChunk ID: dfbf49\nWall time: 0.0010 seconds\nProcess exited with code 1\nOriginal token count: 13\nOutput:\nexec_bridge binary is not b"
+          },
+          {
+            "kind": "tool",
+            "name": "imagegen",
+            "args": {
+              "prompt": "pi2dsh exercise probe"
+            },
+            "outcome": "failed",
+            "evidence": "Error: imagegen requires an image-capable OpenAI Codex-compatible Responses provider"
+          }
+        ]
+      },
       "degraded": [
         "on(before_provider_request)",
         "on(context)",
@@ -418,6 +737,27 @@
         "lsp"
       ],
       "skills": [],
+      "exercised": {
+        "grade": "working",
+        "attempts": [
+          {
+            "kind": "tool",
+            "name": "lsp_diagnostics",
+            "args": {},
+            "outcome": "working",
+            "evidence": "Skipped unavailable default LSP server(s): biome, ty, gopls, rubocop, elixir-ls, zls, csharp, fsharp, jdtls, kotlin-lsp, yaml-language-server, lua-language-serv"
+          },
+          {
+            "kind": "tool",
+            "name": "lsp_fix",
+            "args": {
+              "path": "/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-ko7vyN/workspace/sample.txt"
+            },
+            "outcome": "failed",
+            "evidence": "Error: No fix route supports /var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-ko7vyN/workspace/sample.txt. Supported LSP servers are defined by "
+          }
+        ]
+      },
       "degraded": []
     },
     {
@@ -449,6 +789,38 @@
         "write"
       ],
       "skills": [],
+      "exercised": {
+        "grade": "executed-input-validation",
+        "attempts": [
+          {
+            "kind": "tool",
+            "name": "readSeek_def",
+            "args": {
+              "name": "pi2dsh-probe"
+            },
+            "outcome": "executed-input-validation",
+            "evidence": "Error: dyld[86301]: Library not loaded: /opt/homebrew/opt/libgit2/lib/libgit2.1.9.dylib Referenced from: <9E0827C4-A0DC-3E7F-83D4-50269E16762E> /private/var/fol"
+          },
+          {
+            "kind": "tool",
+            "name": "readSeek_digest",
+            "args": {
+              "path": "/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-ko7vyN/workspace/sample.txt"
+            },
+            "outcome": "executed-input-validation",
+            "evidence": "Error: dyld[86303]: Library not loaded: /opt/homebrew/opt/libgit2/lib/libgit2.1.9.dylib Referenced from: <9E0827C4-A0DC-3E7F-83D4-50269E16762E> /private/var/fol"
+          },
+          {
+            "kind": "tool",
+            "name": "readSeek_grep",
+            "args": {
+              "pattern": "pi2dsh"
+            },
+            "outcome": "failed",
+            "evidence": "Error: pi2dsh: createGrepTool() belongs to Pi's internal agent runtime and has no verified DSH mapping; use the DSH-native service instead (see the pi2dsh compa"
+          }
+        ]
+      },
       "degraded": [
         "host-import(@earendil-works/pi-coding-agent:createGrepTool)"
       ]
@@ -460,7 +832,7 @@
       "status": "load-failed",
       "stage": "load",
       "gap": "other",
-      "error": "every Pi extension entry failed to load:\n- vendor/index.ts: ENOENT: no such file or directory, open '/private/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-eH2vH3/bundles/23-pi-hashline-edit-pro/vendor/prompts/read.md'"
+      "error": "every Pi extension entry failed to load:\n- vendor/index.ts: ENOENT: no such file or directory, open '/private/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-ko7vyN/bundles/23-pi-hashline-edit-pro/vendor/prompts/read.md'"
     },
     {
       "rank": 24,
@@ -480,6 +852,38 @@
         "telegram-status"
       ],
       "skills": [],
+      "exercised": {
+        "grade": "working",
+        "attempts": [
+          {
+            "kind": "tool",
+            "name": "telegram_attach",
+            "args": {
+              "paths": [
+                "/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-ko7vyN/workspace/sample.txt"
+              ]
+            },
+            "outcome": "failed",
+            "evidence": "Error: Telegram direct delivery requires this Pi instance to own /telegram-connect or be registered with the Telegram multi-instance bus"
+          },
+          {
+            "kind": "tool",
+            "name": "telegram_help",
+            "args": {},
+            "outcome": "working",
+            "evidence": "--- TELEGRAM BRIDGE HELP ---\n\nHow to understand Telegram turns:\n- `[telegram|thread:name|from:user|guest:group]` marks Telegram origin and attributes.\n- `thread"
+          },
+          {
+            "kind": "tool",
+            "name": "telegram_message",
+            "args": {
+              "text": "pi2dsh exercise probe"
+            },
+            "outcome": "failed",
+            "evidence": "Error: Telegram direct delivery requires this Pi instance to own /telegram-connect or be registered with the Telegram multi-instance bus"
+          }
+        ]
+      },
       "degraded": [
         "ctx.compact"
       ]
@@ -495,6 +899,18 @@
       ],
       "commands": [],
       "skills": [],
+      "exercised": {
+        "grade": "callable-needs-config",
+        "attempts": [
+          {
+            "kind": "tool",
+            "name": "agent_browser",
+            "args": {},
+            "outcome": "callable-needs-config",
+            "evidence": "Error: Provide exactly one of args, semanticAction, job, qa, sourceLookup, networkSourceLookup, or electron."
+          }
+        ]
+      },
       "degraded": []
     },
     {
@@ -511,6 +927,17 @@
       "skills": [
         "prompt-template-authoring"
       ],
+      "exercised": {
+        "grade": "working",
+        "attempts": [
+          {
+            "kind": "command",
+            "name": "chain-prompts",
+            "outcome": "working",
+            "evidence": "command handler completed"
+          }
+        ]
+      },
       "degraded": [
         "ctx.navigateTree"
       ]
@@ -535,6 +962,17 @@
         "rtk"
       ],
       "skills": [],
+      "exercised": {
+        "grade": "working",
+        "attempts": [
+          {
+            "kind": "command",
+            "name": "rtk",
+            "outcome": "working",
+            "evidence": "command handler completed"
+          }
+        ]
+      },
       "degraded": [
         "host-import(@earendil-works/pi-coding-agent:isToolCallEventType)"
       ]
@@ -553,6 +991,17 @@
         "exit"
       ],
       "skills": [],
+      "exercised": {
+        "grade": "working",
+        "attempts": [
+          {
+            "kind": "command",
+            "name": "ccstyle",
+            "outcome": "working",
+            "evidence": "command handler completed"
+          }
+        ]
+      },
       "degraded": [
         "on(<dynamic>)",
         "on(resources_discover)",
@@ -577,16 +1026,83 @@
         "statusline"
       ],
       "skills": [],
+      "exercised": {
+        "grade": "working",
+        "attempts": [
+          {
+            "kind": "command",
+            "name": "statusline",
+            "outcome": "working",
+            "evidence": "command handler completed"
+          }
+        ]
+      },
       "degraded": []
     },
     {
       "rank": 31,
       "name": "pi-goosedump",
       "downloadsPerMonth": 11600,
-      "status": "load-failed",
-      "stage": "load",
-      "gap": "other",
-      "error": "every Pi extension entry failed to load:\n- vendor/dist/index.ts: broken pi-goosedump installation: cannot resolve the packaged binary @jarkkojs/goosedump-darwin-arm64 for darwin-arm64"
+      "status": "loaded",
+      "verdict": "review",
+      "tools": [
+        "goose_compact",
+        "goose_forget",
+        "goose_get",
+        "goose_grep",
+        "goose_memory_status",
+        "goose_recall",
+        "goose_remember",
+        "goose_search",
+        "goose_sessions"
+      ],
+      "commands": [
+        "goose-compact",
+        "goose-forget",
+        "goose-memory-status",
+        "goose-search",
+        "goose-sessions",
+        "goose-settings",
+        "goosedump-settings"
+      ],
+      "skills": [],
+      "exercised": {
+        "grade": "working",
+        "attempts": [
+          {
+            "kind": "tool",
+            "name": "goose_compact",
+            "args": {},
+            "outcome": "working",
+            "evidence": "Nothing to compact (session too small)."
+          },
+          {
+            "kind": "tool",
+            "name": "goose_forget",
+            "args": {
+              "target": "pi2dsh"
+            },
+            "outcome": "working",
+            "evidence": "Durable memory is disabled. Set goosedump.enableMemory to true in settings (or /goose-settings)."
+          },
+          {
+            "kind": "tool",
+            "name": "goose_get",
+            "args": {
+              "ids": [
+                "pi2dsh"
+              ]
+            },
+            "outcome": "working",
+            "evidence": "session is required for goose_get when no current session is available"
+          }
+        ]
+      },
+      "degraded": [
+        "host-import(@earendil-works/pi-coding-agent:findCutPoint)",
+        "ctx.compact",
+        "ctx.switchSession"
+      ]
     },
     {
       "rank": 32,
@@ -597,6 +1113,10 @@
       "tools": [],
       "commands": [],
       "skills": [],
+      "exercised": {
+        "grade": "nothing-exercisable",
+        "attempts": []
+      },
       "degraded": []
     },
     {
@@ -610,6 +1130,17 @@
         "btw"
       ],
       "skills": [],
+      "exercised": {
+        "grade": "working",
+        "attempts": [
+          {
+            "kind": "command",
+            "name": "btw",
+            "outcome": "working",
+            "evidence": "command handler completed"
+          }
+        ]
+      },
       "degraded": [
         "host-import(@earendil-works/pi-tui:TuiAltScreen)"
       ]
@@ -627,6 +1158,20 @@
       "skills": [
         "ask-user"
       ],
+      "exercised": {
+        "grade": "failed",
+        "attempts": [
+          {
+            "kind": "tool",
+            "name": "ask_user",
+            "args": {
+              "question": "pi2dsh exercise probe"
+            },
+            "outcome": "failed",
+            "evidence": "Error: human interaction requires the exact live calling agent when an agent is supplied"
+          }
+        ]
+      },
       "degraded": []
     },
     {
@@ -643,6 +1188,29 @@
         "web-tools"
       ],
       "skills": [],
+      "exercised": {
+        "grade": "working",
+        "attempts": [
+          {
+            "kind": "tool",
+            "name": "web_fetch",
+            "args": {
+              "url": "http://127.0.0.1:55794/page"
+            },
+            "outcome": "failed",
+            "evidence": "Error: Refusing to fetch private/loopback address: 127.0.0.1"
+          },
+          {
+            "kind": "tool",
+            "name": "web_search",
+            "args": {
+              "query": "pi2dsh exercise probe"
+            },
+            "outcome": "working",
+            "evidence": "**Search results for \"pi2dsh exercise probe\":**\n\n1. **pi2dsh exercise result**\n   http://127.0.0.1/result\n   PI2DSH_EXERCISE_OK"
+          }
+        ]
+      },
       "degraded": []
     },
     {
@@ -667,6 +1235,18 @@
         "cursor-tools"
       ],
       "skills": [],
+      "exercised": {
+        "grade": "executed-input-validation",
+        "attempts": [
+          {
+            "kind": "tool",
+            "name": "cursor_ask_question",
+            "args": {},
+            "outcome": "executed-input-validation",
+            "evidence": "Error: No valid question was provided."
+          }
+        ]
+      },
       "degraded": [
         "host-import(@earendil-works/pi-coding-agent:createBashToolDefinition)",
         "host-import(@earendil-works/pi-coding-agent:createEditToolDefinition)",
@@ -700,6 +1280,17 @@
         "zentui"
       ],
       "skills": [],
+      "exercised": {
+        "grade": "working",
+        "attempts": [
+          {
+            "kind": "command",
+            "name": "zentui",
+            "outcome": "working",
+            "evidence": "command handler completed"
+          }
+        ]
+      },
       "degraded": [
         "host-import(@earendil-works/pi-coding-agent:ModelSelectorComponent)",
         "ctx.bold"
@@ -712,7 +1303,7 @@
       "status": "load-failed",
       "stage": "load",
       "gap": "other",
-      "error": "every Pi extension entry failed to load:\n- vendor/index.ts: ENOENT: no such file or directory, open '/private/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-eH2vH3/bundles/39-pi-interview/vendor/form/index.html'"
+      "error": "every Pi extension entry failed to load:\n- vendor/index.ts: ENOENT: no such file or directory, open '/private/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-ko7vyN/bundles/39-pi-interview/vendor/form/index.html'"
     },
     {
       "rank": 40,
@@ -723,6 +1314,10 @@
       "tools": [],
       "commands": [],
       "skills": [],
+      "exercised": {
+        "grade": "nothing-exercisable",
+        "attempts": []
+      },
       "degraded": [
         "static-audit"
       ]
@@ -733,7 +1328,7 @@
       "downloadsPerMonth": 8787,
       "status": "fatal",
       "stage": "convert",
-      "error": "conversion blocked: 4 fatal finding(s) \u2014 the bundle cannot be built or trusted; run inspect for details"
+      "error": "conversion blocked: 4 fatal finding(s) — the bundle cannot be built or trusted; run inspect for details"
     },
     {
       "rank": 42,
@@ -747,6 +1342,29 @@
       ],
       "commands": [],
       "skills": [],
+      "exercised": {
+        "grade": "callable-needs-config",
+        "attempts": [
+          {
+            "kind": "tool",
+            "name": "web_fetch",
+            "args": {
+              "url": "http://127.0.0.1:55794/page"
+            },
+            "outcome": "callable-needs-config",
+            "evidence": "Error: fetch failed"
+          },
+          {
+            "kind": "tool",
+            "name": "web_search",
+            "args": {
+              "query": "pi2dsh exercise probe"
+            },
+            "outcome": "callable-needs-config",
+            "evidence": "Error: fetch failed"
+          }
+        ]
+      },
       "degraded": []
     },
     {
@@ -761,6 +1379,32 @@
       ],
       "commands": [],
       "skills": [],
+      "exercised": {
+        "grade": "working",
+        "attempts": [
+          {
+            "kind": "tool",
+            "name": "url_context",
+            "args": {
+              "query": "pi2dsh exercise probe",
+              "urls": [
+                "http://127.0.0.1:55794/page"
+              ]
+            },
+            "outcome": "working",
+            "evidence": "Failed: No current model selected for web search. Configure and select a supported provider: google-generative-ai, openai-responses, openai-codex-responses, ant"
+          },
+          {
+            "kind": "tool",
+            "name": "web_search",
+            "args": {
+              "query": "pi2dsh exercise probe"
+            },
+            "outcome": "working",
+            "evidence": "Failed: No current model selected for web search. Configure and select a supported provider: google-generative-ai, openai-responses, openai-codex-responses, ant"
+          }
+        ]
+      },
       "degraded": []
     },
     {
@@ -772,6 +1416,10 @@
       "tools": [],
       "commands": [],
       "skills": [],
+      "exercised": {
+        "grade": "nothing-exercisable",
+        "attempts": []
+      },
       "degraded": []
     },
     {
@@ -790,6 +1438,31 @@
         "subagents-settings"
       ],
       "skills": [],
+      "exercised": {
+        "grade": "working",
+        "attempts": [
+          {
+            "kind": "tool",
+            "name": "get_subagent_result",
+            "args": {
+              "agent_id": "pi2dsh-probe"
+            },
+            "outcome": "working",
+            "evidence": "Agent not found: \"pi2dsh-probe\". Records are cleared at session start/switch, so it may be from a previous session."
+          },
+          {
+            "kind": "tool",
+            "name": "subagent",
+            "args": {
+              "prompt": "pi2dsh exercise probe",
+              "description": "pi2dsh exercise probe",
+              "subagent_type": "pi2dsh"
+            },
+            "outcome": "working",
+            "evidence": "Note: Unknown agent type \"pi2dsh\" — using general-purpose.\n\nAgent failed: pi2dsh: new DefaultResourceLoader() belongs to Pi's internal agent runtime and has no "
+          }
+        ]
+      },
       "degraded": [
         "host-import(@earendil-works/pi-coding-agent:createAgentSession)",
         "host-import(@earendil-works/pi-coding-agent:DefaultResourceLoader)",
@@ -817,6 +1490,17 @@
         "btw-thinking"
       ],
       "skills": [],
+      "exercised": {
+        "grade": "working",
+        "attempts": [
+          {
+            "kind": "command",
+            "name": "btw",
+            "outcome": "working",
+            "evidence": "command handler completed"
+          }
+        ]
+      },
       "degraded": [
         "host-import(@earendil-works/pi-coding-agent:createAgentSession)",
         "host-import(@earendil-works/pi-coding-agent:createExtensionRuntime)",
@@ -842,6 +1526,20 @@
       "skills": [
         "image-gen"
       ],
+      "exercised": {
+        "grade": "callable-needs-config",
+        "attempts": [
+          {
+            "kind": "tool",
+            "name": "image_generate",
+            "args": {
+              "prompt": "pi2dsh exercise probe"
+            },
+            "outcome": "callable-needs-config",
+            "evidence": "Error: image_generate failed: pi-image-gen.defaultModel is not set. Configure it in settings.json (e.g. \"defaultModel\": \"nano-banana\"). Run /image-gen list to s"
+          }
+        ]
+      },
       "degraded": []
     },
     {
@@ -855,6 +1553,17 @@
         "models"
       ],
       "skills": [],
+      "exercised": {
+        "grade": "working",
+        "attempts": [
+          {
+            "kind": "command",
+            "name": "models",
+            "outcome": "working",
+            "evidence": "command handler completed"
+          }
+        ]
+      },
       "degraded": [
         "on(before_provider_request)",
         "host-import(@earendil-works/pi-tui:AutocompleteItem)",
@@ -875,6 +1584,18 @@
         "advisor"
       ],
       "skills": [],
+      "exercised": {
+        "grade": "working",
+        "attempts": [
+          {
+            "kind": "tool",
+            "name": "advisor",
+            "args": {},
+            "outcome": "working",
+            "evidence": "No advisor model is configured. The user can enable one with the /advisor command."
+          }
+        ]
+      },
       "degraded": []
     },
     {
@@ -885,6 +1606,5 @@
       "stage": "convert",
       "error": "runtime dependencies are imported but not declared by the Pi package: googleapis, @google-cloud/local-auth, ws"
     }
-  ],
-  "note": "rank 33 and 37 re-verified individually after an in-flight dist rebuild invalidated their first attempt; results merged from that isolated rerun"
+  ]
 }

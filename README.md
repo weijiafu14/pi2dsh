@@ -1,114 +1,122 @@
 # pi2dsh
 
-Run [Pi](https://pi.dev/) extensions on [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) through one general-purpose **Pi Host ABI compatibility layer** — not per-package patches.
+**English** | [中文](README.zh.md)
 
-The bridge implements Pi's public extension surface once (tools, events, sessions, messages, AskUser, exec, TUI-headless, model/thinking, providers) on top of DSH's native services. Any package that sticks to Pi's public API runs unmodified; capabilities with no safe mapping fail explicitly instead of faking success.
-
-## Two ways to use it
-
-**Host bundle (recommended)** — one installable DSH bundle that mounts any list of unmodified Pi packages as ordinary npm dependencies. No conversion, no source snapshots:
+**Bridging the Pi and DeepSeek Harness ecosystems.** pi2dsh is dedicated to connecting [Pi](https://pi.dev/)'s extension ecosystem with [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (DSH): one general **Pi Host ABI compatibility layer** that runs unmodified Pi extensions as native DSH plugins — not per-package patches.
 
 ```sh
+# one bundle, any Pi packages, no conversion
 pi2dsh host --packages '@juicesharp/rpiv-web-tools@2.4.0,pi-simplify@0.2.3' --out ./my-pi-host
 dsh plugin --profile headless add file:$PWD/my-pi-host
-dsh --profile headless --dump-config
 ```
 
-**Convert (per-package artifact)** — a reviewable standalone bundle with a vendored source snapshot and a compatibility report, for supply-chain-sensitive installs:
+## Architecture
 
-```sh
-pi2dsh inspect @narumitw/pi-lsp
-pi2dsh convert @narumitw/pi-lsp --out ./dsh-pi-lsp
-dsh plugin --profile headless add file:$PWD/dsh-pi-lsp
-```
-
-**MCP is config translation, not adapter execution.** DSH ships an official MCP client, so Pi's MCP setup migrates by translating configuration — `pi-mcp-adapter` code never runs:
-
-```sh
-pi2dsh mcp-config            # reads Pi's six mcpServers layers, emits dsh-mcp-client patch entries
-pi2dsh mcp-config --out mcp.patch.yml
-```
-
-`$VAR` references become `!!js process.env.VAR`; literal secrets trigger a warning instead of landing in the patch.
-
-## How the host layer works
+The bridge implements Pi's public extension surface **once**, mapping every call onto DSH's native services. A package that sticks to Pi's public API runs verbatim; capabilities with no safe mapping fail explicitly instead of faking success.
 
 ```
 Pi package (unmodified npm dependency)
-  │ loaded verbatim (default-export factory, package.json pi.extensions)
+  │  loaded verbatim: default-export factory, package.json pi.extensions
   ▼
-Pi Host ABI (this bridge)
-  ├─ registerTool / setActiveTools  → DSH tools + per-agent tools.restrict
-  ├─ 33 Pi events                   → DSH durable events & hook seams
-  ├─ exec                           → DSH subprocess (local or E2B by composition)
-  ├─ sendMessage / sendUserMessage  → DSH inject / steer / followup
-  ├─ ui.select/confirm/input/editor → DSH userQuestions (real waiting)
-  ├─ session entries / labels / name→ durable sidecar + DSH log projection
-  ├─ images                         → DSH attachments (refs in the log, not base64)
-  ├─ pi-tui / pi-coding-agent / pi-ai imports → vendored-or-headless shims
-  └─ setModel / setThinkingLevel    → per-agent overrides at the agent/request seam
+┌─────────────────── Pi Host ABI (pi2dsh) ───────────────────┐
+│ registerTool / setActiveTools → DSH tools + per-agent restrict │
+│ 33 Pi lifecycle events        → DSH durable events & hook seams│
+│ exec                          → DSH subprocess (local / E2B)   │
+│ sendMessage / sendUserMessage → DSH inject / steer / followup  │
+│ ui.select/confirm/input       → DSH userQuestions (real waits) │
+│ session entries/labels/name   → durable sidecar + log projection│
+│ images                        → DSH attachments (refs, not b64)│
+│ pi-tui / pi-coding-agent / pi-ai imports → vendored/headless   │
+│   shims (width/keys/session math byte-identical to Pi, MIT)    │
+│ setModel / setThinkingLevel   → agent/request seam overrides   │
+└────────────────────────────────────────────────────────────────┘
+  ▼
+DeepSeek Harness native services (Cordis composition)
 ```
 
-Three hard rules keep this general instead of degrading into per-package patches:
+Three delivery modes:
+
+| Mode | What it does |
+|---|---|
+| **Host bundle** (recommended) | One installable DSH bundle mounts any list of unmodified Pi packages as ordinary npm dependencies |
+| **Convert** | A reviewable per-package bundle: vendored source snapshot + machine-readable compatibility report, for supply-chain-sensitive installs |
+| **MCP config translation** | Pi's six `mcpServers` layers → official `@deepseek-ai/dsh-mcp-client` patch entries. The Pi MCP adapter's code never runs; `$VAR` becomes `!!js process.env.VAR`, literal secrets are warned about |
+
+Three hard rules keep it general:
 
 1. The core contains **no `if (packageName === …)`** branching.
-2. Every capability has a **public-API contract test** (`pnpm test`); "some plugin loads" is never the success criterion.
-3. The top-50 corpus is verified **black-box only**; a failure files a public ABI gap, and fixing the gap unlocks every package that hits it.
+2. Every capability has a **public-API contract test** (`pnpm test`, 41 tests); "some plugin loads" is never the success criterion.
+3. The top-50 corpus is verified **black-box only**: failures file public ABI gaps, and fixing one gap unlocks every package that hits it (e.g. one jiti subpath-alias fix unlocked 4 packages at once).
 
-## Top-50 verification (Pi catalog, by monthly downloads, 2026-08-14)
+## Progress: Pi catalog top 50 by monthly downloads
 
-Static analysis **screens**; the black-box run **certifies**. Full machine-readable evidence lives in [community/](community/).
+Status as of 2026-08-14. Static analysis screens; the black-box run certifies. Full per-package machine-readable evidence in [community/](community/).
 
-| Layer | Result | Evidence |
+| Tier | Count | Meaning |
 |---|---|---|
-| Static screening (`pnpm audit:community`) | 45 review / 5 blocked (was **46 blocked** before the ABI layer) | [audit-results.json](community/audit-results.json) |
-| **Black-box load in a real DSH runtime** | **38 / 50 mount with their registration surfaces live** — 6 load-failed, 6 fatal, every failure attributed | [blackbox-results.json](community/blackbox-results.json) |
-| Deep runtime + official plugin manager | 4/4 packages execute real tool paths (LSP subprocess, web search/fetch, PNG generation, ask_user); 4/4 pass `dsh plugin` add/activate/remove; host bundle mounting two unmodified packages passes the same official flow | [runtime-results.json](community/runtime-results.json) |
-| Real model acceptance | `deepseek-official/deepseek-v4-flash` calls a migrated Pi tool once with the demanded arguments; durable log verified; credential provably absent from artifacts | [live-deepseek-results.json](community/live-deepseek-results.json) |
+| ✅ **Tested working** | **32 / 50** | Mounted in a real DSH runtime AND real execution verified: 29 returned success, 3 ran their business logic end-to-end and rejected the synthetic probe arguments (4 of the 32 additionally passed deep verification: real LSP subprocess, web search/fetch, PNG generation, official `dsh plugin` add/activate/remove) |
+| 🟡 **Mounts, not fully verified** | **7 / 50** | Loads and registers its tools/commands/skills in a real DSH runtime; full execution needs user credentials/services (3), is an event-hook package with no callable surface to probe (3), or hit a test-harness limitation (1: strict live-agent identity checks in userQuestions — the same path passes in the deep-verification layer) |
+| ❌ **Not yet supported** | **11 / 50** | Attributed below — all on the roadmap |
+| **Total mountable today** | **39 / 50** | |
 
-### The 12 that do not mount, honestly attributed
+Additional verified layers: a **host bundle** mounting two unmodified packages passed the official plugin-manager flow end-to-end; a **real model run** (`deepseek-v4-flash`) called a migrated Pi tool with the durable session log asserted and zero credential persistence ([evidence](community/live-deepseek-results.json)).
 
-*Pi-internal runtime dependencies (the predicted "needs bespoke adaptation" tail):* `@tintinweb/pi-subagents` calls `createAgentSession`/`createCodingTools` at load; `pi-provider-litellm` needs Pi's provider SDK factories (in DSH, model routing belongs to native llm adapters); `pi-fabric` additionally references build-time-generated worker assets.
+### The 11 not yet supported, attributed
 
-*Package defects visible under any host:* `pi-lens` escapes its own package root (`../../skills`); `pi-hermes-memory` and `@mjasnikovs/pi-task` require Bun-only `bun:sqlite`; `pi-harness-runtime` imports playwright without declaring it; `mitsupi` imports googleapis/ws without declaring them; `pi-goosedump` ships a platform binary its install can't resolve here.
+*Pi-internal runtime users (4) — need bespoke adapters, next on the roadmap:*
+`@tintinweb/pi-subagents` (calls `createAgentSession`/`createCodingTools` at load), `pi-landstrip` (calls `createBashToolDefinition`, Pi's built-in tool constructors), `pi-provider-litellm` (needs Pi's provider SDK factories; in DSH, model routing belongs to native llm adapters), `pi-fabric` (uses `wrapRegisteredTool` + references build-time-generated worker assets missing from its published tarball).
 
-*Convert-mode snapshot limitation:* `pi-hashline-edit-pro` and `pi-interview` read package files at runtime that static closure can't prove; the host bundle path (which keeps the whole package directory) is the supported route for them.
+*Package defects visible under any host (5) — will be reported upstream:*
+`pi-lens` (resource manifest escapes the package root), `pi-hermes-memory` + `@mjasnikovs/pi-task` (Bun-only `bun:sqlite`), `pi-harness-runtime` (imports playwright without declaring it), `mitsupi` (imports googleapis/ws without declaring them).
 
-## Compatibility boundaries
+*Convert-snapshot limitation (2) — host mode already covers them:*
+`pi-hashline-edit-pro`, `pi-interview` (read package files at runtime that static closure analysis cannot prove; the host bundle keeps the whole package directory).
+
+### Roadmap: all 50
+
+1. Lift the 7 "mounts, not fully verified" to tested-working (credentialed fixtures, per-package probe arguments).
+2. Bridge Pi's internal `AgentSession`/tool-constructor surfaces onto DSH natives to unlock the 4 internal-runtime packages.
+3. File upstream issues for the 5 package defects; adopt fixes as they land.
+4. Route the 2 snapshot-limited packages through host mode by default.
+
+## Quick start
+
+Requires Node.js 22.19+ and DeepSeek Harness.
+
+```sh
+git clone https://github.com/weijiafu14/pi2dsh.git && cd pi2dsh
+corepack pnpm@11.7.0 install && pnpm build
+
+node dist/cli.mjs inspect @narumitw/pi-lsp          # compatibility report
+node dist/cli.mjs convert @narumitw/pi-lsp --out ./dsh-pi-lsp
+node dist/cli.mjs host --packages 'pi-simplify' --out ./pi-host
+node dist/cli.mjs mcp-config                        # Pi mcpServers → DSH patch
+dsh plugin --profile headless add file:$PWD/pi-host
+```
+
+## Compatibility boundaries (explicit, never silent)
 
 | Area | Mapping |
 |---|---|
-| Tools | Native DSH tools; Pi's in-place `tool_call` argument mutation works for Pi-owned tools (DSH-native tools reject it: DSH logs arguments before policy) |
-| Commands/prompts | Native DSH commands (names normalized to DSH's charset); `ui.notify` becomes the result |
-| Skills | DSH filesystem skills, resource directories intact |
-| Sessions | Messages project from DSH's durable log; Pi custom entries/labels/names persist in a pi2dsh sidecar (DSH has no out-of-repo plugin-event channel yet — appending unknown types would break other builds' reloads) |
-| Pi TUI | Pure logic vendored byte-identical (width/wrap/keys/fuzzy/keybindings); components construct headlessly; `ui.custom` resolves `undefined` exactly like Pi's own rpc mode |
-| Model/thinking | Per-agent overrides applied at DSH's `agent/request` seam; DSH validates effort ids |
+| Tools | Native DSH tools; Pi's in-place `tool_call` argument mutation works for Pi-owned tools (DSH-native tools reject it — DSH logs arguments before policy) |
+| Sessions | Messages project from DSH's durable log; Pi custom entries/labels/names persist in a pi2dsh sidecar (DSH has no out-of-repo plugin-event channel yet) |
+| Pi TUI | Pure logic vendored byte-identical; components construct headlessly; `ui.custom` resolves `undefined` exactly like Pi's own rpc mode |
 | Providers/OAuth | Declarations recorded; transports and credentials stay native to DSH `llm`/`credentials` |
-| Session tree writes | `fork`/`navigateTree`/`switchSession` fail explicitly (DSH lists pi-style entry trees as deferred); observational tree events register but never fire |
-| Compaction | Events project from DSH's durable compaction records; `ctx.compact()` fails explicitly |
+| Session tree writes | `fork`/`navigateTree`/`switchSession` fail explicitly (DSH lists pi-style entry trees as deferred) |
+| Terminal decoration | footer/statusline/shortcuts register but never fire — matching Pi's own non-TUI modes |
 
-The full machine-readable matrix: `pi2dsh matrix --json`.
+Full machine-readable matrix: `pi2dsh matrix --json`. Capability-by-capability acceptance evidence: [docs/acceptance.md](docs/acceptance.md).
 
 ## Development and verification
 
-Requires Node.js 22.19+ and a sibling `deepseek-harness` checkout (or `PI2DSH_DSH_ROOT`).
-
 ```sh
-corepack pnpm@11.7.0 install
-pnpm verify                      # typecheck + full contract tests + packaging checks
-pnpm audit:community             # static screening of the top-50 corpus
-node scripts/blackbox-community.mjs   # black-box certification (converts + loads all 50)
-pnpm test:community              # deep runtime + official plugin manager + host bundle e2e
-DEEPSEEK_API_KEY=… pnpm test:live     # real-model acceptance (key from env only)
+pnpm verify                                   # typecheck + 41 contract tests + packaging
+pnpm audit:community                          # static screening, top 50
+node scripts/blackbox-community.mjs community/blackbox-results.json --exercise
+pnpm test:community                           # deep runtime + official manager + host e2e
+DEEPSEEK_API_KEY=… pnpm test:live             # real-model acceptance (key from env only)
 ```
-
-The ten mandated capabilities map to their contract tests and evidence in [docs/acceptance.md](docs/acceptance.md).
-
-## 中文结论
-
-这一版是**通用 Pi Host ABI 兼容层**，不是逐包补丁：核心零包名分支，能力以公共 API 契约测试为准，前 50 只做黑盒验收。结果：静态筛查 blocked 从 46 降到 5；**黑盒真实挂载 38/50**（每个失败都有归因证据）；4 包深链路真执行 + 官方插件管理器安装/激活/卸载全过；单一 host bundle 装两个原样 Pi 包走完同一官方流程；真实 DeepSeek 模型调通迁移工具且凭证零落盘。装不上的 12 个包全部给出证据：依赖 Pi 内部运行时的、包自身缺陷的（Bun 专属/未声明依赖/资源越界）、以及 convert 快照模式的已知限制（host 模式可覆盖）。MCP 走配置转换直连 DSH 官方客户端，不运行 pi-mcp-adapter。
 
 ## License
 
-MIT. Vendored Pi sources retain their upstream MIT license (see `src/compat/vendor/PI-LICENSE`); generated bundles retain copied upstream license and notice files. The original Pi package remains governed by its own license.
+MIT. Vendored Pi sources retain their upstream MIT license (`src/compat/vendor/PI-LICENSE`); generated bundles retain copied upstream license/notice files.

@@ -437,6 +437,22 @@ function contextFor(
     },
   }
   const session = agentSession(agent)
+  // Pi's ModelRegistry surface with an empty catalog: DSH owns model routing,
+  // so extensions see a well-formed registry that reports no Pi providers.
+  const modelRegistry = {
+    getAll: () => [],
+    getAvailable: () => [],
+    find: (_provider: string, _modelId: string) => undefined,
+    getError: () => undefined,
+    hasConfiguredAuth: (_model: unknown) => false,
+    getProviderAuthStatus: (_provider: string) => 'none',
+    getProvider: (_provider: string) => undefined,
+    getProviderDisplayName: (provider: string) => provider,
+    getProviderAuth: async (_provider: string) => undefined,
+    getApiKeyForProvider: async (_provider: string) => undefined,
+    isUsingOAuth: (_model: unknown) => false,
+    refresh: async () => ({ models: [], errors: [] }),
+  }
   const base: UnknownRecord = {
     ui,
     mode: 'rpc',
@@ -445,7 +461,7 @@ function contextFor(
     sessionManager: session === undefined
       ? state.bridge.readonlySessionManager({ id: 'pi2dsh-detached', events: [] }, cwdOf(agent))
       : state.bridge.readonlySessionManager(session as never, cwdOf(agent)),
-    modelRegistry: {},
+    modelRegistry,
     model: agent === undefined ? undefined : state.modelOverrides.get(agent),
     scopedModels: [],
     thinkingLevel: thinkingLevelOf(state, agent),
