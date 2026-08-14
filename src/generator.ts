@@ -169,7 +169,9 @@ function generatedPackageJson(
   }
   const dependencies = {
     ...Object.fromEntries(externalRuntimePackages.sort().map(name => [name, declaredDependencies[name]])),
-    ...(runtimeSpec === undefined ? { jiti: '^2.7.0' } : {}),
+    // The embedded runtime's own runtime dependencies (vendored Pi width math
+    // uses get-east-asian-width; the pi-tui shim re-exports marked).
+    ...(runtimeSpec === undefined ? { jiti: '^2.7.0', 'get-east-asian-width': '^1.6.0', marked: '^16.4.1' } : {}),
     ...(hasSkills ? { '@deepseek-ai/dsh-skill-filesystem': '^0.1.0-rc.6' } : {}),
     ...(runtimeSpec !== undefined ? { pi2dsh: runtimeSpec } : {}),
   }
@@ -239,11 +241,25 @@ async function copyEmbeddedRuntime(outDir: string): Promise<void> {
   ])
   const runtimeRoot = dirname(runtimeSource)
   const targetRoot = join(outDir, 'runtime')
-  await mkdir(join(targetRoot, 'compat'), { recursive: true })
-  await cp(runtimeSource, join(targetRoot, 'pi2dsh-runtime.mjs'))
-  for (const shim of ['pi-coding-agent.mjs', 'pi-tui.mjs', 'pi-ai.mjs']) {
-    await cp(join(runtimeRoot, 'compat', shim), join(targetRoot, 'compat', shim))
+  await mkdir(targetRoot, { recursive: true })
+  // Copy every emitted module, including bundler-named shared chunks — a
+  // fixed file list silently breaks whenever the bundler re-splits chunks.
+  for (const entry of await readdir(runtimeRoot)) {
+    if (entry.endsWith('.mjs')) await cp(join(runtimeRoot, entry), join(targetRoot, entry))
   }
+  for (const sub of ['compat', join('compat', 'vendor')]) {
+    const sourceDir = join(runtimeRoot, sub)
+    try {
+      const entries = await readdir(sourceDir)
+      await mkdir(join(targetRoot, sub), { recursive: true })
+      for (const entry of entries) {
+        if (entry.endsWith('.mjs')) await cp(join(sourceDir, entry), join(targetRoot, sub, entry))
+      }
+    } catch {
+      // dist layout without that subdirectory
+    }
+  }
+  await cp(join(targetRoot, 'runtime.mjs'), join(targetRoot, 'pi2dsh-runtime.mjs'))
   const license = await firstExisting([join(moduleDir, '../LICENSE'), join(moduleDir, '../../LICENSE')])
   await cp(license, join(outDir, 'PI2DSH-LICENSE'))
 }

@@ -14,7 +14,8 @@ import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
 import SkillRegistry from '@deepseek-ai/dsh-skill'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
-import { generateBundle, resolvePiPackage } from '../dist/index.mjs'
+import { symlink } from 'node:fs/promises'
+import { generateBundle, generateHostBundle, resolvePiPackage } from '../dist/index.mjs'
 
 const execFile = promisify(execFileCallback)
 const projectRoot = resolve(new URL('..', import.meta.url).pathname)
@@ -310,6 +311,49 @@ try {
     assert.equal(profile.dsh?.profile?.bundles?.includes(item.package) ?? false, false)
   }
 
+  // --- Host-bundle end-to-end: ONE bundle mounting several unmodified Pi
+  // packages as npm dependencies, through the official plugin manager and a
+  // real runtime composition.
+  const hostDir = join(scratch, 'host-bundle')
+  const hostPackages = ['@juicesharp/rpiv-web-tools@2.4.0', 'pi-simplify@0.2.3']
+  await generateHostBundle({ outDir: hostDir, packages: hostPackages, bundleName: 'dsh-pi-host-e2e' })
+  await execFile('corepack', ['pnpm@11.7.0', 'install', '--ignore-scripts', '--prod'], {
+    cwd: hostDir,
+    env: managerEnv,
+    timeout: 240_000,
+    maxBuffer: 16 * 1024 * 1024,
+  })
+  await runDsh(['plugin', '--profile', 'headless', 'add', `file:${hostDir}`])
+  const hostDump = await runDsh(['--profile', 'headless', '--dump-config'])
+  assert.match(hostDump.stdout, /dsh-pi-host-e2e/u)
+  await runDsh(['plugin', '--profile', 'headless', 'remove', 'dsh-pi-host-e2e'])
+  // Mount in-process: peers resolve through symlinks like a real profile's
+  // hoisted install.
+  await symlink(join(projectRoot, 'node_modules/@deepseek-ai'), join(hostDir, 'node_modules/@deepseek-ai'), 'dir')
+  await symlink(join(projectRoot, 'node_modules/typebox'), join(hostDir, 'node_modules/typebox'), 'dir').catch(() => {})
+  const hostModule = await import(`${pathToFileURL(join(hostDir, 'index.js')).href}?host=${Date.now()}`)
+  const hostCtx = new Context()
+  await hostCtx.plugin(SessionStore)
+  await hostCtx.plugin(SystemPrompt, { includeHarnessIdentity: false })
+  await hostCtx.plugin(ToolRuntime)
+  await hostCtx.plugin(CommandRuntime)
+  await hostCtx.plugin(SkillRegistry)
+  const hostFiber = await hostCtx.plugin(hostModule)
+  const hostAssembly = await hostCtx.systemPrompt.assemble()
+  const hostTools = hostAssembly.tools.map(tool => tool.name)
+  assert(hostTools.includes('web_search'), `host bundle missing web_search; got ${hostTools.join(', ')}`)
+  assert(hostTools.includes('web_fetch'), `host bundle missing web_fetch; got ${hostTools.join(', ')}`)
+  await hostFiber.dispose()
+  const hostResult = {
+    bundle: 'dsh-pi-host-e2e',
+    packages: hostPackages,
+    install: 'passed',
+    activation: 'passed',
+    remove: 'passed',
+    mountedTools: hostTools.filter(name => ['web_search', 'web_fetch'].includes(name)),
+    status: 'passed',
+  }
+
   const dshCommit = (await execFile('git', ['rev-parse', 'HEAD'], { cwd: dshRoot })).stdout.trim()
   const value = {
     schemaVersion: 1,
@@ -318,9 +362,11 @@ try {
     runtimePackaging: 'embedded',
     runtime: runtimeResults,
     officialPluginManager: managerResults,
+    hostBundle: hostResult,
     counts: {
       runtimePassed: runtimeResults.length,
       installActivateRemovePassed: managerResults.length,
+      hostBundlePassed: 1,
     },
   }
   if (outputPath !== undefined) await writeFile(outputPath, `${JSON.stringify(value, null, 2)}\n`)

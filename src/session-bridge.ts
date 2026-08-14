@@ -249,6 +249,8 @@ export class PiSessionBridge {
         const index = entries.findIndex(entry => entry.id === fromId)
         return index === -1 ? [] : entries.slice(0, index + 1)
       },
+      // Pi context rules: message/compaction/branch_summary/custom_message
+      // enter the LLM context; custom entries and labels are state-only.
       buildContextEntries: () => entriesOf().filter(entry =>
         entry.type === 'message' || entry.type === 'compaction' || entry.type === 'branch_summary' || entry.type === 'custom_message'),
       getHeader: () => ({
