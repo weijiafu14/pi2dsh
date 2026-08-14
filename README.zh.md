@@ -45,7 +45,7 @@ DeepSeek Harness 原生服务（Cordis 组合）
 保持通用性的三条硬规则：
 
 1. 核心**没有任何 `if (packageName === …)`** 包名分支。
-2. 每项能力有**公共 API 契约测试**（`pnpm test`，45 个）；"某个插件能加载"从不作为成功标准。
+2. 每项能力有**公共 API 契约测试**（`pnpm test`，49 个）；"某个插件能加载"从不作为成功标准。
 3. 前 50 只做**黑盒验收**：失败产生公共 ABI 缺口工单，修一个缺口、同类包一起解锁（例：一次 jiti 子路径 alias 修复同时解锁 4 个包）。
 
 ## 进度：Pi 官方目录下载量前 50
@@ -120,7 +120,7 @@ DSH 原生只有静态 HTTP headers；pi2dsh 把 Pi 生态的交互式 OAuth 层
 ## 开发与验证
 
 ```sh
-pnpm verify                                   # 类型检查 + 45 契约测试 + 打包检查
+pnpm verify                                   # 类型检查 + 49 契约测试 + 打包检查
 pnpm audit:community                          # 前 50 静态筛查
 node scripts/blackbox-community.mjs community/blackbox-results.json --exercise
 pnpm test:community                           # 深链路 + 官方插件管理器 + host e2e

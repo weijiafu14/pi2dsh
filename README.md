@@ -45,7 +45,7 @@ Three delivery modes:
 Three hard rules keep it general:
 
 1. The core contains **no `if (packageName === …)`** branching.
-2. Every capability has a **public-API contract test** (`pnpm test`, 45 tests); "some plugin loads" is never the success criterion.
+2. Every capability has a **public-API contract test** (`pnpm test`, 49 tests); "some plugin loads" is never the success criterion.
 3. The top-50 corpus is verified **black-box only**: failures file public ABI gaps, and fixing one gap unlocks every package that hits it (e.g. one jiti subpath-alias fix unlocked 4 packages at once).
 
 ## Progress: Pi catalog top 50 by monthly downloads
@@ -120,7 +120,7 @@ Full machine-readable matrix: `pi2dsh matrix --json`. Capability-by-capability a
 ## Development and verification
 
 ```sh
-pnpm verify                                   # typecheck + 45 contract tests + packaging
+pnpm verify                                   # typecheck + 49 contract tests + packaging
 pnpm audit:community                          # static screening, top 50
 node scripts/blackbox-community.mjs community/blackbox-results.json --exercise
 pnpm test:community                           # deep runtime + official manager + host e2e
