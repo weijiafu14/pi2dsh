@@ -49,11 +49,16 @@ const FILE_PATTERNS: Record<keyof ResourceInventory, string> = {
   themes: '**/*.json',
 }
 
-function safePattern(pattern: string): string {
+// Pi's own loader tolerates resource paths that do not resolve (existsSync
+// filtering); mirror that leniency for patterns escaping the package root:
+// skip the pattern with a warning instead of refusing the whole package.
+// Files outside the package are still never globbed or copied.
+function safePattern(pattern: string): string | undefined {
   const normalized = pattern.replaceAll('\\', '/')
   const positive = normalized.startsWith('!') ? normalized.slice(1) : normalized
   if (isAbsolute(positive) || positive.split('/').includes('..')) {
-    throw new Error(`resource pattern must stay inside the Pi package: ${JSON.stringify(pattern)}`)
+    console.warn(`pi2dsh: skipping resource pattern that escapes the package root (Pi itself would not resolve it either at install layout): ${JSON.stringify(pattern)}`)
+    return undefined
   }
   return normalized
 }
@@ -67,6 +72,7 @@ async function patternsFor(
   const output: string[] = []
   for (const raw of configured) {
     const pattern = safePattern(raw)
+    if (pattern === undefined) continue
     if (pattern.startsWith('!')) {
       output.push(pattern)
       continue

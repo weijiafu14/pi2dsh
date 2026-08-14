@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-14T01:51:37.776Z",
+  "generatedAt": "2026-08-14T03:47:52.910Z",
   "corpus": {
     "source": "https://pi.dev/packages?type=extension",
     "capturedAt": "2026-08-14",
@@ -9,8 +9,8 @@
   },
   "counts": {
     "ready": 0,
-    "review": 45,
-    "blocked": 5,
+    "review": 50,
+    "blocked": 0,
     "error": 0
   },
   "results": [
@@ -193,20 +193,109 @@
       "rank": 6,
       "name": "pi-lens",
       "downloadsPerMonth": 40900,
+      "specifier": "pi-lens@3.8.74",
+      "version": "3.8.74",
+      "repository": "git+https://github.com/apmantza/pi-lens.git",
       "status": "audited",
-      "verdict": "blocked",
+      "verdict": "review",
       "summary": {
-        "full": 0,
-        "partial": 0,
-        "unsupported": 0,
-        "fatal": 1
+        "full": 136,
+        "partial": 41,
+        "unsupported": 442,
+        "fatal": 0
       },
-      "partialCapabilities": [],
-      "blockers": [
-        "invalid-resource-manifest"
+      "partialCapabilities": [
+        "asset(./persist-worker.js)",
+        "asset(./project-snapshot-persist-worker.js)",
+        "host-import(@earendil-works/pi-tui:Text)",
+        "getFlag",
+        "ctx.ui.setStatus",
+        "ctx.ui.theme",
+        "ctx.isIdle",
+        "getActiveTools",
+        "setActiveTools",
+        "ctx.sessionManager",
+        "registerFlag",
+        "registerMessageRenderer",
+        "registerCommand",
+        "registerTool",
+        "on(session_before_fork)",
+        "on(tool_call)",
+        "on(tool_result)",
+        "on(agent_end)",
+        "on(turn_end)",
+        "on(message_end)"
       ],
-      "degraded": [],
-      "error": "resource pattern must stay inside the Pi package: \"../../skills\""
+      "blockers": [],
+      "degraded": [
+        "ctx.startsWith",
+        "ctx.toLowerCase",
+        "ctx.args",
+        "ctx.command",
+        "ctx.depth",
+        "ctx.compact",
+        "ctx.fileRole",
+        "ctx.id",
+        "ctx.method",
+        "ctx.error",
+        "ctx.result",
+        "ctx.isCancellationRequested",
+        "ctx.onCancellationRequested",
+        "ctx.dispose",
+        "ctx.listen",
+        "ctx.onClose",
+        "ctx.onError",
+        "ctx.onPartialMessage",
+        "ctx.write",
+        "ctx.cancelUndispatched",
+        "ctx.createCancellationTokenSource",
+        "ctx.kind",
+        "ctx.cleanup",
+        "ctx.sendCancellation",
+        "ctx.receiver",
+        "ctx.sender",
+        "ctx.handleMessage",
+        "ctx.cancellationStrategy",
+        "ctx.connectionStrategy",
+        "ctx.maxParallelism",
+        "ctx.messageStrategy",
+        "ctx.addListener",
+        "ctx.read",
+        "ctx.filePath",
+        "ctx.name",
+        "ctx.endLine",
+        "ctx.startLine",
+        "ctx.endPosition",
+        "ctx.startPosition",
+        "ctx.fileSignatures",
+        "ctx.normalizedChanged",
+        "ctx.facts",
+        "ctx.normalizedCwd",
+        "ctx.signature",
+        "ctx.seqAtBuildStart",
+        "ctx.ignoredIds",
+        "ctx.pi",
+        "ctx.argsPrefix",
+        "ctx.cmd",
+        "ctx.log",
+        "ctx.deltaMode",
+        "ctx.projectRoot",
+        "ctx.hasTool",
+        "ctx.blockingOnly",
+        "ctx.key",
+        "ctx.modifiedRanges",
+        "ctx.projectConfig",
+        "ctx.telemetry",
+        "ctx.seqState",
+        "ctx.wordIndex",
+        "ctx.onWordIndexUpdated",
+        "ctx.local",
+        "ctx.line",
+        "ctx.node",
+        "ctx.callName",
+        "on(resources_discover)",
+        "on(context)"
+      ]
     },
     {
       "rank": 7,
@@ -403,12 +492,12 @@
       "version": "0.50.2",
       "repository": "git+https://github.com/monotykamary/pi-fabric.git",
       "status": "audited",
-      "verdict": "blocked",
+      "verdict": "review",
       "summary": {
         "full": 153,
-        "partial": 94,
+        "partial": 97,
         "unsupported": 54,
-        "fatal": 3
+        "fatal": 0
       },
       "partialCapabilities": [
         "host-import(@earendil-works/pi-tui:Container)",
@@ -423,6 +512,9 @@
         "sendMessage",
         "host-import(@earendil-works/pi-tui:Editor)",
         "host-import(@earendil-works/pi-tui:Markdown)",
+        "asset(./host.js)",
+        "asset(./index.js)",
+        "asset(./worker.js)",
         "host-import(@earendil-works/pi-coding-agent:getAgentDir)",
         "host-import(@earendil-works/pi-tui:SettingsList)",
         "ctx.sessionManager",
@@ -447,11 +539,7 @@
         "on(before_agent_start)",
         "getActiveTools"
       ],
-      "blockers": [
-        "asset(./host.js)",
-        "asset(./index.js)",
-        "asset(./worker.js)"
-      ],
+      "blockers": [],
       "degraded": [
         "host-import(@earendil-works/pi-coding-agent:wrapRegisteredTool)",
         "host-import(@earendil-works/pi-coding-agent:createBashToolDefinition)",
@@ -567,12 +655,12 @@
       "version": "0.9.4",
       "repository": "https://github.com/chandra447/pi-hermes-memory",
       "status": "audited",
-      "verdict": "blocked",
+      "verdict": "review",
       "summary": {
         "full": 46,
         "partial": 32,
         "unsupported": 1,
-        "fatal": 3
+        "fatal": 0
       },
       "partialCapabilities": [
         "registerCommand",
@@ -589,9 +677,7 @@
         "host-import(@earendil-works/pi-coding-agent:keyHint)",
         "host-import(@earendil-works/pi-tui:Text)"
       ],
-      "blockers": [
-        "undeclared-runtime-dependency(bun:sqlite)"
-      ],
+      "blockers": [],
       "degraded": [
         "on(resources_discover)"
       ]
@@ -604,12 +690,12 @@
       "version": "0.38.5",
       "repository": "git+https://github.com/mjasnikovs/pi-task.git",
       "status": "audited",
-      "verdict": "blocked",
+      "verdict": "review",
       "summary": {
         "full": 36,
         "partial": 31,
         "unsupported": 5,
-        "fatal": 1
+        "fatal": 0
       },
       "partialCapabilities": [
         "host-import(@earendil-works/pi-coding-agent:getAgentDir)",
@@ -633,9 +719,7 @@
         "registerTool",
         "on(tool_call)"
       ],
-      "blockers": [
-        "undeclared-runtime-dependency(bun:sqlite)"
-      ],
+      "blockers": [],
       "degraded": [
         "host-import(@earendil-works/pi-coding-agent:DefaultPackageManager)",
         "ctx.newSession",
@@ -1148,8 +1232,8 @@
       "rank": 29,
       "name": "pi-cc-extensions",
       "downloadsPerMonth": 12000,
-      "specifier": "pi-cc-extensions@0.8.55",
-      "version": "0.8.55",
+      "specifier": "pi-cc-extensions@0.8.56",
+      "version": "0.8.56",
       "repository": "git+https://github.com/minuque/pi-cc-extensions.git",
       "status": "audited",
       "verdict": "review",
@@ -1608,18 +1692,19 @@
       "rank": 41,
       "name": "pi-harness-runtime",
       "downloadsPerMonth": 8787,
-      "specifier": "pi-harness-runtime@0.10.27",
-      "version": "0.10.27",
+      "specifier": "pi-harness-runtime@0.10.43",
+      "version": "0.10.43",
       "repository": "git+https://github.com/ManotLuijiu/pi-harness-runtime.git",
       "status": "audited",
-      "verdict": "blocked",
+      "verdict": "review",
       "summary": {
-        "full": 49,
-        "partial": 33,
+        "full": 53,
+        "partial": 35,
         "unsupported": 3,
-        "fatal": 4
+        "fatal": 0
       },
       "partialCapabilities": [
+        "optional-lazy-dependency(playwright)",
         "on(before_agent_start)",
         "on(message_end)",
         "ctx.hasPendingMessages",
@@ -1634,9 +1719,7 @@
         "registerShortcut",
         "on(input)"
       ],
-      "blockers": [
-        "undeclared-runtime-dependency(playwright)"
-      ],
+      "blockers": [],
       "degraded": [
         "ctx.compact",
         "on(error)",

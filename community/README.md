@@ -7,6 +7,7 @@ This directory holds the machine-readable results for the top-50 Pi extensions (
    - `working` — a real invocation returned success
    - `executed-input-validation` — the package's own business logic ran and rejected the synthetic probe arguments (execution path proven end-to-end)
    - `callable-needs-config` — the call executed but wants credentials/services the harness doesn't provide
+   - `timed-out` — the call was still executing when the harness's 20s probe abort fired (e.g. it dispatches a child `pi` process the fixture environment cannot serve); not a package failure
    - `failed` — something else broke; the message is an attributed gap
    → [`blackbox-results.json`](blackbox-results.json)
 3. **Deep runtime + official manager** — four pinned packages execute their real capability paths (LSP subprocess over JSON-RPC, web search/fetch, PNG generation, ask_user), pass official `dsh plugin` add/activate/remove, and one **host bundle** mounts two unmodified packages through the same official flow. → [`runtime-results.json`](runtime-results.json)

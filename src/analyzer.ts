@@ -447,26 +447,39 @@ export async function analyzePackage(pkg: ResolvedPiPackage): Promise<Compatibil
     })
   }
   for (const issue of extensionClosure.issues) {
+    // Only a break on the load-time path blocks the package: Pi's own loader
+    // fails the same lazy references at feature-use time, and the snapshot
+    // preserves the published file layout, so behavior matches Pi exactly.
+    const lazyIssue = issue.lazy || issue.kind === 'asset'
     findings.push({
       capability: `${issue.kind}(${issue.specifier})`,
-      level: 'fatal',
+      level: lazyIssue ? 'partial' : 'fatal',
       file: relative(pkg.rootDir, issue.file).replaceAll('\\', '/'),
       line: 1,
-      detail: `The local extension closure is incomplete: ${issue.detail}`,
+      detail: lazyIssue
+        ? `Unresolved reference on a lazy path: ${issue.detail}. Extension load is unaffected; if the feature that evaluates it runs, it fails the same way under Pi (published file layout is preserved).`
+        : `The local extension closure is incomplete: ${issue.detail}`,
     })
   }
 
   const declaredDependencies = dependencyNames(pkg.packageJson)
   for (const file of extensionClosure.files.filter(candidate => SCRIPT_EXTENSIONS.has(extname(candidate)))) {
     const text = await readFile(file, 'utf8')
-    for (const packageName of runtimeExternalPackages(file, text)) {
-      if (PI_HOST_PACKAGES.has(packageName) || declaredDependencies.has(packageName)) continue
+    const lazyFile = !extensionClosure.loadTimeFiles.has(file)
+    for (const use of runtimeExternalPackages(file, text)) {
+      if (PI_HOST_PACKAGES.has(use.name) || declaredDependencies.has(use.name)) continue
+      // Undeclared imports only crash extension load when they execute at load
+      // time. On lazy paths (function-body dynamic imports, or files that are
+      // themselves only lazily reachable) Pi degrades per-feature; mirror that.
+      const lazyUse = use.lazy || lazyFile
       findings.push({
-        capability: `undeclared-runtime-dependency(${packageName})`,
-        level: 'fatal',
+        capability: lazyUse ? `optional-lazy-dependency(${use.name})` : `undeclared-runtime-dependency(${use.name})`,
+        level: lazyUse ? 'partial' : 'fatal',
         file: relative(pkg.rootDir, file).replaceAll('\\', '/'),
         line: 1,
-        detail: `The extension imports ${JSON.stringify(packageName)} at runtime, but the Pi package does not declare it as a dependency.`,
+        detail: lazyUse
+          ? `The extension imports ${JSON.stringify(use.name)} only on a lazily-evaluated path without declaring it; the feature that needs it asks for the module at call time, exactly as under Pi (install ${use.name} to use that feature).`
+          : `The extension imports ${JSON.stringify(use.name)} at load time, but the Pi package does not declare it as a dependency.`,
       })
     }
   }

@@ -1,22 +1,23 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-14T02:52:14.216Z",
+  "generatedAt": "2026-08-14T04:54:30.288Z",
   "method": "convert + real DSH runtime load (Cordis composition with official service plugins); registration surfaces recorded; failures classified as ABI gaps; representative tools/commands EXECUTED with schema-derived arguments against local fixtures",
   "counts": {
-    "loaded": 39,
-    "loadFailed": 5,
-    "fatal": 6
+    "loaded": 44,
+    "loadFailed": 6,
+    "fatal": 0
   },
   "exerciseCounts": {
-    "working": 29,
+    "working": 33,
     "executed-input-validation": 3,
+    "timed-out": 1,
     "callable-needs-config": 3,
     "nothing-exercisable": 3,
     "failed": 1
   },
   "gapHistogram": {
     "explicit-degradation-hit-at-load": 1,
-    "other": 2,
+    "other": 3,
     "missing-abi-export-or-shape": 2
   },
   "results": [
@@ -239,9 +240,142 @@
       "rank": 6,
       "name": "pi-lens",
       "downloadsPerMonth": 40900,
-      "status": "fatal",
-      "stage": "resolve",
-      "error": "resource pattern must stay inside the Pi package: \"../../skills\""
+      "status": "loaded",
+      "verdict": "review",
+      "tools": [
+        "ast_grep_dump",
+        "ast_grep_outline",
+        "ast_grep_replace",
+        "ast_grep_search",
+        "lens_diagnostic_mark",
+        "lens_diagnostics",
+        "lsp_diagnostics",
+        "lsp_navigation",
+        "module_report",
+        "pi_lens_activate_tools",
+        "project_report",
+        "read_enclosing",
+        "read_symbol",
+        "symbol_search"
+      ],
+      "commands": [
+        "lens-allow-edit",
+        "lens-context-toggle",
+        "lens-health",
+        "lens-map",
+        "lens-perf",
+        "lens-tdi",
+        "lens-toggle",
+        "lens-tools",
+        "lens-widget-toggle"
+      ],
+      "skills": [],
+      "exercised": {
+        "grade": "working",
+        "attempts": [
+          {
+            "kind": "tool",
+            "name": "ast_grep_dump",
+            "args": {
+              "source": "pi2dsh",
+              "lang": "bash"
+            },
+            "outcome": "working",
+            "evidence": "program [1,1] - [1,7] \"pi2dsh\"\n  command [1,1] - [1,7] \"pi2dsh\"\n    name: command_name [1,1] - [1,7] \"pi2dsh\"\n      word [1,1] - [1,7] \"pi2dsh\""
+          },
+          {
+            "kind": "tool",
+            "name": "ast_grep_outline",
+            "args": {
+              "paths": [
+                "/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-QRdHQd/workspace/sample.txt"
+              ]
+            },
+            "outcome": "working",
+            "evidence": "No outline items found (syntax-only — try module_report, or check lang/paths)."
+          },
+          {
+            "kind": "tool",
+            "name": "ast_grep_replace",
+            "args": {
+              "pattern": "pi2dsh",
+              "rewrite": "pi2dsh",
+              "lang": "bash"
+            },
+            "outcome": "working",
+            "evidence": "[DRY-RUN] No matches found."
+          }
+        ]
+      },
+      "degraded": [
+        "ctx.startsWith",
+        "ctx.toLowerCase",
+        "ctx.args",
+        "ctx.command",
+        "ctx.depth",
+        "ctx.compact",
+        "ctx.fileRole",
+        "ctx.id",
+        "ctx.method",
+        "ctx.error",
+        "ctx.result",
+        "ctx.isCancellationRequested",
+        "ctx.onCancellationRequested",
+        "ctx.dispose",
+        "ctx.listen",
+        "ctx.onClose",
+        "ctx.onError",
+        "ctx.onPartialMessage",
+        "ctx.write",
+        "ctx.cancelUndispatched",
+        "ctx.createCancellationTokenSource",
+        "ctx.kind",
+        "ctx.cleanup",
+        "ctx.sendCancellation",
+        "ctx.receiver",
+        "ctx.sender",
+        "ctx.handleMessage",
+        "ctx.cancellationStrategy",
+        "ctx.connectionStrategy",
+        "ctx.maxParallelism",
+        "ctx.messageStrategy",
+        "ctx.addListener",
+        "ctx.read",
+        "ctx.filePath",
+        "ctx.name",
+        "ctx.endLine",
+        "ctx.startLine",
+        "ctx.endPosition",
+        "ctx.startPosition",
+        "ctx.fileSignatures",
+        "ctx.normalizedChanged",
+        "ctx.facts",
+        "ctx.normalizedCwd",
+        "ctx.signature",
+        "ctx.seqAtBuildStart",
+        "ctx.ignoredIds",
+        "ctx.pi",
+        "ctx.argsPrefix",
+        "ctx.cmd",
+        "ctx.log",
+        "ctx.deltaMode",
+        "ctx.projectRoot",
+        "ctx.hasTool",
+        "ctx.blockingOnly",
+        "ctx.key",
+        "ctx.modifiedRanges",
+        "ctx.projectConfig",
+        "ctx.telemetry",
+        "ctx.seqState",
+        "ctx.wordIndex",
+        "ctx.onWordIndexUpdated",
+        "ctx.local",
+        "ctx.line",
+        "ctx.node",
+        "ctx.callName",
+        "on(resources_discover)",
+        "on(context)"
+      ]
     },
     {
       "rank": 7,
@@ -443,9 +577,10 @@
       "rank": 12,
       "name": "pi-fabric",
       "downloadsPerMonth": 28300,
-      "status": "fatal",
-      "stage": "convert",
-      "error": "conversion blocked: 3 fatal finding(s) — the bundle cannot be built or trusted; run inspect for details"
+      "status": "load-failed",
+      "stage": "load",
+      "gap": "other",
+      "error": "every Pi extension entry failed to load:\n- vendor/dist/index.js: Cannot read properties of undefined (reading 'prototype')"
     },
     {
       "rank": 13,
@@ -547,17 +682,134 @@
       "rank": 15,
       "name": "pi-hermes-memory",
       "downloadsPerMonth": 23700,
-      "status": "fatal",
-      "stage": "convert",
-      "error": "conversion blocked: 3 fatal finding(s) — the bundle cannot be built or trusted; run inspect for details"
+      "status": "loaded",
+      "verdict": "review",
+      "tools": [
+        "memory_add",
+        "memory_remove",
+        "memory_replace",
+        "memory_search",
+        "session_search",
+        "skill_manage"
+      ],
+      "commands": [
+        "learn-memory-tool",
+        "memory-consolidate",
+        "memory-index-sessions",
+        "memory-insights",
+        "memory-interview",
+        "memory-pin",
+        "memory-preview-context",
+        "memory-skills",
+        "memory-switch-project",
+        "memory-sync-markdown"
+      ],
+      "skills": [],
+      "exercised": {
+        "grade": "working",
+        "attempts": [
+          {
+            "kind": "tool",
+            "name": "memory_add",
+            "args": {
+              "target": "memory",
+              "content": "pi2dsh exercise probe"
+            },
+            "outcome": "working",
+            "evidence": "{\"success\":true,\"target\":\"memory\",\"usage\":\"1% — 66/5000 chars\",\"entry_count\":1,\"message\":\"Entry added.\"}"
+          },
+          {
+            "kind": "tool",
+            "name": "memory_replace",
+            "args": {
+              "target": "memory",
+              "old_text": "pi2dsh exercise probe",
+              "content": "pi2dsh exercise probe"
+            },
+            "outcome": "working",
+            "evidence": "{\"success\":true,\"target\":\"memory\",\"usage\":\"1% — 66/5000 chars\",\"entry_count\":1,\"message\":\"Entry replaced.\"}"
+          },
+          {
+            "kind": "tool",
+            "name": "memory_search",
+            "args": {
+              "query": "pi2dsh exercise probe"
+            },
+            "outcome": "working",
+            "evidence": "Found 1 memories matching \"pi2dsh exercise probe\":\n\n🧠 [global] pi2dsh exercise probe\n   Created: 2026-08-14 | Last used: 2026-08-14"
+          }
+        ]
+      },
+      "degraded": [
+        "on(resources_discover)"
+      ]
     },
     {
       "rank": 16,
       "name": "@mjasnikovs/pi-task",
       "downloadsPerMonth": 22500,
-      "status": "fatal",
-      "stage": "convert",
-      "error": "conversion blocked: 1 fatal finding(s) — the bundle cannot be built or trusted; run inspect for details"
+      "status": "loaded",
+      "verdict": "review",
+      "tools": [
+        "pi-worker",
+        "pi-worker-docs",
+        "pi-worker-fetch",
+        "pi-worker-search"
+      ],
+      "commands": [
+        "remote",
+        "task",
+        "task-auto",
+        "task-auto-cancel",
+        "task-auto-resume",
+        "task-cancel",
+        "task-config",
+        "task-list",
+        "task-plan",
+        "task-resume"
+      ],
+      "skills": [],
+      "exercised": {
+        "grade": "timed-out",
+        "attempts": [
+          {
+            "kind": "tool",
+            "name": "pi-worker",
+            "args": {
+              "prompt": "pi2dsh exercise probe"
+            },
+            "outcome": "timed-out",
+            "evidence": "still executing when the 20s probe timeout aborted it (Error: tool call aborted)"
+          },
+          {
+            "kind": "tool",
+            "name": "pi-worker-docs",
+            "args": {
+              "module": "pi2dsh",
+              "query": "pi2dsh exercise probe"
+            },
+            "outcome": "timed-out",
+            "evidence": "still executing when the 20s probe timeout aborted it (Error: tool call aborted)"
+          },
+          {
+            "kind": "tool",
+            "name": "pi-worker-fetch",
+            "args": {
+              "url": "http://127.0.0.1:64220/page",
+              "query": "pi2dsh exercise probe"
+            },
+            "outcome": "timed-out",
+            "evidence": "still executing when the 20s probe timeout aborted it (Error: tool call aborted)"
+          }
+        ]
+      },
+      "degraded": [
+        "host-import(@earendil-works/pi-coding-agent:DefaultPackageManager)",
+        "ctx.newSession",
+        "ctx.compact",
+        "on(before_provider_request)",
+        "on(after_provider_response)"
+      ]
     },
     {
       "rank": 17,
@@ -691,8 +943,8 @@
             "args": {
               "code": "pi2dsh"
             },
-            "outcome": "failed",
-            "evidence": "Error: failed to download https://github.com/openai/codex/releases/download/rust-v0.145.0/codex-code-mode-host-aarch64-apple-darwin.tar.gz: The operation was ab"
+            "outcome": "timed-out",
+            "evidence": "still executing when the 20s probe timeout aborted it (Error: failed to download https://github.com/openai/codex/releases/download/rust-v0.145.0/codex-code-mode-host-aarch64-a)"
           },
           {
             "kind": "tool",
@@ -701,7 +953,7 @@
               "cmd": "echo pi2dsh-exercise"
             },
             "outcome": "working",
-            "evidence": "Command: echo pi2dsh-exercise\nChunk ID: dfbf49\nWall time: 0.0010 seconds\nProcess exited with code 1\nOriginal token count: 13\nOutput:\nexec_bridge binary is not b"
+            "evidence": "Command: echo pi2dsh-exercise\nChunk ID: ccc74e\nWall time: 0.0010 seconds\nProcess exited with code 1\nOriginal token count: 13\nOutput:\nexec_bridge binary is not b"
           },
           {
             "kind": "tool",
@@ -751,10 +1003,10 @@
             "kind": "tool",
             "name": "lsp_fix",
             "args": {
-              "path": "/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-ko7vyN/workspace/sample.txt"
+              "path": "/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-QRdHQd/workspace/sample.txt"
             },
             "outcome": "failed",
-            "evidence": "Error: No fix route supports /var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-ko7vyN/workspace/sample.txt. Supported LSP servers are defined by "
+            "evidence": "Error: No fix route supports /var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-QRdHQd/workspace/sample.txt. Supported LSP servers are defined by "
           }
         ]
       },
@@ -799,16 +1051,16 @@
               "name": "pi2dsh-probe"
             },
             "outcome": "executed-input-validation",
-            "evidence": "Error: dyld[86301]: Library not loaded: /opt/homebrew/opt/libgit2/lib/libgit2.1.9.dylib Referenced from: <9E0827C4-A0DC-3E7F-83D4-50269E16762E> /private/var/fol"
+            "evidence": "Error: dyld[45013]: Library not loaded: /opt/homebrew/opt/libgit2/lib/libgit2.1.9.dylib Referenced from: <9E0827C4-A0DC-3E7F-83D4-50269E16762E> /private/var/fol"
           },
           {
             "kind": "tool",
             "name": "readSeek_digest",
             "args": {
-              "path": "/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-ko7vyN/workspace/sample.txt"
+              "path": "/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-QRdHQd/workspace/sample.txt"
             },
             "outcome": "executed-input-validation",
-            "evidence": "Error: dyld[86303]: Library not loaded: /opt/homebrew/opt/libgit2/lib/libgit2.1.9.dylib Referenced from: <9E0827C4-A0DC-3E7F-83D4-50269E16762E> /private/var/fol"
+            "evidence": "Error: dyld[45015]: Library not loaded: /opt/homebrew/opt/libgit2/lib/libgit2.1.9.dylib Referenced from: <9E0827C4-A0DC-3E7F-83D4-50269E16762E> /private/var/fol"
           },
           {
             "kind": "tool",
@@ -832,7 +1084,7 @@
       "status": "load-failed",
       "stage": "load",
       "gap": "other",
-      "error": "every Pi extension entry failed to load:\n- vendor/index.ts: ENOENT: no such file or directory, open '/private/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-ko7vyN/bundles/23-pi-hashline-edit-pro/vendor/prompts/read.md'"
+      "error": "every Pi extension entry failed to load:\n- vendor/index.ts: ENOENT: no such file or directory, open '/private/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-QRdHQd/bundles/23-pi-hashline-edit-pro/vendor/prompts/read.md'"
     },
     {
       "rank": 24,
@@ -860,7 +1112,7 @@
             "name": "telegram_attach",
             "args": {
               "paths": [
-                "/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-ko7vyN/workspace/sample.txt"
+                "/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-QRdHQd/workspace/sample.txt"
               ]
             },
             "outcome": "failed",
@@ -1195,7 +1447,7 @@
             "kind": "tool",
             "name": "web_fetch",
             "args": {
-              "url": "http://127.0.0.1:55794/page"
+              "url": "http://127.0.0.1:64220/page"
             },
             "outcome": "failed",
             "evidence": "Error: Refusing to fetch private/loopback address: 127.0.0.1"
@@ -1303,7 +1555,7 @@
       "status": "load-failed",
       "stage": "load",
       "gap": "other",
-      "error": "every Pi extension entry failed to load:\n- vendor/index.ts: ENOENT: no such file or directory, open '/private/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-ko7vyN/bundles/39-pi-interview/vendor/form/index.html'"
+      "error": "every Pi extension entry failed to load:\n- vendor/index.ts: ENOENT: no such file or directory, open '/private/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-QRdHQd/bundles/39-pi-interview/vendor/form/index.html'"
     },
     {
       "rank": 40,
@@ -1326,9 +1578,47 @@
       "rank": 41,
       "name": "pi-harness-runtime",
       "downloadsPerMonth": 8787,
-      "status": "fatal",
-      "stage": "convert",
-      "error": "conversion blocked: 4 fatal finding(s) — the bundle cannot be built or trusted; run inspect for details"
+      "status": "loaded",
+      "verdict": "review",
+      "tools": [],
+      "commands": [
+        "github-login",
+        "harness-cancel",
+        "harness-pause",
+        "harness-resume",
+        "harness-start",
+        "harness-status",
+        "harness-tasks",
+        "reviewer",
+        "slash-commands",
+        "tencentdb",
+        "tencentdb-connect",
+        "tencentdb-setup",
+        "usage",
+        "usage-refresh",
+        "usage-reset",
+        "usage-today",
+        "usage-week",
+        "write-review",
+        "writer"
+      ],
+      "skills": [],
+      "exercised": {
+        "grade": "working",
+        "attempts": [
+          {
+            "kind": "command",
+            "name": "github-login",
+            "outcome": "working",
+            "evidence": "command handler completed"
+          }
+        ]
+      },
+      "degraded": [
+        "ctx.compact",
+        "on(error)",
+        "on(message)"
+      ]
     },
     {
       "rank": 42,
@@ -1349,7 +1639,7 @@
             "kind": "tool",
             "name": "web_fetch",
             "args": {
-              "url": "http://127.0.0.1:55794/page"
+              "url": "http://127.0.0.1:64220/page"
             },
             "outcome": "callable-needs-config",
             "evidence": "Error: fetch failed"
@@ -1388,7 +1678,7 @@
             "args": {
               "query": "pi2dsh exercise probe",
               "urls": [
-                "http://127.0.0.1:55794/page"
+                "http://127.0.0.1:64220/page"
               ]
             },
             "outcome": "working",
@@ -1602,9 +1892,85 @@
       "rank": 50,
       "name": "mitsupi",
       "downloadsPerMonth": 7802,
-      "status": "fatal",
-      "stage": "convert",
-      "error": "runtime dependencies are imported but not declared by the Pi package: googleapis, @google-cloud/local-auth, ws"
+      "status": "loaded",
+      "verdict": "review",
+      "tools": [
+        "edit",
+        "signal_loop_success",
+        "todo"
+      ],
+      "commands": [
+        "answer",
+        "btw",
+        "context",
+        "control-sessions",
+        "end-review",
+        "files",
+        "loop",
+        "mode",
+        "review",
+        "session-breakdown",
+        "split-fork",
+        "todos"
+      ],
+      "skills": [
+        "anachb",
+        "apple-mail",
+        "commit",
+        "frontend-design",
+        "ghidra",
+        "github",
+        "google-workspace",
+        "librarian",
+        "mermaid",
+        "native-web-search",
+        "oebb-scotty",
+        "openscad",
+        "pi-share",
+        "sentry",
+        "summarize",
+        "tmux",
+        "update-changelog",
+        "uv",
+        "web-browser"
+      ],
+      "exercised": {
+        "grade": "working",
+        "attempts": [
+          {
+            "kind": "tool",
+            "name": "signal_loop_success",
+            "args": {},
+            "outcome": "working",
+            "evidence": "No active loop is running."
+          },
+          {
+            "kind": "tool",
+            "name": "todo",
+            "args": {
+              "action": "list"
+            },
+            "outcome": "working",
+            "evidence": "{\n  \"assigned\": [],\n  \"open\": [],\n  \"closed\": []\n}"
+          }
+        ]
+      },
+      "degraded": [
+        "host-import(@mariozechner/pi-ai:complete)",
+        "host-import(@mariozechner/pi-coding-agent:codingTools)",
+        "host-import(@mariozechner/pi-coding-agent:createAgentSession)",
+        "host-import(@mariozechner/pi-coding-agent:createExtensionRuntime)",
+        "ctx.fg",
+        "ctx.bold",
+        "on(session_switch)",
+        "on(session_fork)",
+        "host-import(@mariozechner/pi-coding-agent:compact)",
+        "host-import(@mariozechner/pi-coding-agent:ModelSelectorComponent)",
+        "ctx.navigateTree",
+        "host-import(@mariozechner/pi-tui:TUI)",
+        "host-import(@mariozechner/pi-coding-agent:createBashTool)",
+        "theme"
+      ]
     }
   ]
 }

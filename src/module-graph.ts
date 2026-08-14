@@ -9,6 +9,12 @@ const MODULE_EXTENSIONS = ['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs',
 interface LocalReference {
   kind: 'module' | 'asset'
   specifier: string
+  // A lazy reference is only evaluated when some feature runs, never while the
+  // extension entry loads: dynamic import()/require() inside a function body,
+  // or worker/data assets spawned on demand. Pi's loader therefore succeeds
+  // even when a lazy target is unresolvable; problems on lazy paths surface
+  // (identically under Pi and pi2dsh) only if that feature is used.
+  lazy: boolean
 }
 
 export interface LocalClosureIssue {
@@ -16,10 +22,14 @@ export interface LocalClosureIssue {
   kind: LocalReference['kind']
   specifier: string
   detail: string
+  lazy: boolean
 }
 
 export interface LocalClosure {
   files: string[]
+  // Files whose module-level code executes the moment the extension entry
+  // loads (transitive non-lazy module edges from the entries).
+  loadTimeFiles: Set<string>
   issues: LocalClosureIssue[]
 }
 
@@ -44,12 +54,15 @@ function localReferences(path: string, text: string): LocalReference[] {
   const values = new Map<string, LocalReference>()
   const createRequireNames = new Set<string>(['createRequire'])
   const requireNames = new Set<string>(['require'])
-  const add = (kind: LocalReference['kind'], specifier: string): void => {
+  const add = (kind: LocalReference['kind'], specifier: string, lazy: boolean): void => {
     // '#'-prefixed specifiers are Node subpath imports resolved through the
     // package's own `imports` map — package-local, not external dependencies.
-    if (specifier.startsWith('.') || specifier.startsWith('#')) {
-      values.set(`${kind}:${specifier}`, { kind, specifier })
-    }
+    if (!specifier.startsWith('.') && !specifier.startsWith('#')) return
+    const key = `${kind}:${specifier}`
+    const existing = values.get(key)
+    // A specifier reached both statically and lazily executes at load time.
+    if (existing === undefined) values.set(key, { kind, specifier, lazy })
+    else if (existing.lazy && !lazy) existing.lazy = false
   }
   function collectRequireAliases(node: ts.Node): void {
     if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)
@@ -69,19 +82,19 @@ function localReferences(path: string, text: string): LocalReference[] {
   function visit(node: ts.Node): void {
     if ((ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) && node.moduleSpecifier !== undefined
       && ts.isStringLiteral(node.moduleSpecifier)) {
-      add('module', node.moduleSpecifier.text)
+      add('module', node.moduleSpecifier.text, false)
     } else if (ts.isImportEqualsDeclaration(node) && ts.isExternalModuleReference(node.moduleReference)
       && ts.isStringLiteral(node.moduleReference.expression)) {
-      add('module', node.moduleReference.expression.text)
+      add('module', node.moduleReference.expression.text, false)
     } else if (ts.isCallExpression(node) && node.arguments.length > 0
       && ((node.expression.kind === ts.SyntaxKind.ImportKeyword)
         || (ts.isIdentifier(node.expression) && requireNames.has(node.expression.text)))) {
       const specifier = literalModule(node.arguments[0])
-      if (specifier !== undefined) add('module', specifier)
+      if (specifier !== undefined) add('module', specifier, insideFunctionBody(node))
     } else if (ts.isNewExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === 'URL'
       && isImportMetaUrl(node.arguments?.[1])) {
       const specifier = literalModule(node.arguments?.[0])
-      if (specifier !== undefined) add('asset', specifier)
+      if (specifier !== undefined) add('asset', specifier, false)
     }
     ts.forEachChild(node, visit)
   }
@@ -90,20 +103,63 @@ function localReferences(path: string, text: string): LocalReference[] {
 }
 
 function externalPackage(specifier: string): string | undefined {
+  // `bun:*` counts as a host builtin, not an npm dependency: Pi's official
+  // distribution is a Bun-compiled binary, so ecosystem packages gate these
+  // requires behind runtime detection and take their declared Node fallback
+  // (better-sqlite3, node:sqlite) everywhere else.
   if (specifier.startsWith('.') || specifier.startsWith('/') || specifier.startsWith('#')
-    || specifier.startsWith('node:') || builtinModules.includes(specifier)) return undefined
+    || specifier.startsWith('node:') || specifier.startsWith('bun:')
+    || builtinModules.includes(specifier)) return undefined
   const parts = specifier.split('/')
   return specifier.startsWith('@') ? parts.slice(0, 2).join('/') : parts[0]
 }
 
-export function runtimeExternalPackages(path: string, text: string): string[] {
+function insideTry(node: ts.Node): boolean {
+  let current: ts.Node | undefined = node.parent
+  while (current !== undefined) {
+    if (ts.isTryStatement(current)) return true
+    // Stop at function boundaries: a try in an outer function does not guard
+    // an import inside a nested callback executed later.
+    if (ts.isFunctionLike(current)) {
+      // ...unless the whole function body IS awaited inside the try; keeping
+      // this conservative check simple errs toward reporting the dependency.
+      return false
+    }
+    current = current.parent
+  }
+  return false
+}
+
+// Inside any function body means the expression does not run while the module
+// itself loads — it runs when (if ever) that function is called.
+function insideFunctionBody(node: ts.Node): boolean {
+  let current: ts.Node | undefined = node.parent
+  while (current !== undefined) {
+    if (ts.isFunctionLike(current)) return true
+    current = current.parent
+  }
+  return false
+}
+
+export interface RuntimeDependencyUse {
+  name: string
+  // true when every use sits on a lazy path (dynamic import/require inside a
+  // function body): the module loads fine without the dependency, exactly as
+  // under Pi, and only the feature that calls it needs the install.
+  lazy: boolean
+}
+
+export function runtimeExternalPackages(path: string, text: string): RuntimeDependencyUse[] {
   const source = ts.createSourceFile(path, text, ts.ScriptTarget.Latest, true, sourceKind(path))
-  const packages = new Set<string>()
+  const packages = new Map<string, RuntimeDependencyUse>()
   const createRequireNames = new Set<string>(['createRequire'])
   const requireNames = new Set<string>(['require'])
-  const add = (specifier: string): void => {
+  const add = (specifier: string, lazy: boolean): void => {
     const name = externalPackage(specifier)
-    if (name !== undefined && name.length > 0) packages.add(name)
+    if (name === undefined || name.length === 0) return
+    const existing = packages.get(name)
+    if (existing === undefined) packages.set(name, { name, lazy })
+    else if (existing.lazy && !lazy) existing.lazy = false
   }
   function collectRequireAliases(node: ts.Node): void {
     if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)
@@ -127,24 +183,30 @@ export function runtimeExternalPackages(path: string, text: string): string[] {
       const namedImportsAreTypeOnly = named !== undefined && ts.isNamedImports(named)
         && named.elements.length > 0 && named.elements.every(element => element.isTypeOnly)
       if (clause === undefined || (!clause.isTypeOnly && (clause.name !== undefined || !namedImportsAreTypeOnly))) {
-        add(node.moduleSpecifier.text)
+        add(node.moduleSpecifier.text, false)
       }
     } else if (ts.isExportDeclaration(node) && !node.isTypeOnly
       && node.moduleSpecifier !== undefined && ts.isStringLiteral(node.moduleSpecifier)) {
-      add(node.moduleSpecifier.text)
+      add(node.moduleSpecifier.text, false)
     } else if (ts.isImportEqualsDeclaration(node) && !node.isTypeOnly
       && ts.isExternalModuleReference(node.moduleReference) && ts.isStringLiteral(node.moduleReference.expression)) {
-      add(node.moduleReference.expression.text)
+      add(node.moduleReference.expression.text, false)
     } else if (ts.isCallExpression(node) && node.arguments.length > 0
       && ((node.expression.kind === ts.SyntaxKind.ImportKeyword)
         || (ts.isIdentifier(node.expression) && requireNames.has(node.expression.text)))) {
-      const specifier = literalModule(node.arguments[0])
-      if (specifier !== undefined) add(specifier)
+      // A dynamic import/require wrapped in try/catch is the ecosystem's
+      // optional-dependency idiom (e.g. pi-harness-runtime's "// Dynamic
+      // import for Playwright (optional dependency)") — its absence is a
+      // designed degradation, not an undeclared runtime requirement.
+      if (!insideTry(node)) {
+        const specifier = literalModule(node.arguments[0])
+        if (specifier !== undefined) add(specifier, insideFunctionBody(node))
+      }
     }
     ts.forEachChild(node, visit)
   }
   visit(source)
-  return [...packages]
+  return [...packages.values()]
 }
 
 function inside(rootDir: string, path: string): boolean {
@@ -253,33 +315,64 @@ async function expandAsset(path: string, rootDir: string): Promise<string[]> {
 }
 
 export async function collectLocalClosure(rootDir: string, entries: readonly string[]): Promise<LocalClosure> {
-  const queue = entries.map(path => resolve(path))
-  const closure = new Set<string>()
-  const issues: LocalClosureIssue[] = []
   const importsMap = await packageImportsMap(rootDir)
+  const graph = new Map<string, Array<{ lazy: boolean, targets: string[] }>>()
+  const issues: LocalClosureIssue[] = []
+  const queue = entries.map(path => resolve(path))
+  // Pass 1: the full local reference graph, lazy edges included, so the
+  // snapshot carries every file any feature could ever load.
   while (queue.length > 0) {
     const source = queue.shift() as string
-    if (closure.has(source)) continue
+    if (graph.has(source)) continue
     if (!inside(rootDir, source)) throw new Error(`extension source escapes the Pi package: ${source}`)
     const info = await lstat(source)
     if (info.isSymbolicLink()) throw new Error(`refusing to copy symbolic link from Pi package: ${source}`)
     if (!info.isFile()) throw new Error(`extension closure contains a non-file path: ${source}`)
-    closure.add(source)
+    const edges: Array<{ lazy: boolean, targets: string[] }> = []
+    graph.set(source, edges)
     if (!SCRIPT_EXTENSIONS.has(extname(source))) continue
     const text = await readFile(source, 'utf8')
     for (const reference of localReferences(source, text)) {
+      // Worker/data assets never execute while the entry loads; the feature
+      // that spawns them does, so their whole subtree is a lazy path.
+      const lazy = reference.lazy || reference.kind === 'asset'
       try {
-        if (reference.kind === 'module') queue.push(await resolveModule(source, reference.specifier, rootDir, importsMap))
-        else queue.push(...await expandAsset(resolve(dirname(source), reference.specifier), rootDir))
+        const targets = reference.kind === 'module'
+          ? [await resolveModule(source, reference.specifier, rootDir, importsMap)]
+          : await expandAsset(resolve(dirname(source), reference.specifier), rootDir)
+        edges.push({ lazy, targets })
+        queue.push(...targets)
       } catch (error) {
         issues.push({
           file: source,
           kind: reference.kind,
           specifier: reference.specifier,
           detail: error instanceof Error ? error.message : String(error),
+          lazy,
         })
       }
     }
   }
-  return { files: [...closure].sort(), issues }
+  // Pass 2: load-time reachability across non-lazy module edges only. This is
+  // the set whose problems actually break `pi` (and pi2dsh) at extension load;
+  // everything else fails at feature-use time, identically under both hosts.
+  const loadTimeFiles = new Set<string>()
+  const loadQueue = entries.map(path => resolve(path)).filter(path => graph.has(path))
+  while (loadQueue.length > 0) {
+    const source = loadQueue.shift() as string
+    if (loadTimeFiles.has(source)) continue
+    loadTimeFiles.add(source)
+    for (const edge of graph.get(source) ?? []) {
+      if (edge.lazy) continue
+      for (const target of edge.targets) {
+        if (!loadTimeFiles.has(target)) loadQueue.push(target)
+      }
+    }
+  }
+  // An issue found inside a file that itself only loads lazily cannot break
+  // extension load either, however the reference is written.
+  for (const issue of issues) {
+    if (!loadTimeFiles.has(issue.file)) issue.lazy = true
+  }
+  return { files: [...graph.keys()].sort(), loadTimeFiles, issues }
 }

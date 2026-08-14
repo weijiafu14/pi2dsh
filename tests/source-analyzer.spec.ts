@@ -224,6 +224,55 @@ describe('Pi package discovery and compatibility analysis', () => {
     ]))
   })
 
+  it('grades lazy-path problems as reviewable degradations, matching Pi load behavior', async () => {
+    // pi-harness-runtime pattern: playwright only behind a function-body
+    // dynamic import; pi-lens pattern: a bundler-stale worker asset URL.
+    const root = await mkdtemp(join(tmpdir(), 'pi2dsh-lazy-'))
+    cleanup.push(root)
+    const file = join(root, 'index.ts')
+    await writeFile(file, [
+      'export default pi => {',
+      '  pi.registerCommand("scrape", { description: "scrape", async handler() {',
+      '    const { chromium } = await import("playwright")',
+      '    void chromium',
+      '    void new URL("./missing-worker.js", import.meta.url)',
+      '  } })',
+      '}',
+    ].join('\n'))
+    const report = await analyzePackage(await resolvePiPackage(file))
+    expect(report.verdict).toBe('review')
+    expect(report.summary.fatal).toBe(0)
+    expect(report.findings).toEqual(expect.arrayContaining([
+      expect.objectContaining({ capability: 'optional-lazy-dependency(playwright)', level: 'partial' }),
+      expect.objectContaining({ capability: 'asset(./missing-worker.js)', level: 'partial' }),
+    ]))
+  })
+
+  it('grades load-time imports inside lazily-reached files as lazy, but keeps entry load-time imports fatal', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'pi2dsh-lazy-file-'))
+    cleanup.push(root)
+    // auth.ts imports playwright at its own top level, but auth.ts itself is
+    // only reached through a function-body dynamic import — Pi loads the entry
+    // fine and only the auth feature needs playwright.
+    await writeFile(join(root, 'auth.ts'), 'import { chromium } from "playwright"\nexport const auth = () => chromium\n')
+    const file = join(root, 'index.ts')
+    await writeFile(file, [
+      'import "undeclared-static"',
+      'export default pi => {',
+      '  pi.registerCommand("auth", { description: "auth", async handler() {',
+      '    const { auth } = await import("./auth.js")',
+      '    void auth',
+      '  } })',
+      '}',
+    ].join('\n'))
+    const report = await analyzePackage(await resolvePiPackage(file))
+    expect(report.verdict).toBe('blocked')
+    expect(report.findings).toEqual(expect.arrayContaining([
+      expect.objectContaining({ capability: 'optional-lazy-dependency(playwright)', level: 'partial' }),
+      expect.objectContaining({ capability: 'undeclared-runtime-dependency(undeclared-static)', level: 'fatal' }),
+    ]))
+  })
+
   it('reports Pi terminal themes as explicit degradations instead of silently dropping them', async () => {
     const root = await mkdtemp(join(tmpdir(), 'pi2dsh-theme-'))
     cleanup.push(root)
@@ -236,10 +285,19 @@ describe('Pi package discovery and compatibility analysis', () => {
     expect(report.findings).toContainEqual(expect.objectContaining({ capability: 'theme', level: 'unsupported' }))
   })
 
-  it('rejects resource globs escaping the package root', async () => {
+  it('skips resource globs escaping the package root without copying anything outside it', async () => {
+    // Pi's own loader tolerates unresolvable resource paths; we mirror that
+    // leniency but still never glob or copy files beyond the package root.
     const root = await mkdtemp(join(tmpdir(), 'pi2dsh-escape-'))
     cleanup.push(root)
     await writeFile(join(root, 'package.json'), JSON.stringify({ name: 'escape', pi: { extensions: ['../outside.ts'] } }))
-    await expect(resolvePiPackage(root)).rejects.toThrow('must stay inside the Pi package')
+    await writeFile(join(root, '..', 'outside.ts'), 'export default pi => {}\n')
+    const pkg = await resolvePiPackage(root)
+    try {
+      expect(pkg.resources.extensions).toEqual([])
+    } finally {
+      await pkg.dispose()
+      await rm(join(root, '..', 'outside.ts'), { force: true })
+    }
   })
 })

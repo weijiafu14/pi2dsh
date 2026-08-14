@@ -164,13 +164,24 @@ async function exerciseSurface(ctx, agent, assembly, commands) {
         arguments: args,
       })
       const text = (result.content ?? []).map(block => String(block.text ?? '')).join(' ').slice(0, 160)
-      attempts.push({ kind: 'tool', name: tool.name, args, outcome: gradeOutcome(result), evidence: text })
-    } catch (error) {
-      const message = String(error?.message ?? error)
+      // DSH wraps an aborted call into an isError result rather than
+      // rejecting; our own 20s probe abort still is not a package failure.
+      const timedOut = controller.signal.aborted
       attempts.push({
         kind: 'tool', name: tool.name, args,
-        outcome: CONFIG_ERROR.test(message) ? 'callable-needs-config' : 'failed',
-        evidence: message.slice(0, 160),
+        outcome: timedOut ? 'timed-out' : gradeOutcome(result),
+        evidence: timedOut ? `still executing when the 20s probe timeout aborted it (${text.slice(0, 120)})` : text,
+      })
+    } catch (error) {
+      const message = String(error?.message ?? error)
+      // Our own 20s probe abort is not a package failure: the tool was still
+      // executing (waiting on an external service the fixture environment
+      // cannot provide, e.g. a child `pi` process or model credentials).
+      const timedOut = controller.signal.aborted
+      attempts.push({
+        kind: 'tool', name: tool.name, args,
+        outcome: timedOut ? 'timed-out' : CONFIG_ERROR.test(message) ? 'callable-needs-config' : 'failed',
+        evidence: timedOut ? `still executing when the 20s probe timeout aborted it (${message.slice(0, 120)})` : message.slice(0, 160),
       })
     } finally {
       clearTimeout(timer)
@@ -193,7 +204,7 @@ async function exerciseSurface(ctx, agent, assembly, commands) {
       }
     }
   }
-  const order = ['working', 'executed-input-validation', 'callable-needs-config']
+  const order = ['working', 'executed-input-validation', 'callable-needs-config', 'timed-out']
   const grade = order.find(level => attempts.some(item => item.outcome === level))
     ?? (attempts.length === 0 ? 'nothing-exercisable' : 'failed')
   return { grade, attempts }
@@ -270,12 +281,16 @@ async function verifyOne(entry) {
       return { ...record, status: 'fatal', stage: 'convert', error: String(error?.message ?? error) }
     }
     try {
-      await execFile('corepack', ['pnpm@11.7.0', 'install', '--ignore-scripts', '--prod'], {
+      // npm, exactly as a user installs a bundle: build scripts run by default,
+      // so native modules (better-sqlite3) come out usable. pnpm 11 was tried
+      // here and fights this harness both ways: --ignore-scripts skips builds
+      // without recording them (approve-builds then has nothing to approve),
+      // and its default policy blocks dependency builds AND exits non-zero.
+      await execFile('npm', ['install', '--omit=dev', '--no-audit', '--no-fund'], {
         cwd: bundleDir,
         env: {
           ...process.env, CI: '1',
           npm_config_registry: 'https://registry.npmjs.org',
-          PNPM_CONFIG_REGISTRY: 'https://registry.npmjs.org',
         },
         timeout: 240_000,
         maxBuffer: 16 * 1024 * 1024,
@@ -345,3 +360,7 @@ console.log(JSON.stringify({ ...counts, ...(exercise ? { exercise: exerciseCount
 console.log(outputPath)
 await new Promise(resolveClose => fixtureServer.close(resolveClose))
 if (process.env.PI2DSH_KEEP_TEST_ARTIFACTS !== '1') await rm(scratch, { recursive: true, force: true })
+// Exercised tools may have spawned children (worker daemons, child `pi`
+// dispatch) whose live handles keep this process from exiting on its own;
+// results are on disk, so exit explicitly.
+process.exit(0)

@@ -45,7 +45,7 @@ Three delivery modes:
 Three hard rules keep it general:
 
 1. The core contains **no `if (packageName === …)`** branching.
-2. Every capability has a **public-API contract test** (`pnpm test`, 41 tests); "some plugin loads" is never the success criterion.
+2. Every capability has a **public-API contract test** (`pnpm test`, 43 tests); "some plugin loads" is never the success criterion.
 3. The top-50 corpus is verified **black-box only**: failures file public ABI gaps, and fixing one gap unlocks every package that hits it (e.g. one jiti subpath-alias fix unlocked 4 packages at once).
 
 ## Progress: Pi catalog top 50 by monthly downloads
@@ -54,27 +54,28 @@ Status as of 2026-08-14. Static analysis screens; the black-box run certifies. F
 
 | Tier | Count | Meaning |
 |---|---|---|
-| ✅ **Tested working** | **34 / 50** | Mounted in a real DSH runtime AND real execution verified: 30 returned success, 4 ran their business logic end-to-end and rejected the synthetic probe arguments (4 of the 32 additionally passed deep verification: real LSP subprocess, web search/fetch, PNG generation, official `dsh plugin` add/activate/remove) |
-| 🟡 **Mounts, not fully verified** | **7 / 50** | Loads and registers its tools/commands/skills in a real DSH runtime; full execution needs user credentials/services (3), is an event-hook package with no callable surface to probe (3), or hit a test-harness limitation (1: strict live-agent identity checks in userQuestions — the same path passes in the deep-verification layer) |
-| ❌ **Not yet supported** | **9 / 50** | Attributed below — all on the roadmap |
-| **Total mountable today** | **41 / 50** | |
+| ✅ **Tested working** | **38 / 50** | Mounted in a real DSH runtime AND real execution verified: 34 returned success, 4 ran their business logic end-to-end and rejected the synthetic probe arguments (4 additionally passed deep verification: real LSP subprocess, web search/fetch, PNG generation, official `dsh plugin` add/activate/remove; 2 of the 38 verified through host mode) |
+| 🟡 **Mounts, not fully verified** | **8 / 50** | Loads and registers its tools/commands/skills in a real DSH runtime; full execution needs user credentials/services (3), is an event-hook package with no callable surface to probe (3), was still executing when the 20s probe timeout hit — it dispatches a child `pi` process the fixture environment cannot serve (1), or hit a test-harness limitation (1: strict live-agent identity checks in userQuestions — the same path passes in the deep-verification layer) |
+| ❌ **Not yet supported** | **4 / 50** | All four use Pi-internal runtime APIs — attributed below, next on the roadmap |
+| **Total mountable today** | **46 / 50** | |
 
 Additional verified layers: a **host bundle** mounting two unmodified packages passed the official plugin-manager flow end-to-end; a **real model run** (`deepseek-v4-flash`) called a migrated Pi tool with the durable session log asserted and zero credential persistence ([evidence](community/live-deepseek-results.json)).
 
-### The 9 not yet supported, attributed
+### The 4 not yet supported, attributed
 
-*Pi-internal runtime users (4) — need bespoke adapters, next on the roadmap:*
-`@tintinweb/pi-subagents` (calls `createAgentSession`/`createCodingTools` at load), `pi-landstrip` (calls `createBashToolDefinition`, Pi's built-in tool constructors), `pi-provider-litellm` (needs Pi's provider SDK factories; in DSH, model routing belongs to native llm adapters), `pi-fabric` (uses `wrapRegisteredTool` + references build-time-generated worker assets missing from its published tarball).
+*All are Pi-internal runtime users — they need bespoke adapters, next on the roadmap:*
+`@tintinweb/pi-subagents` (calls `createAgentSession`/`createCodingTools` at load), `pi-landstrip` (calls `createBashToolDefinition`, Pi's built-in tool constructors), `pi-provider-litellm` (needs Pi's provider SDK factories; in DSH, model routing belongs to native llm adapters), `pi-fabric` (uses `wrapRegisteredTool` and other internal runtime surfaces at load).
 
-*Package defects visible under any host (5) — will be reported upstream:*
-`pi-lens` (resource manifest escapes the package root), `pi-hermes-memory` + `@mjasnikovs/pi-task` (Bun-only `bun:sqlite`), `pi-harness-runtime` (imports playwright without declaring it), `mitsupi` (imports googleapis/ws without declaring them).
+### Correction: the "5 package defects" earlier versions reported
+
+An earlier revision of this page (and our launch posts) attributed 5 blocked packages to upstream package defects. On re-verification **all five were faults in this project's own static screening, not in the packages** — high-download packages deserved that skepticism. Concretely: `bun:sqlite` is a host builtin of Pi's Bun-compiled distribution, and both `pi-hermes-memory` and `@mjasnikovs/pi-task` gate it behind runtime detection with proper Node fallbacks (better-sqlite3 / node:sqlite); `pi-harness-runtime`'s playwright and `mitsupi`'s googleapis/ws sit only on lazily-evaluated feature paths that never run at extension load; `pi-lens`'s out-of-tree skills path is skipped by Pi's own loader, and its bundler-stale worker URLs behave identically under Pi. The screener now models load-time vs lazy reachability, treats `bun:*` like `node:*`, and preserves published file layout — after which **all five mount, four grade tested-working, and no upstream issue was warranted**. The screening rules that produced the misjudgment are contract-tested against regressions.
 
 ### Roadmap: all 50
 
-1. Lift the 7 "mounts, not fully verified" to tested-working (credentialed fixtures, per-package probe arguments).
+1. Lift the 8 "mounts, not fully verified" to tested-working (credentialed fixtures, per-package probe arguments, a live-agent probe path for userQuestions).
 2. Bridge Pi's internal `AgentSession`/tool-constructor surfaces onto DSH natives to unlock the 4 internal-runtime packages.
-3. File upstream issues for the 5 package defects; adopt fixes as they land.
-4. ✅ Done: the 2 snapshot-limited packages verified through host mode ([evidence](community/host-mode-results.json)).
+3. ✅ Done: the 2 snapshot-limited packages verified through host mode ([evidence](community/host-mode-results.json)).
+4. ✅ Done: re-verified the 5 packages we had wrongly reported as defective; corrected the screener and this page (see above).
 
 ## Quick start
 
@@ -107,7 +108,7 @@ Full machine-readable matrix: `pi2dsh matrix --json`. Capability-by-capability a
 ## Development and verification
 
 ```sh
-pnpm verify                                   # typecheck + 41 contract tests + packaging
+pnpm verify                                   # typecheck + 43 contract tests + packaging
 pnpm audit:community                          # static screening, top 50
 node scripts/blackbox-community.mjs community/blackbox-results.json --exercise
 pnpm test:community                           # deep runtime + official manager + host e2e

@@ -70,17 +70,28 @@ async function assertNoSymlinks(path: string): Promise<void> {
   for (const entry of await readdir(path)) await assertNoSymlinks(join(path, entry))
 }
 
-async function copyExtensions(pkg: ResolvedPiPackage, outDir: string): Promise<{ entries: string[]; runtimePackages: Set<string> }> {
+async function copyExtensions(pkg: ResolvedPiPackage, outDir: string): Promise<{ entries: string[]; runtimePackages: Set<string>; skillScriptPackages: Set<string> }> {
   const copied: string[] = []
   const runtimePackages = new Set<string>()
   const closure = await collectLocalClosure(pkg.rootDir, pkg.resources.extensions)
-  if (closure.issues.length > 0) {
-    throw new Error(`cannot snapshot extension closure:\n${closure.issues.map(issue => `- ${issue.file}: ${issue.detail}`).join('\n')}`)
+  // Unresolved references never block the snapshot here: the analyzer grades
+  // them (fatal only on the load-time path) and enforceReport is the gate.
+  // The copy below preserves the published layout, so lazy dead references
+  // behave exactly as they would under Pi.
+  for (const issue of closure.issues) {
+    console.warn(`pi2dsh: unresolved ${issue.kind} reference ${JSON.stringify(issue.specifier)} from ${relative(pkg.rootDir, issue.file)} (${issue.lazy ? 'lazy path — fails at feature use, as under Pi' : 'load-time path'})`)
   }
   for (const source of closure.files) {
     if (SCRIPT_EXTENSIONS.has(extname(source))) {
       const text = await readFile(source, 'utf8')
-      for (const packageName of runtimeExternalPackages(source, text)) runtimePackages.add(packageName)
+      // Lazy undeclared imports stay out of bundle dependencies: the package
+      // works without them (Pi semantics) and they may not even be installable.
+      // Lazy means the import site OR the whole file only evaluates on demand
+      // (a top-level import inside a dynamically-imported module loads lazily).
+      const lazyFile = !closure.loadTimeFiles.has(source)
+      for (const use of runtimeExternalPackages(source, text)) {
+        if ((!use.lazy && !lazyFile) || use.name in stringRecord(pkg.packageJson.dependencies)) runtimePackages.add(use.name)
+      }
     }
     const sourceRelative = relative(pkg.rootDir, source).replaceAll('\\', '/')
     const targetRelative = `vendor/${sourceRelative}`
@@ -89,12 +100,17 @@ async function copyExtensions(pkg: ResolvedPiPackage, outDir: string): Promise<{
     await cp(source, target, { dereference: false })
     if (pkg.resources.extensions.map(entry => resolve(entry)).includes(source)) copied.push(targetRelative)
   }
+  // Skill helper scripts run on the user's explicit request, not at extension
+  // load; their imports (often themselves try/catch-guarded) are informational,
+  // never a conversion blocker (mitsupi ships googleapis-using skill scripts
+  // this way and works fine in Pi).
+  const skillScriptPackages = new Set<string>()
   for (const source of pkg.resources.skills) {
     if (!SCRIPT_EXTENSIONS.has(extname(source))) continue
     const text = await readFile(source, 'utf8')
-    for (const packageName of runtimeExternalPackages(source, text)) runtimePackages.add(packageName)
+    for (const use of runtimeExternalPackages(source, text)) skillScriptPackages.add(use.name)
   }
-  return { entries: copied, runtimePackages }
+  return { entries: copied, runtimePackages, skillScriptPackages }
 }
 
 async function copySkills(pkg: ResolvedPiPackage, outDir: string): Promise<string[]> {
@@ -343,6 +359,11 @@ export async function generateBundle(
   }
   const runtimeSpec = options.runtimeSpec
   if (runtimeSpec === undefined) await copyEmbeddedRuntime(outDir)
+  const optionalSkillDeps = [...extensionSnapshot.skillScriptPackages]
+    .filter(name => !SHIMMED_PI_HOST_PACKAGES.has(name) && !(name in stringRecord(pkg.packageJson.dependencies)))
+  if (optionalSkillDeps.length > 0) {
+    console.warn(`pi2dsh: skill helper scripts reference ${optionalSkillDeps.join(', ')}; install them only if you use those skills`)
+  }
 
   await Promise.all([
     writeFile(join(outDir, 'package.json'), `${JSON.stringify(generatedPackageJson(pkg, packageName, runtimeSpec, extensionSnapshot.runtimePackages, skillDirs.length > 0), null, 2)}\n`),
