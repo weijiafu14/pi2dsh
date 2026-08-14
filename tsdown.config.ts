@@ -7,5 +7,9 @@ export default defineConfig({
   sourcemap: true,
   clean: true,
   deps: { neverBundle: [/^@deepseek-ai\//] },
+  // The generator copies Pi's license next to vendored Pi code inside every
+  // emitted bundle; the file must ship in the npm artifact (dist is the only
+  // published directory).
+  copy: [{ from: 'src/compat/vendor/PI-LICENSE', to: 'dist/compat/vendor' }],
   banner: ({ fileName }) => fileName.includes('cli') ? '#!/usr/bin/env node' : undefined,
 })
