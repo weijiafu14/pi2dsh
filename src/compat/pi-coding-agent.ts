@@ -68,15 +68,22 @@ export {
 export type { TruncationOptions, TruncationResult } from './vendor/pi-truncate.js'
 export { withFileMutationQueue } from './vendor/pi-file-mutation-queue.js'
 export { getAgentDir } from './vendor/pi-config-shim.js'
-// Pi's built-in bash tool, vendored byte-identical (spawn semantics, output
-// accumulation, truncation, kill-tree) — the constructor surface packages like
-// pi-landstrip build their own sandboxed/provider bash variants on.
+// Pi's built-in tool constructors, vendored byte-identical (spawn semantics,
+// output accumulation, truncation, kill-tree, mutation queue, diff rendering)
+// — the constructor surface packages like pi-landstrip and pi-fabric build
+// their own sandboxed/filtered variants on.
 export {
   createBashTool,
   createBashToolDefinition,
   createLocalBashOperations,
   bashToolSystemPromptContribution,
 } from './vendor/pi-tools/bash.js'
+export { createReadTool, createReadToolDefinition } from './vendor/pi-tools/read.js'
+export { createEditTool, createEditToolDefinition } from './vendor/pi-tools/edit.js'
+export { createWriteTool, createWriteToolDefinition } from './vendor/pi-tools/write.js'
+export { createGrepTool, createGrepToolDefinition } from './vendor/pi-tools/grep.js'
+export { createFindTool, createFindToolDefinition } from './vendor/pi-tools/find.js'
+export { createLsTool, createLsToolDefinition } from './vendor/pi-tools/ls.js'
 
 import { homedir } from 'node:os'
 import { join, delimiter } from 'node:path'
@@ -683,33 +690,67 @@ export function createReadOnlyTools(..._args: unknown[]): never {
   return unsupportedRuntime('createReadOnlyTools()')
 }
 
-export function createReadTool(..._args: unknown[]): never {
-  return unsupportedRuntime('createReadTool()')
-}
-
-export function createEditTool(..._args: unknown[]): never {
-  return unsupportedRuntime('createEditTool()')
-}
-
-export function createWriteTool(..._args: unknown[]): never {
-  return unsupportedRuntime('createWriteTool()')
-}
-
-export function createGrepTool(..._args: unknown[]): never {
-  return unsupportedRuntime('createGrepTool()')
-}
-
-export function createFindTool(..._args: unknown[]): never {
-  return unsupportedRuntime('createFindTool()')
-}
-
-export function createLsTool(..._args: unknown[]): never {
-  return unsupportedRuntime('createLsTool()')
-}
-
 export function loadSkills(..._args: unknown[]): never {
   return unsupportedRuntime('loadSkills()')
 }
+
+// ---------------------------------------------------------------------------
+// Headless host services backing the vendored built-in tools. Each mirrors a
+// documented Pi behavior for environments without the full interactive host:
+// ensureTool matches Pi's own offline mode (find on PATH, never download);
+// highlightCode matches Pi's no-language branch (plain lines — the headless
+// theme applies no styling anyway); processImage passes supported formats
+// through un-resized (Pi's resize/convert path runs a WASM codec that has no
+// place in a headless bridge; oversized or exotic images degrade with Pi's
+// own omission message).
+// ---------------------------------------------------------------------------
+
+export function getReadmePath(): string {
+  return join(getPackageDir(), 'README.md')
+}
+
+const MANAGED_HOST_TOOLS = new Set(['rg', 'fd'])
+
+export function getToolPath(tool: string): string | undefined {
+  const pathKey = Object.keys(process.env).find(key => key.toLowerCase() === 'path') ?? 'PATH'
+  for (const dir of (process.env[pathKey] ?? '').split(delimiter)) {
+    if (dir.length === 0) continue
+    const candidate = join(dir, process.platform === 'win32' ? `${tool}.exe` : tool)
+    if (existsSync(candidate)) return candidate
+  }
+  return undefined
+}
+
+export async function ensureTool(tool: string, _silent = false): Promise<string | undefined> {
+  const existing = getToolPath(tool)
+  if (existing !== undefined) return existing
+  // Pi's offline mode semantics: a managed tool that is not on PATH is
+  // reported unavailable instead of downloaded.
+  return MANAGED_HOST_TOOLS.has(tool) ? undefined : undefined
+}
+
+const INLINE_IMAGE_MIME_TYPES = new Set(['image/png', 'image/jpeg', 'image/gif', 'image/webp'])
+
+export async function processImage(
+  bytes: Uint8Array,
+  mimeType: string,
+  _options?: { autoResizeImages?: boolean },
+): Promise<
+  | { ok: true, data: string, mimeType: string, hints: string[] }
+  | { ok: false, message: string }
+> {
+  const base = mimeType.split(';')[0]?.trim().toLowerCase() ?? ''
+  if (!INLINE_IMAGE_MIME_TYPES.has(base)) {
+    return { ok: false, message: '[Image omitted: could not be converted to a supported inline image format.]' }
+  }
+  return {
+    ok: true,
+    data: Buffer.from(bytes).toString('base64'),
+    mimeType: base,
+    hints: ['[Image passed through unresized by pi2dsh.]'],
+  }
+}
+
 
 export function loadSkillsFromDir(..._args: unknown[]): never {
   return unsupportedRuntime('loadSkillsFromDir()')

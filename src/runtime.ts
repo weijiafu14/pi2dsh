@@ -812,7 +812,10 @@ function subscribeInterceptors(ctx: Context, state: RuntimeState): void {
 }
 
 function registerTool(ctx: Context, state: RuntimeState, tool: PiTool): void {
-  if (state.tools.has(tool.name)) throw new Error(`Pi tool ${JSON.stringify(tool.name)} is already registered`)
+  // Pi's runner stores tools in a name-keyed Map (set + refreshTools):
+  // re-registering a name replaces the previous definition. Mirror that —
+  // catalog packages (pi-fabric) re-register wrapped variants at runtime.
+  if (state.tools.has(tool.name)) unregisterTool(state, tool.name)
   const normalized = normalizeToolSchema(tool.parameters)
   for (const warning of normalized.warnings) logger(ctx).warn(`[pi2dsh] tool ${tool.name}: ${warning}`)
   state.tools.set(tool.name, tool)

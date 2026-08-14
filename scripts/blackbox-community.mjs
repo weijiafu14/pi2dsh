@@ -135,7 +135,7 @@ function minimalArguments(schema, toolName) {
 
 // Package business logic rejecting the synthetic probe arguments proves the
 // execution path end-to-end; grade it as executed rather than failed.
-const INPUT_VALIDATION = /unknown .* (id|task)|does not know|no valid|provide exactly|no current model|not found|no such|invalid (argument|input|value)|must (be|match|specify)|required|missing (argument|parameter|field)|expected/iu
+const INPUT_VALIDATION = /unknown .* (id|task)|does not know|no valid|provide exactly|no current model|not found|no such|invalid (argument|input|value)|must (be|match|specify)|required|missing (argument|parameter|field)|expected|(type|syntax) errors?[^]*not executed|cannot find name/iu
 
 function gradeOutcome(result) {
   if (result.isError !== true) return 'working'

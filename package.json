@@ -72,6 +72,7 @@
   "packageManager": "pnpm@11.7.0",
   "dependencies": {
     "cross-spawn": "^7.0.6",
+    "diff": "^9.0.0",
     "get-east-asian-width": "1.6.0",
     "jiti": "^2.7.0",
     "marked": "^16.4.2",
