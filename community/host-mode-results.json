@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-14T03:20:00.000Z",
+  "method": "host bundle (whole package directory kept, no snapshot) generated via `pi2dsh host`, deps installed by pnpm, mounted in a real DSH runtime composition, representative tools executed",
+  "results": [
+    {
+      "name": "pi-hashline-edit-pro",
+      "specifier": "pi-hashline-edit-pro@2.5.2",
+      "mode": "host",
+      "status": "loaded",
+      "tools": ["read", "replace", "undo_last_replace"],
+      "exercised": {
+        "grade": "working",
+        "attempts": [
+          { "kind": "tool", "name": "read", "outcome": "working", "evidence": "returned hash-line formatted file content (its core capability) with isError=false" }
+        ]
+      },
+      "note": "convert-snapshot mode fails for this package (runtime file reads static closure cannot prove); host mode is the supported route"
+    },
+    {
+      "name": "pi-interview",
+      "specifier": "pi-interview@0.11.0",
+      "mode": "host",
+      "status": "loaded",
+      "tools": ["interview"],
+      "exercised": {
+        "grade": "executed-input-validation",
+        "attempts": [
+          { "kind": "tool", "name": "interview", "outcome": "executed-input-validation", "evidence": "package's own explicit headless check ran: 'Interview tool requires interactive mode. Cannot run in headless/RPC/print mode.'" }
+        ]
+      },
+      "note": "same route; the interactive path needs a TUI surface by the package's own design"
+    }
+  ]
+}

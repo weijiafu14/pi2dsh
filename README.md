@@ -54,14 +54,14 @@ Status as of 2026-08-14. Static analysis screens; the black-box run certifies. F
 
 | Tier | Count | Meaning |
 |---|---|---|
-| ✅ **Tested working** | **32 / 50** | Mounted in a real DSH runtime AND real execution verified: 29 returned success, 3 ran their business logic end-to-end and rejected the synthetic probe arguments (4 of the 32 additionally passed deep verification: real LSP subprocess, web search/fetch, PNG generation, official `dsh plugin` add/activate/remove) |
+| ✅ **Tested working** | **34 / 50** | Mounted in a real DSH runtime AND real execution verified: 30 returned success, 4 ran their business logic end-to-end and rejected the synthetic probe arguments (4 of the 32 additionally passed deep verification: real LSP subprocess, web search/fetch, PNG generation, official `dsh plugin` add/activate/remove) |
 | 🟡 **Mounts, not fully verified** | **7 / 50** | Loads and registers its tools/commands/skills in a real DSH runtime; full execution needs user credentials/services (3), is an event-hook package with no callable surface to probe (3), or hit a test-harness limitation (1: strict live-agent identity checks in userQuestions — the same path passes in the deep-verification layer) |
-| ❌ **Not yet supported** | **11 / 50** | Attributed below — all on the roadmap |
-| **Total mountable today** | **39 / 50** | |
+| ❌ **Not yet supported** | **9 / 50** | Attributed below — all on the roadmap |
+| **Total mountable today** | **41 / 50** | |
 
 Additional verified layers: a **host bundle** mounting two unmodified packages passed the official plugin-manager flow end-to-end; a **real model run** (`deepseek-v4-flash`) called a migrated Pi tool with the durable session log asserted and zero credential persistence ([evidence](community/live-deepseek-results.json)).
 
-### The 11 not yet supported, attributed
+### The 9 not yet supported, attributed
 
 *Pi-internal runtime users (4) — need bespoke adapters, next on the roadmap:*
 `@tintinweb/pi-subagents` (calls `createAgentSession`/`createCodingTools` at load), `pi-landstrip` (calls `createBashToolDefinition`, Pi's built-in tool constructors), `pi-provider-litellm` (needs Pi's provider SDK factories; in DSH, model routing belongs to native llm adapters), `pi-fabric` (uses `wrapRegisteredTool` + references build-time-generated worker assets missing from its published tarball).
@@ -69,15 +69,12 @@ Additional verified layers: a **host bundle** mounting two unmodified packages p
 *Package defects visible under any host (5) — will be reported upstream:*
 `pi-lens` (resource manifest escapes the package root), `pi-hermes-memory` + `@mjasnikovs/pi-task` (Bun-only `bun:sqlite`), `pi-harness-runtime` (imports playwright without declaring it), `mitsupi` (imports googleapis/ws without declaring them).
 
-*Convert-snapshot limitation (2) — host mode already covers them:*
-`pi-hashline-edit-pro`, `pi-interview` (read package files at runtime that static closure analysis cannot prove; the host bundle keeps the whole package directory).
-
 ### Roadmap: all 50
 
 1. Lift the 7 "mounts, not fully verified" to tested-working (credentialed fixtures, per-package probe arguments).
 2. Bridge Pi's internal `AgentSession`/tool-constructor surfaces onto DSH natives to unlock the 4 internal-runtime packages.
 3. File upstream issues for the 5 package defects; adopt fixes as they land.
-4. Route the 2 snapshot-limited packages through host mode by default.
+4. ✅ Done: the 2 snapshot-limited packages verified through host mode ([evidence](community/host-mode-results.json)).
 
 ## Quick start
 
