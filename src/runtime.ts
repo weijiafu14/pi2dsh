@@ -17,7 +17,7 @@ import type {
 } from '@deepseek-ai/dsh-tools'
 import type { GeneratedRuntimeManifest } from './types.js'
 import { PiSessionBridge } from './session-bridge.js'
-import { Theme } from './compat/pi-coding-agent.js'
+import { ExtensionRunner, Theme } from './compat/pi-coding-agent.js'
 
 type UnknownRecord = Record<string, unknown>
 type PiHandler = (event: UnknownRecord, context: UnknownRecord) => unknown | Promise<unknown>
@@ -54,6 +54,10 @@ interface PiCommand {
 interface RuntimeState {
   handlers: Map<string, PiHandler[]>
   tools: Map<string, PiTool>
+  // The Pi runner facade tool-catalog packages (pi-fabric) hook by patching
+  // ExtensionRunner.prototype.getAllRegisteredTools; enumeration of Pi tools
+  // goes through it so a patched prototype really filters the catalog.
+  runner: ExtensionRunner
   toolDisposers: Map<string, () => void>
   toolRestrictions: WeakMap<object, () => void>
   pendingActiveTools?: string[]
@@ -1125,13 +1129,25 @@ function createPiApi(ctx: Context, state: RuntimeState): UnknownRecord {
       return executePiCommand(service, cwdOf(currentAgent(state)), command, args, options)
     },
     getActiveTools: () => getActiveTools(ctx, state),
-    getAllTools: () => toolRuntime(ctx, currentAgent(state)).schemas(currentAgent(state)).map(tool => ({
-      name: tool.name,
-      description: tool.description ?? '',
-      parameters: tool.parameters ?? {},
-      source: state.tools.has(tool.name) ? 'extension' : 'builtin',
-      sourceInfo: { path: '', source: state.tools.has(tool.name) ? 'pi2dsh' : 'dsh', scope: 'session', origin: 'runtime' },
-    })),
+    getAllTools: () => {
+      // Enumerate Pi-registered tools through the runner facade: a package
+      // that patched ExtensionRunner.prototype.getAllRegisteredTools
+      // (pi-fabric's catalog capture) filters what this surface reports.
+      const visiblePiTools = new Set(
+        state.runner.getAllRegisteredTools()
+          .map(record => (record.definition as PiTool | undefined)?.name)
+          .filter((name): name is string => typeof name === 'string'),
+      )
+      return toolRuntime(ctx, currentAgent(state)).schemas(currentAgent(state))
+        .filter(tool => !state.tools.has(tool.name) || visiblePiTools.has(tool.name))
+        .map(tool => ({
+          name: tool.name,
+          description: tool.description ?? '',
+          parameters: tool.parameters ?? {},
+          source: state.tools.has(tool.name) ? 'extension' : 'builtin',
+          sourceInfo: { path: '', source: state.tools.has(tool.name) ? 'pi2dsh' : 'dsh', scope: 'session', origin: 'runtime' },
+        }))
+    },
     setActiveTools: (names: string[]) => setActiveTools(ctx, state, names),
     getCommands: () => [...state.commands.values()].map(command => ({
       name: command.name,
@@ -1334,9 +1350,16 @@ async function loadExtensions(
 export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Promise<void> {
   if (options.manifest.schemaVersion !== 1) throw new Error(`unsupported pi2dsh manifest version ${String(options.manifest.schemaVersion)}`)
   const rootDir = fileURLToPath(options.rootUrl)
+  const runtimeTools = new Map<string, PiTool>()
+  const piToolRecords = (): Array<{ definition: unknown, sourceInfo: { path: string, source: string, scope: string, origin: string } }> =>
+    [...runtimeTools.values()].map(tool => ({
+      definition: tool,
+      sourceInfo: { path: '', source: 'pi2dsh', scope: 'session', origin: 'package' },
+    }))
   const state: RuntimeState = {
     handlers: new Map(),
-    tools: new Map(),
+    tools: runtimeTools,
+    runner: new ExtensionRunner(piToolRecords),
     toolDisposers: new Map(),
     toolRestrictions: new WeakMap(),
     commands: new Map(),

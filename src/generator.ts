@@ -205,9 +205,10 @@ function generatedPackageJson(
     ...Object.fromEntries(externalRuntimePackages.sort().map(name => [name, declaredDependencies[name]])),
     // The embedded runtime's own runtime dependencies (vendored Pi width math
     // uses get-east-asian-width; the pi-tui shim re-exports marked; typebox is
-    // the host-provided schema library Pi's loader gives every extension).
+    // the host-provided schema library Pi's loader gives every extension;
+    // vendored Pi bash tooling spawns through cross-spawn exactly as Pi does).
     ...(runtimeSpec === undefined
-      ? { jiti: '^2.7.0', 'get-east-asian-width': '^1.6.0', marked: '^16.4.1', typebox: '^1.0.4' }
+      ? { jiti: '^2.7.0', 'get-east-asian-width': '^1.6.0', marked: '^16.4.1', typebox: '^1.0.4', 'cross-spawn': '^7.0.6' }
       : {}),
     ...(hasSkills ? { '@deepseek-ai/dsh-skill-filesystem': '^0.1.0-rc.6' } : {}),
     ...(runtimeSpec !== undefined ? { pi2dsh: runtimeSpec } : {}),

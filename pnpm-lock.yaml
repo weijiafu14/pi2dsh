@@ -11,6 +11,9 @@ importers:
       '@deepseek-ai/dsh-attachment':
         specifier: ^0.1.0-rc.6
         version: 0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-brand@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-invariants@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1)))(@deepseek-ai/dsh-invariants@0.1.0-rc.6(@deepseek-ai/cordis@4.0.1))
+      cross-spawn:
+        specifier: ^7.0.6
+        version: 7.0.6
       get-east-asian-width:
         specifier: 1.6.0
         version: 1.6.0

@@ -122,6 +122,34 @@ export function getModels(_provider?: string): unknown[] {
   return []
 }
 
+// Provider declaration factory, vendored from Pi (provider packages like
+// pi-provider-litellm build their provider object with it at load time and
+// hand it to pi.registerProvider). Model TRANSPORT stays native to DSH llm:
+// the lazy API factories below return Pi's exact lazy-stream surface, and if
+// a stream is ever actually requested the setup fails through Pi's own error
+// channel (an error event on the stream) instead of pretending to call a model.
+export { createProvider, ModelsError } from './vendor/pi-ai-provider.js'
+export { lazyApi, lazyStream } from './vendor/pi-ai-lazy.js'
+export { AssistantMessageEventStream } from './vendor/pi-ai-event-stream.js'
+
+import { lazyApi as lazyApiForCompat } from './vendor/pi-ai-lazy.js'
+
+function unbridgedTransport(api: string): never {
+  throw new Error(`pi2dsh: the ${api} protocol client is not bridged; model transports stay native to DSH llm/credentials`)
+}
+
+export function openAICompletionsApi(): unknown {
+  return lazyApiForCompat(async () => unbridgedTransport('openai-completions'), undefined)
+}
+
+export function openAIResponsesApi(): unknown {
+  return lazyApiForCompat(async () => unbridgedTransport('openai-responses'), { fetchDeferred: true, cancelDeferred: true })
+}
+
+export function anthropicMessagesApi(): unknown {
+  return lazyApiForCompat(async () => unbridgedTransport('anthropic-messages'), undefined)
+}
+
 export function complete(..._args: unknown[]): never {
   throw new Error('pi2dsh: pi-ai complete() routes model calls through Pi provider SDKs; use DSH llm adapters instead')
 }

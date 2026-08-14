@@ -68,6 +68,15 @@ export {
 export type { TruncationOptions, TruncationResult } from './vendor/pi-truncate.js'
 export { withFileMutationQueue } from './vendor/pi-file-mutation-queue.js'
 export { getAgentDir } from './vendor/pi-config-shim.js'
+// Pi's built-in bash tool, vendored byte-identical (spawn semantics, output
+// accumulation, truncation, kill-tree) — the constructor surface packages like
+// pi-landstrip build their own sandboxed/provider bash variants on.
+export {
+  createBashTool,
+  createBashToolDefinition,
+  createLocalBashOperations,
+  bashToolSystemPromptContribution,
+} from './vendor/pi-tools/bash.js'
 
 import { homedir } from 'node:os'
 import { join, delimiter } from 'node:path'
@@ -638,6 +647,30 @@ export class ModelRegistry {
   }
 }
 
+export interface RegisteredToolRecord {
+  definition: unknown
+  sourceInfo: { path: string, source?: string, scope?: string, origin?: string }
+}
+
+// Pi's runner class, reduced to the surface tool-catalog packages actually
+// hook: pi-fabric patches `prototype.getAllRegisteredTools` to observe and
+// filter every registered tool. The pi2dsh runtime constructs one instance
+// whose provider yields the live Pi tool registrations (original definition
+// object references, so symbol-anchored detection works), and routes its own
+// tool enumeration through it — a patched prototype really filters the
+// catalog, exactly as under Pi.
+export class ExtensionRunner {
+  #provider: () => RegisteredToolRecord[]
+
+  constructor(provider?: () => RegisteredToolRecord[]) {
+    this.#provider = provider ?? (() => [])
+  }
+
+  getAllRegisteredTools(): RegisteredToolRecord[] {
+    return this.#provider()
+  }
+}
+
 export function createAgentSession(..._args: unknown[]): never {
   return unsupportedRuntime('createAgentSession()')
 }
@@ -648,10 +681,6 @@ export function createCodingTools(..._args: unknown[]): never {
 
 export function createReadOnlyTools(..._args: unknown[]): never {
   return unsupportedRuntime('createReadOnlyTools()')
-}
-
-export function createBashTool(..._args: unknown[]): never {
-  return unsupportedRuntime('createBashTool()')
 }
 
 export function createReadTool(..._args: unknown[]): never {
@@ -686,9 +715,7 @@ export function loadSkillsFromDir(..._args: unknown[]): never {
   return unsupportedRuntime('loadSkillsFromDir()')
 }
 
-export function formatSkillsForPrompt(..._args: unknown[]): never {
-  return unsupportedRuntime('formatSkillsForPrompt()')
-}
+export { formatSkillsForPrompt } from './vendor/pi-skills-format.js'
 
 export function createEventBus(): {
   emit(channel: string, data: unknown): void
