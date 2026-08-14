@@ -3,14 +3,14 @@
   "generatedAt": "2026-08-14T01:58:18.219Z",
   "method": "convert + real DSH runtime load (Cordis composition with official service plugins); registration surfaces recorded; failures classified as ABI gaps",
   "counts": {
-    "loaded": 37,
+    "loaded": 38,
     "loadFailed": 6,
-    "fatal": 7
+    "fatal": 6
   },
   "gapHistogram": {
     "explicit-degradation-hit-at-load": 1,
-    "other": 4,
-    "missing-abi-export-or-shape": 1
+    "other": 3,
+    "missing-abi-export-or-shape": 2
   },
   "results": [
     {
@@ -247,7 +247,7 @@
       "downloadsPerMonth": 28300,
       "status": "fatal",
       "stage": "convert",
-      "error": "conversion blocked: 3 fatal finding(s) — the bundle cannot be built or trusted; run inspect for details"
+      "error": "conversion blocked: 3 fatal finding(s) \u2014 the bundle cannot be built or trusted; run inspect for details"
     },
     {
       "rank": 13,
@@ -307,7 +307,7 @@
       "downloadsPerMonth": 23700,
       "status": "fatal",
       "stage": "convert",
-      "error": "conversion blocked: 3 fatal finding(s) — the bundle cannot be built or trusted; run inspect for details"
+      "error": "conversion blocked: 3 fatal finding(s) \u2014 the bundle cannot be built or trusted; run inspect for details"
     },
     {
       "rank": 16,
@@ -315,7 +315,7 @@
       "downloadsPerMonth": 22500,
       "status": "fatal",
       "stage": "convert",
-      "error": "conversion blocked: 1 fatal finding(s) — the bundle cannot be built or trusted; run inspect for details"
+      "error": "conversion blocked: 1 fatal finding(s) \u2014 the bundle cannot be built or trusted; run inspect for details"
     },
     {
       "rank": 17,
@@ -603,9 +603,16 @@
       "rank": 33,
       "name": "@narumitw/pi-btw",
       "downloadsPerMonth": 10600,
-      "status": "fatal",
-      "stage": "convert",
-      "error": "cannot locate pi2dsh runtime artifact; tried: /Users/developer/projj/workspace/pi2dsh/dist/runtime.mjs, /Users/developer/projj/workspace/pi2dsh/dist/runtime.mjs"
+      "status": "loaded",
+      "verdict": "review",
+      "tools": [],
+      "commands": [
+        "btw"
+      ],
+      "skills": [],
+      "degraded": [
+        "host-import(@earendil-works/pi-tui:TuiAltScreen)"
+      ]
     },
     {
       "rank": 34,
@@ -679,8 +686,8 @@
       "downloadsPerMonth": 9789,
       "status": "load-failed",
       "stage": "load",
-      "gap": "other",
-      "error": "every Pi extension entry failed to load:\n- vendor/dist/index.js: object is not iterable (cannot read property Symbol(Symbol.iterator))"
+      "gap": "missing-abi-export-or-shape",
+      "error": "every Pi extension entry failed to load:\n- vendor/dist/index.js: (0 , _compat.openAICompletionsApi) is not a function"
     },
     {
       "rank": 38,
@@ -726,7 +733,7 @@
       "downloadsPerMonth": 8787,
       "status": "fatal",
       "stage": "convert",
-      "error": "conversion blocked: 4 fatal finding(s) — the bundle cannot be built or trusted; run inspect for details"
+      "error": "conversion blocked: 4 fatal finding(s) \u2014 the bundle cannot be built or trusted; run inspect for details"
     },
     {
       "rank": 42,
@@ -878,5 +885,6 @@
       "stage": "convert",
       "error": "runtime dependencies are imported but not declared by the Pi package: googleapis, @google-cloud/local-auth, ws"
     }
-  ]
+  ],
+  "note": "rank 33 and 37 re-verified individually after an in-flight dist rebuild invalidated their first attempt; results merged from that isolated rerun"
 }

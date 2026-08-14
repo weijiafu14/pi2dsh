@@ -104,8 +104,10 @@ export function registerProvider(name: string, provider: unknown): void {
   compatProviders.set(name, provider)
 }
 
-export function getProviders(): Record<string, unknown> {
-  return Object.fromEntries(compatProviders)
+// Pi's compat getProviders() returns provider NAMES (callers iterate and
+// Set() them).
+export function getProviders(): string[] {
+  return [...compatProviders.keys()]
 }
 
 export function getProvider(name: string): unknown {
