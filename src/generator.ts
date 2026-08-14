@@ -208,7 +208,7 @@ function generatedPackageJson(
     // the host-provided schema library Pi's loader gives every extension;
     // vendored Pi bash tooling spawns through cross-spawn exactly as Pi does).
     ...(runtimeSpec === undefined
-      ? { jiti: '^2.7.0', 'get-east-asian-width': '^1.6.0', marked: '^16.4.1', typebox: '^1.0.4', 'cross-spawn': '^7.0.6' }
+      ? { jiti: '^2.7.0', 'get-east-asian-width': '^1.6.0', marked: '^16.4.1', typebox: '^1.0.4', 'cross-spawn': '^7.0.6', diff: '^9.0.0' }
       : {}),
     ...(hasSkills ? { '@deepseek-ai/dsh-skill-filesystem': '^0.1.0-rc.6' } : {}),
     ...(runtimeSpec !== undefined ? { pi2dsh: runtimeSpec } : {}),

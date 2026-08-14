@@ -17,7 +17,8 @@ import type {
 } from '@deepseek-ai/dsh-tools'
 import type { GeneratedRuntimeManifest } from './types.js'
 import { PiSessionBridge } from './session-bridge.js'
-import { ExtensionRunner, Theme } from './compat/pi-coding-agent.js'
+import { ExtensionRunner, Theme, __setSubagentSessionFactory } from './compat/pi-coding-agent.js'
+import { createBridgedAgentSession } from './subagent-bridge.js'
 
 type UnknownRecord = Record<string, unknown>
 type PiHandler = (event: UnknownRecord, context: UnknownRecord) => unknown | Promise<unknown>
@@ -1405,6 +1406,21 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
       })
     }
   }
+  // createAgentSession builds a real DSH child agent through ctx.agents; the
+  // factory lives for exactly the runtime's lifetime.
+  __setSubagentSessionFactory(subagentOptions => createBridgedAgentSession({
+    cordis: ctx,
+    cwd: () => cwdOf(currentAgent(state)),
+    parentSessionId: () => {
+      const session = agentSession(currentAgent(state))
+      return session === undefined ? undefined : String(session.id ?? '') || undefined
+    },
+    piContentToDsh: content => piToDshContent(ctx, content),
+    deliver: (agent, message, mode) => deliverAgentMessage(agent as DshAgent, message, mode),
+    messageFromSessionEvent,
+    messageSource: state.messageSource,
+  }, subagentOptions))
+  ctx.effect(() => () => __setSubagentSessionFactory(undefined))
   await registerPromptCommands(ctx, state, rootDir, options.manifest)
   await loadExtensions(rootDir, options.manifest, createPiApi(ctx, state),
     failure => logger(ctx).warn(`[pi2dsh] extension entry failed and was skipped (matching Pi's per-extension error isolation): ${failure}`))

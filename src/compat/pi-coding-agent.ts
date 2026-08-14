@@ -88,6 +88,13 @@ export { createLsTool, createLsToolDefinition } from './vendor/pi-tools/ls.js'
 import { homedir } from 'node:os'
 import { join, delimiter } from 'node:path'
 import { existsSync, readFileSync } from 'node:fs'
+import { createBashTool } from './vendor/pi-tools/bash.js'
+import { createReadTool } from './vendor/pi-tools/read.js'
+import { createEditTool } from './vendor/pi-tools/edit.js'
+import { createWriteTool } from './vendor/pi-tools/write.js'
+import { createGrepTool } from './vendor/pi-tools/grep.js'
+import { createFindTool } from './vendor/pi-tools/find.js'
+import { createLsTool } from './vendor/pi-tools/ls.js'
 import { execFile } from 'node:child_process'
 import type { AgentMessage } from './vendor/pi-types.js'
 import type { Component, SettingsListTheme, SelectListTheme } from './pi-tui.js'
@@ -637,7 +644,64 @@ function runtimeStubClass(name: string): new (...args: unknown[]) => never {
 }
 
 export const ProjectTrustStore = runtimeStubClass('ProjectTrustStore')
-export const DefaultResourceLoader = runtimeStubClass('DefaultResourceLoader')
+
+// Pi's resource loader, headless: subagent packages construct one to control
+// a child session's resources (extensions/skills off, a system-prompt
+// override on). In the pi2dsh host the child shares the DSH composition's
+// registrations, so the loader carries the overrides and empty resource sets
+// — the exact result Pi produces under noExtensions/noSkills/noThemes.
+export class DefaultResourceLoader {
+  readonly #options: SettingsRecord
+
+  constructor(options: SettingsRecord = {}) {
+    this.#options = options
+  }
+
+  getExtensions(): { extensions: unknown[], errors: unknown[] } {
+    const base = { extensions: [], errors: [] }
+    const override = this.#options.extensionsOverride
+    return typeof override === 'function' ? (override as (b: unknown) => never)(base) : base
+  }
+
+  getSkills(): { skills: unknown[], diagnostics: unknown[] } {
+    return { skills: [], diagnostics: [] }
+  }
+
+  getPrompts(): { prompts: unknown[], diagnostics: unknown[] } {
+    return { prompts: [], diagnostics: [] }
+  }
+
+  getThemes(): { themes: unknown[], diagnostics: unknown[] } {
+    return { themes: [], diagnostics: [] }
+  }
+
+  getAgentsFiles(): { files: unknown[], diagnostics: unknown[] } {
+    return { files: [], diagnostics: [] }
+  }
+
+  getSystemPrompt(): string | undefined {
+    const override = this.#options.systemPromptOverride
+    return typeof override === 'function' ? (override as (b: undefined) => string | undefined)(undefined) : undefined
+  }
+
+  getSystemPromptSource(): { kind: string } {
+    return { kind: 'default' }
+  }
+
+  getAppendSystemPrompt(): string[] {
+    const override = this.#options.appendSystemPromptOverride
+    return typeof override === 'function' ? (override as (b: string[]) => string[])([]) : []
+  }
+
+  getAppendSystemPromptSources(): unknown[] {
+    return []
+  }
+
+  extendResources(_paths: unknown): void {}
+
+  async reload(_options?: unknown): Promise<void> {}
+}
+
 export const DefaultPackageManager = runtimeStubClass('DefaultPackageManager')
 export const ModelRuntime = runtimeStubClass('ModelRuntime')
 
@@ -678,16 +742,43 @@ export class ExtensionRunner {
   }
 }
 
-export function createAgentSession(..._args: unknown[]): never {
-  return unsupportedRuntime('createAgentSession()')
+// The mounted pi2dsh runtime installs the real factory: createAgentSession
+// builds a genuine DSH child agent through ctx.agents (the host loop's
+// factory) with Pi's public AgentSession surface bridged over it. Outside a
+// mounted runtime the call keeps its explicit failure.
+type SubagentSessionFactory = (options: Record<string, unknown>) => Promise<{ session: unknown }>
+let subagentSessionFactory: SubagentSessionFactory | undefined
+
+export function __setSubagentSessionFactory(factory: SubagentSessionFactory | undefined): void {
+  subagentSessionFactory = factory
 }
 
-export function createCodingTools(..._args: unknown[]): never {
-  return unsupportedRuntime('createCodingTools()')
+export async function createAgentSession(options: Record<string, unknown> = {}): Promise<{ session: unknown }> {
+  if (subagentSessionFactory === undefined) {
+    return unsupportedRuntime('createAgentSession() outside a mounted pi2dsh runtime')
+  }
+  return subagentSessionFactory(options)
 }
 
-export function createReadOnlyTools(..._args: unknown[]): never {
-  return unsupportedRuntime('createReadOnlyTools()')
+// Byte-identical to Pi's own composition of its built-in tool constructors
+// (core/tools/index.js): coding = read+bash+edit+write, read-only =
+// read+grep+find+ls.
+export function createCodingTools(cwd: string, options?: Record<string, { [key: string]: unknown } | undefined>): unknown[] {
+  return [
+    createReadTool(cwd, options?.read),
+    createBashTool(cwd, options?.bash),
+    createEditTool(cwd, options?.edit),
+    createWriteTool(cwd, options?.write),
+  ]
+}
+
+export function createReadOnlyTools(cwd: string, options?: Record<string, { [key: string]: unknown } | undefined>): unknown[] {
+  return [
+    createReadTool(cwd, options?.read),
+    createGrepTool(cwd, options?.grep),
+    createFindTool(cwd, options?.find),
+    createLsTool(cwd, options?.ls),
+  ]
 }
 
 export function loadSkills(..._args: unknown[]): never {

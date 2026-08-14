@@ -33,9 +33,15 @@ describe('ABI contract: matrix rules match real shim exports', () => {
     })
   }
 
-  it('explicit-failure stubs really fail with the documented message', () => {
-    expect(() => (piCodingAgent as unknown as Record<string, () => unknown>).createAgentSession!()).toThrowError(/native DSH port|DSH mapping|DSH-native/u)
-    expect(() => new (piCodingAgent as unknown as { DefaultResourceLoader: new () => unknown }).DefaultResourceLoader()).toThrowError()
+  it('explicit-failure stubs really fail with the documented message', async () => {
+    // createAgentSession is async: outside a mounted pi2dsh runtime (which
+    // installs the real DSH-agent-backed factory) it rejects explicitly.
+    await expect((piCodingAgent as unknown as Record<string, () => Promise<unknown>>).createAgentSession!())
+      .rejects.toThrowError(/native DSH port|DSH mapping|DSH-native|mounted pi2dsh runtime/u)
+    // DefaultResourceLoader graduated to a real headless class; the stub
+    // mechanism itself is still contract-tested through DefaultPackageManager.
+    expect(() => new (piCodingAgent as unknown as { DefaultPackageManager: new () => unknown }).DefaultPackageManager()).toThrowError()
+    expect(new (piCodingAgent as unknown as { DefaultResourceLoader: new () => { getSkills(): { skills: unknown[] } } }).DefaultResourceLoader().getSkills().skills).toEqual([])
   })
 
   it('vendored width math matches Pi observable behavior', () => {
