@@ -137,10 +137,20 @@ function extensionContextReceivers(source: ts.SourceFile): Set<string> {
   return receivers
 }
 
-const PI_HOST_PACKAGES = new Set<string>([
+// The three Pi packages whose named exports the shim audit tracks.
+const PI_SHIMMED_PACKAGES = new Set<string>([
   ...PI_CODING_AGENT_PACKAGES,
   ...PI_TUI_PACKAGES,
   ...PI_AI_PACKAGES,
+])
+
+// Everything Pi's loader provides to extensions without a declaration —
+// exempt from the undeclared-runtime-dependency fatal, and (for typebox) not
+// subject to per-symbol shim auditing.
+const PI_HOST_PACKAGES = new Set<string>([
+  ...PI_SHIMMED_PACKAGES,
+  'typebox',
+  '@sinclair/typebox',
 ])
 
 function dependencyNames(packageJson: Record<string, unknown>): Set<string> {
@@ -202,7 +212,7 @@ async function analyzeExtension(rootDir: string, file: string): Promise<Compatib
 
   for (const statement of source.statements) {
     if (ts.isImportDeclaration(statement) && ts.isStringLiteral(statement.moduleSpecifier)
-      && PI_HOST_PACKAGES.has(statement.moduleSpecifier.text)) {
+      && PI_SHIMMED_PACKAGES.has(statement.moduleSpecifier.text)) {
       const packageName = statement.moduleSpecifier.text
       const clause = statement.importClause
       if (clause === undefined) {

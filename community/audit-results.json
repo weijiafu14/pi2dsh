@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-14T01:26:24.861Z",
+  "generatedAt": "2026-08-14T01:51:37.776Z",
   "corpus": {
     "source": "https://pi.dev/packages?type=extension",
     "capturedAt": "2026-08-14",
@@ -9,8 +9,8 @@
   },
   "counts": {
     "ready": 0,
-    "review": 40,
-    "blocked": 10,
+    "review": 45,
+    "blocked": 5,
     "error": 0
   },
   "results": [
@@ -46,7 +46,8 @@
         "host-import(@earendil-works/pi-tui:Text)",
         "exec"
       ],
-      "blockers": [
+      "blockers": [],
+      "degraded": [
         "ctx.reload"
       ]
     },
@@ -84,7 +85,8 @@
         "host-import(@earendil-works/pi-coding-agent:CustomEditor)",
         "registerProvider"
       ],
-      "blockers": [
+      "blockers": [],
+      "degraded": [
         "host-import(@earendil-works/pi-coding-agent:DefaultResourceLoader)",
         "host-import(@earendil-works/pi-coding-agent:createAgentSession)",
         "host-import(@earendil-works/pi-ai:calculateCost)",
@@ -125,7 +127,8 @@
         "registerCommand",
         "ctx.sessionManager"
       ],
-      "blockers": []
+      "blockers": [],
+      "degraded": []
     },
     {
       "rank": 4,
@@ -157,7 +160,8 @@
         "host-import(@earendil-works/pi-tui:Spacer)",
         "host-import(@earendil-works/pi-tui:Text)"
       ],
-      "blockers": []
+      "blockers": [],
+      "degraded": []
     },
     {
       "rank": 5,
@@ -182,7 +186,8 @@
         "registerCommand",
         "host-import(@earendil-works/pi-tui:Text)"
       ],
-      "blockers": []
+      "blockers": [],
+      "degraded": []
     },
     {
       "rank": 6,
@@ -193,12 +198,14 @@
       "summary": {
         "full": 0,
         "partial": 0,
-        "unsupported": 1
+        "unsupported": 0,
+        "fatal": 1
       },
       "partialCapabilities": [],
       "blockers": [
         "invalid-resource-manifest"
       ],
+      "degraded": [],
       "error": "resource pattern must stay inside the Pi package: \"../../skills\""
     },
     {
@@ -239,7 +246,8 @@
         "host-import(@earendil-works/pi-tui:Input)",
         "host-import(@earendil-works/pi-tui:Editor)"
       ],
-      "blockers": [
+      "blockers": [],
+      "degraded": [
         "host-import(@earendil-works/pi-coding-agent:createAgentSession)",
         "host-import(@earendil-works/pi-coding-agent:DefaultResourceLoader)",
         "host-import(@earendil-works/pi-coding-agent:createCodingTools)",
@@ -272,7 +280,8 @@
         "registerCommand",
         "appendEntry"
       ],
-      "blockers": []
+      "blockers": [],
+      "degraded": []
     },
     {
       "rank": 9,
@@ -293,7 +302,8 @@
         "exec",
         "registerCommand"
       ],
-      "blockers": []
+      "blockers": [],
+      "degraded": []
     },
     {
       "rank": 10,
@@ -330,7 +340,8 @@
         "setActiveTools",
         "registerTool"
       ],
-      "blockers": [
+      "blockers": [],
+      "degraded": [
         "on(context)"
       ]
     },
@@ -379,7 +390,8 @@
         "ctx.ui.setStatus",
         "ctx.ui.setWidget"
       ],
-      "blockers": [
+      "blockers": [],
+      "degraded": [
         "trim"
       ]
     },
@@ -393,9 +405,9 @@
       "status": "audited",
       "verdict": "blocked",
       "summary": {
-        "full": 152,
+        "full": 153,
         "partial": 94,
-        "unsupported": 55,
+        "unsupported": 54,
         "fatal": 3
       },
       "partialCapabilities": [
@@ -436,8 +448,12 @@
         "getActiveTools"
       ],
       "blockers": [
+        "asset(./host.js)",
+        "asset(./index.js)",
+        "asset(./worker.js)"
+      ],
+      "degraded": [
         "host-import(@earendil-works/pi-coding-agent:wrapRegisteredTool)",
-        "host-import(@earendil-works/pi-coding-agent:parseSkillBlock)",
         "host-import(@earendil-works/pi-coding-agent:createBashToolDefinition)",
         "host-import(@earendil-works/pi-coding-agent:createEditToolDefinition)",
         "host-import(@earendil-works/pi-coding-agent:createFindToolDefinition)",
@@ -468,12 +484,12 @@
       "version": "25.1.0",
       "repository": "git+https://github.com/gotgenes/pi-packages.git",
       "status": "audited",
-      "verdict": "blocked",
+      "verdict": "review",
       "summary": {
         "full": 25,
         "partial": 18,
         "unsupported": 1,
-        "fatal": 32
+        "fatal": 0
       },
       "partialCapabilities": [
         "ctx.mode",
@@ -492,7 +508,8 @@
         "on(input)",
         "on(tool_call)"
       ],
-      "blockers": [
+      "blockers": [],
+      "degraded": [
         "on(resources_discover)"
       ]
     },
@@ -537,7 +554,8 @@
         "ctx.ui.editor",
         "ctx.waitForIdle"
       ],
-      "blockers": [
+      "blockers": [],
+      "degraded": [
         "on(before_provider_request)"
       ]
     },
@@ -554,7 +572,7 @@
         "full": 46,
         "partial": 32,
         "unsupported": 1,
-        "fatal": 7
+        "fatal": 3
       },
       "partialCapabilities": [
         "registerCommand",
@@ -572,6 +590,9 @@
         "host-import(@earendil-works/pi-tui:Text)"
       ],
       "blockers": [
+        "undeclared-runtime-dependency(bun:sqlite)"
+      ],
+      "degraded": [
         "on(resources_discover)"
       ]
     },
@@ -613,6 +634,9 @@
         "on(tool_call)"
       ],
       "blockers": [
+        "undeclared-runtime-dependency(bun:sqlite)"
+      ],
+      "degraded": [
         "host-import(@earendil-works/pi-coding-agent:DefaultPackageManager)",
         "ctx.newSession",
         "ctx.compact",
@@ -665,7 +689,8 @@
         "ctx.ui.editor",
         "host-import(@earendil-works/pi-coding-agent:getAgentDir)"
       ],
-      "blockers": [
+      "blockers": [],
+      "degraded": [
         "ctx.newSession",
         "on(context)"
       ]
@@ -721,7 +746,8 @@
         "ctx.ui.onTerminalInput",
         "ctx.ui.getEditorComponent"
       ],
-      "blockers": [
+      "blockers": [],
+      "degraded": [
         "ctx.switchSession",
         "ctx.settingsManager",
         "ctx.compact",
@@ -750,7 +776,8 @@
         "ctx.ui.pasteToEditor",
         "host-import(@earendil-works/pi-tui:Container)"
       ],
-      "blockers": []
+      "blockers": [],
+      "degraded": []
     },
     {
       "rank": 20,
@@ -815,7 +842,8 @@
         "sendMessage",
         "ctx.ui.onTerminalInput"
       ],
-      "blockers": [
+      "blockers": [],
+      "degraded": [
         "on(before_provider_request)",
         "on(context)",
         "host-import(@earendil-works/pi-ai:createAssistantMessageEventStream)",
@@ -847,7 +875,8 @@
         "registerCommand",
         "ctx.ui.setStatus"
       ],
-      "blockers": []
+      "blockers": [],
+      "degraded": []
     },
     {
       "rank": 22,
@@ -875,7 +904,8 @@
         "getActiveTools",
         "setActiveTools"
       ],
-      "blockers": [
+      "blockers": [],
+      "degraded": [
         "host-import(@earendil-works/pi-coding-agent:createGrepTool)"
       ]
     },
@@ -903,7 +933,8 @@
         "host-import(@earendil-works/pi-tui:Markdown)",
         "host-import(@earendil-works/pi-tui:Text)"
       ],
-      "blockers": [
+      "blockers": [],
+      "degraded": [
         "host-import(@earendil-works/pi-coding-agent:createReadTool)"
       ]
     },
@@ -940,7 +971,8 @@
         "ctx.isIdle",
         "ctx.hasPendingMessages"
       ],
-      "blockers": [
+      "blockers": [],
+      "degraded": [
         "ctx.compact"
       ]
     },
@@ -969,7 +1001,8 @@
         "on(tool_call)",
         "on(tool_result)"
       ],
-      "blockers": []
+      "blockers": [],
+      "degraded": []
     },
     {
       "rank": 26,
@@ -1020,7 +1053,8 @@
         "ctx.ui.setWorkingMessage",
         "registerTool"
       ],
-      "blockers": [
+      "blockers": [],
+      "degraded": [
         "ctx.navigateTree"
       ]
     },
@@ -1075,7 +1109,8 @@
         "on(user_bash)",
         "getFlag"
       ],
-      "blockers": [
+      "blockers": [],
+      "degraded": [
         "host-import(@earendil-works/pi-coding-agent:createBashToolDefinition)"
       ]
     },
@@ -1104,7 +1139,8 @@
         "on(tool_call)",
         "on(tool_result)"
       ],
-      "blockers": [
+      "blockers": [],
+      "degraded": [
         "host-import(@earendil-works/pi-coding-agent:isToolCallEventType)"
       ]
     },
@@ -1162,7 +1198,8 @@
         "registerTool",
         "host-import(@earendil-works/pi-tui:Container)"
       ],
-      "blockers": [
+      "blockers": [],
+      "degraded": [
         "on(<dynamic>)",
         "on(resources_discover)",
         "ctx.newSession",
@@ -1212,7 +1249,8 @@
         "on(agent_end)",
         "on(turn_end)"
       ],
-      "blockers": []
+      "blockers": [],
+      "degraded": []
     },
     {
       "rank": 31,
@@ -1252,7 +1290,8 @@
         "on(session_compact)",
         "registerCommand"
       ],
-      "blockers": [
+      "blockers": [],
+      "degraded": [
         "host-import(@earendil-works/pi-coding-agent:findCutPoint)",
         "ctx.compact",
         "ctx.switchSession"
@@ -1266,19 +1305,20 @@
       "version": "1.0.20",
       "repository": "git+https://github.com/bxff/pi-deepseek-search.git",
       "status": "audited",
-      "verdict": "blocked",
+      "verdict": "review",
       "summary": {
         "full": 1,
         "partial": 3,
         "unsupported": 0,
-        "fatal": 1
+        "fatal": 0
       },
       "partialCapabilities": [
         "host-import(@earendil-works/pi-tui:Text)",
         "ctx.modelRegistry",
         "registerTool"
       ],
-      "blockers": []
+      "blockers": [],
+      "degraded": []
     },
     {
       "rank": 33,
@@ -1314,7 +1354,8 @@
         "host-import(@earendil-works/pi-tui:Loader)",
         "host-import(@earendil-works/pi-tui:Markdown)"
       ],
-      "blockers": [
+      "blockers": [],
+      "degraded": [
         "host-import(@earendil-works/pi-tui:TuiAltScreen)"
       ]
     },
@@ -1344,7 +1385,8 @@
         "ctx.ui.onTerminalInput",
         "ctx.ui.custom"
       ],
-      "blockers": []
+      "blockers": [],
+      "degraded": []
     },
     {
       "rank": 35,
@@ -1366,7 +1408,8 @@
         "registerTool",
         "registerCommand"
       ],
-      "blockers": []
+      "blockers": [],
+      "degraded": []
     },
     {
       "rank": 36,
@@ -1417,7 +1460,8 @@
         "on(session_before_compact)",
         "ctx.modelRegistry"
       ],
-      "blockers": [
+      "blockers": [],
+      "degraded": [
         "host-import(@earendil-works/pi-coding-agent:createBashToolDefinition)",
         "host-import(@earendil-works/pi-coding-agent:createEditToolDefinition)",
         "host-import(@earendil-works/pi-coding-agent:createFindToolDefinition)",
@@ -1452,7 +1496,8 @@
         "registerProvider",
         "on(before_agent_start)"
       ],
-      "blockers": [
+      "blockers": [],
+      "degraded": [
         "on(after_provider_response)",
         "on(before_provider_request)",
         "host-import(@earendil-works/pi-ai:createProvider)"
@@ -1506,7 +1551,8 @@
         "host-import(@earendil-works/pi-tui:Markdown)",
         "host-import(@earendil-works/pi-coding-agent:UserMessageComponent)"
       ],
-      "blockers": [
+      "blockers": [],
+      "degraded": [
         "host-import(@earendil-works/pi-coding-agent:ModelSelectorComponent)",
         "ctx.bold"
       ]
@@ -1534,7 +1580,8 @@
         "ctx.modelRegistry",
         "ctx.model"
       ],
-      "blockers": []
+      "blockers": [],
+      "degraded": []
     },
     {
       "rank": 40,
@@ -1552,7 +1599,8 @@
         "fatal": 0
       },
       "partialCapabilities": [],
-      "blockers": [
+      "blockers": [],
+      "degraded": [
         "static-audit"
       ]
     },
@@ -1587,6 +1635,9 @@
         "on(input)"
       ],
       "blockers": [
+        "undeclared-runtime-dependency(playwright)"
+      ],
+      "degraded": [
         "ctx.compact",
         "on(error)",
         "on(message)"
@@ -1599,17 +1650,18 @@
       "specifier": "@ollama/pi-web-search@0.0.5",
       "version": "0.0.5",
       "status": "audited",
-      "verdict": "blocked",
+      "verdict": "review",
       "summary": {
         "full": 0,
         "partial": 2,
         "unsupported": 0,
-        "fatal": 1
+        "fatal": 0
       },
       "partialCapabilities": [
         "registerTool"
       ],
-      "blockers": []
+      "blockers": [],
+      "degraded": []
     },
     {
       "rank": 43,
@@ -1635,7 +1687,8 @@
         "on(model_select)",
         "ctx.model"
       ],
-      "blockers": []
+      "blockers": [],
+      "degraded": []
     },
     {
       "rank": 44,
@@ -1658,7 +1711,8 @@
         "getActiveTools",
         "setActiveTools"
       ],
-      "blockers": []
+      "blockers": [],
+      "degraded": []
     },
     {
       "rank": 45,
@@ -1668,12 +1722,12 @@
       "version": "19.3.2",
       "repository": "git+https://github.com/gotgenes/pi-packages.git",
       "status": "audited",
-      "verdict": "blocked",
+      "verdict": "review",
       "summary": {
-        "full": 11,
-        "partial": 13,
-        "unsupported": 2,
-        "fatal": 1
+        "full": 23,
+        "partial": 22,
+        "unsupported": 6,
+        "fatal": 0
       },
       "partialCapabilities": [
         "host-import(@earendil-works/pi-coding-agent:getAgentDir)",
@@ -1685,11 +1739,23 @@
         "exec",
         "on(session_before_switch)",
         "registerTool",
-        "registerCommand"
+        "registerCommand",
+        "host-import(@earendil-works/pi-tui:Text)",
+        "host-import(@earendil-works/pi-coding-agent:getMarkdownTheme)",
+        "host-import(@earendil-works/pi-coding-agent:AssistantMessageComponent)",
+        "host-import(@earendil-works/pi-coding-agent:ToolExecutionComponent)",
+        "host-import(@earendil-works/pi-coding-agent:UserMessageComponent)",
+        "host-import(@earendil-works/pi-tui:Container)",
+        "host-import(@earendil-works/pi-tui:Spacer)"
       ],
-      "blockers": [
+      "blockers": [],
+      "degraded": [
         "host-import(@earendil-works/pi-coding-agent:createAgentSession)",
-        "host-import(@earendil-works/pi-coding-agent:DefaultResourceLoader)"
+        "host-import(@earendil-works/pi-coding-agent:DefaultResourceLoader)",
+        "host-import(@earendil-works/pi-coding-agent:BashExecutionComponent)",
+        "host-import(@earendil-works/pi-coding-agent:BranchSummaryMessageComponent)",
+        "host-import(@earendil-works/pi-coding-agent:CompactionSummaryMessageComponent)",
+        "host-import(@earendil-works/pi-coding-agent:SkillInvocationMessageComponent)"
       ]
     },
     {
@@ -1725,7 +1791,8 @@
         "registerShortcut",
         "registerCommand"
       ],
-      "blockers": [
+      "blockers": [],
+      "degraded": [
         "host-import(@earendil-works/pi-coding-agent:createAgentSession)",
         "host-import(@earendil-works/pi-coding-agent:createExtensionRuntime)",
         "ctx.fg",
@@ -1754,7 +1821,8 @@
         "registerTool",
         "registerCommand"
       ],
-      "blockers": []
+      "blockers": [],
+      "degraded": []
     },
     {
       "rank": 48,
@@ -1767,8 +1835,8 @@
       "verdict": "review",
       "summary": {
         "full": 19,
-        "partial": 13,
-        "unsupported": 5,
+        "partial": 14,
+        "unsupported": 4,
         "fatal": 0
       },
       "partialCapabilities": [
@@ -1781,14 +1849,15 @@
         "ctx.ui.setStatus",
         "registerProvider",
         "host-import(@earendil-works/pi-coding-agent:getAgentDir)",
+        "host-import(@earendil-works/pi-coding-agent:readStoredCredential)",
         "host-import(@earendil-works/pi-coding-agent:SettingsManager)"
       ],
-      "blockers": [
+      "blockers": [],
+      "degraded": [
         "on(before_provider_request)",
         "host-import(@earendil-works/pi-tui:AutocompleteItem)",
         "host-import(@earendil-works/pi-ai:ApiKeyCredential)",
-        "host-import(@earendil-works/pi-ai:ModelThinkingLevel)",
-        "host-import(@earendil-works/pi-coding-agent:readStoredCredential)"
+        "host-import(@earendil-works/pi-ai:ModelThinkingLevel)"
       ]
     },
     {
@@ -1825,7 +1894,8 @@
         "ctx.model",
         "registerTool"
       ],
-      "blockers": []
+      "blockers": [],
+      "degraded": []
     },
     {
       "rank": 50,
@@ -1835,12 +1905,12 @@
       "version": "1.6.0",
       "repository": "https://github.com/mitsuhiko/agent-stuff.git",
       "status": "audited",
-      "verdict": "blocked",
+      "verdict": "review",
       "summary": {
         "full": 286,
         "partial": 277,
         "unsupported": 32,
-        "fatal": 4
+        "fatal": 0
       },
       "partialCapabilities": [
         "host-import(@mariozechner/pi-coding-agent:BorderedLoader)",
@@ -1897,7 +1967,8 @@
         "host-import(@mariozechner/pi-coding-agent:copyToClipboard)",
         "host-import(@mariozechner/pi-coding-agent:keyHint)"
       ],
-      "blockers": [
+      "blockers": [],
+      "degraded": [
         "host-import(@mariozechner/pi-ai:complete)",
         "host-import(@mariozechner/pi-coding-agent:codingTools)",
         "host-import(@mariozechner/pi-coding-agent:createAgentSession)",

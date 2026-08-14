@@ -95,6 +95,39 @@ export function contentText(content: string | readonly TextishContent[], separat
     .join(separator)
 }
 
+// Legacy pi-ai/compat global-registry API. The registry is bridge-local:
+// providers registered here are visible to the same package but never route
+// real model calls (DSH llm adapters own those).
+const compatProviders = new Map<string, unknown>()
+
+export function registerProvider(name: string, provider: unknown): void {
+  compatProviders.set(name, provider)
+}
+
+export function getProviders(): Record<string, unknown> {
+  return Object.fromEntries(compatProviders)
+}
+
+export function getProvider(name: string): unknown {
+  return compatProviders.get(name)
+}
+
+export function getModel(_provider: string, _id: string): undefined {
+  return undefined
+}
+
+export function getModels(_provider?: string): unknown[] {
+  return []
+}
+
+export function complete(..._args: unknown[]): never {
+  throw new Error('pi2dsh: pi-ai complete() routes model calls through Pi provider SDKs; use DSH llm adapters instead')
+}
+
+export function stream(..._args: unknown[]): never {
+  throw new Error('pi2dsh: pi-ai stream() routes model calls through Pi provider SDKs; use DSH llm adapters instead')
+}
+
 export interface StringEnumOptions<T extends readonly string[]> {
   description?: string
   default?: T[number]

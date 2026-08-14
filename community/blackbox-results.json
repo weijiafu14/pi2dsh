@@ -1,0 +1,630 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-14T01:53:16.544Z",
+  "method": "convert + real DSH runtime load (Cordis composition with official service plugins); registration surfaces recorded; failures classified as ABI gaps",
+  "counts": {
+    "loaded": 16,
+    "loadFailed": 28,
+    "fatal": 6
+  },
+  "gapHistogram": {
+    "missing-runtime-module": 27,
+    "other": 1
+  },
+  "results": [
+    {
+      "rank": 1,
+      "name": "pi-mcp-adapter",
+      "downloadsPerMonth": 354400,
+      "status": "load-failed",
+      "stage": "load",
+      "gap": "missing-runtime-module",
+      "error": "every Pi extension entry failed to load:\n- vendor/index.ts: Cannot find module 'typebox'\nRequire stack:\n- /private/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-qs1cq5/bundles/1-pi-mcp-adapter/vendor/index.ts"
+    },
+    {
+      "rank": 2,
+      "name": "@vigolium/piolium",
+      "downloadsPerMonth": 231200,
+      "status": "loaded",
+      "verdict": "review",
+      "tools": [],
+      "commands": [
+        "piolium-balanced",
+        "piolium-confirm",
+        "piolium-deep",
+        "piolium-diff",
+        "piolium-export",
+        "piolium-help",
+        "piolium-knowledge-base",
+        "piolium-learn",
+        "piolium-lite",
+        "piolium-longshot",
+        "piolium-merge",
+        "piolium-reinvest",
+        "piolium-resume",
+        "piolium-revisit",
+        "piolium-smoke",
+        "piolium-status"
+      ],
+      "skills": [
+        "agentic-actions-auditor",
+        "audit",
+        "code-reviewer",
+        "codeql",
+        "differential-review",
+        "fp-check",
+        "insecure-defaults",
+        "last30days",
+        "sarif-parsing",
+        "security-threat-model",
+        "semgrep",
+        "semgrep-rule-creator",
+        "semgrep-rule-variant-creator",
+        "sharp-edges",
+        "spec-to-code-compliance",
+        "supply-chain-risk-auditor",
+        "variant-analysis",
+        "vuln-report",
+        "wooyun-legacy",
+        "zeroize-audit"
+      ],
+      "degraded": [
+        "host-import(@earendil-works/pi-coding-agent:DefaultResourceLoader)",
+        "host-import(@earendil-works/pi-coding-agent:createAgentSession)",
+        "host-import(@earendil-works/pi-ai:calculateCost)",
+        "host-import(@earendil-works/pi-ai:createAssistantMessageEventStream)",
+        "theme"
+      ]
+    },
+    {
+      "rank": 3,
+      "name": "pi-web-access",
+      "downloadsPerMonth": 222000,
+      "status": "load-failed",
+      "stage": "load",
+      "gap": "missing-runtime-module",
+      "error": "every Pi extension entry failed to load:\n- vendor/index.ts: Cannot find module 'typebox'\nRequire stack:\n- /private/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-qs1cq5/bundles/3-pi-web-access/vendor/index.ts"
+    },
+    {
+      "rank": 4,
+      "name": "@juicesharp/rpiv-ask-user-question",
+      "downloadsPerMonth": 51600,
+      "status": "load-failed",
+      "stage": "load",
+      "gap": "missing-runtime-module",
+      "error": "every Pi extension entry failed to load:\n- vendor/index.ts: Cannot find module 'typebox'\nRequire stack:\n- /private/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-qs1cq5/bundles/4-_juicesharp_rpiv-ask-user-question/vendor/tool/types.ts"
+    },
+    {
+      "rank": 5,
+      "name": "@juicesharp/rpiv-todo",
+      "downloadsPerMonth": 43100,
+      "status": "load-failed",
+      "stage": "load",
+      "gap": "missing-runtime-module",
+      "error": "every Pi extension entry failed to load:\n- vendor/index.ts: Cannot find module 'typebox'\nRequire stack:\n- /private/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-qs1cq5/bundles/5-_juicesharp_rpiv-todo/vendor/tool/types.ts"
+    },
+    {
+      "rank": 6,
+      "name": "pi-lens",
+      "downloadsPerMonth": 40900,
+      "status": "fatal",
+      "stage": "resolve",
+      "error": "resource pattern must stay inside the Pi package: \"../../skills\""
+    },
+    {
+      "rank": 7,
+      "name": "@tintinweb/pi-subagents",
+      "downloadsPerMonth": 40700,
+      "status": "load-failed",
+      "stage": "load",
+      "gap": "missing-runtime-module",
+      "error": "every Pi extension entry failed to load:\n- vendor/src/index.ts: Cannot find module '@sinclair/typebox'\nRequire stack:\n- /private/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-qs1cq5/bundles/7-_tintinweb_pi-subagents/vendor/src/index.ts"
+    },
+    {
+      "rank": 8,
+      "name": "@ff-labs/pi-fff",
+      "downloadsPerMonth": 31100,
+      "status": "load-failed",
+      "stage": "load",
+      "gap": "missing-runtime-module",
+      "error": "every Pi extension entry failed to load:\n- vendor/src/index.ts: Cannot find module '@sinclair/typebox'\nRequire stack:\n- /private/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-qs1cq5/bundles/8-_ff-labs_pi-fff/vendor/src/index.ts"
+    },
+    {
+      "rank": 9,
+      "name": "pi-simplify",
+      "downloadsPerMonth": 30800,
+      "status": "loaded",
+      "verdict": "review",
+      "tools": [],
+      "commands": [
+        "simplify"
+      ],
+      "skills": [],
+      "degraded": []
+    },
+    {
+      "rank": 10,
+      "name": "@narumitw/pi-goal",
+      "downloadsPerMonth": 30200,
+      "status": "load-failed",
+      "stage": "load",
+      "gap": "missing-runtime-module",
+      "error": "every Pi extension entry failed to load:\n- vendor/src/index.ts: Cannot find module 'typebox'\nRequire stack:\n- /private/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-qs1cq5/bundles/10-_narumitw_pi-goal/vendor/src/tools.ts"
+    },
+    {
+      "rank": 11,
+      "name": "pi-goal-list-loop-audit",
+      "downloadsPerMonth": 28500,
+      "status": "load-failed",
+      "stage": "load",
+      "gap": "missing-runtime-module",
+      "error": "every Pi extension entry failed to load:\n- vendor/extensions/loops/goal.ts: Cannot find module 'typebox'\nRequire stack:\n- /private/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-qs1cq5/bundles/11-pi-goal-list-loop-audit/vendor/extensions/loops/goal-tools.ts"
+    },
+    {
+      "rank": 12,
+      "name": "pi-fabric",
+      "downloadsPerMonth": 28300,
+      "status": "fatal",
+      "stage": "convert",
+      "error": "conversion blocked: 3 fatal finding(s) — the bundle cannot be built or trusted; run inspect for details"
+    },
+    {
+      "rank": 13,
+      "name": "@gotgenes/pi-permission-system",
+      "downloadsPerMonth": 27000,
+      "status": "loaded",
+      "verdict": "review",
+      "tools": [],
+      "commands": [
+        "permission-system"
+      ],
+      "skills": [],
+      "degraded": [
+        "on(resources_discover)"
+      ]
+    },
+    {
+      "rank": 14,
+      "name": "pi-background-tasks",
+      "downloadsPerMonth": 26900,
+      "status": "loaded",
+      "verdict": "review",
+      "tools": [],
+      "commands": [
+        "claude-cache"
+      ],
+      "skills": [],
+      "degraded": [
+        "on(before_provider_request)"
+      ]
+    },
+    {
+      "rank": 15,
+      "name": "pi-hermes-memory",
+      "downloadsPerMonth": 23700,
+      "status": "fatal",
+      "stage": "convert",
+      "error": "conversion blocked: 3 fatal finding(s) — the bundle cannot be built or trusted; run inspect for details"
+    },
+    {
+      "rank": 16,
+      "name": "@mjasnikovs/pi-task",
+      "downloadsPerMonth": 22500,
+      "status": "fatal",
+      "stage": "convert",
+      "error": "conversion blocked: 1 fatal finding(s) — the bundle cannot be built or trusted; run inspect for details"
+    },
+    {
+      "rank": 17,
+      "name": "@narumitw/pi-plan-mode",
+      "downloadsPerMonth": 19200,
+      "status": "loaded",
+      "verdict": "review",
+      "tools": [
+        "plan_mode_complete",
+        "plan_mode_question"
+      ],
+      "commands": [
+        "plan"
+      ],
+      "skills": [],
+      "degraded": [
+        "ctx.newSession",
+        "on(context)"
+      ]
+    },
+    {
+      "rank": 18,
+      "name": "pi-powerline-footer",
+      "downloadsPerMonth": 17500,
+      "status": "loaded",
+      "verdict": "review",
+      "tools": [],
+      "commands": [
+        "bash-mode",
+        "bash-reset",
+        "cd",
+        "powerline",
+        "powerline-perf",
+        "queue",
+        "stash-history",
+        "vibe"
+      ],
+      "skills": [],
+      "degraded": [
+        "ctx.switchSession",
+        "ctx.settingsManager",
+        "ctx.compact",
+        "ctx.userPrompt",
+        "ctx.theme"
+      ]
+    },
+    {
+      "rank": 19,
+      "name": "@juicesharp/rpiv-voice",
+      "downloadsPerMonth": 17200,
+      "status": "loaded",
+      "verdict": "review",
+      "tools": [],
+      "commands": [
+        "voice"
+      ],
+      "skills": [],
+      "degraded": []
+    },
+    {
+      "rank": 20,
+      "name": "@howaboua/pi-codex-conversion",
+      "downloadsPerMonth": 16500,
+      "status": "load-failed",
+      "stage": "load",
+      "gap": "missing-runtime-module",
+      "error": "every Pi extension entry failed to load:\n- vendor/dist/index.js: Cannot find module 'typebox'\nRequire stack:\n- /private/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-qs1cq5/bundles/20-_howaboua_pi-codex-conversion/vendor/dist/tools/code-mode/public-tools.js"
+    },
+    {
+      "rank": 21,
+      "name": "@narumitw/pi-lsp",
+      "downloadsPerMonth": 16300,
+      "status": "load-failed",
+      "stage": "load",
+      "gap": "missing-runtime-module",
+      "error": "every Pi extension entry failed to load:\n- vendor/src/index.ts: Cannot find module 'typebox'\nRequire stack:\n- /private/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-qs1cq5/bundles/21-_narumitw_pi-lsp/vendor/src/pi-lsp.ts"
+    },
+    {
+      "rank": 22,
+      "name": "pi-readseek",
+      "downloadsPerMonth": 16100,
+      "status": "load-failed",
+      "stage": "load",
+      "gap": "missing-runtime-module",
+      "error": "every Pi extension entry failed to load:\n- vendor/dist/index.ts: Cannot find module '@sinclair/typebox'\nRequire stack:\n- /private/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-qs1cq5/bundles/22-pi-readseek/vendor/dist/index.ts"
+    },
+    {
+      "rank": 23,
+      "name": "pi-hashline-edit-pro",
+      "downloadsPerMonth": 15700,
+      "status": "load-failed",
+      "stage": "load",
+      "gap": "missing-runtime-module",
+      "error": "every Pi extension entry failed to load:\n- vendor/index.ts: Cannot find module 'typebox'\nRequire stack:\n- /private/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-qs1cq5/bundles/23-pi-hashline-edit-pro/vendor/src/replace.ts"
+    },
+    {
+      "rank": 24,
+      "name": "@llblab/pi-telegram",
+      "downloadsPerMonth": 14300,
+      "status": "load-failed",
+      "stage": "load",
+      "gap": "missing-runtime-module",
+      "error": "every Pi extension entry failed to load:\n- vendor/index.ts: Cannot find module '@sinclair/typebox'\nRequire stack:\n- /private/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-qs1cq5/bundles/24-_llblab_pi-telegram/vendor/lib/outbound-attachments.ts"
+    },
+    {
+      "rank": 25,
+      "name": "pi-agent-browser-native",
+      "downloadsPerMonth": 13800,
+      "status": "loaded",
+      "verdict": "review",
+      "tools": [
+        "agent_browser"
+      ],
+      "commands": [],
+      "skills": [],
+      "degraded": []
+    },
+    {
+      "rank": 26,
+      "name": "pi-prompt-template-model",
+      "downloadsPerMonth": 13800,
+      "status": "load-failed",
+      "stage": "load",
+      "gap": "missing-runtime-module",
+      "error": "every Pi extension entry failed to load:\n- vendor/index.ts: Cannot find module 'typebox'\nRequire stack:\n- /private/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-qs1cq5/bundles/26-pi-prompt-template-model/vendor/tool-manager.ts"
+    },
+    {
+      "rank": 27,
+      "name": "pi-landstrip",
+      "downloadsPerMonth": 13700,
+      "status": "load-failed",
+      "stage": "load",
+      "gap": "missing-runtime-module",
+      "error": "every Pi extension entry failed to load:\n- vendor/dist/index.ts: Cannot find module 'typebox'\nRequire stack:\n- /private/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-qs1cq5/bundles/27-pi-landstrip/vendor/dist/index.ts"
+    },
+    {
+      "rank": 28,
+      "name": "pi-rtk-optimizer",
+      "downloadsPerMonth": 12900,
+      "status": "loaded",
+      "verdict": "review",
+      "tools": [],
+      "commands": [
+        "rtk"
+      ],
+      "skills": [],
+      "degraded": [
+        "host-import(@earendil-works/pi-coding-agent:isToolCallEventType)"
+      ]
+    },
+    {
+      "rank": 29,
+      "name": "pi-cc-extensions",
+      "downloadsPerMonth": 12000,
+      "status": "loaded",
+      "verdict": "review",
+      "tools": [],
+      "commands": [
+        "ccstyle",
+        "clear",
+        "context",
+        "exit"
+      ],
+      "skills": [],
+      "degraded": [
+        "on(<dynamic>)",
+        "on(resources_discover)",
+        "ctx.newSession",
+        "ctx.shutdown",
+        "ctx.ui.requestRender",
+        "host-import(@earendil-works/pi-coding-agent:BranchSummaryMessageComponent)",
+        "host-import(@earendil-works/pi-coding-agent:CompactionSummaryMessageComponent)",
+        "host-import(@earendil-works/pi-coding-agent:SkillInvocationMessageComponent)",
+        "host-import(@earendil-works/pi-coding-agent:createWriteToolDefinition)",
+        "theme"
+      ]
+    },
+    {
+      "rank": 30,
+      "name": "@narumitw/pi-statusline",
+      "downloadsPerMonth": 11900,
+      "status": "loaded",
+      "verdict": "review",
+      "tools": [],
+      "commands": [
+        "statusline"
+      ],
+      "skills": [],
+      "degraded": []
+    },
+    {
+      "rank": 31,
+      "name": "pi-goosedump",
+      "downloadsPerMonth": 11600,
+      "status": "load-failed",
+      "stage": "load",
+      "gap": "missing-runtime-module",
+      "error": "every Pi extension entry failed to load:\n- vendor/dist/index.ts: Cannot find module '@sinclair/typebox'\nRequire stack:\n- /private/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-qs1cq5/bundles/31-pi-goosedump/vendor/dist/index.ts"
+    },
+    {
+      "rank": 32,
+      "name": "pi-deepseek-search",
+      "downloadsPerMonth": 11100,
+      "status": "load-failed",
+      "stage": "load",
+      "gap": "missing-runtime-module",
+      "error": "every Pi extension entry failed to load:\n- vendor/index.ts: Cannot find module 'typebox'\nRequire stack:\n- /private/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-qs1cq5/bundles/32-pi-deepseek-search/vendor/index.ts"
+    },
+    {
+      "rank": 33,
+      "name": "@narumitw/pi-btw",
+      "downloadsPerMonth": 10600,
+      "status": "loaded",
+      "verdict": "review",
+      "tools": [],
+      "commands": [
+        "btw"
+      ],
+      "skills": [],
+      "degraded": [
+        "host-import(@earendil-works/pi-tui:TuiAltScreen)"
+      ]
+    },
+    {
+      "rank": 34,
+      "name": "pi-ask-user",
+      "downloadsPerMonth": 10400,
+      "status": "load-failed",
+      "stage": "load",
+      "gap": "missing-runtime-module",
+      "error": "every Pi extension entry failed to load:\n- vendor/index.ts: Cannot find module '@sinclair/typebox'\nRequire stack:\n- /private/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-qs1cq5/bundles/34-pi-ask-user/vendor/index.ts"
+    },
+    {
+      "rank": 35,
+      "name": "@juicesharp/rpiv-web-tools",
+      "downloadsPerMonth": 9876,
+      "status": "load-failed",
+      "stage": "load",
+      "gap": "missing-runtime-module",
+      "error": "every Pi extension entry failed to load:\n- vendor/index.ts: Cannot find module 'typebox'\nRequire stack:\n- /private/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-qs1cq5/bundles/35-_juicesharp_rpiv-web-tools/vendor/providers/config.ts"
+    },
+    {
+      "rank": 36,
+      "name": "pi-cursor-sdk",
+      "downloadsPerMonth": 9800,
+      "status": "load-failed",
+      "stage": "load",
+      "gap": "missing-runtime-module",
+      "error": "every Pi extension entry failed to load:\n- vendor/src/index.ts: Cannot find module 'typebox'\nRequire stack:\n- /private/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-qs1cq5/bundles/36-pi-cursor-sdk/vendor/src/cursor-question-tool.ts"
+    },
+    {
+      "rank": 37,
+      "name": "pi-provider-litellm",
+      "downloadsPerMonth": 9789,
+      "status": "load-failed",
+      "stage": "load",
+      "gap": "other",
+      "error": "every Pi extension entry failed to load:\n- vendor/dist/index.js: object is not iterable (cannot read property Symbol(Symbol.iterator))"
+    },
+    {
+      "rank": 38,
+      "name": "pi-zentui",
+      "downloadsPerMonth": 9594,
+      "status": "loaded",
+      "verdict": "review",
+      "tools": [],
+      "commands": [
+        "zentui"
+      ],
+      "skills": [],
+      "degraded": [
+        "host-import(@earendil-works/pi-coding-agent:ModelSelectorComponent)",
+        "ctx.bold"
+      ]
+    },
+    {
+      "rank": 39,
+      "name": "pi-interview",
+      "downloadsPerMonth": 9147,
+      "status": "load-failed",
+      "stage": "load",
+      "gap": "missing-runtime-module",
+      "error": "every Pi extension entry failed to load:\n- vendor/index.ts: Cannot find module 'typebox'\nRequire stack:\n- /private/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-qs1cq5/bundles/39-pi-interview/vendor/index.ts"
+    },
+    {
+      "rank": 40,
+      "name": "@alexanderfortin/pi-deepseek-usage",
+      "downloadsPerMonth": 8801,
+      "status": "loaded",
+      "verdict": "review",
+      "tools": [],
+      "commands": [],
+      "skills": [],
+      "degraded": [
+        "static-audit"
+      ]
+    },
+    {
+      "rank": 41,
+      "name": "pi-harness-runtime",
+      "downloadsPerMonth": 8787,
+      "status": "fatal",
+      "stage": "convert",
+      "error": "conversion blocked: 4 fatal finding(s) — the bundle cannot be built or trusted; run inspect for details"
+    },
+    {
+      "rank": 42,
+      "name": "@ollama/pi-web-search",
+      "downloadsPerMonth": 8521,
+      "status": "load-failed",
+      "stage": "load",
+      "gap": "missing-runtime-module",
+      "error": "every Pi extension entry failed to load:\n- vendor/index.ts: Cannot find module '@sinclair/typebox'\nRequire stack:\n- /private/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-qs1cq5/bundles/42-_ollama_pi-web-search/vendor/index.ts"
+    },
+    {
+      "rank": 43,
+      "name": "pi-web-search",
+      "downloadsPerMonth": 8514,
+      "status": "load-failed",
+      "stage": "load",
+      "gap": "missing-runtime-module",
+      "error": "every Pi extension entry failed to load:\n- vendor/src/index.ts: Cannot find module 'typebox'\nRequire stack:\n- /private/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-qs1cq5/bundles/43-pi-web-search/vendor/src/web_search.ts"
+    },
+    {
+      "rank": 44,
+      "name": "pi-mcp-extension",
+      "downloadsPerMonth": 8485,
+      "status": "load-failed",
+      "stage": "load",
+      "gap": "missing-runtime-module",
+      "error": "every Pi extension entry failed to load:\n- vendor/src/index.ts: Cannot find module 'typebox'\nRequire stack:\n- /private/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-qs1cq5/bundles/44-pi-mcp-extension/vendor/src/tool-bridge.ts"
+    },
+    {
+      "rank": 45,
+      "name": "@gotgenes/pi-subagents",
+      "downloadsPerMonth": 8460,
+      "status": "load-failed",
+      "stage": "load",
+      "gap": "missing-runtime-module",
+      "error": "every Pi extension entry failed to load:\n- vendor/src/index.ts: Cannot find module '@sinclair/typebox'\nRequire stack:\n- /private/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-qs1cq5/bundles/45-_gotgenes_pi-subagents/vendor/src/tools/agent-tool.ts"
+    },
+    {
+      "rank": 46,
+      "name": "pi-btw",
+      "downloadsPerMonth": 8436,
+      "status": "loaded",
+      "verdict": "review",
+      "tools": [],
+      "commands": [
+        "btw",
+        "btw-clear",
+        "btw-inject",
+        "btw-model",
+        "btw-new",
+        "btw-summarize",
+        "btw-tangent",
+        "btw-thinking"
+      ],
+      "skills": [],
+      "degraded": [
+        "host-import(@earendil-works/pi-coding-agent:createAgentSession)",
+        "host-import(@earendil-works/pi-coding-agent:createExtensionRuntime)",
+        "ctx.fg",
+        "ctx.italic",
+        "ctx.bold",
+        "ctx.bg",
+        "on(context)"
+      ]
+    },
+    {
+      "rank": 47,
+      "name": "@amaster.ai/pi-image-gen",
+      "downloadsPerMonth": 8204,
+      "status": "load-failed",
+      "stage": "load",
+      "gap": "missing-runtime-module",
+      "error": "every Pi extension entry failed to load:\n- vendor/dist/index.js: Cannot find module 'typebox'\nRequire stack:\n- /private/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-qs1cq5/bundles/47-_amaster.ai_pi-image-gen/vendor/dist/index.js"
+    },
+    {
+      "rank": 48,
+      "name": "pi-llama-cpp",
+      "downloadsPerMonth": 8193,
+      "status": "loaded",
+      "verdict": "review",
+      "tools": [],
+      "commands": [
+        "models"
+      ],
+      "skills": [],
+      "degraded": [
+        "on(before_provider_request)",
+        "host-import(@earendil-works/pi-tui:AutocompleteItem)",
+        "host-import(@earendil-works/pi-ai:ApiKeyCredential)",
+        "host-import(@earendil-works/pi-ai:ModelThinkingLevel)"
+      ]
+    },
+    {
+      "rank": 49,
+      "name": "@juicesharp/rpiv-advisor",
+      "downloadsPerMonth": 7851,
+      "status": "load-failed",
+      "stage": "load",
+      "gap": "missing-runtime-module",
+      "error": "every Pi extension entry failed to load:\n- vendor/index.ts: Cannot find module 'typebox'\nRequire stack:\n- /private/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-qs1cq5/bundles/49-_juicesharp_rpiv-advisor/vendor/advisor/register.ts"
+    },
+    {
+      "rank": 50,
+      "name": "mitsupi",
+      "downloadsPerMonth": 7802,
+      "status": "fatal",
+      "stage": "convert",
+      "error": "runtime dependencies are imported but not declared by the Pi package: googleapis, @google-cloud/local-auth, ws"
+    }
+  ]
+}

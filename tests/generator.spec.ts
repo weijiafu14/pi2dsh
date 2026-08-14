@@ -29,7 +29,9 @@ describe('DSH bundle generator', () => {
       const packageJson = JSON.parse(await readFile(join(outDir, 'package.json'), 'utf8')) as Record<string, any>
       expect(packageJson.dsh.bundle.patch).toBe('./cordis.patch.yml')
       expect(packageJson.dependencies.pi2dsh).toBe('file:/runtime')
-      expect(packageJson.dependencies.typebox).toBe('1.3.7')
+      // typebox is host-provided (Pi's loader whitelist) and aliased by the
+      // runtime, so the generated bundle no longer declares it.
+      expect(packageJson.dependencies.typebox).toBeUndefined()
       expect(packageJson.dependencies['@earendil-works/pi-coding-agent']).toBeUndefined()
       expect(packageJson.dependencies['@deepseek-ai/dsh-skill-filesystem']).toBe('^0.1.0-rc.6')
 

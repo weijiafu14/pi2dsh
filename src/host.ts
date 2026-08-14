@@ -204,6 +204,7 @@ export async function generateHostBundle(options: HostBundleOptions): Promise<{ 
       jiti: '^2.7.0',
       'get-east-asian-width': '^1.6.0',
       marked: '^16.4.1',
+      typebox: '^1.0.4',
       '@deepseek-ai/dsh-skill-filesystem': '^0.1.0-rc.6',
     },
     peerDependencies: {

@@ -25,6 +25,9 @@ const SHIMMED_PI_HOST_PACKAGES = new Set([
   '@mariozechner/pi-tui',
   '@earendil-works/pi-ai',
   '@mariozechner/pi-ai',
+  // Host-provided in Pi's loader whitelist; the runtime aliases them too.
+  'typebox',
+  '@sinclair/typebox',
 ])
 
 function packageSlug(name: string): string {
@@ -100,8 +103,14 @@ async function copySkills(pkg: ResolvedPiPackage, outDir: string): Promise<strin
   const names = new Set<string>()
   for (const entry of entryFiles) {
     const isBundle = basename(entry) === 'SKILL.md'
-    const name = isBundle ? basename(dirname(entry)) : basename(entry, '.md')
-    if (names.has(name)) throw new Error(`skill name collision while flattening Pi package: ${name}`)
+    let name = isBundle ? basename(dirname(entry)) : basename(entry, '.md')
+    if (names.has(name)) {
+      // Same-named skills under different parents (piolium ships several):
+      // disambiguate with the parent directory instead of refusing the package.
+      const parent = basename(dirname(isBundle ? dirname(entry) : entry))
+      const candidate = `${parent}-${name}`.replace(/[^a-zA-Z0-9._-]+/gu, '-')
+      name = names.has(candidate) ? `${candidate}-${names.size}` : candidate
+    }
     names.add(name)
     const target = join(outDir, 'skills', isBundle ? name : `${name}.md`)
     await mkdir(dirname(target), { recursive: true })
@@ -170,17 +179,33 @@ function generatedPackageJson(
   const dependencies = {
     ...Object.fromEntries(externalRuntimePackages.sort().map(name => [name, declaredDependencies[name]])),
     // The embedded runtime's own runtime dependencies (vendored Pi width math
-    // uses get-east-asian-width; the pi-tui shim re-exports marked).
-    ...(runtimeSpec === undefined ? { jiti: '^2.7.0', 'get-east-asian-width': '^1.6.0', marked: '^16.4.1' } : {}),
+    // uses get-east-asian-width; the pi-tui shim re-exports marked; typebox is
+    // the host-provided schema library Pi's loader gives every extension).
+    ...(runtimeSpec === undefined
+      ? { jiti: '^2.7.0', 'get-east-asian-width': '^1.6.0', marked: '^16.4.1', typebox: '^1.0.4' }
+      : {}),
     ...(hasSkills ? { '@deepseek-ai/dsh-skill-filesystem': '^0.1.0-rc.6' } : {}),
     ...(runtimeSpec !== undefined ? { pi2dsh: runtimeSpec } : {}),
   }
+  // Re-point the package's Node subpath-imports map ("#x": "./src/x.js") at
+  // the vendored snapshot so '#'-imports keep resolving inside the bundle.
+  const remapImports = (value: unknown): unknown => {
+    if (typeof value === 'string') return value.startsWith('./') ? `./vendor/${value.slice(2)}` : value
+    if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+      return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, remapImports(entry)]))
+    }
+    return value
+  }
+  const sourceImports = pkg.packageJson.imports
   return {
     name: generatedName,
     version: pkg.identity.version,
     description: `DeepSeek Harness adapter generated from ${pkg.identity.name}`,
     type: 'module',
     main: './index.js',
+    ...(typeof sourceImports === 'object' && sourceImports !== null
+      ? { imports: remapImports(sourceImports) as Record<string, unknown> }
+      : {}),
     files: ['index.js', 'cordis.patch.yml', 'pi2dsh.manifest.json', 'pi2dsh.report.json', 'README.md', 'LICENSE*', 'NOTICE*', 'COPYING*', 'PI2DSH-LICENSE', 'runtime', 'vendor', 'skills', 'prompts'],
     dependencies,
     ...(runtimeSpec === undefined

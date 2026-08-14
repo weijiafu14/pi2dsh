@@ -45,7 +45,11 @@ function localReferences(path: string, text: string): LocalReference[] {
   const createRequireNames = new Set<string>(['createRequire'])
   const requireNames = new Set<string>(['require'])
   const add = (kind: LocalReference['kind'], specifier: string): void => {
-    if (specifier.startsWith('.')) values.set(`${kind}:${specifier}`, { kind, specifier })
+    // '#'-prefixed specifiers are Node subpath imports resolved through the
+    // package's own `imports` map — package-local, not external dependencies.
+    if (specifier.startsWith('.') || specifier.startsWith('#')) {
+      values.set(`${kind}:${specifier}`, { kind, specifier })
+    }
   }
   function collectRequireAliases(node: ts.Node): void {
     if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)
@@ -86,8 +90,8 @@ function localReferences(path: string, text: string): LocalReference[] {
 }
 
 function externalPackage(specifier: string): string | undefined {
-  if (specifier.startsWith('.') || specifier.startsWith('/') || specifier.startsWith('node:')
-    || builtinModules.includes(specifier)) return undefined
+  if (specifier.startsWith('.') || specifier.startsWith('/') || specifier.startsWith('#')
+    || specifier.startsWith('node:') || builtinModules.includes(specifier)) return undefined
   const parts = specifier.split('/')
   return specifier.startsWith('@') ? parts.slice(0, 2).join('/') : parts[0]
 }
@@ -167,7 +171,51 @@ async function isFile(path: string): Promise<boolean> {
   }
 }
 
-async function resolveModule(fromFile: string, specifier: string, rootDir: string): Promise<string> {
+function subpathImportTarget(rootDir: string, specifier: string, importsMap: Record<string, unknown>): string | undefined {
+  const conditionValue = (value: unknown): string | undefined => {
+    if (typeof value === 'string') return value
+    if (typeof value !== 'object' || value === null) return undefined
+    const record = value as Record<string, unknown>
+    for (const condition of ['import', 'node', 'default']) {
+      const candidate = conditionValue(record[condition])
+      if (candidate !== undefined) return candidate
+    }
+    return undefined
+  }
+  const direct = conditionValue(importsMap[specifier])
+  if (direct !== undefined) return resolve(rootDir, direct)
+  for (const [pattern, value] of Object.entries(importsMap)) {
+    const star = pattern.indexOf('*')
+    if (star === -1) continue
+    const prefix = pattern.slice(0, star)
+    const suffix = pattern.slice(star + 1)
+    if (!specifier.startsWith(prefix) || !specifier.endsWith(suffix)) continue
+    const wildcard = specifier.slice(prefix.length, specifier.length - suffix.length)
+    const target = conditionValue(value)
+    if (target !== undefined) return resolve(rootDir, target.replace('*', wildcard))
+  }
+  return undefined
+}
+
+async function packageImportsMap(rootDir: string): Promise<Record<string, unknown>> {
+  try {
+    const parsed = JSON.parse(await readFile(join(rootDir, 'package.json'), 'utf8')) as { imports?: unknown }
+    return typeof parsed.imports === 'object' && parsed.imports !== null ? parsed.imports as Record<string, unknown> : {}
+  } catch {
+    return {}
+  }
+}
+
+async function resolveModule(fromFile: string, specifier: string, rootDir: string, importsMap: Record<string, unknown>): Promise<string> {
+  if (specifier.startsWith('#')) {
+    const target = subpathImportTarget(rootDir, specifier, importsMap)
+    if (target === undefined) {
+      throw new Error(`cannot resolve subpath import ${JSON.stringify(specifier)} through the package "imports" map`)
+    }
+    return resolveModule(fromFile, relative(dirname(fromFile), target).startsWith('.')
+      ? relative(dirname(fromFile), target)
+      : `./${relative(dirname(fromFile), target)}`, rootDir, importsMap)
+  }
   const base = resolve(dirname(fromFile), specifier)
   const candidates = [
     base,
@@ -184,7 +232,18 @@ async function resolveModule(fromFile: string, specifier: string, rootDir: strin
 
 async function expandAsset(path: string, rootDir: string): Promise<string[]> {
   if (!inside(rootDir, path)) throw new Error(`extension asset escapes the Pi package: ${path}`)
-  const info = await lstat(path)
+  let info
+  try {
+    info = await lstat(path)
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
+    // A `new URL('./worker.js', import.meta.url)` asset may only exist in its
+    // TypeScript source form before the package builds; track the source.
+    for (const alternate of sourceAlternates(path)) {
+      if (await isFile(alternate)) return [alternate]
+    }
+    throw error
+  }
   if (info.isSymbolicLink()) throw new Error(`refusing to copy symbolic link from Pi package: ${path}`)
   if (info.isFile()) return [path]
   if (!info.isDirectory()) return []
@@ -197,6 +256,7 @@ export async function collectLocalClosure(rootDir: string, entries: readonly str
   const queue = entries.map(path => resolve(path))
   const closure = new Set<string>()
   const issues: LocalClosureIssue[] = []
+  const importsMap = await packageImportsMap(rootDir)
   while (queue.length > 0) {
     const source = queue.shift() as string
     if (closure.has(source)) continue
@@ -209,7 +269,7 @@ export async function collectLocalClosure(rootDir: string, entries: readonly str
     const text = await readFile(source, 'utf8')
     for (const reference of localReferences(source, text)) {
       try {
-        if (reference.kind === 'module') queue.push(await resolveModule(source, reference.specifier, rootDir))
+        if (reference.kind === 'module') queue.push(await resolveModule(source, reference.specifier, rootDir, importsMap))
         else queue.push(...await expandAsset(resolve(dirname(source), reference.specifier), rootDir))
       } catch (error) {
         issues.push({

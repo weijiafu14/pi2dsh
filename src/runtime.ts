@@ -1,8 +1,9 @@
 import { access, readFile } from 'node:fs/promises'
 import { EventEmitter } from 'node:events'
 import { AsyncLocalStorage } from 'node:async_hooks'
+import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { createJiti } from 'jiti'
 import type { Context } from '@deepseek-ai/cordis'
 import { createUserMessage, type ContentBlock } from '@deepseek-ai/dsh-llm'
@@ -871,17 +872,18 @@ function getActiveTools(ctx: Context, state: RuntimeState): string[] {
 function setActiveTools(ctx: Context, state: RuntimeState, names: string[]): void {
   const unique = [...new Set(names)]
   const agent = currentAgent(state)
-  if (agent === undefined || typeof agent !== 'object' || agent === null) {
-    state.pendingActiveTools = unique
+  state.pendingActiveTools = unique
+  if (agent === undefined || typeof agent !== 'object' || agent === null) return
+  const scopedTools = agent.ctx === undefined ? undefined : toolRuntime(ctx, agent)
+  if (scopedTools === undefined || typeof scopedTools.restrict !== 'function') {
+    // No agent-scoped tool runtime (e.g. a bare test agent): remember the
+    // intent and apply it when a scoped agent starts. Restricting the global
+    // registry here would mask every agent, which DSH rightly rejects.
+    logger(ctx).warn('[pi2dsh] setActiveTools deferred: the current agent exposes no scoped tools.restrict()')
     return
   }
   state.toolRestrictions.get(agent)?.()
-  const scopedTools = toolRuntime(ctx, agent)
-  if (typeof scopedTools.restrict !== 'function') {
-    throw new Error('pi2dsh: the active DSH agent scope does not expose tools.restrict()')
-  }
   state.toolRestrictions.set(agent, scopedTools.restrict({ allow: unique }))
-  state.pendingActiveTools = unique
 }
 
 function deliverAgentMessage(agent: DshAgent, message: unknown, mode: 'inject' | 'steer' | 'followup'): void {
@@ -975,6 +977,15 @@ async function executePiCommand(
   }
 }
 
+function dshCommandName(ctx: Context, piName: string): string {
+  // DSH command names are /^[a-z][a-z0-9_-]*$/; Pi allows richer names like
+  // "btw:tangent". Normalize instead of refusing the whole package.
+  const normalized = piName.toLowerCase().replace(/[^a-z0-9_-]+/gu, '-').replace(/^[^a-z]+/u, '')
+  const name = normalized.length > 0 ? normalized : 'pi-command'
+  if (name !== piName) logger(ctx).warn(`[pi2dsh] Pi command /${piName} registered as /${name} to satisfy DSH command naming`)
+  return name
+}
+
 function registerCommand(ctx: Context, state: RuntimeState, command: PiCommand): void {
   if (state.commands.has(command.name)) throw new Error(`Pi command ${JSON.stringify(command.name)} is already registered`)
   state.commands.set(command.name, command)
@@ -986,7 +997,7 @@ function registerCommand(ctx: Context, state: RuntimeState, command: PiCommand):
     return
   }
   commands.register({
-    name: command.name,
+    name: dshCommandName(ctx, command.name),
     description: command.description || `Migrated Pi command /${command.name}`,
     ...(command.argumentHint !== undefined ? { input: { hint: command.argumentHint } } : {}),
     async handler(invocation: UnknownRecord) {
@@ -1229,7 +1240,12 @@ async function registerPromptCommands(ctx: Context, state: RuntimeState, rootDir
   }
 }
 
-async function loadExtensions(rootDir: string, manifest: GeneratedRuntimeManifest, api: UnknownRecord): Promise<void> {
+async function loadExtensions(
+  rootDir: string,
+  manifest: GeneratedRuntimeManifest,
+  api: UnknownRecord,
+  onExtensionError?: (failure: string) => void,
+): Promise<void> {
   const resolveShim = async (name: string): Promise<string> => {
     const compiled = fileURLToPath(new URL(`./compat/${name}.mjs`, import.meta.url))
     try {
@@ -1244,25 +1260,58 @@ async function loadExtensions(rootDir: string, manifest: GeneratedRuntimeManifes
     resolveShim('pi-tui'),
     resolveShim('pi-ai'),
   ])
+  const aliases: Record<string, string> = {}
+  for (const family of ['@earendil-works', '@mariozechner']) {
+    aliases[`${family}/pi-coding-agent`] = codingAgentShim
+    aliases[`${family}/pi-tui`] = tuiShim
+    aliases[`${family}/pi-ai`] = aiShim
+    // Pi resolves subpath entries of pi-ai (compat superset, oauth, provider
+    // catalogs) for extensions; all of them land on the same shim surface.
+    aliases[`${family}/pi-ai/compat`] = aiShim
+    aliases[`${family}/pi-ai/oauth`] = aiShim
+    aliases[`${family}/pi-ai/providers/all`] = aiShim
+  }
+  // Pi's loader hands extensions the host's typebox without a declaration;
+  // mirror that by resolving every typebox entry the whitelist names to the
+  // bridge's own copy.
+  try {
+    const require = createRequire(import.meta.url)
+    const typeboxRoot = dirname(require.resolve('typebox/package.json'))
+    for (const name of ['typebox', '@sinclair/typebox']) {
+      aliases[name] = join(typeboxRoot, 'build', 'index.mjs')
+      for (const sub of ['value', 'compile']) {
+        aliases[`${name}/${sub}`] = join(typeboxRoot, 'build', sub, 'index.mjs')
+      }
+    }
+  } catch {
+    // Without a resolvable typebox the aliases stay unset and extensions fall
+    // back to normal resolution.
+  }
   const jiti = createJiti(import.meta.url, {
     interopDefault: true,
-    alias: {
-      '@earendil-works/pi-coding-agent': codingAgentShim,
-      '@mariozechner/pi-coding-agent': codingAgentShim,
-      '@earendil-works/pi-tui': tuiShim,
-      '@mariozechner/pi-tui': tuiShim,
-      '@earendil-works/pi-ai': aiShim,
-      '@mariozechner/pi-ai': aiShim,
-    },
+    alias: aliases,
   })
+  // Pi's loader isolates per-extension failures: one broken entry reports and
+  // the rest keep loading. A package whose every entry fails still errors.
+  const failures: string[] = []
+  let mounted = 0
   for (const extension of manifest.extensions) {
-    const loaded: unknown = await jiti.import(join(rootDir, extension))
-    const candidate = typeof loaded === 'object' && loaded !== null && 'default' in loaded
-      ? (loaded as { default: unknown }).default
-      : loaded
-    if (typeof candidate !== 'function') throw new TypeError(`Pi extension ${extension} has no default factory function`)
-    await candidate(api)
+    try {
+      const loaded: unknown = await jiti.import(join(rootDir, extension))
+      const candidate = typeof loaded === 'object' && loaded !== null && 'default' in loaded
+        ? (loaded as { default: unknown }).default
+        : loaded
+      if (typeof candidate !== 'function') throw new TypeError(`Pi extension ${extension} has no default factory function`)
+      await candidate(api)
+      mounted += 1
+    } catch (error) {
+      failures.push(`${extension}: ${error instanceof Error ? error.message : String(error)}`)
+    }
   }
+  if (failures.length > 0 && mounted === 0 && manifest.extensions.length > 0) {
+    throw new Error(`every Pi extension entry failed to load:\n${failures.map(item => `- ${item}`).join('\n')}`)
+  }
+  for (const failure of failures) onExtensionError?.(failure)
 }
 
 export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Promise<void> {
@@ -1314,7 +1363,8 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
     }
   }
   await registerPromptCommands(ctx, state, rootDir, options.manifest)
-  await loadExtensions(rootDir, options.manifest, createPiApi(ctx, state))
+  await loadExtensions(rootDir, options.manifest, createPiApi(ctx, state),
+    failure => logger(ctx).warn(`[pi2dsh] extension entry failed and was skipped (matching Pi's per-extension error isolation): ${failure}`))
   logger(ctx).info(`[pi2dsh] loaded ${options.manifest.package.name}: ${state.tools.size} tools, ${state.commands.size} commands, ${options.manifest.skillDirs.length} skill roots`)
 }
 

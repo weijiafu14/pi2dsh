@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict'
 import { execFile as execFileCallback } from 'node:child_process'
 import { createServer } from 'node:http'
-import { chmod, mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
+import { chmod, mkdir, mkdtemp, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { basename, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -329,8 +329,19 @@ try {
   await runDsh(['plugin', '--profile', 'headless', 'remove', 'dsh-pi-host-e2e'])
   // Mount in-process: peers resolve through symlinks like a real profile's
   // hoisted install.
-  await symlink(join(projectRoot, 'node_modules/@deepseek-ai'), join(hostDir, 'node_modules/@deepseek-ai'), 'dir')
-  await symlink(join(projectRoot, 'node_modules/typebox'), join(hostDir, 'node_modules/typebox'), 'dir').catch(() => {})
+  // pnpm's hoisted install may already provide some @deepseek-ai packages
+  // (skill-filesystem's tree); fill remaining peers PER PACKAGE — a
+  // directory-level link would silently shadow nothing when the directory
+  // already exists, leaving dsh-llm and friends unresolvable.
+  const peerScopeSource = join(projectRoot, 'node_modules/@deepseek-ai')
+  const peerScopeTarget = join(hostDir, 'node_modules/@deepseek-ai')
+  await mkdir(peerScopeTarget, { recursive: true })
+  for (const peer of await readdir(peerScopeSource)) {
+    await symlink(join(peerScopeSource, peer), join(peerScopeTarget, peer), 'dir')
+      .catch(error => { if (error.code !== 'EEXIST') throw error })
+  }
+  await symlink(join(projectRoot, 'node_modules/typebox'), join(hostDir, 'node_modules/typebox'), 'dir')
+    .catch(error => { if (error.code !== 'EEXIST') throw error })
   const hostModule = await import(`${pathToFileURL(join(hostDir, 'index.js')).href}?host=${Date.now()}`)
   const hostCtx = new Context()
   await hostCtx.plugin(SessionStore)

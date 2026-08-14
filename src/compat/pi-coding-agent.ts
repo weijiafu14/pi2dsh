@@ -71,7 +71,7 @@ export { getAgentDir } from './vendor/pi-config-shim.js'
 
 import { homedir } from 'node:os'
 import { join, delimiter } from 'node:path'
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { execFile } from 'node:child_process'
 import type { AgentMessage } from './vendor/pi-types.js'
 import type { Component, SettingsListTheme, SelectListTheme } from './pi-tui.js'
@@ -363,9 +363,51 @@ export function getShellConfig(): ShellConfig {
   return { shell: 'sh', args: ['-c'] }
 }
 
-export function getPackageDir(packageName: string): string {
-  const slug = packageName.replace(/^@/u, '').replaceAll('/', '-')
-  return join(agentDirOf(), 'packages', slug)
+// Pi's install-directory locator: PI_PACKAGE_DIR override, else a stable
+// bridge-owned location (Pi itself falls back to its executable's directory,
+// which has no meaningful equivalent inside DSH).
+export function getPackageDir(): string {
+  const override = process.env.PI_PACKAGE_DIR
+  if (override !== undefined && override.length > 0) return override
+  return join(agentDirOf(), 'package')
+}
+
+export interface StoredCredential {
+  type?: string
+  [key: string]: unknown
+}
+
+// Pi's one-off synchronous auth.json read, against the pi2dsh-owned agent
+// directory. DSH credentials stay authoritative for DSH model calls; this
+// serves packages that manage their own provider credentials Pi-style.
+export function readStoredCredential(
+  providerId: string,
+  authPath: string = join(agentDirOf(), 'auth.json'),
+): StoredCredential | undefined {
+  try {
+    const data = JSON.parse(readFileSync(authPath, 'utf8')) as Record<string, StoredCredential>
+    return data[providerId]
+  } catch {
+    return undefined
+  }
+}
+
+export interface ParsedSkillBlock {
+  name: string
+  content: string
+  [key: string]: unknown
+}
+
+// Pi's <skill_content name="..."> block parser, reimplemented over the same
+// wire shape.
+export function parseSkillBlock(text: string): ParsedSkillBlock | null {
+  const match = /<skill_content\b[^>]*\bname="([^"]+)"[^>]*>([\s\S]*?)<\/skill_content>/u.exec(text)
+  if (match === null) return null
+  return { name: match[1]!, content: match[2]!.trim() }
+}
+
+export function wrapRegisteredTool(..._args: unknown[]): never {
+  return unsupportedRuntime('wrapRegisteredTool()')
 }
 
 export function getBinDir(): string {
