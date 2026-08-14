@@ -1,13 +1,18 @@
-import { copyFile, mkdir, mkdtemp, readFile, rm, symlink } from 'node:fs/promises'
+import { copyFile, mkdir, mkdtemp, readFile, realpath, rm, symlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { afterEach, describe, expect, it } from 'vitest'
 import { Context, type Plugin } from '@deepseek-ai/cordis'
+import AgentRegistry from '@deepseek-ai/dsh-agent'
+import LocalAttachmentStore from '@deepseek-ai/dsh-attachment-local'
 import { createUserMessage, CallId } from '@deepseek-ai/dsh-llm'
+import { createScope, type Scope } from '@deepseek-ai/dsh-scope'
 import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
+import LocalSubprocessRuntime from '@deepseek-ai/dsh-subprocess-local'
 import SystemPrompt, { renderPrompt } from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
+import UserQuestionService from '@deepseek-ai/dsh-user-questions'
 import CommandRuntime from '@deepseek-ai/dsh-commands'
 import SkillRegistry from '@deepseek-ai/dsh-skill'
 import { generateBundle } from '../src/generator.js'
@@ -65,6 +70,19 @@ describe('generated plugin in the real DSH runtime', () => {
     await ctx.plugin(ToolRuntime)
     await ctx.plugin(CommandRuntime)
     await ctx.plugin(SkillRegistry)
+    await ctx.plugin(AgentRegistry)
+    await ctx.plugin(LocalAttachmentStore, { dshHome: join(scratch, 'dsh-home') })
+    await ctx.plugin(LocalSubprocessRuntime)
+    await ctx.plugin(UserQuestionService)
+    ctx.userQuestions.registerProvider({
+      async ask(request) {
+        return {
+          answers: request.questions.map(question => question.id === 'pi2dsh-input'
+            ? { id: question.id, selected: [], custom: 'typed' }
+            : { id: question.id, selected: [question.id === 'pi2dsh-select' ? 'beta' : 'Yes'] }),
+        }
+      },
+    })
     ctx.systemPrompt.section({ name: 'fixture:base', order: 0, text: 'Base DSH prompt.' })
     const fiber = await ctx.plugin(generated)
 
@@ -72,7 +90,9 @@ describe('generated plugin in the real DSH runtime', () => {
     expect(renderPrompt(assembly)).toBe('Base DSH prompt.\n\nMigrated Pi system prompt hook active.')
     expect(assembly.tools.map(tool => tool.name)).toEqual(expect.arrayContaining([
       'pi_greet', 'pi_probe', 'pi_error', 'pi_context_probe', 'pi_mutation_probe', 'pi_post_block_probe', 'pi_api_probe',
+      'pi_exec_probe', 'pi_message_probe', 'pi_ask_probe', 'pi_image_probe',
     ]))
+    expect(assembly.tools.map(tool => tool.name)).not.toContain('pi_dynamic_removed')
 
     const signal = new AbortController().signal
     const greeting = await ctx.tools.execute({
@@ -119,17 +139,22 @@ describe('generated plugin in the real DSH runtime', () => {
       idle: false,
       trusted: false,
       pending: false,
-      unavailable: ['select', 'confirm', 'input', 'custom', 'abort', 'shutdown', 'compact'],
+      hasUI: true,
+      // ui.custom resolves to undefined per Pi's own rpc-mode semantics;
+      // abort still fails here because the probe agent has no cancel().
+      unavailable: ['abort', 'shutdown', 'compact'],
     })
 
+    // Pi semantics: a tool_call hook mutates event.input in place and the
+    // mutated arguments reach the Pi-owned tool's execute.
     const mutationProbe = await ctx.tools.execute({
       signal,
       callId: CallId('mutation-probe'),
       name: 'pi_mutation_probe',
       arguments: { value: 'original' },
     })
-    expect(mutationProbe.isError).toBe(true)
-    expect(mutationProbe.content[0]).toMatchObject({ type: 'text', text: expect.stringContaining('argument mutation') })
+    expect(mutationProbe.isError).toBe(false)
+    expect(mutationProbe.content[0]).toMatchObject({ type: 'text', text: 'executed with mutated' })
 
     const postBlockProbe = await ctx.tools.execute({
       signal,
@@ -145,25 +170,108 @@ describe('generated plugin in the real DSH runtime', () => {
     const apiProbe = await ctx.tools.execute({ signal, callId: CallId('api-probe'), name: 'pi_api_probe', arguments: {} })
     const apiValue = JSON.parse((apiProbe.content[0] as { text: string }).text) as Record<string, unknown>
     expect(apiValue).toMatchObject({
-      registrationFailures: [
-        'sendMessage', 'sendUserMessage', 'appendEntry', 'setSessionName', 'setLabel', 'exec',
-        'setActiveTools', 'setModel', 'setThinkingLevel',
-      ],
-      thinking: 'off',
+      // Load-time session mutations still fail (no live agent yet, matching
+      // Pi's own load-phase restriction); setThinkingLevel becomes the global
+      // default and setModel resolves false without a live agent.
+      registrationFailures: ['appendEntry', 'setSessionName', 'setLabel'],
+      thinking: 'high',
     })
 
     const session = ctx.sessions.create(SessionId('pi2dsh-integration'), {
       meta: { createdAt: Date.now(), cwd: scratch },
     })
+    const injected: unknown[] = []
     const steered: unknown[] = []
+    const followedUp: unknown[] = []
     const agent = {
       id: session.id,
       session,
+      ctx: undefined as unknown,
+      options: {},
+      inbox: {},
+      status: 'idle',
+      inject(message: unknown) { injected.push(message) },
       steer(message: unknown) { steered.push(message) },
+      followup(message: unknown) { followedUp.push(message) },
       whenIdle: () => Promise.resolve(),
     }
 
+    let agentScope!: Scope
+    await ctx.plugin(Object.assign((inner: Context) => { agentScope = createScope(inner, agent) }, {
+      inject: ['tools', 'systemPrompt'],
+    }))
+    agent.ctx = agentScope.ctx
+    const disposeAgent = ctx.agents.register(agent as never)
+
     ctx.emit('agent/session-start', { agent: agent as never, source: 'fresh' as never })
+    await settle()
+    expect(ctx.tools.schemas(agent as never).map(tool => tool.name).sort()).toEqual([
+      'pi_api_probe', 'pi_ask_probe', 'pi_exec_probe', 'pi_greet', 'pi_image_probe', 'pi_message_probe',
+    ])
+    expect(ctx.tools.schemas().map(tool => tool.name)).toContain('pi_probe')
+
+    const execProbe = await ctx.tools.execute({
+      signal,
+      callId: CallId('exec-probe'),
+      name: 'pi_exec_probe',
+      arguments: {},
+      agent: agent as never,
+    })
+    expect(JSON.parse((execProbe.content[0] as { text: string }).text)).toEqual({
+      stdout: await realpath(scratch),
+      stderr: '',
+      code: 0,
+      killed: false,
+    })
+
+    const askProbe = await ctx.tools.execute({
+      signal,
+      callId: CallId('ask-probe'),
+      name: 'pi_ask_probe',
+      arguments: {},
+      agent: agent as never,
+    })
+    expect(JSON.parse((askProbe.content[0] as { text: string }).text)).toEqual({
+      hasUI: true,
+      selected: 'beta',
+      confirmed: true,
+      typed: 'typed',
+    })
+
+    const imageProbe = await ctx.tools.execute({
+      signal,
+      callId: CallId('image-probe'),
+      name: 'pi_image_probe',
+      arguments: {},
+      agent: agent as never,
+    })
+    expect(imageProbe.isError).toBe(false)
+    expect(imageProbe.meta).toEqual({ nativeAttachment: true })
+    expect(imageProbe.content[0]).toMatchObject({
+      type: 'image',
+      attachment: { mediaType: 'image/png', width: 1, height: 1 },
+    })
+    if (imageProbe.content[0]?.type !== 'image') throw new Error('expected a native DSH image block')
+    const storedImage = await ctx.attachments.readImage(imageProbe.content[0].attachment)
+    expect(Buffer.from(storedImage.data).toString('base64')).toBe(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+    )
+
+    const messageProbe = await ctx.tools.execute({
+      signal,
+      callId: CallId('message-probe'),
+      name: 'pi_message_probe',
+      arguments: {},
+      agent: agent as never,
+    })
+    expect(messageProbe.isError).toBe(false)
+    expect(injected).toHaveLength(1)
+    expect(steered).toHaveLength(1)
+    expect(followedUp).toHaveLength(1)
+    for (const delivered of [...injected, ...steered, ...followedUp]) {
+      expect(delivered).toMatchObject({ source: { kind: 'plugin', plugin: 'pi2dsh:@pi2dsh-fixtures/complete' } })
+    }
+
     const command = await ctx.commands.execute(agent as never, '/pi-hello Ada', signal)
     expect(command?.result).toEqual({ kind: 'success', text: 'Pi command says hello to Ada' })
 
@@ -175,8 +283,8 @@ describe('generated plugin in the real DSH runtime', () => {
 
     const prompt = await ctx.commands.execute(agent as never, '/pi-review src/index.ts "focus errors"', signal)
     expect(prompt?.result.kind).toBe('success')
-    expect(steered).toHaveLength(1)
-    expect(steered[0]).toMatchObject({
+    expect(steered).toHaveLength(2)
+    expect(steered[1]).toMatchObject({
       role: 'user',
       content: [{ type: 'text', text: 'Review src/index.ts carefully. Extra context: focus errors.' }],
     })
@@ -202,7 +310,7 @@ describe('generated plugin in the real DSH runtime', () => {
     })
     session.append('step/end', { turn: 1, step: 1 })
     session.append('turn/end', { turn: 1, reason: { kind: 'completed' } })
-    ctx.emit('agent/disposed', { agent: agent as never })
+    disposeAgent()
     await settle()
 
     const probe = await ctx.tools.execute({ signal, callId: CallId('probe-1'), name: 'pi_probe', arguments: {} })
@@ -214,14 +322,14 @@ describe('generated plugin in the real DSH runtime', () => {
       flag_default: 1,
       command: 1,
       tool_execute: 1,
-      tool_call: 8,
-      tool_result: 7,
+      tool_call: 12,
+      tool_result: 11,
       agent_start: 1,
       turn_start: 1,
       message_start: 1,
       message_end: 1,
       tool_execution_start: 1,
-      tool_execution_end: 7,
+      tool_execution_end: 11,
       turn_end: 1,
       agent_end: 1,
       agent_settled: 1,

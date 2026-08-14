@@ -1,5 +1,6 @@
 import { access, readFile } from 'node:fs/promises'
 import { EventEmitter } from 'node:events'
+import { AsyncLocalStorage } from 'node:async_hooks'
 import { fileURLToPath } from 'node:url'
 import { join } from 'node:path'
 import { createJiti } from 'jiti'
@@ -14,6 +15,8 @@ import type {
   ToolExecutionResult,
 } from '@deepseek-ai/dsh-tools'
 import type { GeneratedRuntimeManifest } from './types.js'
+import { PiSessionBridge } from './session-bridge.js'
+import { Theme } from './compat/pi-coding-agent.js'
 
 type UnknownRecord = Record<string, unknown>
 type PiHandler = (event: UnknownRecord, context: UnknownRecord) => unknown | Promise<unknown>
@@ -50,13 +53,68 @@ interface PiCommand {
 interface RuntimeState {
   handlers: Map<string, PiHandler[]>
   tools: Map<string, PiTool>
+  toolDisposers: Map<string, () => void>
+  toolRestrictions: WeakMap<object, () => void>
+  pendingActiveTools?: string[]
   commands: Map<string, PiCommand>
   flags: Map<string, boolean | string | undefined>
   notifications: string[]
   activeAgents: Set<UnknownRecord>
   disposedAgents: WeakSet<object>
   currentSystemPrompt: string
+  messageSource: string
   eventBus: EventEmitter
+  agentScope: AsyncLocalStorage<UnknownRecord | undefined>
+  bridge: PiSessionBridge
+  theme: Theme
+  // Registered-but-headless surfaces: accepted so packages load and can
+  // introspect their own registrations; DSH owns actual presentation.
+  shortcuts: Map<string, UnknownRecord>
+  messageRenderers: Map<string, unknown>
+  entryRenderers: Map<string, unknown>
+  markdownTransformer?: unknown
+  providers: Map<string, UnknownRecord>
+  autocompleteProviders: unknown[]
+  editorComponentFactory?: unknown
+  editorBuffers: WeakMap<object, string>
+  toolsExpanded: boolean
+  // Per-agent model/thinking overrides applied through the agent/request waterfall.
+  modelOverrides: WeakMap<object, { provider?: string; model?: string }>
+  thinkingLevels: WeakMap<object, string>
+  globalThinkingLevel: string
+  // Pi tool_call handlers mutate event.input in place; mutations apply to
+  // pi2dsh-owned tools through this channel (DSH core deliberately forbids
+  // rewriting exec.arguments for native tools).
+  argMutations: WeakMap<object, unknown>
+  // Streaming accumulation for message_update projection from assistant/chunk.
+  streamingTexts: Map<string, string>
+  // Last model id seen in a request/header event, for model_select projection.
+  lastLoggedModels: WeakMap<object, string>
+}
+
+interface PiExecOptions {
+  signal?: AbortSignal
+  timeout?: number
+  cwd?: string
+}
+
+interface DshSubprocessHandle {
+  collected: {
+    stdout?: { readFrom(offset: number): { text: string; lossy: boolean } }
+    stderr?: { readFrom(offset: number): { text: string; lossy: boolean } }
+  }
+  done: Promise<{ exitCode: number | null; signal: string | null }>
+}
+
+interface DshSubprocessService {
+  resolveExecutable(command: string, env?: Readonly<Record<string, string>>, signal?: AbortSignal): Promise<string>
+  spawn(spec: UnknownRecord): DshSubprocessHandle
+}
+
+interface DshAgent extends UnknownRecord {
+  steer(message: unknown): void
+  followup(message: unknown): void
+  inject(message: unknown): void
 }
 
 function logger(ctx: Context): { warn(message: string): void; info(message: string): void; debug(message: string): void } {
@@ -110,6 +168,56 @@ function normalizeToolResult(result: unknown): UnknownRecord {
   const record = result as UnknownRecord
   return {
     content: textBlocks(record.content),
+    details: jsonValue(record.details),
+    ...(record.isError === true ? { isError: true } : {}),
+    ...(record.usage !== undefined ? { usage: jsonValue(record.usage) } : {}),
+    ...(record.terminate === true ? { terminate: true } : {}),
+  }
+}
+
+async function piToDshContent(ctx: Context, content: unknown): Promise<ContentBlock[]> {
+  const values = Array.isArray(content) ? content : [{ type: 'text', text: String(content ?? '') }]
+  const blocks: ContentBlock[] = []
+  for (const value of values) {
+    if (typeof value !== 'object' || value === null) {
+      blocks.push({ type: 'text', text: String(value) })
+      continue
+    }
+    const block = value as UnknownRecord
+    if (block.type === 'text') {
+      blocks.push({ type: 'text', text: String(block.text ?? '') })
+      continue
+    }
+    if (block.type !== 'image') {
+      blocks.push({ type: 'text', text: String(value) })
+      continue
+    }
+    const attachments = optionalService<{
+      saveImage(input: { data: Uint8Array; mediaType: string; name?: string }): Promise<UnknownRecord>
+    }>(ctx, 'attachments')
+    if (attachments === undefined) {
+      throw new Error('pi2dsh: Pi image content requires the DSH attachments service')
+    }
+    if (typeof block.data !== 'string' || typeof block.mimeType !== 'string') {
+      throw new TypeError('pi2dsh: Pi image content requires base64 data and mimeType')
+    }
+    const attachment = await attachments.saveImage({
+      data: Buffer.from(block.data, 'base64'),
+      mediaType: block.mimeType,
+      ...(typeof block.name === 'string' ? { name: block.name } : {}),
+    })
+    blocks.push({ type: 'image', attachment } as unknown as ContentBlock)
+  }
+  return blocks
+}
+
+async function normalizeToolResultForDsh(ctx: Context, result: unknown): Promise<UnknownRecord> {
+  if (typeof result !== 'object' || result === null || Array.isArray(result)) {
+    return { content: [{ type: 'text', text: String(result ?? '') }], details: null }
+  }
+  const record = result as UnknownRecord
+  return {
+    content: await piToDshContent(ctx, record.content),
     details: jsonValue(record.details),
     ...(record.isError === true ? { isError: true } : {}),
     ...(record.usage !== undefined ? { usage: jsonValue(record.usage) } : {}),
@@ -196,6 +304,55 @@ function unsupported(name: string): never {
   throw new Error(`pi2dsh: Pi API ${name} requires a native DSH port; inspect the compatibility report`)
 }
 
+function optionalService<T>(ctx: Context, name: string): T | undefined {
+  return (ctx as unknown as { get(name: string): unknown }).get(name) as T | undefined
+}
+
+function requireAgent(state: RuntimeState, operation: string): DshAgent {
+  const agent = currentAgent(state)
+  if (agent === undefined) {
+    throw new Error(`pi2dsh: ${operation} requires one active DSH agent context`)
+  }
+  return agent as DshAgent
+}
+
+function answerText(answer: UnknownRecord | undefined): string | undefined {
+  if (answer === undefined) return undefined
+  if (typeof answer.custom === 'string' && answer.custom.length > 0) return answer.custom
+  const selected = answer.selected
+  return Array.isArray(selected) && typeof selected[0] === 'string' ? selected[0] : undefined
+}
+
+async function askOne(
+  ctx: Context,
+  agent: UnknownRecord | undefined,
+  signal: AbortSignal | undefined,
+  question: UnknownRecord,
+): Promise<string | undefined> {
+  const service = optionalService<{
+    ask(request: UnknownRecord): Promise<{ answers: UnknownRecord[] }>
+  }>(ctx, 'userQuestions')
+  if (service === undefined) unsupported('ctx.ui AskUser')
+  const result = await service.ask({ questions: [question], ...(agent !== undefined ? { agent } : {}), signal })
+  return answerText(result.answers.find(answer => answer.id === question.id))
+}
+
+function agentSession(agent: UnknownRecord | undefined): { id: string; events: unknown } | undefined {
+  const session = agent?.session
+  if (typeof session !== 'object' || session === null) return undefined
+  const record = session as UnknownRecord
+  if (typeof record.id !== 'string') return undefined
+  return record as unknown as { id: string; events: unknown }
+}
+
+function thinkingLevelOf(state: RuntimeState, agent: UnknownRecord | undefined): string {
+  if (agent !== undefined) {
+    const scoped = state.thinkingLevels.get(agent)
+    if (scoped !== undefined) return scoped
+  }
+  return state.globalThinkingLevel
+}
+
 function contextFor(
   ctx: Context,
   state: RuntimeState,
@@ -204,6 +361,7 @@ function contextFor(
   command = false,
 ): UnknownRecord {
   const notices: string[] = []
+  const userQuestions = optionalService(ctx, 'userQuestions')
   const ui = {
     notify(message: unknown) {
       const text = String(message)
@@ -211,30 +369,93 @@ function contextFor(
       state.notifications.push(text)
       logger(ctx).info(`[pi2dsh] ${text}`)
     },
-    select: async () => unsupported('ctx.ui.select'),
-    confirm: async () => unsupported('ctx.ui.confirm'),
-    input: async () => unsupported('ctx.ui.input'),
-    setStatus: () => logger(ctx).warn('[pi2dsh] ignored Pi TUI status update in DSH'),
-    setWidget: () => logger(ctx).warn('[pi2dsh] ignored Pi TUI widget update in DSH'),
-    custom: async () => unsupported('ctx.ui.custom'),
+    select: (title: unknown, options: unknown[]) => askOne(ctx, agent, signal, {
+      id: 'pi2dsh-select',
+      question: String(title),
+      options: options.map(option => ({ label: String(option) })),
+    }),
+    async confirm(title: unknown, message: unknown) {
+      return await askOne(ctx, agent, signal, {
+        id: 'pi2dsh-confirm',
+        question: String(title),
+        detail: String(message),
+        options: [{ label: 'Yes' }, { label: 'No' }],
+      }) === 'Yes'
+    },
+    input: (title: unknown, placeholder?: unknown) => askOne(ctx, agent, signal, {
+      id: 'pi2dsh-input',
+      question: String(title),
+      ...(placeholder === undefined ? {} : { detail: String(placeholder) }),
+    }),
+    editor: (title: unknown, prefill?: unknown) => askOne(ctx, agent, signal, {
+      id: 'pi2dsh-editor',
+      question: String(title),
+      ...(prefill === undefined ? {} : { detail: `Current text:\n${String(prefill)}` }),
+    }),
+    setStatus: () => undefined,
+    setWidget: () => undefined,
+    onTerminalInput: () => () => undefined,
+    setWorkingMessage: () => undefined,
+    setWorkingVisible: () => undefined,
+    setWorkingIndicator: () => undefined,
+    setHiddenThinkingLabel: () => undefined,
+    setFooter: () => undefined,
+    setHeader: () => undefined,
+    setTitle: () => undefined,
+    // Pi's own rpc mode resolves ui.custom to undefined; mirror that exactly.
+    custom: async () => undefined,
+    pasteToEditor(text: unknown) {
+      if (agent !== undefined) {
+        state.editorBuffers.set(agent, (state.editorBuffers.get(agent) ?? '') + String(text))
+      }
+    },
+    setEditorText(text: unknown) {
+      if (agent !== undefined) state.editorBuffers.set(agent, String(text))
+    },
+    getEditorText: () => (agent === undefined ? '' : state.editorBuffers.get(agent) ?? ''),
+    addAutocompleteProvider(factory: unknown) {
+      state.autocompleteProviders.push(factory)
+    },
+    setEditorComponent(factory: unknown) {
+      state.editorComponentFactory = factory
+    },
+    getEditorComponent: () => state.editorComponentFactory,
+    get theme() {
+      return state.theme
+    },
+    getAllThemes: () => [{ name: state.theme.name, path: undefined }],
+    getTheme: (name: string) => (name === state.theme.name ? state.theme : undefined),
+    setTheme: (target: unknown) => (
+      typeof target === 'object' || target === state.theme.name
+        ? { success: true }
+        : { success: false, error: `pi2dsh headless mode ships a single theme (${state.theme.name})` }
+    ),
+    getToolsExpanded: () => state.toolsExpanded,
+    setToolsExpanded(expanded: unknown) {
+      state.toolsExpanded = expanded === true
+    },
   }
+  const session = agentSession(agent)
   const base: UnknownRecord = {
     ui,
     mode: 'rpc',
-    hasUI: false,
+    hasUI: userQuestions !== undefined,
     cwd: cwdOf(agent),
-    sessionManager: {
-      getEntries: () => [],
-      getLabel: () => undefined,
-    },
+    sessionManager: session === undefined
+      ? state.bridge.readonlySessionManager({ id: 'pi2dsh-detached', events: [] }, cwdOf(agent))
+      : state.bridge.readonlySessionManager(session as never, cwdOf(agent)),
     modelRegistry: {},
-    model: undefined,
+    model: agent === undefined ? undefined : state.modelOverrides.get(agent),
     scopedModels: [],
-    thinkingLevel: undefined,
+    thinkingLevel: thinkingLevelOf(state, agent),
     isIdle: () => command,
     isProjectTrusted: () => false,
     signal,
-    abort: () => unsupported('ctx.abort'),
+    abort: () => {
+      const target = agent as { cancel?(cause: unknown): void } | undefined
+      if (typeof target?.cancel !== 'function') unsupported('ctx.abort without a live DSH agent')
+      target.cancel({ kind: 'hook', reason: 'pi2dsh: aborted by migrated Pi extension' })
+    },
     hasPendingMessages: () => false,
     shutdown: () => unsupported('ctx.shutdown'),
     getContextUsage: () => undefined,
@@ -267,7 +488,10 @@ async function dispatch(
   eventContext: UnknownRecord,
 ): Promise<unknown[]> {
   const results: unknown[] = []
-  for (const handler of state.handlers.get(eventName) ?? []) results.push(await handler(event, eventContext))
+  const agent = eventContext.__agent as UnknownRecord | undefined
+  for (const handler of state.handlers.get(eventName) ?? []) {
+    results.push(await state.agentScope.run(agent, () => handler(event, eventContext)))
+  }
   return results
 }
 
@@ -318,12 +542,21 @@ function subscribeLifecycle(ctx: Context, state: RuntimeState): void {
   cordis.on('agent/session-start', (payload: UnknownRecord) => {
     const agent = payload.agent as UnknownRecord
     state.activeAgents.add(agent)
+    const session = agentSession(agent)
+    if (session !== undefined) state.bridge.load(session.id)
+    if (state.pendingActiveTools !== undefined) {
+      state.agentScope.run(agent, () => setActiveTools(ctx, state, state.pendingActiveTools!))
+    }
     void dispatch(state, 'session_start', { type: 'session_start', reason: sourceReason(payload.source) }, contextFor(ctx, state, agent, undefined))
       .catch(error => warn('session_start', error))
   })
   cordis.on('agent/disposed', (payload: UnknownRecord) => {
     const agent = payload.agent as UnknownRecord
     state.activeAgents.delete(agent)
+    if (typeof agent === 'object' && agent !== null) {
+      state.toolRestrictions.get(agent)?.()
+      state.toolRestrictions.delete(agent)
+    }
     if (typeof agent === 'object' && agent !== null && !state.disposedAgents.has(agent)) {
       state.disposedAgents.add(agent)
       void dispatch(state, 'session_shutdown', { type: 'session_shutdown', reason: 'quit' }, contextFor(ctx, state, agent, undefined))
@@ -349,6 +582,74 @@ function subscribeLifecycle(ctx: Context, state: RuntimeState): void {
         type: 'tool_execution_start', toolCallId: data.callId, toolName: data.name, args,
       }, eventContext).catch(error => warn('tool_execution_start', error))
     }
+    if (type === 'assistant/chunk' && (state.handlers.get('message_update')?.length ?? 0) > 0) {
+      const data = event.data as UnknownRecord
+      const chunk = (data.chunk ?? {}) as UnknownRecord
+      const key = `${String(session.id ?? '')}:${String(data.turn ?? 0)}:${String(data.step ?? 0)}`
+      const delta = typeof chunk.text === 'string'
+        ? chunk.text
+        : typeof chunk.delta === 'string' ? chunk.delta : ''
+      const accumulated = (state.streamingTexts.get(key) ?? '') + delta
+      state.streamingTexts.set(key, accumulated)
+      void dispatch(state, 'message_update', {
+        type: 'message_update',
+        message: { role: 'assistant', content: [{ type: 'text', text: accumulated }] },
+        assistantMessageEvent: chunk,
+      }, eventContext).catch(error => warn('message_update', error))
+    }
+    if (type === 'assistant/message') {
+      const data = event.data as UnknownRecord
+      state.streamingTexts.delete(`${String(session.id ?? '')}:${String(data.turn ?? 0)}:${String(data.step ?? 0)}`)
+    }
+    if (type === 'session/title') {
+      const data = event.data as UnknownRecord
+      void dispatch(state, 'session_info_changed', {
+        type: 'session_info_changed', name: typeof data.title === 'string' ? data.title : undefined,
+      }, eventContext).catch(error => warn('session_info_changed', error))
+    }
+    // DSH compaction events are facts from the durable log: the "before"
+    // projection is advisory (cancel/replace cannot reach DSH's compactor),
+    // and the "after" projection carries the summary when one was recorded.
+    if (type === 'compaction/start') {
+      void dispatch(state, 'session_before_compact', {
+        type: 'session_before_compact',
+        preparation: { ...(event.data as UnknownRecord) },
+        branchEntries: [],
+        reason: 'threshold',
+        willRetry: false,
+      }, eventContext).catch(error => warn('session_before_compact', error))
+    }
+    if (type === 'compaction/end' || type === 'compaction/summary') {
+      const data = event.data as UnknownRecord
+      void dispatch(state, 'session_compact', {
+        type: 'session_compact',
+        compactionEntry: {
+          type: 'compaction',
+          id: `dsh-${String(event.seq ?? '')}`,
+          summary: typeof data.summary === 'string' ? data.summary : '',
+          ...(data as object),
+        },
+        fromExtension: false,
+        reason: 'threshold',
+        willRetry: false,
+      }, eventContext).catch(error => warn('session_compact', error))
+    }
+    if (type === 'request/header') {
+      const header = ((event.data as UnknownRecord).header ?? {}) as UnknownRecord
+      const model = header.model ?? (header as { config?: UnknownRecord }).config?.model
+      if (model !== undefined && agent !== undefined) {
+        const previous = state.lastLoggedModels.get(agent)
+        if (previous !== undefined && previous !== String(model)) {
+          void dispatch(state, 'model_select', {
+            type: 'model_select',
+            model: { id: String(model) },
+            previousModel: { id: previous },
+            source: 'set',
+          }, eventContext).catch(error => warn('model_select', error))
+        }
+        state.lastLoggedModels.set(agent, String(model))
+      }
+    }
     const message = messageFromSessionEvent(event)
     if (message !== undefined) {
       void dispatch(state, 'message_start', { type: 'message_start', message }, eventContext)
@@ -363,6 +664,24 @@ function subscribeLifecycle(ctx: Context, state: RuntimeState): void {
         .then(() => dispatch(state, 'agent_end', { type: 'agent_end', messages: [] }, eventContext))
         .then(() => dispatch(state, 'agent_settled', { type: 'agent_settled' }, eventContext))
         .catch(error => warn('turn end lifecycle', error))
+    }
+  })
+
+  // Per-agent model/thinking overrides recorded by setModel()/setThinkingLevel()
+  // are applied at the request boundary, DSH's sanctioned seam for call-config
+  // replacement.
+  cordis.on('agent/request', async (payload: UnknownRecord, next: () => Promise<UnknownRecord>) => {
+    const config = await next()
+    const agent = payload.agent as UnknownRecord | undefined
+    if (agent === undefined) return config
+    const override = state.modelOverrides.get(agent)
+    const thinking = state.thinkingLevels.get(agent)
+    if (override === undefined && thinking === undefined) return config
+    return {
+      ...config,
+      ...(override?.provider === undefined ? {} : { provider: override.provider }),
+      ...(override?.model === undefined ? {} : { model: override.model }),
+      ...(thinking === undefined || thinking === 'off' ? {} : { reasoningEffort: thinking }),
     }
   })
 
@@ -385,6 +704,8 @@ function subscribeLifecycle(ctx: Context, state: RuntimeState): void {
       }
     }
     state.activeAgents.clear()
+    for (const dispose of state.toolDisposers.values()) dispose()
+    state.toolDisposers.clear()
     state.eventBus.removeAllListeners()
   }, 'pi2dsh session shutdown')
 }
@@ -395,8 +716,16 @@ function subscribeInterceptors(ctx: Context, state: RuntimeState): void {
     const input = cloneJson(exec.arguments)
     const event: UnknownRecord = { type: 'tool_call', toolName: exec.name, toolCallId: exec.callId, input }
     const results = await dispatch(state, 'tool_call', event, contextFor(ctx, state, exec.agent as unknown as UnknownRecord, exec.signal))
-    if (!jsonEqual(input, exec.arguments)) {
-      return { kind: 'deny', reason: 'pi2dsh rejected a Pi tool_call argument mutation because DSH logs arguments before policy' }
+    if (!jsonEqual(event.input, exec.arguments)) {
+      if (state.tools.has(exec.name)) {
+        // Pi semantics: tool_call handlers mutate event.input in place. For
+        // pi2dsh-owned tools the mutation is applied inside our execute
+        // wrapper; DSH-native tools cannot accept it because the core logs
+        // arguments before policy on purpose.
+        state.argMutations.set(exec as unknown as object, cloneJson(event.input))
+      } else {
+        return { kind: 'deny', reason: `pi2dsh: a Pi tool_call hook mutated arguments of native DSH tool ${JSON.stringify(exec.name)}; DSH logs arguments before policy, so this mutation cannot be honored` }
+      }
     }
     for (const result of results) {
       if (typeof result === 'object' && result !== null && (result as UnknownRecord).block === true) {
@@ -472,19 +801,23 @@ function registerTool(ctx: Context, state: RuntimeState, tool: PiTool): void {
     parameters: normalized.schema,
     output: {
       schema: {},
-      render: (_args, value) => textBlocks((value as UnknownRecord).content),
+      render: (_args, value) => (value as UnknownRecord).content as ContentBlock[],
       presentationMeta: (_args, value) => jsonValue((value as UnknownRecord).details) as never,
     },
     isConcurrencySafe: () => tool.executionMode === 'parallel',
     async execute(args, exec) {
-      const prepared = tool.prepareArguments?.(cloneJson(args)) ?? args
-      const result = normalizeToolResult(await tool.execute(
-        String(exec.callId),
-        prepared,
-        exec.signal,
-        update => logger(ctx).debug(`[pi2dsh] tool ${tool.name} emitted a partial update: ${JSON.stringify(jsonValue(update))}`),
-        contextFor(ctx, state, exec.agent as unknown as UnknownRecord, exec.signal),
-      ))
+      const mutated = state.argMutations.get(exec as unknown as object)
+      if (mutated !== undefined) state.argMutations.delete(exec as unknown as object)
+      const effective = mutated ?? args
+      const prepared = tool.prepareArguments?.(cloneJson(effective)) ?? effective
+      const agent = exec.agent as unknown as UnknownRecord | undefined
+      const result = await normalizeToolResultForDsh(ctx, await state.agentScope.run(agent, () => tool.execute(
+          String(exec.callId),
+          prepared,
+          exec.signal,
+          update => logger(ctx).debug(`[pi2dsh] tool ${tool.name} emitted a partial update: ${JSON.stringify(jsonValue(update))}`),
+          contextFor(ctx, state, agent, exec.signal),
+        )))
       if (result.terminate === true) exec.concludeTurn()
       if (result.isError === true) {
         const message = textBlocks(result.content).map(block => block.text).filter(Boolean).join('\n')
@@ -493,7 +826,144 @@ function registerTool(ctx: Context, state: RuntimeState, tool: PiTool): void {
       return result
     },
   }
-  ;(ctx as unknown as { tools: { register(toolDefinition: ToolDefinition): () => void } }).tools.register(definition)
+  const dispose = (ctx as unknown as { tools: { register(toolDefinition: ToolDefinition): () => void } }).tools.register(definition)
+  state.toolDisposers.set(tool.name, dispose)
+}
+
+function unregisterTool(state: RuntimeState, name: string): boolean {
+  const dispose = state.toolDisposers.get(name)
+  if (dispose === undefined) return false
+  dispose()
+  state.toolDisposers.delete(name)
+  state.tools.delete(name)
+  return true
+}
+
+function currentAgent(state: RuntimeState): UnknownRecord | undefined {
+  const scoped = state.agentScope.getStore()
+  if (scoped !== undefined) return scoped
+  if (state.activeAgents.size === 1) return state.activeAgents.values().next().value as UnknownRecord | undefined
+  return undefined
+}
+
+function toolRuntime(ctx: Context, agent?: UnknownRecord): {
+  schemas(scope?: unknown): Array<{ name: string; description?: string; parameters?: unknown }>
+  restrict?(filter: { allow: string[] }): () => void
+} {
+  const scoped = agent?.ctx as { tools?: ReturnType<typeof toolRuntime> } | undefined
+  return scoped?.tools ?? (ctx as unknown as { tools: ReturnType<typeof toolRuntime> }).tools
+}
+
+function getActiveTools(ctx: Context, state: RuntimeState): string[] {
+  const agent = currentAgent(state)
+  return toolRuntime(ctx, agent).schemas(agent).map(tool => tool.name)
+}
+
+function setActiveTools(ctx: Context, state: RuntimeState, names: string[]): void {
+  const unique = [...new Set(names)]
+  const agent = currentAgent(state)
+  if (agent === undefined || typeof agent !== 'object' || agent === null) {
+    state.pendingActiveTools = unique
+    return
+  }
+  state.toolRestrictions.get(agent)?.()
+  const scopedTools = toolRuntime(ctx, agent)
+  if (typeof scopedTools.restrict !== 'function') {
+    throw new Error('pi2dsh: the active DSH agent scope does not expose tools.restrict()')
+  }
+  state.toolRestrictions.set(agent, scopedTools.restrict({ allow: unique }))
+  state.pendingActiveTools = unique
+}
+
+function deliverAgentMessage(agent: DshAgent, message: unknown, mode: 'inject' | 'steer' | 'followup'): void {
+  const deliver = agent[mode]
+  if (typeof deliver !== 'function') throw new Error(`pi2dsh: active DSH agent has no ${mode}() delivery method`)
+  deliver.call(agent, message)
+}
+
+async function sendPiMessage(
+  ctx: Context,
+  state: RuntimeState,
+  content: unknown,
+  mode: 'inject' | 'steer' | 'followup',
+): Promise<void> {
+  const agent = requireAgent(state, mode === 'inject' ? 'sendMessage' : 'sendUserMessage')
+  const blocks = await piToDshContent(ctx, typeof content === 'string' ? [{ type: 'text', text: content }] : content)
+  deliverAgentMessage(agent, createUserMessage({
+    content: blocks,
+    source: { kind: 'plugin', plugin: state.messageSource },
+  }), mode)
+}
+
+function combineExecSignal(options: PiExecOptions): {
+  signal: AbortSignal
+  killed(): boolean
+  cleanup(): void
+} {
+  const controller = new AbortController()
+  let killed = false
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const abort = (reason: unknown): void => {
+    if (controller.signal.aborted) return
+    killed = true
+    controller.abort(reason)
+  }
+  const onAbort = (): void => abort(options.signal?.reason ?? new Error('Pi exec aborted'))
+  if (options.signal?.aborted) onAbort()
+  else options.signal?.addEventListener('abort', onAbort, { once: true })
+  if (typeof options.timeout === 'number' && Number.isFinite(options.timeout) && options.timeout > 0) {
+    timer = setTimeout(() => abort(new Error(`Pi exec timed out after ${options.timeout}ms`)), options.timeout)
+  }
+  return {
+    signal: controller.signal,
+    killed: () => killed,
+    cleanup() {
+      if (timer !== undefined) clearTimeout(timer)
+      options.signal?.removeEventListener('abort', onAbort)
+    },
+  }
+}
+
+async function executePiCommand(
+  service: DshSubprocessService,
+  cwd: string,
+  command: string,
+  args: string[],
+  options: PiExecOptions,
+): Promise<{ stdout: string; stderr: string; code: number; killed: boolean }> {
+  const operation = combineExecSignal(options)
+  try {
+    if (typeof command !== 'string' || command.length === 0) throw new TypeError('Pi exec command must be a non-empty string')
+    if (!Array.isArray(args) || args.some(value => typeof value !== 'string')) throw new TypeError('Pi exec args must be strings')
+    const executable = await service.resolveExecutable(command, undefined, operation.signal)
+    const collect = { maxBytes: 64 * 1024 * 1024 }
+    const handle = service.spawn({
+      argv: [executable, ...args],
+      cwd: options.cwd ?? cwd,
+      stdio: { stdin: 'ignore', stdout: collect, stderr: collect },
+      graceMs: 5_000,
+      signal: operation.signal,
+    })
+    const outcome = await handle.done
+    const stdout = handle.collected.stdout?.readFrom(0)
+    const stderr = handle.collected.stderr?.readFrom(0)
+    const truncation = [stdout?.lossy ? 'stdout' : '', stderr?.lossy ? 'stderr' : ''].filter(Boolean)
+    return {
+      stdout: stdout?.text ?? '',
+      stderr: `${stderr?.text ?? ''}${truncation.length === 0 ? '' : `\n[pi2dsh: ${truncation.join(' and ')} exceeded the 64 MiB compatibility limit]`}`,
+      code: outcome.exitCode ?? 0,
+      killed: operation.killed(),
+    }
+  } catch (error) {
+    return {
+      stdout: '',
+      stderr: error instanceof Error ? error.message : String(error),
+      code: operation.signal.aborted ? 0 : 1,
+      killed: operation.killed(),
+    }
+  } finally {
+    operation.cleanup()
+  }
 }
 
 function registerCommand(ctx: Context, state: RuntimeState, command: PiCommand): void {
@@ -513,15 +983,23 @@ function registerCommand(ctx: Context, state: RuntimeState, command: PiCommand):
     async handler(invocation: UnknownRecord) {
       const agent = invocation.agent as UnknownRecord
       const commandContext = contextFor(ctx, state, agent, invocation.signal as AbortSignal, true)
-      await command.handler(String(invocation.rawInput ?? '').trimStart(), commandContext)
+      await state.agentScope.run(agent, () => command.handler(String(invocation.rawInput ?? '').trimStart(), commandContext))
       const notices = commandContext.__notices as string[]
       return { kind: 'success', ...(notices.length > 0 ? { text: notices.join('\n') } : {}) }
     },
   })
 }
 
+function requireSession(state: RuntimeState, operation: string): { id: string; events: unknown } {
+  const agent = currentAgent(state)
+  const session = agentSession(agent)
+  if (session === undefined) {
+    throw new Error(`pi2dsh: ${operation} requires one active DSH agent with a durable session`)
+  }
+  return session
+}
+
 function createPiApi(ctx: Context, state: RuntimeState): UnknownRecord {
-  const ignored = (name: string) => (..._args: unknown[]) => logger(ctx).warn(`[pi2dsh] ignored unsupported Pi registration: ${name}`)
   return {
     on(event: string, handler: PiHandler) {
       const list = state.handlers.get(event) ?? []
@@ -529,6 +1007,7 @@ function createPiApi(ctx: Context, state: RuntimeState): UnknownRecord {
       state.handlers.set(event, list)
     },
     registerTool: (tool: PiTool) => registerTool(ctx, state, tool),
+    unregisterTool: (name: string) => unregisterTool(state, name),
     registerCommand(name: string, options: UnknownRecord) {
       registerCommand(ctx, state, {
         name,
@@ -537,38 +1016,120 @@ function createPiApi(ctx: Context, state: RuntimeState): UnknownRecord {
         handler: options.handler as PiCommand['handler'],
       })
     },
-    registerShortcut: ignored('registerShortcut'),
+    // Registered and introspectable; DSH surfaces have no terminal key
+    // bindings, so handlers never fire — the same as Pi's non-TUI modes.
+    registerShortcut(shortcut: string, options: UnknownRecord) {
+      state.shortcuts.set(shortcut, options)
+    },
     registerFlag(name: string, options: UnknownRecord) {
       state.flags.set(name, options.default as boolean | string | undefined)
       logger(ctx).warn(`[pi2dsh] Pi flag --${name} uses its default only; DSH CLI registration is unsupported`)
     },
     getFlag: (name: string) => state.flags.get(name),
-    registerProvider: ignored('registerProvider'),
-    unregisterProvider: ignored('unregisterProvider'),
-    registerMessageRenderer: ignored('registerMessageRenderer'),
-    registerEntryRenderer: ignored('registerEntryRenderer'),
-    registerMarkdownTransformer: ignored('registerMarkdownTransformer'),
-    sendMessage: () => unsupported('sendMessage'),
-    sendUserMessage: () => unsupported('sendUserMessage'),
-    appendEntry: () => unsupported('appendEntry'),
-    setSessionName: () => unsupported('setSessionName'),
-    getSessionName: () => undefined,
-    setLabel: () => unsupported('setLabel'),
-    exec: () => unsupported('exec'),
-    getActiveTools: () => [...state.tools.keys()],
-    getAllTools: () => [...state.tools.values()].map(tool => ({
-      name: tool.name, description: tool.description, parameters: tool.parameters, source: 'extension',
+    registerProvider(providerOrName: unknown, config?: UnknownRecord) {
+      const name = typeof providerOrName === 'string'
+        ? providerOrName
+        : String((providerOrName as UnknownRecord | undefined)?.name ?? 'unnamed')
+      const value = typeof providerOrName === 'string' ? config ?? {} : providerOrName as UnknownRecord
+      state.providers.set(name, value)
+      logger(ctx).info(`[pi2dsh] recorded Pi provider ${JSON.stringify(name)}; model calls stay on DSH llm adapters`)
+    },
+    unregisterProvider(name: string) {
+      state.providers.delete(name)
+    },
+    // Renderer registrations are accepted verbatim; DSH owns presentation, so
+    // they are never invoked — matching Pi's own non-TUI surfaces.
+    registerMessageRenderer(customType: string, renderer: unknown) {
+      state.messageRenderers.set(customType, renderer)
+    },
+    registerEntryRenderer(customType: string, renderer: unknown) {
+      state.entryRenderers.set(customType, renderer)
+    },
+    registerMarkdownTransformer(transformer: unknown) {
+      state.markdownTransformer = transformer
+    },
+    sendMessage(message: UnknownRecord, options: UnknownRecord = {}) {
+      requireAgent(state, 'sendMessage')
+      const mode = options.deliverAs === 'steer'
+        ? 'steer'
+        : options.deliverAs === 'followUp' || options.deliverAs === 'nextTurn' || options.triggerTurn === true
+          ? 'followup'
+          : 'inject'
+      return sendPiMessage(ctx, state, message.content, mode)
+    },
+    sendUserMessage(content: unknown, options: UnknownRecord = {}) {
+      requireAgent(state, 'sendUserMessage')
+      return sendPiMessage(ctx, state, content, options.deliverAs === 'steer' ? 'steer' : 'followup')
+    },
+    appendEntry(customType: string, data?: unknown) {
+      const session = requireSession(state, 'appendEntry')
+      state.bridge.appendCustomEntry(session.id, customType, data)
+    },
+    setSessionName(name: string) {
+      const session = requireSession(state, 'setSessionName')
+      state.bridge.setName(session.id, String(name))
+      void dispatch(state, 'session_info_changed', {
+        type: 'session_info_changed',
+        name: state.bridge.getName(session.id),
+      }, contextFor(ctx, state, currentAgent(state), undefined))
+        .catch(error => logger(ctx).warn(`[pi2dsh] session_info_changed handler failed: ${String(error)}`))
+    },
+    getSessionName() {
+      const agent = currentAgent(state)
+      const session = agentSession(agent)
+      return session === undefined ? undefined : state.bridge.getName(session.id)
+    },
+    setLabel(entryId: string, label: string | undefined) {
+      const session = requireSession(state, 'setLabel')
+      state.bridge.appendLabel(session.id, String(entryId), label)
+    },
+    exec(command: string, args: string[] = [], options: PiExecOptions = {}) {
+      const service = optionalService<DshSubprocessService>(ctx, 'subprocess')
+      if (service === undefined) unsupported('exec')
+      return executePiCommand(service, cwdOf(currentAgent(state)), command, args, options)
+    },
+    getActiveTools: () => getActiveTools(ctx, state),
+    getAllTools: () => toolRuntime(ctx, currentAgent(state)).schemas(currentAgent(state)).map(tool => ({
+      name: tool.name,
+      description: tool.description ?? '',
+      parameters: tool.parameters ?? {},
+      source: state.tools.has(tool.name) ? 'extension' : 'builtin',
+      sourceInfo: { path: '', source: state.tools.has(tool.name) ? 'pi2dsh' : 'dsh', scope: 'session', origin: 'runtime' },
     })),
-    setActiveTools: () => unsupported('setActiveTools'),
+    setActiveTools: (names: string[]) => setActiveTools(ctx, state, names),
     getCommands: () => [...state.commands.values()].map(command => ({
       name: command.name,
       description: command.description,
       source: 'extension',
       sourceInfo: { path: '', source: 'pi2dsh', scope: 'user', origin: 'package' },
     })),
-    setModel: () => unsupported('setModel'),
-    getThinkingLevel: () => 'off',
-    setThinkingLevel: () => unsupported('setThinkingLevel'),
+    async setModel(model: UnknownRecord) {
+      const agent = currentAgent(state)
+      if (agent === undefined) return false
+      const override = {
+        ...(typeof model?.provider === 'string' ? { provider: model.provider } : {}),
+        ...(typeof model?.id === 'string' ? { model: model.id } : {}),
+      }
+      if (override.model === undefined) return false
+      state.modelOverrides.set(agent, override)
+      const previous = state.modelOverrides.get(agent)
+      void dispatch(state, 'model_select', {
+        type: 'model_select', model, previousModel: previous, source: 'set',
+      }, contextFor(ctx, state, agent, undefined))
+        .catch(error => logger(ctx).warn(`[pi2dsh] model_select handler failed: ${String(error)}`))
+      return true
+    },
+    getThinkingLevel: () => thinkingLevelOf(state, currentAgent(state)),
+    setThinkingLevel(level: string) {
+      const agent = currentAgent(state)
+      const previousLevel = thinkingLevelOf(state, agent)
+      if (agent === undefined) state.globalThinkingLevel = String(level)
+      else state.thinkingLevels.set(agent, String(level))
+      void dispatch(state, 'thinking_level_select', {
+        type: 'thinking_level_select', level: String(level), previousLevel,
+      }, contextFor(ctx, state, agent, undefined))
+        .catch(error => logger(ctx).warn(`[pi2dsh] thinking_level_select handler failed: ${String(error)}`))
+    },
     events: {
       emit(channel: string, data: unknown) {
         state.eventBus.emit(channel, data)
@@ -701,13 +1262,32 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
   const state: RuntimeState = {
     handlers: new Map(),
     tools: new Map(),
+    toolDisposers: new Map(),
+    toolRestrictions: new WeakMap(),
     commands: new Map(),
     flags: new Map(),
     notifications: [],
     activeAgents: new Set(),
     disposedAgents: new WeakSet(),
     currentSystemPrompt: '',
+    messageSource: `pi2dsh:${options.manifest.package.name}`,
     eventBus: new EventEmitter(),
+    agentScope: new AsyncLocalStorage(),
+    bridge: new PiSessionBridge(),
+    theme: new Theme(),
+    shortcuts: new Map(),
+    messageRenderers: new Map(),
+    entryRenderers: new Map(),
+    providers: new Map(),
+    autocompleteProviders: [],
+    editorBuffers: new WeakMap(),
+    toolsExpanded: false,
+    modelOverrides: new WeakMap(),
+    thinkingLevels: new WeakMap(),
+    globalThinkingLevel: 'off',
+    argMutations: new WeakMap(),
+    streamingTexts: new Map(),
+    lastLoggedModels: new WeakMap(),
   }
   subscribeLifecycle(ctx, state)
   subscribeInterceptors(ctx, state)

@@ -60,7 +60,7 @@ describe('Pi package discovery and compatibility analysis', () => {
       const report = await analyzePackage(pkg)
       expect(report.verdict).toBe('blocked')
       expect(report.findings).toEqual(expect.arrayContaining([
-        expect.objectContaining({ capability: 'registerShortcut', level: 'unsupported' }),
+        expect.objectContaining({ capability: 'registerShortcut', level: 'partial' }),
         expect.objectContaining({ capability: 'on(<dynamic>)', level: 'unsupported' }),
       ]))
     } finally {
@@ -124,10 +124,10 @@ describe('Pi package discovery and compatibility analysis', () => {
       'export default pi => new Bridge(pi).install()',
     ].join('\n'))
     const report = await analyzePackage(await resolvePiPackage(file))
-    expect(report.verdict).toBe('blocked')
+    expect(report.verdict).toBe('review')
     expect(report.findings).toEqual(expect.arrayContaining([
       expect.objectContaining({ capability: 'registerTool', level: 'partial' }),
-      expect.objectContaining({ capability: 'setActiveTools', level: 'unsupported' }),
+      expect.objectContaining({ capability: 'setActiveTools', level: 'partial' }),
     ]))
   })
 
@@ -204,7 +204,7 @@ describe('Pi package discovery and compatibility analysis', () => {
     expect(report.findings).toEqual(expect.arrayContaining([
       expect.objectContaining({ capability: 'ctx.hasUI', level: 'full' }),
       expect.objectContaining({ capability: 'ctx.cwd', level: 'full' }),
-      expect.objectContaining({ capability: 'ctx.ui.input', level: 'partial' }),
+      expect.objectContaining({ capability: 'ctx.ui.input', level: 'full' }),
       expect.objectContaining({ capability: 'ctx.ui.setStatus', level: 'partial' }),
       expect.objectContaining({ capability: 'ctx.shutdown', level: 'unsupported' }),
     ]))

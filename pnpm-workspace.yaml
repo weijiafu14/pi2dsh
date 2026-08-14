@@ -2,7 +2,9 @@ packages:
   - .
 
 allowBuilds:
+  '@deepseek-ai/dsh-subprocess-local': true
   '@google/genai': false
+  node-pty: true
   protobufjs: false
 minimumReleaseAgeExclude:
   - '@deepseek-ai/cordis@4.0.1'
@@ -27,3 +29,7 @@ minimumReleaseAgeExclude:
   - '@deepseek-ai/dsh-typert-protocol@0.1.0-rc.6'
   - '@deepseek-ai/dsh-user-approval@0.1.0-rc.6'
   - '@deepseek-ai/schemastery@3.18.1'
+  - '@deepseek-ai/dsh-subprocess-local@0.1.0-rc.6'
+  - '@deepseek-ai/dsh-subprocess@0.1.0-rc.6'
+  - '@deepseek-ai/dsh-user-questions@0.1.0-rc.6'
+  - '@deepseek-ai/dsh-attachment-local@0.1.0-rc.6'

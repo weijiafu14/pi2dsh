@@ -5,7 +5,9 @@ function captureFailure(failures: string[], name: string, callback: () => unknow
     callback()
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
-    if (message.includes('requires a native DSH port')) failures.push(name)
+    if (message.includes('requires a native DSH port') || message.includes('requires one active DSH agent')) {
+      failures.push(name)
+    }
   }
 }
 
@@ -19,13 +21,9 @@ export default function runtimeEdgeExtension(pi: any): void {
   pi.registerMarkdownTransformer('fixture', {})
 
   for (const [name, callback] of [
-    ['sendMessage', () => pi.sendMessage({})],
-    ['sendUserMessage', () => pi.sendUserMessage('x')],
     ['appendEntry', () => pi.appendEntry({})],
     ['setSessionName', () => pi.setSessionName('x')],
     ['setLabel', () => pi.setLabel('x', 'y')],
-    ['exec', () => pi.exec('x')],
-    ['setActiveTools', () => pi.setActiveTools([])],
     ['setModel', () => pi.setModel('x')],
     ['setThinkingLevel', () => pi.setThinkingLevel('high')],
   ] as Array<[string, () => unknown]>) captureFailure(registrationFailures, name, callback)
@@ -71,6 +69,7 @@ export default function runtimeEdgeExtension(pi: any): void {
           pending: ctx.hasPendingMessages(),
           usage: ctx.getContextUsage(),
           systemPrompt: ctx.getSystemPrompt(),
+          hasUI: ctx.hasUI,
           unavailable,
         }) }],
         details: { unavailable },
@@ -79,10 +78,70 @@ export default function runtimeEdgeExtension(pi: any): void {
   })
 
   pi.registerTool({
-    name: 'pi_mutation_probe',
-    description: 'Exercise rejected pre-tool argument mutation.',
-    parameters: { type: 'object', properties: { value: { type: 'string' } } },
+    name: 'pi_dynamic_removed',
+    description: 'Must disappear through the generic dynamic tool disposer.',
+    parameters: { type: 'object', properties: {} },
     async execute() { return { content: [{ type: 'text', text: 'must not execute' }] } },
+  })
+  ;(pi as any).unregisterTool('pi_dynamic_removed')
+
+  pi.registerTool({
+    name: 'pi_exec_probe',
+    description: 'Execute through the selected DSH subprocess provider.',
+    parameters: { type: 'object', properties: {} },
+    async execute(_id: string, _args: unknown, _signal: AbortSignal, _update: unknown, ctx: any) {
+      const result = await pi.exec(process.execPath, ['-e', 'process.stdout.write(process.cwd())'], { cwd: ctx.cwd })
+      return { content: [{ type: 'text', text: JSON.stringify(result) }] }
+    },
+  })
+
+  pi.registerTool({
+    name: 'pi_message_probe',
+    description: 'Exercise inject, steering, and follow-up delivery.',
+    parameters: { type: 'object', properties: {} },
+    async execute() {
+      await pi.sendMessage({ customType: 'probe', content: 'injected', display: false })
+      await pi.sendMessage({ customType: 'probe', content: 'steered', display: true }, { deliverAs: 'steer' })
+      await pi.sendUserMessage('followed-up', { deliverAs: 'followUp' })
+      return { content: [{ type: 'text', text: 'delivered' }] }
+    },
+  })
+
+  pi.registerTool({
+    name: 'pi_ask_probe',
+    description: 'Exercise the native DSH AskUser service through Pi UI calls.',
+    parameters: { type: 'object', properties: {} },
+    async execute(_id: string, _args: unknown, _signal: AbortSignal, _update: unknown, ctx: any) {
+      const selected = await ctx.ui.select('Pick one', ['alpha', 'beta'])
+      const confirmed = await ctx.ui.confirm('Proceed?', 'Confirm the native question mapping.')
+      const typed = await ctx.ui.input('Value', 'type here')
+      return { content: [{ type: 'text', text: JSON.stringify({ hasUI: ctx.hasUI, selected, confirmed, typed }) }] }
+    },
+  })
+
+  pi.registerTool({
+    name: 'pi_image_probe',
+    description: 'Persist a Pi base64 image through the native DSH attachment store.',
+    parameters: { type: 'object', properties: {} },
+    async execute() {
+      return {
+        content: [{
+          type: 'image',
+          data: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+          mimeType: 'image/png',
+        }],
+        details: { nativeAttachment: true },
+      }
+    },
+  })
+
+  pi.registerTool({
+    name: 'pi_mutation_probe',
+    description: 'Exercise in-place pre-tool argument mutation on a Pi-owned tool.',
+    parameters: { type: 'object', properties: { value: { type: 'string' } } },
+    async execute(_id: string, args: RecordValue) {
+      return { content: [{ type: 'text', text: `executed with ${String(args.value)}` }] }
+    },
   })
 
   pi.registerTool({
@@ -110,6 +169,9 @@ export default function runtimeEdgeExtension(pi: any): void {
   })
 
   pi.on('before_agent_start', () => ({ message: { role: 'user', content: 'ignored fixture message' } }))
+  pi.on('session_start', () => {
+    pi.setActiveTools(['pi_greet', 'pi_api_probe', 'pi_exec_probe', 'pi_message_probe', 'pi_ask_probe', 'pi_image_probe'])
+  })
   pi.on('tool_call', (event: RecordValue) => {
     if (event.toolName === 'pi_mutation_probe') (event.input as RecordValue).value = 'mutated'
   })

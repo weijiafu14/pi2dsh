@@ -56,7 +56,7 @@ export const HOST_IMPORT_RULES: Readonly<Record<string, Readonly<Record<string, 
 export const CONTEXT_RULES: Readonly<Record<string, Rule>> = Object.freeze({
   cwd: rule('full', 'Mapped to the active DSH agent session working directory.'),
   signal: rule('full', 'Mapped to the active DSH cancellation signal when one is available.'),
-  hasUI: rule('full', 'Reports false because the bridge targets DSH headless/Web surfaces rather than the Pi terminal UI.'),
+  hasUI: rule('full', 'Reports whether the native DSH userQuestions service is available to back Pi dialogs.'),
   mode: rule('partial', 'Reports rpc mode so Pi extensions can choose their documented headless fallback.'),
   isIdle: rule('partial', 'Command contexts report idle; tool/lifecycle contexts conservatively report non-idle.'),
   isProjectTrusted: rule('partial', 'Fails closed as untrusted because DSH does not expose Pi project-trust state.'),
@@ -79,9 +79,9 @@ export const UI_CONTEXT_RULES: Readonly<Record<string, Rule>> = Object.freeze({
   notify: rule('full', 'Captured as a command result when applicable and emitted through DSH logging.'),
   setStatus: rule('partial', 'Accepted as a no-op because DSH owns status presentation.'),
   setWidget: rule('partial', 'Accepted as a no-op because Pi terminal widgets cannot render in DSH.'),
-  select: rule('partial', 'Unavailable in the bridge; extensions must follow their hasUI/rpc fallback or the call fails explicitly.'),
-  confirm: rule('partial', 'Unavailable in the bridge; extensions must follow their hasUI/rpc fallback or the call fails explicitly.'),
-  input: rule('partial', 'Unavailable in the bridge; extensions must follow their hasUI/rpc fallback or the call fails explicitly.'),
+  select: rule('full', 'Mapped to one native DSH userQuestions single-select request.'),
+  confirm: rule('full', 'Mapped to one native DSH userQuestions Yes/No request.'),
+  input: rule('full', 'Mapped to one native DSH userQuestions free-text request.'),
   custom: rule('partial', 'Pi custom TUI components cannot render; guarded rpc/headless fallbacks may still run.'),
   onTerminalInput: rule('partial', 'Raw terminal input is absent; feature-detected listeners remain disabled.'),
 })
@@ -89,15 +89,19 @@ export const UI_CONTEXT_RULES: Readonly<Record<string, Rule>> = Object.freeze({
 export const API_RULES: Readonly<Record<string, Rule>> = Object.freeze({
   registerTool: {
     level: 'partial',
-    detail: 'Registered as a native DSH tool. The enforced JSON Schema subset is preserved; unsupported constraints, binary image results, and Pi-only error details are explicitly degraded.',
+    detail: 'Registered as a native DSH tool. Text and image results use native DSH content/attachments; unsupported JSON Schema constraints and Pi-only error details are explicitly degraded.',
+  },
+  unregisterTool: {
+    level: 'full',
+    detail: 'Disposes the exact native DSH tool registration and removes it from the migrated package registry.',
   },
   registerCommand: {
     level: 'partial',
     detail: 'Registered in ctx.commands; ui.notify becomes the result, while interactive Pi TUI methods fail explicitly in headless DSH.',
   },
   registerShortcut: {
-    level: 'unsupported',
-    detail: 'Pi terminal keyboard shortcuts have no cross-surface DSH equivalent.',
+    level: 'partial',
+    detail: 'Accepted as a headless no-op. The command/tool capability remains available, but terminal-only key bindings are not exposed by DSH Web/headless surfaces.',
   },
   registerFlag: {
     level: 'partial',
@@ -128,12 +132,12 @@ export const API_RULES: Readonly<Record<string, Rule>> = Object.freeze({
     detail: 'Display-only Pi TUI markdown transforms have no model-neutral DSH equivalent.',
   },
   sendMessage: {
-    level: 'unsupported',
-    detail: 'Pi custom-message persistence and delivery modes do not match DSH durable message sources.',
+    level: 'partial',
+    detail: 'Mapped to native DSH inject/steer/followup delivery with honest plugin provenance; Pi display/details metadata awaits the custom session-entry seam.',
   },
   sendUserMessage: {
-    level: 'unsupported',
-    detail: 'Programmatic steering must be ported explicitly to DSH agent APIs.',
+    level: 'full',
+    detail: 'Mapped to native DSH steer/followup delivery with text and attachment-backed image content.',
   },
   appendEntry: {
     level: 'unsupported',
@@ -152,20 +156,20 @@ export const API_RULES: Readonly<Record<string, Rule>> = Object.freeze({
     detail: 'Pi entry labels have no verified DSH session-event projection.',
   },
   exec: {
-    level: 'unsupported',
-    detail: 'Shell execution must be ported to an explicit DSH tool or sandbox capability; the bridge never spawns it implicitly.',
+    level: 'partial',
+    detail: 'Mapped to ctx.subprocess, so the selected local/E2B provider owns execution, isolation, cancellation, and tree cleanup; output is bounded to 64 MiB per stream.',
   },
   getActiveTools: {
     level: 'partial',
-    detail: 'Returns tools registered by this migrated Pi package, not every tool visible in the DSH scope.',
+    detail: 'Returns every tool visible in the current DSH agent scope, including native and migrated tools; scope-local tools follow DSH composition rules.',
   },
   getAllTools: {
     level: 'partial',
-    detail: 'Returns metadata for tools registered by this migrated Pi package, without native DSH tools or Pi prompt guidelines.',
+    detail: 'Returns metadata for all tools visible in the current DSH scope, without Pi-specific prompt guidelines unavailable from DSH schemas.',
   },
   setActiveTools: {
-    level: 'unsupported',
-    detail: 'Dynamic Pi tool activation does not map to DSH scoped tool presentation without a native policy plugin.',
+    level: 'partial',
+    detail: 'Mapped to the active DSH agent scope through tools.restrict({ allow }), preserving per-agent global-tool visibility without mutating other agents; DSH scope-local tools remain visible by design.',
   },
   getCommands: {
     level: 'partial',
