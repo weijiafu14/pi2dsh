@@ -251,6 +251,10 @@ export async function createBridgedAgentSession(
   const sessionId = `pi2dsh-sub-${Date.now().toString(36)}-${subagentSerial}`
   let handle
   try {
+    // A Pi model object on the options routes the child agent: DSH's
+    // agentOptions carry the provider route and model id the child's loop
+    // will call (reviewer sessions, model division of labor).
+    const requestedModel = options.model as { provider?: unknown, id?: unknown } | undefined
     handle = await agents.create({
       sessionId,
       meta: {
@@ -258,6 +262,16 @@ export async function createBridgedAgentSession(
         origin: 'subagent',
         ...(host.parentSessionId() !== undefined ? { parentSession: host.parentSessionId() } : {}),
       },
+      ...(typeof requestedModel?.id === 'string' && requestedModel.id.length > 0
+        ? {
+            agentOptions: {
+              model: requestedModel.id,
+              ...(typeof requestedModel.provider === 'string' && requestedModel.provider.length > 0
+                ? { provider: requestedModel.provider }
+                : {}),
+            },
+          }
+        : {}),
     })
   } catch (error) {
     throw new Error(

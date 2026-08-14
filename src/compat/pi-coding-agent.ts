@@ -85,6 +85,19 @@ export { createGrepTool, createGrepToolDefinition } from './vendor/pi-tools/grep
 export { createFindTool, createFindToolDefinition } from './vendor/pi-tools/find.js'
 export { createLsTool, createLsToolDefinition } from './vendor/pi-tools/ls.js'
 
+// Pi's one-line tool-event guards (core/extensions/types.js), verbatim.
+interface ToolNamedEvent { toolName?: unknown }
+export function isToolCallEventType(toolName: string, event: ToolNamedEvent): boolean {
+  return event.toolName === toolName
+}
+export function isBashToolResult(event: ToolNamedEvent): boolean { return event.toolName === 'bash' }
+export function isReadToolResult(event: ToolNamedEvent): boolean { return event.toolName === 'read' }
+export function isEditToolResult(event: ToolNamedEvent): boolean { return event.toolName === 'edit' }
+export function isWriteToolResult(event: ToolNamedEvent): boolean { return event.toolName === 'write' }
+export function isGrepToolResult(event: ToolNamedEvent): boolean { return event.toolName === 'grep' }
+export function isFindToolResult(event: ToolNamedEvent): boolean { return event.toolName === 'find' }
+export function isLsToolResult(event: ToolNamedEvent): boolean { return event.toolName === 'ls' }
+
 import { homedir } from 'node:os'
 import { join, delimiter } from 'node:path'
 import { existsSync, readFileSync } from 'node:fs'

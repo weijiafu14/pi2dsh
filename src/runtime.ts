@@ -27,6 +27,7 @@ import {
 } from './oauth-bridge.js'
 import { __setPiAiLlmBridge, builtinProviders } from './compat/pi-ai.js'
 import { ModelCatalog, llmOf, streamViaDshLlm } from './model-bridge.js'
+import { registerPiProviderRoute } from './provider-adapter.js'
 
 type UnknownRecord = Record<string, unknown>
 type PiHandler = (event: UnknownRecord, context: UnknownRecord) => unknown | Promise<unknown>
@@ -110,6 +111,8 @@ interface RuntimeState {
   lastLoggedModels: WeakMap<object, string>
   // Pi Model catalog projected from the DSH llm service (empty without one).
   modelCatalog?: ModelCatalog
+  // Live DSH llm routes registered for transport-carrying Pi providers.
+  providerRouteDisposers: Map<string, () => void>
 }
 
 interface PiExecOptions {
@@ -474,16 +477,67 @@ function contextFor(
   // double-checked-lock refresh) against the Pi-format auth.json.
   const providerConfig = (name: string): UnknownRecord | undefined => state.providers.get(name)
   const catalog = state.modelCatalog
+  // Pi-family models: entries declared by providers the PACKAGE registered
+  // (pi-ai createProvider objects carry getModels()). Merged after the DSH
+  // llm directory, matching Pi's registry-of-registered-providers semantics.
+  const piProviderModels = (): UnknownRecord[] => {
+    const out: UnknownRecord[] = []
+    for (const [key, value] of state.providers) {
+      let models: unknown
+      try {
+        models = typeof (value as { getModels?: unknown }).getModels === 'function'
+          ? (value as { getModels(): unknown }).getModels()
+          : (value as { models?: unknown }).models
+      } catch {
+        continue
+      }
+      if (!Array.isArray(models)) continue
+      for (const model of models as UnknownRecord[]) {
+        out.push({ ...model, provider: String(model.provider ?? key) })
+      }
+    }
+    return out
+  }
+  const allModels = () => {
+    const fromLlm = catalog?.all() ?? []
+    const seen = new Set(fromLlm.map(model => `${model.provider} ${model.id}`))
+    return [...fromLlm, ...piProviderModels().filter(model => !seen.has(`${String(model.provider)} ${String(model.id)}`))]
+  }
   const modelRegistry = {
-    getAll: () => catalog?.all() ?? [],
-    getAvailable: () => catalog?.all() ?? [],
-    find: (provider: string, modelId: string) => catalog?.find(provider, modelId),
+    getAll: () => allModels(),
+    getAvailable: () => allModels(),
+    find: (provider: string, modelId: string) => catalog?.find(provider, modelId)
+      ?? piProviderModels().find(model => model.provider === provider && model.id === modelId),
     getError: () => undefined,
     hasConfiguredAuth: (model: unknown) => {
       // Configuration check, not key liveness (Pi's is also a config check):
-      // the route resolves iff its provider is in the live llm directory.
+      // the route resolves iff its provider is in the live llm directory or
+      // registered by a package.
       const provider = String((model as UnknownRecord | undefined)?.provider ?? '')
-      return provider.length > 0 && (catalog?.all() ?? []).some(entry => entry.provider === provider)
+      return provider.length > 0
+        && (state.providers.has(provider) || (catalog?.all() ?? []).some(entry => entry.provider === provider))
+    },
+    // Pi's per-model credential read: the package-registered provider's own
+    // chain resolves the key and headers (stored OAuth → stored key → the
+    // provider's ambient env resolution). DSH-route credentials stay inside
+    // the DSH adapter by design (assertUsableApiKey: keys never leave), so a
+    // catalog-only provider answers not-ok here while still routing real
+    // calls through the loop.
+    getApiKeyAndHeaders: async (model: unknown) => {
+      const provider = String((model as UnknownRecord | undefined)?.provider ?? '')
+      const config = providerConfig(provider)
+      if (config === undefined) return { ok: false }
+      const resolved = await resolvePiProviderAuth({
+        providerId: provider, providerConfig: config, store: oauthStoreOf(state),
+      })
+      const auth = resolved?.auth as UnknownRecord | undefined
+      if (auth?.apiKey === undefined) return { ok: false }
+      return {
+        ok: true,
+        apiKey: auth.apiKey,
+        ...(auth.headers === undefined ? {} : { headers: auth.headers }),
+        ...(auth.baseUrl === undefined && config.baseUrl === undefined ? {} : { baseUrl: auth.baseUrl ?? config.baseUrl }),
+      }
     },
     getProviderAuthStatus: (provider: string) =>
       providerSupportsOAuth(providerConfig(provider)) ? 'oauth' : 'none',
@@ -1204,12 +1258,36 @@ function createPiApi(ctx: Context, state: RuntimeState): UnknownRecord {
         // package's own login flow runs, credentials land in auth.json.
         ensureLoginCommand(ctx, state)
         logger(ctx).info(`[pi2dsh] Pi provider ${JSON.stringify(name)} supports OAuth — log in with /login ${name}`)
-      } else {
+      }
+      // A provider carrying its own transport becomes a REAL DSH llm route:
+      // the loop and child agents route to it natively, with credentials
+      // resolved through Pi's own chain per request.
+      const routeDisposer = registerPiProviderRoute({
+        llm: llmOf(ctx) as never,
+        providerId: name,
+        provider: value,
+        host: {
+          resolveAuth: async () => resolvePiProviderAuth({
+            providerId: name, providerConfig: value, store: oauthStoreOf(state),
+          }) as Promise<{ auth?: UnknownRecord } | undefined>,
+          warn: message => logger(ctx).warn(message),
+        },
+      })
+      if (routeDisposer !== undefined) {
+        state.providerRouteDisposers.set(name, routeDisposer)
+        void state.modelCatalog?.refresh()
+        logger(ctx).info(`[pi2dsh] Pi provider ${JSON.stringify(name)} registered as a native DSH llm route`)
+      } else if (!providerSupportsOAuth(value)) {
         logger(ctx).info(`[pi2dsh] recorded Pi provider ${JSON.stringify(name)}; model calls stay on DSH llm adapters`)
       }
     },
     unregisterProvider(name: string) {
       state.providers.delete(name)
+      const routeDisposer = state.providerRouteDisposers.get(name)
+      if (routeDisposer !== undefined) {
+        state.providerRouteDisposers.delete(name)
+        routeDisposer()
+      }
     },
     // Renderer registrations are accepted verbatim; DSH owns presentation, so
     // they are never invoked — matching Pi's own non-TUI surfaces.
@@ -1520,6 +1598,7 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
     argMutations: new WeakMap(),
     streamingTexts: new Map(),
     lastLoggedModels: new WeakMap(),
+    providerRouteDisposers: new Map(),
   }
   subscribeLifecycle(ctx, state)
   subscribeInterceptors(ctx, state)
