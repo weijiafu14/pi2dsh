@@ -4,3 +4,5 @@ coverage/
 .artifacts/
 *.tgz
 .DS_Store
+.write-review/
+marketing/
