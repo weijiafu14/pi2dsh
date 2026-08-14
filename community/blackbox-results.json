@@ -1,24 +1,22 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-14T04:54:30.288Z",
+  "generatedAt": "2026-08-14T05:50:35.900Z",
   "method": "convert + real DSH runtime load (Cordis composition with official service plugins); registration surfaces recorded; failures classified as ABI gaps; representative tools/commands EXECUTED with schema-derived arguments against local fixtures",
   "counts": {
-    "loaded": 44,
-    "loadFailed": 6,
+    "loaded": 48,
+    "loadFailed": 2,
     "fatal": 0
   },
   "exerciseCounts": {
-    "working": 33,
-    "executed-input-validation": 3,
+    "working": 34,
+    "executed-input-validation": 5,
     "timed-out": 1,
     "callable-needs-config": 3,
-    "nothing-exercisable": 3,
+    "nothing-exercisable": 4,
     "failed": 1
   },
   "gapHistogram": {
-    "explicit-degradation-hit-at-load": 1,
-    "other": 3,
-    "missing-abi-export-or-shape": 2
+    "other": 2
   },
   "results": [
     {
@@ -288,7 +286,7 @@
             "name": "ast_grep_outline",
             "args": {
               "paths": [
-                "/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-QRdHQd/workspace/sample.txt"
+                "/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-6wZjCp/workspace/sample.txt"
               ]
             },
             "outcome": "working",
@@ -381,10 +379,48 @@
       "rank": 7,
       "name": "@tintinweb/pi-subagents",
       "downloadsPerMonth": 40700,
-      "status": "load-failed",
-      "stage": "load",
-      "gap": "explicit-degradation-hit-at-load",
-      "error": "every Pi extension entry failed to load:\n- vendor/src/index.ts: pi2dsh: createCodingTools() belongs to Pi's internal agent runtime and has no verified DSH mapping; use the DSH-native service instead (see the pi2dsh compatibility report)"
+      "status": "loaded",
+      "verdict": "review",
+      "tools": [
+        "Agent",
+        "get_subagent_result",
+        "steer_subagent"
+      ],
+      "commands": [
+        "agents"
+      ],
+      "skills": [],
+      "exercised": {
+        "grade": "working",
+        "attempts": [
+          {
+            "kind": "tool",
+            "name": "Agent",
+            "args": {
+              "prompt": "pi2dsh exercise probe",
+              "description": "pi2dsh exercise probe",
+              "subagent_type": "pi2dsh"
+            },
+            "outcome": "working",
+            "evidence": "Note: Unknown agent type \"pi2dsh\" — using general-purpose.\n\nAgent failed: pi2dsh: subagent creation needs the DSH host loop (model runtime) to provide the agent"
+          },
+          {
+            "kind": "tool",
+            "name": "get_subagent_result",
+            "args": {
+              "agent_id": "pi2dsh-probe"
+            },
+            "outcome": "working",
+            "evidence": "Agent not found: \"pi2dsh-probe\". It may have been cleaned up."
+          }
+        ]
+      },
+      "degraded": [
+        "host-import(@earendil-works/pi-coding-agent:createAgentSession)",
+        "host-import(@earendil-works/pi-coding-agent:DefaultResourceLoader)",
+        "host-import(@earendil-works/pi-coding-agent:createCodingTools)",
+        "host-import(@earendil-works/pi-coding-agent:createReadOnlyTools)"
+      ]
     },
     {
       "rank": 8,
@@ -421,7 +457,7 @@
               "pattern": "pi2dsh"
             },
             "outcome": "working",
-            "evidence": "sample.txt\n 1: pi2dsh exercise probe file"
+            "evidence": "[0 exact matches. Maybe you meant this?]\nsample.txt\n 1: pi2dsh exercise probe file"
           }
         ]
       },
@@ -577,10 +613,65 @@
       "rank": 12,
       "name": "pi-fabric",
       "downloadsPerMonth": 28300,
-      "status": "load-failed",
-      "stage": "load",
-      "gap": "other",
-      "error": "every Pi extension entry failed to load:\n- vendor/dist/index.js: Cannot read properties of undefined (reading 'prototype')"
+      "status": "loaded",
+      "verdict": "review",
+      "tools": [
+        "fabric_exec"
+      ],
+      "commands": [
+        "fabric"
+      ],
+      "skills": [
+        "fabric-advisor",
+        "fabric-ambient",
+        "fabric-council",
+        "fabric-exec",
+        "fabric-fusion",
+        "fabric-guide",
+        "fabric-rlm",
+        "fabric-schema",
+        "fabric-spec",
+        "fabric-supervisor",
+        "fabric-swarm",
+        "fabric-workflow"
+      ],
+      "exercised": {
+        "grade": "executed-input-validation",
+        "attempts": [
+          {
+            "kind": "tool",
+            "name": "fabric_exec",
+            "args": {
+              "code": "pi2dsh"
+            },
+            "outcome": "executed-input-validation",
+            "evidence": "Error: Type errors; code was not executed:\nLine 1:1 — Cannot find name 'pi2dsh'."
+          }
+        ]
+      },
+      "degraded": [
+        "host-import(@earendil-works/pi-coding-agent:wrapRegisteredTool)",
+        "host-import(@earendil-works/pi-coding-agent:createBashToolDefinition)",
+        "host-import(@earendil-works/pi-coding-agent:createEditToolDefinition)",
+        "host-import(@earendil-works/pi-coding-agent:createFindToolDefinition)",
+        "host-import(@earendil-works/pi-coding-agent:createGrepToolDefinition)",
+        "host-import(@earendil-works/pi-coding-agent:createLsToolDefinition)",
+        "host-import(@earendil-works/pi-coding-agent:createReadToolDefinition)",
+        "host-import(@earendil-works/pi-coding-agent:createWriteToolDefinition)",
+        "ctx.state",
+        "ctx.executionStarted",
+        "ctx.isPartial",
+        "ctx.invalidate",
+        "ctx.lastComponent",
+        "ctx.isError",
+        "on(<dynamic>)",
+        "host-import(@earendil-works/pi-coding-agent:ExtensionRunner)",
+        "host-import(@earendil-works/pi-coding-agent:formatSkillsForPrompt)",
+        "ctx.expanded",
+        "ctx.args",
+        "on(resources_discover)",
+        "on(context)"
+      ]
     },
     {
       "rank": 13,
@@ -795,7 +886,7 @@
             "kind": "tool",
             "name": "pi-worker-fetch",
             "args": {
-              "url": "http://127.0.0.1:64220/page",
+              "url": "http://127.0.0.1:61255/page",
               "query": "pi2dsh exercise probe"
             },
             "outcome": "timed-out",
@@ -953,7 +1044,7 @@
               "cmd": "echo pi2dsh-exercise"
             },
             "outcome": "working",
-            "evidence": "Command: echo pi2dsh-exercise\nChunk ID: ccc74e\nWall time: 0.0010 seconds\nProcess exited with code 1\nOriginal token count: 13\nOutput:\nexec_bridge binary is not b"
+            "evidence": "Command: echo pi2dsh-exercise\nChunk ID: c46d57\nWall time: 0.0010 seconds\nProcess exited with code 1\nOriginal token count: 13\nOutput:\nexec_bridge binary is not b"
           },
           {
             "kind": "tool",
@@ -1003,10 +1094,10 @@
             "kind": "tool",
             "name": "lsp_fix",
             "args": {
-              "path": "/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-QRdHQd/workspace/sample.txt"
+              "path": "/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-6wZjCp/workspace/sample.txt"
             },
             "outcome": "failed",
-            "evidence": "Error: No fix route supports /var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-QRdHQd/workspace/sample.txt. Supported LSP servers are defined by "
+            "evidence": "Error: No fix route supports /var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-6wZjCp/workspace/sample.txt. Supported LSP servers are defined by "
           }
         ]
       },
@@ -1051,16 +1142,16 @@
               "name": "pi2dsh-probe"
             },
             "outcome": "executed-input-validation",
-            "evidence": "Error: dyld[45013]: Library not loaded: /opt/homebrew/opt/libgit2/lib/libgit2.1.9.dylib Referenced from: <9E0827C4-A0DC-3E7F-83D4-50269E16762E> /private/var/fol"
+            "evidence": "Error: dyld[81972]: Library not loaded: /opt/homebrew/opt/libgit2/lib/libgit2.1.9.dylib Referenced from: <9E0827C4-A0DC-3E7F-83D4-50269E16762E> /private/var/fol"
           },
           {
             "kind": "tool",
             "name": "readSeek_digest",
             "args": {
-              "path": "/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-QRdHQd/workspace/sample.txt"
+              "path": "/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-6wZjCp/workspace/sample.txt"
             },
             "outcome": "executed-input-validation",
-            "evidence": "Error: dyld[45015]: Library not loaded: /opt/homebrew/opt/libgit2/lib/libgit2.1.9.dylib Referenced from: <9E0827C4-A0DC-3E7F-83D4-50269E16762E> /private/var/fol"
+            "evidence": "Error: dyld[81974]: Library not loaded: /opt/homebrew/opt/libgit2/lib/libgit2.1.9.dylib Referenced from: <9E0827C4-A0DC-3E7F-83D4-50269E16762E> /private/var/fol"
           },
           {
             "kind": "tool",
@@ -1069,7 +1160,7 @@
               "pattern": "pi2dsh"
             },
             "outcome": "failed",
-            "evidence": "Error: pi2dsh: createGrepTool() belongs to Pi's internal agent runtime and has no verified DSH mapping; use the DSH-native service instead (see the pi2dsh compa"
+            "evidence": "Error: ripgrep (rg) is not available and could not be downloaded"
           }
         ]
       },
@@ -1084,7 +1175,7 @@
       "status": "load-failed",
       "stage": "load",
       "gap": "other",
-      "error": "every Pi extension entry failed to load:\n- vendor/index.ts: ENOENT: no such file or directory, open '/private/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-QRdHQd/bundles/23-pi-hashline-edit-pro/vendor/prompts/read.md'"
+      "error": "every Pi extension entry failed to load:\n- vendor/index.ts: ENOENT: no such file or directory, open '/private/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-6wZjCp/bundles/23-pi-hashline-edit-pro/vendor/prompts/read.md'"
     },
     {
       "rank": 24,
@@ -1112,7 +1203,7 @@
             "name": "telegram_attach",
             "args": {
               "paths": [
-                "/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-QRdHQd/workspace/sample.txt"
+                "/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-6wZjCp/workspace/sample.txt"
               ]
             },
             "outcome": "failed",
@@ -1198,10 +1289,45 @@
       "rank": 27,
       "name": "pi-landstrip",
       "downloadsPerMonth": 13700,
-      "status": "load-failed",
-      "stage": "load",
-      "gap": "missing-abi-export-or-shape",
-      "error": "every Pi extension entry failed to load:\n- vendor/dist/index.ts: (0 , _piCodingAgent.createBashToolDefinition) is not a function"
+      "status": "loaded",
+      "verdict": "review",
+      "tools": [
+        "bash",
+        "task"
+      ],
+      "commands": [
+        "agents",
+        "sandbox"
+      ],
+      "skills": [],
+      "exercised": {
+        "grade": "executed-input-validation",
+        "attempts": [
+          {
+            "kind": "tool",
+            "name": "bash",
+            "args": {
+              "command": "echo"
+            },
+            "outcome": "executed-input-validation",
+            "evidence": "Error: ENOENT: no such file or directory, open '/private/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-6wZjCp/bundles/27-pi-landstrip/vendor/d"
+          },
+          {
+            "kind": "tool",
+            "name": "task",
+            "args": {
+              "description": "pi2dsh exercise probe",
+              "prompt": "pi2dsh exercise probe",
+              "subagent_type": "pi2dsh"
+            },
+            "outcome": "failed",
+            "evidence": "Error: Unknown subagent: pi2dsh"
+          }
+        ]
+      },
+      "degraded": [
+        "host-import(@earendil-works/pi-coding-agent:createBashToolDefinition)"
+      ]
     },
     {
       "rank": 28,
@@ -1235,7 +1361,9 @@
       "downloadsPerMonth": 12000,
       "status": "loaded",
       "verdict": "review",
-      "tools": [],
+      "tools": [
+        "write"
+      ],
       "commands": [
         "ccstyle",
         "clear",
@@ -1447,7 +1575,7 @@
             "kind": "tool",
             "name": "web_fetch",
             "args": {
-              "url": "http://127.0.0.1:64220/page"
+              "url": "http://127.0.0.1:61255/page"
             },
             "outcome": "failed",
             "evidence": "Error: Refusing to fetch private/loopback address: 127.0.0.1"
@@ -1516,10 +1644,24 @@
       "rank": 37,
       "name": "pi-provider-litellm",
       "downloadsPerMonth": 9789,
-      "status": "load-failed",
-      "stage": "load",
-      "gap": "missing-abi-export-or-shape",
-      "error": "every Pi extension entry failed to load:\n- vendor/dist/index.js: (0 , _compat.openAICompletionsApi) is not a function"
+      "status": "loaded",
+      "verdict": "review",
+      "tools": [
+        "litellm_skill_create",
+        "litellm_skill_delete",
+        "litellm_skill_list"
+      ],
+      "commands": [],
+      "skills": [],
+      "exercised": {
+        "grade": "nothing-exercisable",
+        "attempts": []
+      },
+      "degraded": [
+        "on(after_provider_response)",
+        "on(before_provider_request)",
+        "host-import(@earendil-works/pi-ai:createProvider)"
+      ]
     },
     {
       "rank": 38,
@@ -1555,7 +1697,7 @@
       "status": "load-failed",
       "stage": "load",
       "gap": "other",
-      "error": "every Pi extension entry failed to load:\n- vendor/index.ts: ENOENT: no such file or directory, open '/private/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-QRdHQd/bundles/39-pi-interview/vendor/form/index.html'"
+      "error": "every Pi extension entry failed to load:\n- vendor/index.ts: ENOENT: no such file or directory, open '/private/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-6wZjCp/bundles/39-pi-interview/vendor/form/index.html'"
     },
     {
       "rank": 40,
@@ -1639,7 +1781,7 @@
             "kind": "tool",
             "name": "web_fetch",
             "args": {
-              "url": "http://127.0.0.1:64220/page"
+              "url": "http://127.0.0.1:61255/page"
             },
             "outcome": "callable-needs-config",
             "evidence": "Error: fetch failed"
@@ -1678,7 +1820,7 @@
             "args": {
               "query": "pi2dsh exercise probe",
               "urls": [
-                "http://127.0.0.1:64220/page"
+                "http://127.0.0.1:61255/page"
               ]
             },
             "outcome": "working",
@@ -1749,7 +1891,7 @@
               "subagent_type": "pi2dsh"
             },
             "outcome": "working",
-            "evidence": "Note: Unknown agent type \"pi2dsh\" — using general-purpose.\n\nAgent failed: pi2dsh: new DefaultResourceLoader() belongs to Pi's internal agent runtime and has no "
+            "evidence": "Note: Unknown agent type \"pi2dsh\" — using general-purpose.\n\nAgent failed: pi2dsh: subagent creation needs the DSH host loop (model runtime) to provide the agent"
           }
         ]
       },
@@ -1895,6 +2037,7 @@
       "status": "loaded",
       "verdict": "review",
       "tools": [
+        "bash",
         "edit",
         "signal_loop_success",
         "todo"
@@ -1937,6 +2080,15 @@
       "exercised": {
         "grade": "working",
         "attempts": [
+          {
+            "kind": "tool",
+            "name": "bash",
+            "args": {
+              "command": "echo"
+            },
+            "outcome": "working",
+            "evidence": "\n"
+          },
           {
             "kind": "tool",
             "name": "signal_loop_success",
