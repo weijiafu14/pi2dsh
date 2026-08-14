@@ -45,7 +45,7 @@ Three delivery modes:
 Three hard rules keep it general:
 
 1. The core contains **no `if (packageName === …)`** branching.
-2. Every capability has a **public-API contract test** (`pnpm test`, 50 tests); "some plugin loads" is never the success criterion.
+2. Every capability has a **public-API contract test** (`pnpm test`, 55 tests); "some plugin loads" is never the success criterion.
 3. The top-50 corpus is verified **black-box only**: failures file public ABI gaps, and fixing one gap unlocks every package that hits it (e.g. one jiti subpath-alias fix unlocked 4 packages at once).
 
 ## Progress: Pi catalog top 50 by monthly downloads
@@ -129,15 +129,16 @@ Both layers are verified against a real ChatGPT Pro account: browser authorizati
 | Sessions | Messages project from DSH's durable log; Pi custom entries/labels/names persist in a pi2dsh sidecar (DSH has no out-of-repo plugin-event channel yet) |
 | Pi TUI | Pure logic vendored byte-identical; components construct headlessly; `ui.custom` resolves `undefined` exactly like Pi's own rpc mode |
 | Providers/OAuth | Interactive OAuth is live: `/login <provider>` runs the package's own flow, credentials persist in Pi's `auth.json` with automatic refresh; model transports stay native to DSH `llm` |
+| Model runtime | `modelRegistry` projects the live DSH llm directory as Pi Model objects (refreshed on `llm/adapters-updated`); `ctx.model` reflects the agent's real route; `setModel`/`setThinkingLevel` switch the loop through the `agent/request` waterfall; pi-ai `complete()`/`stream()` run REAL calls through `ctx.llm.stream()` with two-way message conversion (verified against a live model: `scripts/verify-model-bridge-e2e.mjs`) |
 | Session tree writes | `fork`/`navigateTree`/`switchSession` fail explicitly (DSH lists pi-style entry trees as deferred) |
 | Terminal decoration | footer/statusline/shortcuts register but never fire — matching Pi's own non-TUI modes |
 
-Full machine-readable matrix: `pi2dsh matrix --json`. Capability-by-capability acceptance evidence: [docs/acceptance.md](docs/acceptance.md).
+Full machine-readable matrix: `pi2dsh matrix --json`. Capability-by-capability acceptance evidence: [docs/acceptance.md](docs/acceptance.md). The complete 114-item Pi-surface → DSH-semantics verdict (3 red / 21 yellow / ~90 green): [docs/pi-abi-coverage.md](docs/pi-abi-coverage.md).
 
 ## Development and verification
 
 ```sh
-pnpm verify                                   # typecheck + 50 contract tests + packaging
+pnpm verify                                   # typecheck + 55 contract tests + packaging
 pnpm audit:community                          # static screening, top 50
 node scripts/blackbox-community.mjs community/blackbox-results.json --exercise
 #   add DEEPSEEK_API_KEY=… PI2DSH_BLACKBOX_PI_BIN=$(command -v pi) for the

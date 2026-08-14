@@ -45,7 +45,7 @@ DeepSeek Harness 原生服务（Cordis 组合）
 保持通用性的三条硬规则：
 
 1. 核心**没有任何 `if (packageName === …)`** 包名分支。
-2. 每项能力有**公共 API 契约测试**（`pnpm test`，50 个）；"某个插件能加载"从不作为成功标准。
+2. 每项能力有**公共 API 契约测试**（`pnpm test`，55 个）；"某个插件能加载"从不作为成功标准。
 3. 前 50 只做**黑盒验收**：失败产生公共 ABI 缺口工单，修一个缺口、同类包一起解锁（例：一次 jiti 子路径 alias 修复同时解锁 4 个包）。
 
 ## 进度：Pi 官方目录下载量前 50
@@ -129,15 +129,16 @@ DSH 原生只有静态 HTTP headers；pi2dsh 把 Pi 生态的交互式 OAuth 层
 | 会话 | 消息从 DSH durable 日志投影；Pi 自定义 entry/label/name 持久化在 pi2dsh sidecar（DSH 目前没有第三方插件事件通道） |
 | Pi TUI | 纯逻辑 vendored 字节一致；组件类同签名 headless 构造；`ui.custom` 与 Pi 官方 rpc 模式一样返回 undefined |
 | Provider/OAuth | 交互式 OAuth 已可用：`/login <provider>` 跑包自己的流程，凭证按 Pi `auth.json` 持久化并自动刷新；模型传输仍由 DSH `llm` 原生持有 |
+| 模型运行时 | `modelRegistry` 把 DSH llm 实时目录投影为 Pi Model 对象（`llm/adapters-updated` 时刷新）；`ctx.model` 反映 agent 真实路由；`setModel`/`setThinkingLevel` 经 `agent/request` waterfall 真切换 loop；pi-ai `complete()`/`stream()` 经 `ctx.llm.stream()` 发起**真实**模型调用并双向转换消息（已对真实模型验证：`scripts/verify-model-bridge-e2e.mjs`） |
 | 会话树写操作 | `fork`/`navigateTree`/`switchSession` 显式失败（DSH 官方将 pi 式 entry tree 列为 deferred） |
 | 终端装饰 | footer/statusline/快捷键注册成功但永不触发——与 Pi 自己的非 TUI 模式一致 |
 
-完整机器可读矩阵：`pi2dsh matrix --json`。十项能力逐项验收证据：[docs/acceptance.md](docs/acceptance.md)。
+完整机器可读矩阵：`pi2dsh matrix --json`。十项能力逐项验收证据：[docs/acceptance.md](docs/acceptance.md)。114 项 Pi 暴露面 → DSH 语义完整判决（红 3 / 黄 21 / 绿约 90）：[docs/pi-abi-coverage.md](docs/pi-abi-coverage.md)。
 
 ## 开发与验证
 
 ```sh
-pnpm verify                                   # 类型检查 + 50 契约测试 + 打包检查
+pnpm verify                                   # 类型检查 + 55 契约测试 + 打包检查
 pnpm audit:community                          # 前 50 静态筛查
 node scripts/blackbox-community.mjs community/blackbox-results.json --exercise
 #   前缀 DEEPSEEK_API_KEY=… PI2DSH_BLACKBOX_PI_BIN=$(command -v pi) 可开启

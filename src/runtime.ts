@@ -25,7 +25,8 @@ import {
   providerSupportsOAuth,
   resolvePiProviderAuth,
 } from './oauth-bridge.js'
-import { builtinProviders } from './compat/pi-ai.js'
+import { __setPiAiLlmBridge, builtinProviders } from './compat/pi-ai.js'
+import { ModelCatalog, llmOf, streamViaDshLlm } from './model-bridge.js'
 
 type UnknownRecord = Record<string, unknown>
 type PiHandler = (event: UnknownRecord, context: UnknownRecord) => unknown | Promise<unknown>
@@ -107,6 +108,8 @@ interface RuntimeState {
   streamingTexts: Map<string, string>
   // Last model id seen in a request/header event, for model_select projection.
   lastLoggedModels: WeakMap<object, string>
+  // Pi Model catalog projected from the DSH llm service (empty without one).
+  modelCatalog?: ModelCatalog
 }
 
 interface PiExecOptions {
@@ -362,6 +365,18 @@ function agentSession(agent: UnknownRecord | undefined): { id: string; events: u
   return record as unknown as { id: string; events: unknown }
 }
 
+// Pi ctx.model: a setModel() override wins; otherwise the live DSH agent's
+// own route (Agent.options.provider/model), enriched from the catalog.
+function currentPiModel(state: RuntimeState, agent: UnknownRecord): UnknownRecord | undefined {
+  const override = state.modelOverrides.get(agent)
+  const options = agent.options as { provider?: unknown, model?: unknown } | undefined
+  const provider = String(override?.provider ?? options?.provider ?? '')
+  const id = String(override?.model ?? options?.model ?? '')
+  if (id.length === 0) return override
+  const known = provider.length > 0 ? state.modelCatalog?.find(provider, id) : undefined
+  return known ?? { id, name: id, provider, api: 'dsh-llm', input: ['text'], reasoning: false }
+}
+
 function thinkingLevelOf(state: RuntimeState, agent: UnknownRecord | undefined): string {
   if (agent !== undefined) {
     const scoped = state.thinkingLevels.get(agent)
@@ -453,17 +468,23 @@ function contextFor(
     },
   }
   const session = agentSession(agent)
-  // Pi's ModelRegistry surface. DSH owns model routing (empty catalog), but
-  // the provider-auth half is real: registered providers with an oauth block
-  // resolve stored credentials through Pi's own double-checked-lock refresh
-  // (vendored), against the Pi-format auth.json this bridge maintains.
+  // Pi's ModelRegistry surface. The catalog half projects the DSH llm
+  // service's advisory directory (empty in compositions without one); the
+  // provider-auth half resolves Pi's full credential chain (vendored
+  // double-checked-lock refresh) against the Pi-format auth.json.
   const providerConfig = (name: string): UnknownRecord | undefined => state.providers.get(name)
+  const catalog = state.modelCatalog
   const modelRegistry = {
-    getAll: () => [],
-    getAvailable: () => [],
-    find: (_provider: string, _modelId: string) => undefined,
+    getAll: () => catalog?.all() ?? [],
+    getAvailable: () => catalog?.all() ?? [],
+    find: (provider: string, modelId: string) => catalog?.find(provider, modelId),
     getError: () => undefined,
-    hasConfiguredAuth: (_model: unknown) => false,
+    hasConfiguredAuth: (model: unknown) => {
+      // Configuration check, not key liveness (Pi's is also a config check):
+      // the route resolves iff its provider is in the live llm directory.
+      const provider = String((model as UnknownRecord | undefined)?.provider ?? '')
+      return provider.length > 0 && (catalog?.all() ?? []).some(entry => entry.provider === provider)
+    },
     getProviderAuthStatus: (provider: string) =>
       providerSupportsOAuth(providerConfig(provider)) ? 'oauth' : 'none',
     getProvider: (provider: string) => providerConfig(provider),
@@ -498,7 +519,10 @@ function contextFor(
       const provider = String((model as UnknownRecord | undefined)?.provider ?? '')
       return provider.length > 0 && providerSupportsOAuth(providerConfig(provider))
     },
-    refresh: async () => ({ models: [], errors: [] }),
+    refresh: async () => {
+      await catalog?.refresh()
+      return { models: catalog?.all() ?? [], errors: [] }
+    },
   }
   const base: UnknownRecord = {
     ui,
@@ -509,8 +533,11 @@ function contextFor(
       ? state.bridge.readonlySessionManager({ id: 'pi2dsh-detached', events: [] }, cwdOf(agent))
       : state.bridge.readonlySessionManager(session as never, cwdOf(agent)),
     modelRegistry,
-    model: agent === undefined ? undefined : state.modelOverrides.get(agent),
-    scopedModels: [],
+    // Current effective model: a setModel() override wins; otherwise the DSH
+    // agent's own provider/model route (Agent.options), enriched from the
+    // catalog when the entry is known there.
+    model: agent === undefined ? undefined : currentPiModel(state, agent),
+    scopedModels: catalog?.all() ?? [],
     thinkingLevel: thinkingLevelOf(state, agent),
     isIdle: () => command,
     isProjectTrusted: () => false,
@@ -1515,6 +1542,18 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
         watch: false,
       })
     }
+  }
+  // Model Runtime Bridge: project the DSH llm directory as Pi's model catalog
+  // and route hand-built pi-ai complete()/stream() calls through the native
+  // llm service. Compositions without llm keep the empty-catalog semantics.
+  const llm = llmOf(ctx)
+  state.modelCatalog = new ModelCatalog(llm)
+  if (llm !== undefined) {
+    const cordisCtx = ctx as unknown as { on(name: string, callback: (...args: unknown[]) => unknown): () => void }
+    cordisCtx.on('llm/adapters-updated', () => { void state.modelCatalog?.refresh() })
+    void state.modelCatalog.refresh()
+    __setPiAiLlmBridge((model, context, callOptions) => streamViaDshLlm(llm, { model, context, options: callOptions }))
+    ctx.effect(() => () => __setPiAiLlmBridge(undefined))
   }
   // createAgentSession builds a real DSH child agent through ctx.agents; the
   // factory lives for exactly the runtime's lifetime.

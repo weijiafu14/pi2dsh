@@ -235,12 +235,39 @@ export function unregisterApiProviders(sourceId: string): void {
   }
 }
 
-export function complete(..._args: unknown[]): never {
-  throw new Error('pi2dsh: pi-ai complete() routes model calls through Pi provider SDKs; use DSH llm adapters instead')
+// Designated-model calls. When a pi2dsh runtime with a mounted DSH llm
+// service is active, complete()/stream() run REAL model calls through
+// ctx.llm.stream() (the host installs the bridge at mount). Without one, the
+// explicit-failure contract stands — never a fabricated response.
+type PiAiLlmBridge = (model: UnknownRecord, context: UnknownRecord, options: UnknownRecord | undefined) => {
+  result(): Promise<unknown>
+  [Symbol.asyncIterator](): AsyncIterator<unknown>
 }
 
-export function stream(..._args: unknown[]): never {
-  throw new Error('pi2dsh: pi-ai stream() routes model calls through Pi provider SDKs; use DSH llm adapters instead')
+type UnknownRecord = Record<string, unknown>
+
+let activeLlmBridge: PiAiLlmBridge | undefined
+
+export function __setPiAiLlmBridge(bridge: PiAiLlmBridge | undefined): void {
+  activeLlmBridge = bridge
+}
+
+function requireLlmBridge(api: string): PiAiLlmBridge {
+  if (activeLlmBridge === undefined) {
+    throw new Error(`pi2dsh: pi-ai ${api}() needs a DSH llm service; this composition mounts none, so model calls cannot be routed`)
+  }
+  return activeLlmBridge
+}
+
+export async function complete(model: UnknownRecord, context: UnknownRecord, options?: UnknownRecord): Promise<unknown> {
+  const stream = requireLlmBridge('complete')(model, context, options)
+  const result = await stream.result()
+  if (result instanceof Error) throw result
+  return result
+}
+
+export function stream(model: UnknownRecord, context: UnknownRecord, options?: UnknownRecord): unknown {
+  return requireLlmBridge('stream')(model, context, options)
 }
 
 export interface StringEnumOptions<T extends readonly string[]> {
