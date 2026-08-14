@@ -39,7 +39,7 @@ if (!provider) {
   process.exit(1)
 }
 
-const authDir = process.argv[3] ?? join(projectRoot, '.artifacts', 'oauth-e2e')
+const authDir = process.argv[3] ?? join(projectRoot, '.oauth-e2e')
 mkdirSync(authDir, { recursive: true })
 const authPath = join(authDir, 'auth.json')
 const store = new FileCredentialStore(authPath)

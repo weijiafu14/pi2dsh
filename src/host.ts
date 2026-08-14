@@ -206,6 +206,11 @@ export async function generateHostBundle(options: HostBundleOptions): Promise<{ 
       marked: '^16.4.1',
       typebox: '^1.0.4',
       tinyglobby: '^0.2.15',
+      // The vendored Pi built-in tool constructors spawn through cross-spawn
+      // and diff exactly as Pi does — same runtime set the convert bundle
+      // carries (generator.ts keeps the sibling list).
+      'cross-spawn': '^7.0.6',
+      diff: '^9.0.0',
       '@deepseek-ai/dsh-skill-filesystem': '^0.1.0-rc.6',
     },
     peerDependencies: {

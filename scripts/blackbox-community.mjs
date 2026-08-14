@@ -73,6 +73,50 @@ await new Promise((resolveListen, reject) => {
 })
 const fixtureBase = `http://127.0.0.1:${fixtureServer.address().port}`
 process.env.WEB_SEARCH_PROVIDER = 'searxng'
+
+// Ollama-shaped fixture on the port @ollama/pi-web-search hard-codes; skipped
+// when a real Ollama (or anything else) already owns the port.
+const ollamaFixture = createServer((request, response) => {
+  if (request.url === '/api/experimental/web_search' && request.method === 'POST') {
+    response.writeHead(200, { 'content-type': 'application/json' })
+    response.end(JSON.stringify({ results: [{ title: 'pi2dsh exercise result', url: `${fixtureBase}/page`, content: 'PI2DSH_EXERCISE_OK' }] }))
+    return
+  }
+  if (request.url === '/api/experimental/web_fetch' && request.method === 'POST') {
+    response.writeHead(200, { 'content-type': 'application/json' })
+    response.end(JSON.stringify({ title: 'pi2dsh exercise page', content: 'PI2DSH_EXERCISE_OK', links: [] }))
+    return
+  }
+  response.writeHead(404, { 'content-type': 'application/json' })
+  response.end('{}')
+})
+await new Promise(resolveListen => {
+  ollamaFixture.once('error', () => {
+    console.warn('[pi2dsh] port 11434 already in use — @ollama/pi-web-search will talk to whatever owns it')
+    resolveListen()
+  })
+  ollamaFixture.listen(11434, '127.0.0.1', resolveListen)
+})
+
+// Pi agent home with the settings image-model packages read
+// (~/.pi/agent/settings.json equivalent, isolated via PI_AGENT_HOME):
+// pi-image-gen resolves its default model through an OpenAI-compatible
+// custom provider pointed at the fixture's images endpoint.
+const agentHome = join(scratch, 'pi-agent-home')
+await mkdir(agentHome, { recursive: true })
+await writeFile(join(agentHome, 'settings.json'), JSON.stringify({
+  'pi-image-gen': {
+    defaultModel: 'pi2dsh-probe',
+    customProviders: {
+      fixture: {
+        baseUrl: `${fixtureBase}/v1`,
+        apiKey: 'pi2dsh-fixture-key',
+        models: [{ id: 'pi2dsh-probe' }],
+      },
+    },
+  },
+}, null, 2))
+process.env.PI_AGENT_HOME = agentHome
 process.env.SEARXNG_URL = fixtureBase
 
 // Pi state (settings, sidecars) stays inside the scratch dir.
@@ -95,9 +139,12 @@ function classifyGap(message) {
 
 // Never invoke tools whose name suggests mutation of shared state. exec-like
 // tools DO run — through the real subprocess seam with a harmless echo.
-const UNSAFE_TOOL = /kill|delete|remove|reset|clear|write|edit|patch|steer|publish|deploy|install|upload/iu
+// Word-level matching, not substring: /kill/ must NOT match litellm_SKILL_list.
+const UNSAFE_WORDS = new Set(['kill', 'delete', 'remove', 'reset', 'clear', 'write', 'edit', 'patch', 'steer', 'publish', 'deploy', 'install', 'upload'])
+const nameWords = name => String(name).replace(/([a-z0-9])([A-Z])/gu, '$1_$2').toLowerCase().split(/[^a-z0-9]+/u)
+const isUnsafeName = name => nameWords(name).some(word => UNSAFE_WORDS.has(word))
 const EXECISH_TOOL = /^(exec|exec_command|bash|shell|run_command)$/iu
-const CONFIG_ERROR = /api.?key|token|credential|auth|login|unauthorized|forbidden|403|401|not configured|missing.*(key|config|env)|no provider|env(ironment)? variable|ECONNREFUSED|ENOTFOUND|EAI_AGAIN|fetch failed|network|Set .*_KEY|configure/iu
+const CONFIG_ERROR = /api.?key|token|credential|auth|login|unauthorized|forbidden|403|401|not configured|missing.*(key|config|env)|no provider|env(ironment)? variable|ECONNREFUSED|ENOTFOUND|EAI_AGAIN|fetch failed|network (error|failure|request failed)|Set .*_KEY|configure/iu
 
 function valueForString(name) {
   const key = name.toLowerCase()
@@ -149,7 +196,7 @@ async function exerciseSurface(ctx, agent, assembly, commands) {
   const attempts = []
   const candidates = assembly.tools
     .filter(tool => !tool.name.startsWith('bb-'))
-    .filter(tool => EXECISH_TOOL.test(tool.name) || !UNSAFE_TOOL.test(tool.name))
+    .filter(tool => EXECISH_TOOL.test(tool.name) || !isUnsafeName(tool.name))
     .slice(0, 3)
   for (const tool of candidates) {
     const args = minimalArguments(tool.parameters ?? {}, tool.name)
@@ -189,7 +236,7 @@ async function exerciseSurface(ctx, agent, assembly, commands) {
   }
   // Command-only packages: prove one harmless command handler actually runs.
   if (attempts.length === 0 && commands.length > 0 && typeof ctx.commands?.execute === 'function') {
-    const name = commands.find(candidate => !UNSAFE_TOOL.test(candidate))
+    const name = commands.find(candidate => !isUnsafeName(candidate))
     if (name !== undefined) {
       try {
         await ctx.commands.execute(agent, name, new AbortController().signal)
@@ -210,7 +257,9 @@ async function exerciseSurface(ctx, agent, assembly, commands) {
   return { grade, attempts }
 }
 
-async function loadBundle(bundleDir) {
+const emptyBaseline = { tools: new Set(), commands: new Set() }
+
+async function loadBundle(bundleDir, { baseline = emptyBaseline, probe = exercise } = {}) {
   const generated = await import(`${pathToFileURL(join(bundleDir, 'index.js')).href}?bb=${Date.now()}`)
   const ctx = new Context()
   await ctx.plugin(SessionStore)
@@ -233,13 +282,32 @@ async function loadBundle(bundleDir) {
     meta: { createdAt: Date.now(), cwd: workspace },
   })
   const agent = { id: session.id, session, steer() {}, inject() {}, followup() {}, whenIdle: () => Promise.resolve() }
+  // Register the probe agent with the real registry so services that verify
+  // live-agent identity (userQuestions) accept its calls.
+  let unregisterAgent
+  try {
+    unregisterAgent = ctx.agents?.register?.(agent)
+  } catch (error) {
+    console.warn(`[pi2dsh] probe agent registration skipped: ${String(error?.message ?? error).slice(0, 120)}`)
+  }
   ctx.emit('agent/session-start', { agent, source: 'fresh' })
   await delay(150)
-  const assembly = await ctx.systemPrompt.assemble()
-  const tools = assembly.tools.map(tool => tool.name)
+  let assembly = await ctx.systemPrompt.assemble()
+  // session_start handlers register tools asynchronously (key checks, model
+  // discovery); take a second assembly after they settle so late registrations
+  // are exercised too.
+  await delay(350)
+  const second = await ctx.systemPrompt.assemble()
+  if (second.tools.length > assembly.tools.length) assembly = second
+  // Subtract the host-native surface (the bridge's own contribution, present
+  // on EVERY mount — e.g. the built-in OAuth /login command): a probe must
+  // measure the package's increment, not re-discover the bridge.
+  const tools = assembly.tools.map(tool => tool.name).filter(name => !baseline.tools.has(name))
   let commands = []
   try {
-    commands = (await ctx.commands?.list?.(agent) ?? []).map(command => command.name)
+    commands = (await ctx.commands?.list?.(agent) ?? [])
+      .map(command => command.name)
+      .filter(name => !baseline.commands.has(name))
   } catch {
     commands = []
   }
@@ -250,9 +318,10 @@ async function loadBundle(bundleDir) {
     skills = []
   }
   let exercised
-  if (exercise) {
+  if (probe) {
     try {
-      exercised = await exerciseSurface(ctx, agent, assembly, commands)
+      const packageAssembly = { ...assembly, tools: assembly.tools.filter(tool => !baseline.tools.has(tool.name)) }
+      exercised = await exerciseSurface(ctx, agent, packageAssembly, commands)
     } catch (error) {
       exercised = { grade: 'failed', attempts: [{ kind: 'harness', outcome: 'failed', evidence: String(error?.message ?? error).slice(0, 160) }] }
     }
@@ -299,7 +368,7 @@ async function verifyOne(entry) {
       return { ...record, status: 'load-failed', stage: 'install', gap: 'dependency-install', error: String(error?.message ?? error).slice(0, 500) }
     }
     try {
-      const surface = await loadBundle(bundleDir)
+      const surface = await loadBundle(bundleDir, { baseline: hostBaseline })
       return {
         ...record,
         status: 'loaded',
@@ -318,6 +387,42 @@ async function verifyOne(entry) {
     await pkg.dispose()
   }
 }
+
+// ---- host-surface baseline -------------------------------------------------
+// The bridge itself contributes host-native surface on every mount (today the
+// built-in OAuth /login command — Pi hosts ship those flows out of the box, so
+// pi2dsh does too). A package probe must measure the PACKAGE's increment only,
+// so mount a zero-contribution fixture extension once and subtract everything
+// it exposes. Generic by construction: no hardcoded name list to rot.
+async function computeHostBaseline() {
+  const fixtureDir = join(scratch, 'fixtures', 'pi2dsh-blackbox-baseline')
+  await mkdir(fixtureDir, { recursive: true })
+  await writeFile(join(fixtureDir, 'package.json'), JSON.stringify({
+    name: 'pi2dsh-blackbox-baseline',
+    version: '0.0.0',
+    type: 'module',
+    pi: { extensions: ['index.js'] },
+  }, null, 2))
+  await writeFile(join(fixtureDir, 'index.js'), 'export default function piBlackboxBaseline() {}\n')
+  const pkg = await resolvePiPackage(fixtureDir)
+  try {
+    const bundleDir = join(scratch, 'bundles', 'baseline')
+    await generateBundle(pkg, { outDir: bundleDir })
+    await execFile('npm', ['install', '--omit=dev', '--no-audit', '--no-fund'], {
+      cwd: bundleDir,
+      env: { ...process.env, CI: '1', npm_config_registry: 'https://registry.npmjs.org' },
+      timeout: 240_000,
+      maxBuffer: 16 * 1024 * 1024,
+    })
+    const surface = await loadBundle(bundleDir, { probe: false })
+    return { tools: new Set(surface.tools), commands: new Set(surface.commands) }
+  } finally {
+    await pkg.dispose()
+  }
+}
+
+const hostBaseline = await computeHostBaseline()
+console.error(`[pi2dsh] host-native baseline subtracted from every probe: tools=[${[...hostBaseline.tools].join(', ')}] commands=[${[...hostBaseline.commands].join(', ')}]`)
 
 const selected = corpus.packages.filter(entry => only === undefined || only.has(entry.name))
 const results = []
@@ -350,6 +455,7 @@ const value = {
   generatedAt: new Date().toISOString(),
   method: 'convert + real DSH runtime load (Cordis composition with official service plugins); registration surfaces recorded; failures classified as ABI gaps'
     + (exercise ? '; representative tools/commands EXECUTED with schema-derived arguments against local fixtures' : ''),
+  hostBaseline: { tools: [...hostBaseline.tools], commands: [...hostBaseline.commands] },
   counts,
   ...(exercise ? { exerciseCounts } : {}),
   gapHistogram: gaps,
@@ -359,6 +465,7 @@ await writeFile(outputPath, `${JSON.stringify(value, null, 2)}\n`)
 console.log(JSON.stringify({ ...counts, ...(exercise ? { exercise: exerciseCounts } : {}) }))
 console.log(outputPath)
 await new Promise(resolveClose => fixtureServer.close(resolveClose))
+await new Promise(resolveClose => ollamaFixture.close(resolveClose))
 if (process.env.PI2DSH_KEEP_TEST_ARTIFACTS !== '1') await rm(scratch, { recursive: true, force: true })
 // Exercised tools may have spawned children (worker daemons, child `pi`
 // dispatch) whose live handles keep this process from exiting on its own;

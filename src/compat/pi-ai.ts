@@ -187,6 +187,54 @@ export const loadAnthropicOAuth = async (): Promise<unknown> => anthropicFlow
 export const loadGitHubCopilotOAuth = async (): Promise<unknown> => copilotFlow
 export const loadKimiCodingOAuth = async (): Promise<unknown> => kimiFlow
 
+// pi-ai/compat's process-wide api-provider registry, same semantics as
+// upstream: one entry per api id, streams wrapped with an api-match guard,
+// unregistration scoped to the owning sourceId. Packages use it as a shared
+// fallback table (pi-provider-kimi-code registers stream handlers here inside
+// a try/catch it designed for hosts without the module) — providing the real
+// surface keeps that optional path working instead of turning a resolvable
+// import with a missing export into a crash.
+interface CompatApiProvider {
+  api: string
+  stream: (...args: unknown[]) => unknown
+  streamSimple: (...args: unknown[]) => unknown
+}
+
+const apiProviderRegistry = new Map<string, { provider: CompatApiProvider, sourceId: string | undefined }>()
+
+function guardApi(api: string, fn: (...args: unknown[]) => unknown): (...args: unknown[]) => unknown {
+  return (model: unknown, ...rest: unknown[]) => {
+    const modelApi = (model as { api?: unknown } | undefined)?.api
+    if (modelApi !== api) throw new Error(`Mismatched api: ${String(modelApi)} expected ${api}`)
+    return fn(model, ...rest)
+  }
+}
+
+export function registerApiProvider(provider: CompatApiProvider, sourceId?: string): void {
+  apiProviderRegistry.set(provider.api, {
+    provider: {
+      api: provider.api,
+      stream: guardApi(provider.api, provider.stream),
+      streamSimple: guardApi(provider.api, provider.streamSimple),
+    },
+    sourceId,
+  })
+}
+
+export function getApiProvider(api: string): CompatApiProvider | undefined {
+  return apiProviderRegistry.get(api)?.provider
+}
+
+export function getApiProviders(): CompatApiProvider[] {
+  return Array.from(apiProviderRegistry.values(), entry => entry.provider)
+}
+
+export function unregisterApiProviders(sourceId: string): void {
+  for (const [api, entry] of apiProviderRegistry.entries()) {
+    if (entry.sourceId === sourceId) apiProviderRegistry.delete(api)
+  }
+}
+
 export function complete(..._args: unknown[]): never {
   throw new Error('pi2dsh: pi-ai complete() routes model calls through Pi provider SDKs; use DSH llm adapters instead')
 }

@@ -6,3 +6,4 @@ coverage/
 .DS_Store
 .write-review/
 marketing/
+.oauth-e2e/

@@ -102,7 +102,22 @@ DSH ships static HTTP headers only; pi2dsh adds the interactive OAuth layer from
 # → approve in your browser; the credential lands in auth.json (0600)
 ```
 
-What you get, end to end: PKCE + `localhost:1455` callback (device-code fallback for headless boxes), credentials persisted in Pi's `auth.json` format — so packages like `@narumitw/pi-accounts` manage the same file they already know — automatic refresh with Pi's double-checked-lock rotation (5-minute expiry window, refreshed token persisted before release), and `getProviderAuth`/`getApiKeyForProvider` on the extension registry returning live keys. Verified against a real ChatGPT Pro account: browser authorization → callback → token exchange → store → refreshable key (`scripts/verify-oauth-e2e.mjs` reproduces it; on networks that need a proxy, the script honors `HTTPS_PROXY`).
+What you get, end to end: PKCE + `localhost:1455` callback (device-code fallback for headless boxes), credentials persisted in Pi's `auth.json` format — so packages like `@narumitw/pi-accounts` manage the same file they already know — automatic refresh with Pi's double-checked-lock rotation (5-minute expiry window, refreshed token persisted before release), and `getProviderAuth`/`getApiKeyForProvider` on the extension registry returning live keys.
+
+**And the token drives real model calls through DSH's native LLM path.** `pi2dsh/credentials-oauth` is a standard `dsh-credentials` provider: any reference shaped `PI2DSH_OAUTH_<PROVIDER>` resolves per request from `auth.json` (running the refresh rotation on the way), everything else falls through to the environment. Point an official `@deepseek-ai/dsh-llm-pi-ai` route at it and `ctx.llm.stream()` runs on your subscription:
+
+```yaml
+- id: llm
+  name: '@deepseek-ai/dsh-llm-pi-ai'
+  config:
+    providers:
+      openai-codex:
+        apiKeyEnv: PI2DSH_OAUTH_OPENAI_CODEX
+        models:
+          - id: gpt-5.6-luna
+```
+
+Both layers are verified against a real ChatGPT Pro account: browser authorization → callback → token exchange → store → refreshable key (`scripts/verify-oauth-e2e.mjs`), then credentials provider → official pi-ai route → DSH-native `ctx.llm.stream()` → a real model reply on the subscription (`scripts/verify-oauth-llm-e2e.mjs`). On networks that need a proxy, both scripts honor `HTTPS_PROXY`.
 
 ## Compatibility boundaries (explicit, never silent)
 

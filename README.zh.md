@@ -102,7 +102,22 @@ DSH 原生只有静态 HTTP headers；pi2dsh 把 Pi 生态的交互式 OAuth 层
 # → 浏览器里点击授权；凭证落盘 auth.json（0600）
 ```
 
-端到端你得到的是：PKCE + `localhost:1455` 回调（无头环境有 device-code 备选）、凭证按 Pi 的 `auth.json` 格式持久化——所以 `@narumitw/pi-accounts` 这类包管理的就是它们熟悉的同一份文件——自动刷新走 Pi 的双检锁轮换（5 分钟过期窗口，轮换后的 token 先落盘再放锁）、扩展注册表的 `getProviderAuth`/`getApiKeyForProvider` 返回真实可用的 key。已用真实 ChatGPT Pro 账号完整验证：浏览器授权 → 回调 → 换 token → 落盘 → 可刷新的 key（`scripts/verify-oauth-e2e.mjs` 可复现；需要代理的网络下脚本尊重 `HTTPS_PROXY`）。
+端到端你得到的是：PKCE + `localhost:1455` 回调（无头环境有 device-code 备选）、凭证按 Pi 的 `auth.json` 格式持久化——所以 `@narumitw/pi-accounts` 这类包管理的就是它们熟悉的同一份文件——自动刷新走 Pi 的双检锁轮换（5 分钟过期窗口，轮换后的 token 先落盘再放锁）、扩展注册表的 `getProviderAuth`/`getApiKeyForProvider` 返回真实可用的 key。
+
+**而且 token 直接驱动 DSH 原生链路的真实模型调用。** `pi2dsh/credentials-oauth` 是一个标准 `dsh-credentials` provider：形如 `PI2DSH_OAUTH_<PROVIDER>` 的引用每次请求都从 `auth.json` 解析（途中跑刷新轮换），其余引用回落环境变量。把官方 `@deepseek-ai/dsh-llm-pi-ai` 的 route 指向它，`ctx.llm.stream()` 就跑在你的订阅上：
+
+```yaml
+- id: llm
+  name: '@deepseek-ai/dsh-llm-pi-ai'
+  config:
+    providers:
+      openai-codex:
+        apiKeyEnv: PI2DSH_OAUTH_OPENAI_CODEX
+        models:
+          - id: gpt-5.6-luna
+```
+
+两层都已用真实 ChatGPT Pro 账号验证：浏览器授权 → 回调 → 换 token → 落盘 → 可刷新的 key（`scripts/verify-oauth-e2e.mjs`），然后 credentials provider → 官方 pi-ai route → DSH 原生 `ctx.llm.stream()` → 订阅上的真实模型回复（`scripts/verify-oauth-llm-e2e.mjs`）。需要代理的网络下两个脚本都尊重 `HTTPS_PROXY`。
 
 ## 兼容边界（显式声明，绝不静默）
 

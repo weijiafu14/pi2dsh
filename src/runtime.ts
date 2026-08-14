@@ -26,6 +26,7 @@ import {
   resolveOAuthApiKey,
   storedOAuthCredential,
 } from './oauth-bridge.js'
+import { builtinProviders } from './compat/pi-ai.js'
 
 type UnknownRecord = Record<string, unknown>
 type PiHandler = (event: UnknownRecord, context: UnknownRecord) => unknown | Promise<unknown>
@@ -1489,6 +1490,13 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
   }
   subscribeLifecycle(ctx, state)
   subscribeInterceptors(ctx, state)
+  // Pi hosts ship their built-in OAuth providers ready to log in; preload the
+  // four vendored official flows so `/login openai-codex` (etc.) works out of
+  // the box, before any package registers its own providers.
+  for (const provider of builtinProviders()) {
+    state.providers.set(provider.id, { name: provider.name, baseUrl: provider.baseUrl, oauth: provider.auth.oauth })
+  }
+  ensureLoginCommand(ctx, state)
   if (options.manifest.skillDirs.length > 0) {
     const skills = (ctx as unknown as { get(name: string): unknown }).get('skills')
     if (skills === undefined) logger(ctx).warn('[pi2dsh] migrated skills were not mounted because this DSH composition has no ctx.skills')
