@@ -72,7 +72,7 @@ DeepSeek Harness 原生服务（Cordis 组合）
 ### 路线图
 
 1. 把 9 个"能接入、未全测"提升为"已测可用"（带凭证的 fixture、按包定制探针参数、给 userQuestions 补 live agent 探针链路）。
-2. 交互式 OAuth host seam：Pi provider 的 `oauth.login/refreshToken/getApiKey` 流跑在 DSH 原生交互上，凭证按 Pi `auth.json` 语义持久化，key 经 dsh-llm one-shot credential 缝供给（fixture：`pi-provider-kimi-code`、`@narumitw/pi-accounts`）。
+2. ✅ 已完成：交互式 OAuth host seam——Pi provider 的 `oauth.login/refreshToken/getApiKey` 流跑在 DSH 原生交互上，凭证按 Pi `auth.json` 语义持久化并带双检锁刷新，四条官方流内建；已用真实 ChatGPT Pro 账号端到端验证（见上文"交互式 OAuth"）。
 3. ✅ 已完成：4 个 Pi 内部运行时包全部桥接（见上）——前 50 全部可挂载。
 4. ✅ 已完成：2 个快照受限包经 host 模式实测通过（[证据](community/host-mode-results.json)）。
 5. ✅ 已完成：复查曾被错误报告为"有缺陷"的 5 个包，修正筛查器与本页（见上）。
@@ -92,6 +92,18 @@ node dist/cli.mjs mcp-config                        # Pi mcpServers → DSH patc
 dsh plugin --profile headless add file:$PWD/pi-host
 ```
 
+## 交互式 OAuth：用你的订阅账号登录
+
+DSH 原生只有静态 HTTP headers；pi2dsh 把 Pi 生态的交互式 OAuth 层带了过来。任何注册了 `oauth` 块的 Pi provider 包，在 DSH 上都直接获得可用的 `/login <provider>` 命令，登录流程由包自己的协议代码驱动。Pi 的四条官方流内建（vendored 字节级）：**OpenAI Codex（ChatGPT Plus/Pro）**、**Anthropic**、**GitHub Copilot**、**Kimi Code**。
+
+```sh
+# 在挂载了 pi2dsh host bundle 的 DSH 会话里
+/login openai-codex     # 打印授权 URL，同时拉起 localhost 回调服务
+# → 浏览器里点击授权；凭证落盘 auth.json（0600）
+```
+
+端到端你得到的是：PKCE + `localhost:1455` 回调（无头环境有 device-code 备选）、凭证按 Pi 的 `auth.json` 格式持久化——所以 `@narumitw/pi-accounts` 这类包管理的就是它们熟悉的同一份文件——自动刷新走 Pi 的双检锁轮换（5 分钟过期窗口，轮换后的 token 先落盘再放锁）、扩展注册表的 `getProviderAuth`/`getApiKeyForProvider` 返回真实可用的 key。已用真实 ChatGPT Pro 账号完整验证：浏览器授权 → 回调 → 换 token → 落盘 → 可刷新的 key（`scripts/verify-oauth-e2e.mjs` 可复现；需要代理的网络下脚本尊重 `HTTPS_PROXY`）。
+
 ## 兼容边界（显式声明，绝不静默）
 
 | 领域 | 映射 |
@@ -99,7 +111,7 @@ dsh plugin --profile headless add file:$PWD/pi-host
 | 工具 | 原生 DSH 工具；Pi 的 `tool_call` 原地改参对 Pi 自有工具生效（DSH 原生工具拒绝——DSH 有意先记日志后跑策略） |
 | 会话 | 消息从 DSH durable 日志投影；Pi 自定义 entry/label/name 持久化在 pi2dsh sidecar（DSH 目前没有第三方插件事件通道） |
 | Pi TUI | 纯逻辑 vendored 字节一致；组件类同签名 headless 构造；`ui.custom` 与 Pi 官方 rpc 模式一样返回 undefined |
-| Provider/OAuth | 声明被记录；传输与密钥始终由 DSH `llm`/`credentials` 原生持有 |
+| Provider/OAuth | 交互式 OAuth 已可用：`/login <provider>` 跑包自己的流程，凭证按 Pi `auth.json` 持久化并自动刷新；模型传输仍由 DSH `llm` 原生持有 |
 | 会话树写操作 | `fork`/`navigateTree`/`switchSession` 显式失败（DSH 官方将 pi 式 entry tree 列为 deferred） |
 | 终端装饰 | footer/statusline/快捷键注册成功但永不触发——与 Pi 自己的非 TUI 模式一致 |
 

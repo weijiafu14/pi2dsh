@@ -17,8 +17,15 @@ import type {
 } from '@deepseek-ai/dsh-tools'
 import type { GeneratedRuntimeManifest } from './types.js'
 import { PiSessionBridge } from './session-bridge.js'
-import { ExtensionRunner, Theme, __setSubagentSessionFactory } from './compat/pi-coding-agent.js'
+import { ExtensionRunner, Theme, __setSubagentSessionFactory, getAgentDir } from './compat/pi-coding-agent.js'
 import { createBridgedAgentSession } from './subagent-bridge.js'
+import {
+  FileCredentialStore,
+  loginPiProvider,
+  providerSupportsOAuth,
+  resolveOAuthApiKey,
+  storedOAuthCredential,
+} from './oauth-bridge.js'
 
 type UnknownRecord = Record<string, unknown>
 type PiHandler = (event: UnknownRecord, context: UnknownRecord) => unknown | Promise<unknown>
@@ -80,6 +87,10 @@ interface RuntimeState {
   entryRenderers: Map<string, unknown>
   markdownTransformer?: unknown
   providers: Map<string, UnknownRecord>
+  // Pi-format auth.json store, created on first OAuth use; per-provider
+  // serialized writes, atomic 0600 persistence (see oauth-bridge).
+  oauthStore?: FileCredentialStore
+  loginCommandRegistered?: boolean
   autocompleteProviders: unknown[]
   editorComponentFactory?: unknown
   editorBuffers: WeakMap<object, string>
@@ -442,20 +453,48 @@ function contextFor(
     },
   }
   const session = agentSession(agent)
-  // Pi's ModelRegistry surface with an empty catalog: DSH owns model routing,
-  // so extensions see a well-formed registry that reports no Pi providers.
+  // Pi's ModelRegistry surface. DSH owns model routing (empty catalog), but
+  // the provider-auth half is real: registered providers with an oauth block
+  // resolve stored credentials through Pi's own double-checked-lock refresh
+  // (vendored), against the Pi-format auth.json this bridge maintains.
+  const providerConfig = (name: string): UnknownRecord | undefined => state.providers.get(name)
   const modelRegistry = {
     getAll: () => [],
     getAvailable: () => [],
     find: (_provider: string, _modelId: string) => undefined,
     getError: () => undefined,
     hasConfiguredAuth: (_model: unknown) => false,
-    getProviderAuthStatus: (_provider: string) => 'none',
-    getProvider: (_provider: string) => undefined,
-    getProviderDisplayName: (provider: string) => provider,
-    getProviderAuth: async (_provider: string) => undefined,
-    getApiKeyForProvider: async (_provider: string) => undefined,
-    isUsingOAuth: (_model: unknown) => false,
+    getProviderAuthStatus: (provider: string) =>
+      providerSupportsOAuth(providerConfig(provider)) ? 'oauth' : 'none',
+    getProvider: (provider: string) => providerConfig(provider),
+    getRegisteredProviderConfig: (provider: string) => providerConfig(provider),
+    getRegisteredProviderIds: () => [...state.providers.keys()],
+    getProviderDisplayName: (provider: string) => {
+      const config = providerConfig(provider)
+      return typeof config?.name === 'string' ? config.name : provider
+    },
+    getProviderAuth: async (provider: string) => {
+      const config = providerConfig(provider)
+      if (!providerSupportsOAuth(config)) return undefined
+      const stored = await storedOAuthCredential(oauthStoreOf(state), provider)
+      if (stored === undefined) return undefined
+      const apiKey = await resolveOAuthApiKey({
+        providerId: provider, providerConfig: config as UnknownRecord, store: oauthStoreOf(state),
+      })
+      if (apiKey === undefined) return undefined
+      return { auth: { apiKey, baseUrl: (config as UnknownRecord).baseUrl }, source: 'OAuth' }
+    },
+    getApiKeyForProvider: async (provider: string) => {
+      const config = providerConfig(provider)
+      if (!providerSupportsOAuth(config)) return undefined
+      return resolveOAuthApiKey({
+        providerId: provider, providerConfig: config as UnknownRecord, store: oauthStoreOf(state),
+      })
+    },
+    isUsingOAuth: (model: unknown) => {
+      const provider = String((model as UnknownRecord | undefined)?.provider ?? '')
+      return provider.length > 0 && providerSupportsOAuth(providerConfig(provider))
+    },
     refresh: async () => ({ models: [], errors: [] }),
   }
   const base: UnknownRecord = {
@@ -812,6 +851,56 @@ function subscribeInterceptors(ctx: Context, state: RuntimeState): void {
   })
 }
 
+function oauthStoreOf(state: RuntimeState): FileCredentialStore {
+  state.oauthStore ??= new FileCredentialStore(join(getAgentDir(), 'auth.json'))
+  return state.oauthStore
+}
+
+// Pi hosts ship /login <provider> as a built-in; register it once, the first
+// time an oauth-capable provider appears.
+function ensureLoginCommand(ctx: Context, state: RuntimeState): void {
+  if (state.loginCommandRegistered === true) return
+  state.loginCommandRegistered = true
+  registerCommand(ctx, state, {
+    name: 'login',
+    description: 'Log in to a Pi provider through its own OAuth flow',
+    argumentHint: '<provider>',
+    async handler(args: string, commandContext: UnknownRecord) {
+      const oauthProviders = [...state.providers.entries()]
+        .filter(([, config]) => providerSupportsOAuth(config))
+        .map(([name]) => name)
+      if (oauthProviders.length === 0) throw new Error('no registered Pi provider supports OAuth login')
+      const ui = commandContext.ui as {
+        input(title: unknown, placeholder?: unknown): Promise<string | undefined>
+        select(title: unknown, options: unknown[]): Promise<string | undefined>
+        notify(message: unknown): void
+      }
+      let providerId = args.trim().split(/\s+/u)[0] ?? ''
+      if (providerId.length === 0) {
+        providerId = oauthProviders.length === 1
+          ? oauthProviders[0] as string
+          : String(await ui.select('Log in to which provider?', oauthProviders) ?? '')
+      }
+      const config = state.providers.get(providerId)
+      if (config === undefined || !providerSupportsOAuth(config)) {
+        throw new Error(`unknown OAuth provider ${JSON.stringify(providerId)}; available: ${oauthProviders.join(', ')}`)
+      }
+      const oauthName = ((config.oauth as UnknownRecord | undefined)?.name as string | undefined) ?? providerId
+      const commandSignal = commandContext.signal as AbortSignal | undefined
+      await loginPiProvider({
+        providerId,
+        providerName: oauthName,
+        providerConfig: config,
+        store: oauthStoreOf(state),
+        ui,
+        ...(commandSignal !== undefined ? { signal: commandSignal } : {}),
+      })
+      ui.notify(`Logged in to ${oauthName}; credential stored in ${oauthStoreOf(state).path}`)
+      return `Logged in to ${oauthName}`
+    },
+  })
+}
+
 function registerTool(ctx: Context, state: RuntimeState, tool: PiTool): void {
   // Pi's runner stores tools in a name-keyed Map (set + refreshTools):
   // re-registering a name replaces the previous definition. Mirror that —
@@ -1076,7 +1165,14 @@ function createPiApi(ctx: Context, state: RuntimeState): UnknownRecord {
         : String((providerOrName as UnknownRecord | undefined)?.name ?? 'unnamed')
       const value = typeof providerOrName === 'string' ? config ?? {} : providerOrName as UnknownRecord
       state.providers.set(name, value)
-      logger(ctx).info(`[pi2dsh] recorded Pi provider ${JSON.stringify(name)}; model calls stay on DSH llm adapters`)
+      if (providerSupportsOAuth(value)) {
+        // Pi hosts expose /login <provider> for oauth-capable providers; the
+        // package's own login flow runs, credentials land in auth.json.
+        ensureLoginCommand(ctx, state)
+        logger(ctx).info(`[pi2dsh] Pi provider ${JSON.stringify(name)} supports OAuth — log in with /login ${name}`)
+      } else {
+        logger(ctx).info(`[pi2dsh] recorded Pi provider ${JSON.stringify(name)}; model calls stay on DSH llm adapters`)
+      }
     },
     unregisterProvider(name: string) {
       state.providers.delete(name)

@@ -72,7 +72,7 @@ An earlier revision of this page (and our launch posts) attributed 5 blocked pac
 ### Roadmap
 
 1. Lift the 9 "mounts, not fully verified" to tested-working (credentialed fixtures, per-package probe arguments, a live-agent probe path for userQuestions).
-2. Interactive OAuth host seam: run Pi provider `oauth.login/refreshToken/getApiKey` flows on DSH-native interaction, persist credentials with Pi's `auth.json` semantics, feed keys through dsh-llm's one-shot credential seam (fixtures: `pi-provider-kimi-code`, `@narumitw/pi-accounts`).
+2. ✅ Done: interactive OAuth host seam — Pi provider `oauth.login/refreshToken/getApiKey` flows run on DSH-native interaction, credentials persist with Pi's `auth.json` semantics with double-checked-lock refresh, and the four official Pi flows ship built in; verified end-to-end against a real ChatGPT Pro account (see "Interactive OAuth" above).
 3. ✅ Done: all four Pi-internal-runtime packages bridged (see above) — every top-50 package mounts.
 4. ✅ Done: the 2 snapshot-limited packages verified through host mode ([evidence](community/host-mode-results.json)).
 5. ✅ Done: re-verified the 5 packages we had wrongly reported as defective; corrected the screener and this page (see above).
@@ -92,6 +92,18 @@ node dist/cli.mjs mcp-config                        # Pi mcpServers → DSH patc
 dsh plugin --profile headless add file:$PWD/pi-host
 ```
 
+## Interactive OAuth: sign in with your subscription
+
+DSH ships static HTTP headers only; pi2dsh adds the interactive OAuth layer from the Pi ecosystem. Any Pi provider package that registers an `oauth` block gets a working `/login <provider>` command on DSH, driven by the package's own protocol code. Pi's four official flows ship built in (vendored byte-identical): **OpenAI Codex (ChatGPT Plus/Pro)**, **Anthropic**, **GitHub Copilot**, **Kimi Code**.
+
+```sh
+# inside a DSH session with a pi2dsh host bundle mounted
+/login openai-codex     # prints the authorization URL, spins up the localhost callback
+# → approve in your browser; the credential lands in auth.json (0600)
+```
+
+What you get, end to end: PKCE + `localhost:1455` callback (device-code fallback for headless boxes), credentials persisted in Pi's `auth.json` format — so packages like `@narumitw/pi-accounts` manage the same file they already know — automatic refresh with Pi's double-checked-lock rotation (5-minute expiry window, refreshed token persisted before release), and `getProviderAuth`/`getApiKeyForProvider` on the extension registry returning live keys. Verified against a real ChatGPT Pro account: browser authorization → callback → token exchange → store → refreshable key (`scripts/verify-oauth-e2e.mjs` reproduces it; on networks that need a proxy, the script honors `HTTPS_PROXY`).
+
 ## Compatibility boundaries (explicit, never silent)
 
 | Area | Mapping |
@@ -99,7 +111,7 @@ dsh plugin --profile headless add file:$PWD/pi-host
 | Tools | Native DSH tools; Pi's in-place `tool_call` argument mutation works for Pi-owned tools (DSH-native tools reject it — DSH logs arguments before policy) |
 | Sessions | Messages project from DSH's durable log; Pi custom entries/labels/names persist in a pi2dsh sidecar (DSH has no out-of-repo plugin-event channel yet) |
 | Pi TUI | Pure logic vendored byte-identical; components construct headlessly; `ui.custom` resolves `undefined` exactly like Pi's own rpc mode |
-| Providers/OAuth | Declarations recorded; transports and credentials stay native to DSH `llm`/`credentials` |
+| Providers/OAuth | Interactive OAuth is live: `/login <provider>` runs the package's own flow, credentials persist in Pi's `auth.json` with automatic refresh; model transports stay native to DSH `llm` |
 | Session tree writes | `fork`/`navigateTree`/`switchSession` fail explicitly (DSH lists pi-style entry trees as deferred) |
 | Terminal decoration | footer/statusline/shortcuts register but never fire — matching Pi's own non-TUI modes |
 

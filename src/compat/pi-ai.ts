@@ -150,6 +150,43 @@ export function anthropicMessagesApi(): unknown {
   return lazyApiForCompat(async () => unbridgedTransport('anthropic-messages'), undefined)
 }
 
+// Pi's official OAuth flows, vendored byte-identical: OpenAI Codex
+// (PKCE + localhost:1455 callback server, device-code fallback), Anthropic,
+// GitHub Copilot, Kimi Coding. Each exposes pi-ai's native oauth surface
+// (login(interaction)/refresh/toAuth) and runs its real protocol against the
+// real endpoints — account packages like @narumitw/pi-accounts load them
+// through builtinProviders()/the lazy loaders below.
+export { openaiCodexOAuth } from './vendor/pi-oauth-flows/openai-codex.js'
+export { anthropicOAuth } from './vendor/pi-oauth-flows/anthropic.js'
+export { githubCopilotOAuth } from './vendor/pi-oauth-flows/github-copilot.js'
+export { kimiCodingOAuth } from './vendor/pi-oauth-flows/kimi-coding.js'
+export { generatePKCE } from './vendor/pi-oauth-flows/pkce.js'
+export { pollOAuthDeviceCodeFlow } from './vendor/pi-oauth-flows/device-code.js'
+
+import { openaiCodexOAuth as codexFlow } from './vendor/pi-oauth-flows/openai-codex.js'
+import { anthropicOAuth as anthropicFlow } from './vendor/pi-oauth-flows/anthropic.js'
+import { githubCopilotOAuth as copilotFlow } from './vendor/pi-oauth-flows/github-copilot.js'
+import { kimiCodingOAuth as kimiFlow } from './vendor/pi-oauth-flows/kimi-coding.js'
+
+// The provider catalog surface account packages consume: id + the real OAuth
+// flow. Model catalogs stay empty — model routing is DSH-native in this host.
+export function builtinProviders(): Array<{ id: string, name: string, api: string, baseUrl: string, models: never[], auth: { oauth: unknown } }> {
+  const entry = (id: string, name: string, baseUrl: string, oauth: unknown) => ({
+    id, name, api: 'openai-completions', baseUrl, models: [] as never[], auth: { oauth },
+  })
+  return [
+    entry('openai-codex', 'OpenAI (ChatGPT Plus/Pro)', 'https://chatgpt.com/backend-api/codex', codexFlow),
+    entry('anthropic', 'Anthropic', 'https://api.anthropic.com', anthropicFlow),
+    entry('github-copilot', 'GitHub Copilot', 'https://api.githubcopilot.com', copilotFlow),
+    entry('kimi-coding', 'Kimi Code', 'https://api.moonshot.ai/anthropic', kimiFlow),
+  ]
+}
+
+export const loadOpenAICodexOAuth = async (): Promise<unknown> => codexFlow
+export const loadAnthropicOAuth = async (): Promise<unknown> => anthropicFlow
+export const loadGitHubCopilotOAuth = async (): Promise<unknown> => copilotFlow
+export const loadKimiCodingOAuth = async (): Promise<unknown> => kimiFlow
+
 export function complete(..._args: unknown[]): never {
   throw new Error('pi2dsh: pi-ai complete() routes model calls through Pi provider SDKs; use DSH llm adapters instead')
 }
