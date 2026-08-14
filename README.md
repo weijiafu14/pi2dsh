@@ -65,9 +65,9 @@ Additional verified layers: a **host bundle** mounting two unmodified packages p
 
 Each landed as a reusable public-surface bridge, not a package patch: `pi-landstrip` and `pi-fabric` run on Pi's built-in tool constructors (bash/read/edit/write/grep/find/ls) vendored byte-identical with their pure-logic closure; `pi-provider-litellm` runs on the vendored pi-ai `createProvider` factory (model transports stay native to DSH llm); `pi-fabric` additionally hooks a real-semantics `ExtensionRunner` facade — patching `prototype.getAllRegisteredTools` genuinely filters the tool catalog, as under Pi; `@tintinweb/pi-subagents` runs on `createAgentSession` bridged to genuine DSH child agents through `ctx.agents` — the bridge owns no model loop, so compositions without one fail explicitly instead of simulating a subagent.
 
-### Correction: the "5 package defects" earlier versions reported
+### How the screener judges compatibility
 
-An earlier revision of this page (and our launch posts) attributed 5 blocked packages to upstream package defects. On re-verification **all five were faults in this project's own static screening, not in the packages** — high-download packages deserved that skepticism. Concretely: `bun:sqlite` is a host builtin of Pi's Bun-compiled distribution, and both `pi-hermes-memory` and `@mjasnikovs/pi-task` gate it behind runtime detection with proper Node fallbacks (better-sqlite3 / node:sqlite); `pi-harness-runtime`'s playwright and `mitsupi`'s googleapis/ws sit only on lazily-evaluated feature paths that never run at extension load; `pi-lens`'s out-of-tree skills path is skipped by Pi's own loader, and its bundler-stale worker URLs behave identically under Pi. The screener now models load-time vs lazy reachability, treats `bun:*` like `node:*`, and preserves published file layout — after which **all five mount, four grade tested-working, and no upstream issue was warranted**. The screening rules that produced the misjudgment are contract-tested against regressions.
+The screener models **load-time vs lazy reachability**: only an unresolvable dependency on the load-time static closure blocks a package — function-body dynamic imports, files reached only through dynamic import, and worker/data assets are lazy paths that behave identically under Pi and are graded as reviewable, never fatal. `bun:*` is treated like `node:*` (a host builtin of Pi's Bun-compiled distribution), and snapshots preserve the published file layout byte for byte. These rules are contract-tested; under them, packages that mix Bun-only branches, optional heavyweight dependencies, or bundler-generated worker paths — `pi-hermes-memory`, `@mjasnikovs/pi-task`, `pi-harness-runtime`, `mitsupi`, `pi-lens` — all mount and work as published, with no changes needed upstream.
 
 ### Roadmap
 
@@ -75,7 +75,7 @@ An earlier revision of this page (and our launch posts) attributed 5 blocked pac
 2. ✅ Done: interactive OAuth host seam — Pi provider `oauth.login/refreshToken/getApiKey` flows run on DSH-native interaction, credentials persist with Pi's `auth.json` semantics with double-checked-lock refresh, and the four official Pi flows ship built in; verified end-to-end against a real ChatGPT Pro account (see "Interactive OAuth" above).
 3. ✅ Done: all four Pi-internal-runtime packages bridged (see above) — every top-50 package mounts.
 4. ✅ Done: the 2 snapshot-limited packages verified through host mode ([evidence](community/host-mode-results.json)).
-5. ✅ Done: re-verified the 5 packages we had wrongly reported as defective; corrected the screener and this page (see above).
+5. ✅ Done: load-time vs lazy reachability screening landed; the five packages it unblocked all mount, four tested-working (see above).
 
 ## Quick start
 

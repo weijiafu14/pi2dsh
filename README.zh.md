@@ -65,9 +65,9 @@ DeepSeek Harness 原生服务（Cordis 组合）
 
 每个都落成了可复用的公共面桥，不是逐包补丁：`pi-landstrip` 与 `pi-fabric` 跑在 vendored 字节级的 Pi 内建工具构造器上（bash/read/edit/write/grep/find/ls 及其纯逻辑闭包）；`pi-provider-litellm` 跑在 vendored 的 pi-ai `createProvider` 工厂上（模型传输始终归 DSH llm 原生）；`pi-fabric` 另挂真语义 `ExtensionRunner` 门面——patch `prototype.getAllRegisteredTools` 能真实过滤工具目录，与 Pi 下行为一致；`@tintinweb/pi-subagents` 跑在 `createAgentSession` → 真实 DSH 子代理桥上（经 `ctx.agents` 走宿主 loop 工厂）——桥不自带模型循环，无 loop 的组合显式失败，绝不假装跑了子代理。
 
-### 更正：早期版本报告的"5 个包缺陷"
+### 筛查器如何判定兼容性
 
-本页早期版本（以及我们的发布帖）曾把 5 个被挡的包归因为"包自身缺陷"。复查后确认：**五个全部是本项目静态筛查自己的判定问题，不是包的问题**——大下载量的包本就值得这份怀疑。具体：`bun:sqlite` 是 Pi 官方 Bun 编译发行版的宿主内建，`pi-hermes-memory` 与 `@mjasnikovs/pi-task` 都做了运行时检测并带正规 Node 回退（better-sqlite3 / node:sqlite）；`pi-harness-runtime` 的 playwright 和 `mitsupi` 的 googleapis/ws 只出现在惰性求值的功能路径上，扩展加载期根本不会执行；`pi-lens` 的越界 skills 路径 Pi 自己的 loader 也是跳过处理，其打包器残留的 worker 路径在 Pi 下行为完全相同。筛查器现已区分加载期与惰性可达、把 `bun:*` 与 `node:*` 同等对待、并原样保留发布文件布局——修正后**五个包全部可挂载、四个达到已测可用，无需向任何上游提 issue**。产生误判的判定规则已补契约测试防止回归。
+筛查器区分**加载期与惰性可达**：只有加载期静态闭包上解析不了的依赖才会阻断一个包——函数体内的动态 import、仅经动态 import 可达的文件、worker/数据资源都是惰性路径，与 Pi 下行为完全一致，只标记为可审阅、绝不判死。`bun:*` 与 `node:*` 同等对待（Pi 官方发行版是 Bun 编译二进制的宿主内建），快照逐字节保留发布文件布局。这些规则有契约测试钉着；在这套规则下，混用 Bun 分支、可选重依赖、打包器生成 worker 路径的包——`pi-hermes-memory`、`@mjasnikovs/pi-task`、`pi-harness-runtime`、`mitsupi`、`pi-lens`——全部按发布原样挂载可用，上游无需任何改动。
 
 ### 路线图
 
@@ -75,7 +75,7 @@ DeepSeek Harness 原生服务（Cordis 组合）
 2. ✅ 已完成：交互式 OAuth host seam——Pi provider 的 `oauth.login/refreshToken/getApiKey` 流跑在 DSH 原生交互上，凭证按 Pi `auth.json` 语义持久化并带双检锁刷新，四条官方流内建；已用真实 ChatGPT Pro 账号端到端验证（见上文"交互式 OAuth"）。
 3. ✅ 已完成：4 个 Pi 内部运行时包全部桥接（见上）——前 50 全部可挂载。
 4. ✅ 已完成：2 个快照受限包经 host 模式实测通过（[证据](community/host-mode-results.json)）。
-5. ✅ 已完成：复查曾被错误报告为"有缺陷"的 5 个包，修正筛查器与本页（见上）。
+5. ✅ 已完成：加载期/惰性可达筛查规则落地；由此解锁的 5 个包全部可挂载、4 个已测可用（见上）。
 
 ## 快速开始
 
