@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { StringEnum } from '../src/compat/pi-ai.js'
 import {
+  createExtensionRuntime,
   DEFAULT_MAX_BYTES,
   DEFAULT_MAX_LINES,
   defineTool,
@@ -109,6 +110,41 @@ describe('dependency-light Pi host shims', () => {
       enum: ['small', 'large'],
       description: 'Size',
       default: 'small',
+    })
+  })
+
+  // Extensions that assemble their own ResourceLoader-shaped getExtensions()
+  // result (pi-btw's BTW overlay) call createExtensionRuntime(); an absent
+  // export threw "createExtensionRuntime is not a function" at command time.
+  describe('createExtensionRuntime (pre-bind extension runtime)', () => {
+    it('returns a runtime with Pi\'s pre-bind state shape', () => {
+      const runtime = createExtensionRuntime()
+      expect(runtime.flagValues).toBeInstanceOf(Map)
+      expect(runtime.pendingProviderRegistrations).toEqual([])
+      expect(runtime.pendingNativeProviderRegistrations).toEqual([])
+    })
+
+    it('queues provider registrations pre-bind and drops them on unregister', () => {
+      const runtime = createExtensionRuntime()
+      ;(runtime.registerProvider as (n: string, c: unknown, p?: string) => void)('acme', { baseUrl: 'x' }, '/ext')
+      expect(runtime.pendingProviderRegistrations).toEqual([{ name: 'acme', config: { baseUrl: 'x' }, extensionPath: '/ext' }])
+      ;(runtime.unregisterProvider as (n: string) => void)('acme')
+      expect(runtime.pendingProviderRegistrations).toEqual([])
+    })
+
+    it('throws from action methods until the host runner binds real implementations', () => {
+      const runtime = createExtensionRuntime()
+      expect(() => (runtime.sendMessage as () => void)()).toThrowError(/not initialized/u)
+      expect(() => (runtime.getActiveTools as () => void)()).toThrowError(/not initialized/u)
+    })
+
+    it('untracks an event-bus subscription on invalidate', () => {
+      const runtime = createExtensionRuntime()
+      let unsubscribed = false
+      ;(runtime.trackEventBusSubscription as (u: () => void) => void)(() => { unsubscribed = true })
+      ;(runtime.invalidate as (m?: string) => void)('session replaced')
+      expect(unsubscribed).toBe(true)
+      expect(() => (runtime.assertActive as () => void)()).toThrowError(/session replaced/u)
     })
   })
 })

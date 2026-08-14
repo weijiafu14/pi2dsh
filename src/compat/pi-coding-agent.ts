@@ -68,6 +68,11 @@ export {
 export type { TruncationOptions, TruncationResult } from './vendor/pi-truncate.js'
 export { withFileMutationQueue } from './vendor/pi-file-mutation-queue.js'
 export { getAgentDir } from './vendor/pi-config-shim.js'
+// Pre-bind extension-runtime factory, vendored byte-identical. Extensions that
+// assemble their own ResourceLoader-shaped getExtensions() result (pi-btw's
+// BTW overlay) construct one; an absent export throws at command execution.
+export { createExtensionRuntime } from './vendor/pi-extension-runtime.js'
+export type { ExtensionRuntime } from './vendor/pi-extension-runtime.js'
 // Pi's built-in tool constructors, vendored byte-identical (spawn semantics,
 // output accumulation, truncation, kill-tree, mutation queue, diff rendering)
 // — the constructor surface packages like pi-landstrip and pi-fabric build
