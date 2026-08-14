@@ -1,19 +1,22 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-14T05:50:35.900Z",
+  "generatedAt": "2026-08-14T09:15:30.043Z",
   "method": "convert + real DSH runtime load (Cordis composition with official service plugins); registration surfaces recorded; failures classified as ABI gaps; representative tools/commands EXECUTED with schema-derived arguments against local fixtures",
+  "hostBaseline": {
+    "tools": [],
+    "commands": [
+      "login"
+    ]
+  },
   "counts": {
     "loaded": 48,
     "loadFailed": 2,
     "fatal": 0
   },
   "exerciseCounts": {
-    "working": 34,
-    "executed-input-validation": 5,
-    "timed-out": 1,
-    "callable-needs-config": 3,
-    "nothing-exercisable": 4,
-    "failed": 1
+    "working": 41,
+    "executed-input-validation": 6,
+    "nothing-exercisable": 1
   },
   "gapHistogram": {
     "other": 2
@@ -44,7 +47,7 @@
             "name": "mcp",
             "args": {},
             "outcome": "working",
-            "evidence": "MCP: 0/0 servers, 0 tools"
+            "evidence": "MCP: 1/1 servers, 1 tools\n\n✓ pi2dsh-fixture (1 tools)\n\nmcp({ server: \"name\" }) to list tools, mcp({ search: \"...\" }) to search"
           },
           {
             "kind": "tool",
@@ -286,7 +289,7 @@
             "name": "ast_grep_outline",
             "args": {
               "paths": [
-                "/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-6wZjCp/workspace/sample.txt"
+                "/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-iW6ihY/workspace/sample.txt"
               ]
             },
             "outcome": "working",
@@ -457,7 +460,7 @@
               "pattern": "pi2dsh"
             },
             "outcome": "working",
-            "evidence": "[0 exact matches. Maybe you meant this?]\nsample.txt\n 1: pi2dsh exercise probe file"
+            "evidence": "mcp-fixture-server.mjs\n 12: serverInfo: { name: 'pi2dsh-fixture', version: '0.0.0' },\n 17: description: 'Echo back the given text (pi2dsh black-box fixture).',\n"
           }
         ]
       },
@@ -861,7 +864,7 @@
       ],
       "skills": [],
       "exercised": {
-        "grade": "timed-out",
+        "grade": "working",
         "attempts": [
           {
             "kind": "tool",
@@ -869,8 +872,8 @@
             "args": {
               "prompt": "pi2dsh exercise probe"
             },
-            "outcome": "timed-out",
-            "evidence": "still executing when the 20s probe timeout aborted it (Error: tool call aborted)"
+            "outcome": "working",
+            "evidence": "Workspace probe complete. Here's what I found:\n\n**Files in the workspace:**\n- `sample.ts` — `export const probe = 1`\n- `sample.txt` — \"pi2dsh exercise probe fil"
           },
           {
             "kind": "tool",
@@ -879,18 +882,18 @@
               "module": "pi2dsh",
               "query": "pi2dsh exercise probe"
             },
-            "outcome": "timed-out",
-            "evidence": "still executing when the 20s probe timeout aborted it (Error: tool call aborted)"
+            "outcome": "working",
+            "evidence": "[VERSION — verify] \"pi2dsh\" is not declared in this project's package.json, so this answer is based on npm latest (v0.2.0). Your project may target a different "
           },
           {
             "kind": "tool",
             "name": "pi-worker-fetch",
             "args": {
-              "url": "http://127.0.0.1:61255/page",
+              "url": "http://127.0.0.1:55735/page",
               "query": "pi2dsh exercise probe"
             },
-            "outcome": "timed-out",
-            "evidence": "still executing when the 20s probe timeout aborted it (Error: tool call aborted)"
+            "outcome": "working",
+            "evidence": "WARNING: cited excerpt not found verbatim in source content — the child pi may have paraphrased or hallucinated.\n\n\n\nThe page indicates the probe result: PI2DSH_"
           }
         ]
       },
@@ -1044,7 +1047,7 @@
               "cmd": "echo pi2dsh-exercise"
             },
             "outcome": "working",
-            "evidence": "Command: echo pi2dsh-exercise\nChunk ID: c46d57\nWall time: 0.0010 seconds\nProcess exited with code 1\nOriginal token count: 13\nOutput:\nexec_bridge binary is not b"
+            "evidence": "Command: echo pi2dsh-exercise\nChunk ID: a0bd86\nWall time: 0.0010 seconds\nProcess exited with code 1\nOriginal token count: 13\nOutput:\nexec_bridge binary is not b"
           },
           {
             "kind": "tool",
@@ -1094,10 +1097,10 @@
             "kind": "tool",
             "name": "lsp_fix",
             "args": {
-              "path": "/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-6wZjCp/workspace/sample.txt"
+              "path": "/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-iW6ihY/workspace/sample.txt"
             },
             "outcome": "failed",
-            "evidence": "Error: No fix route supports /var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-6wZjCp/workspace/sample.txt. Supported LSP servers are defined by "
+            "evidence": "Error: No fix route supports /var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-iW6ihY/workspace/sample.txt. Supported LSP servers are defined by "
           }
         ]
       },
@@ -1142,16 +1145,16 @@
               "name": "pi2dsh-probe"
             },
             "outcome": "executed-input-validation",
-            "evidence": "Error: dyld[81972]: Library not loaded: /opt/homebrew/opt/libgit2/lib/libgit2.1.9.dylib Referenced from: <9E0827C4-A0DC-3E7F-83D4-50269E16762E> /private/var/fol"
+            "evidence": "Error: dyld[73747]: Library not loaded: /opt/homebrew/opt/libgit2/lib/libgit2.1.9.dylib Referenced from: <9E0827C4-A0DC-3E7F-83D4-50269E16762E> /private/var/fol"
           },
           {
             "kind": "tool",
             "name": "readSeek_digest",
             "args": {
-              "path": "/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-6wZjCp/workspace/sample.txt"
+              "path": "/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-iW6ihY/workspace/sample.txt"
             },
             "outcome": "executed-input-validation",
-            "evidence": "Error: dyld[81974]: Library not loaded: /opt/homebrew/opt/libgit2/lib/libgit2.1.9.dylib Referenced from: <9E0827C4-A0DC-3E7F-83D4-50269E16762E> /private/var/fol"
+            "evidence": "Error: dyld[73749]: Library not loaded: /opt/homebrew/opt/libgit2/lib/libgit2.1.9.dylib Referenced from: <9E0827C4-A0DC-3E7F-83D4-50269E16762E> /private/var/fol"
           },
           {
             "kind": "tool",
@@ -1175,7 +1178,7 @@
       "status": "load-failed",
       "stage": "load",
       "gap": "other",
-      "error": "every Pi extension entry failed to load:\n- vendor/index.ts: ENOENT: no such file or directory, open '/private/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-6wZjCp/bundles/23-pi-hashline-edit-pro/vendor/prompts/read.md'"
+      "error": "every Pi extension entry failed to load:\n- vendor/index.ts: ENOENT: no such file or directory, open '/private/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-iW6ihY/bundles/23-pi-hashline-edit-pro/vendor/prompts/read.md'"
     },
     {
       "rank": 24,
@@ -1203,7 +1206,7 @@
             "name": "telegram_attach",
             "args": {
               "paths": [
-                "/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-6wZjCp/workspace/sample.txt"
+                "/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-iW6ihY/workspace/sample.txt"
               ]
             },
             "outcome": "failed",
@@ -1243,13 +1246,13 @@
       "commands": [],
       "skills": [],
       "exercised": {
-        "grade": "callable-needs-config",
+        "grade": "executed-input-validation",
         "attempts": [
           {
             "kind": "tool",
             "name": "agent_browser",
             "args": {},
-            "outcome": "callable-needs-config",
+            "outcome": "executed-input-validation",
             "evidence": "Error: Provide exactly one of args, semanticAction, job, qa, sourceLookup, networkSourceLookup, or electron."
           }
         ]
@@ -1310,7 +1313,7 @@
               "command": "echo"
             },
             "outcome": "executed-input-validation",
-            "evidence": "Error: ENOENT: no such file or directory, open '/private/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-6wZjCp/bundles/27-pi-landstrip/vendor/d"
+            "evidence": "Error: ENOENT: no such file or directory, open '/private/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-iW6ihY/bundles/27-pi-landstrip/vendor/d"
           },
           {
             "kind": "tool",
@@ -1490,12 +1493,24 @@
       "downloadsPerMonth": 11100,
       "status": "loaded",
       "verdict": "review",
-      "tools": [],
+      "tools": [
+        "web_search"
+      ],
       "commands": [],
       "skills": [],
       "exercised": {
-        "grade": "nothing-exercisable",
-        "attempts": []
+        "grade": "working",
+        "attempts": [
+          {
+            "kind": "tool",
+            "name": "web_search",
+            "args": {
+              "query": "pi2dsh exercise probe"
+            },
+            "outcome": "working",
+            "evidence": "## What \"pi2dsh exercise probe\" refers to\n\n**pi2dsh** is a project that bridges the **Pi** extension ecosystem and the **DeepSeek Harness (DSH)** ecosystem — a "
+          }
+        ]
       },
       "degraded": []
     },
@@ -1539,7 +1554,7 @@
         "ask-user"
       ],
       "exercised": {
-        "grade": "failed",
+        "grade": "working",
         "attempts": [
           {
             "kind": "tool",
@@ -1547,8 +1562,8 @@
             "args": {
               "question": "pi2dsh exercise probe"
             },
-            "outcome": "failed",
-            "evidence": "Error: human interaction requires the exact live calling agent when an agent is supplied"
+            "outcome": "working",
+            "evidence": "User answered: blackbox"
           }
         ]
       },
@@ -1575,7 +1590,7 @@
             "kind": "tool",
             "name": "web_fetch",
             "args": {
-              "url": "http://127.0.0.1:61255/page"
+              "url": "http://127.0.0.1:55735/page"
             },
             "outcome": "failed",
             "evidence": "Error: Refusing to fetch private/loopback address: 127.0.0.1"
@@ -1620,6 +1635,15 @@
         "attempts": [
           {
             "kind": "tool",
+            "name": "cursor_activate_skill",
+            "args": {
+              "name": "pi2dsh-probe"
+            },
+            "outcome": "failed",
+            "evidence": "Error: Skill not available: pi2dsh-probe. Available skills: none."
+          },
+          {
+            "kind": "tool",
             "name": "cursor_ask_question",
             "args": {},
             "outcome": "executed-input-validation",
@@ -1654,8 +1678,25 @@
       "commands": [],
       "skills": [],
       "exercised": {
-        "grade": "nothing-exercisable",
-        "attempts": []
+        "grade": "working",
+        "attempts": [
+          {
+            "kind": "tool",
+            "name": "litellm_skill_create",
+            "args": {
+              "name": "pi2dsh-probe"
+            },
+            "outcome": "executed-input-validation",
+            "evidence": "Error: code is required when source is omitted"
+          },
+          {
+            "kind": "tool",
+            "name": "litellm_skill_list",
+            "args": {},
+            "outcome": "working",
+            "evidence": "- pi2dsh-fixture-skill: PI2DSH_EXERCISE_OK"
+          }
+        ]
       },
       "degraded": [
         "on(after_provider_response)",
@@ -1697,7 +1738,7 @@
       "status": "load-failed",
       "stage": "load",
       "gap": "other",
-      "error": "every Pi extension entry failed to load:\n- vendor/index.ts: ENOENT: no such file or directory, open '/private/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-6wZjCp/bundles/39-pi-interview/vendor/form/index.html'"
+      "error": "every Pi extension entry failed to load:\n- vendor/index.ts: ENOENT: no such file or directory, open '/private/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-blackbox-iW6ihY/bundles/39-pi-interview/vendor/form/index.html'"
     },
     {
       "rank": 40,
@@ -1775,16 +1816,16 @@
       "commands": [],
       "skills": [],
       "exercised": {
-        "grade": "callable-needs-config",
+        "grade": "working",
         "attempts": [
           {
             "kind": "tool",
             "name": "web_fetch",
             "args": {
-              "url": "http://127.0.0.1:61255/page"
+              "url": "http://127.0.0.1:55735/page"
             },
-            "outcome": "callable-needs-config",
-            "evidence": "Error: fetch failed"
+            "outcome": "working",
+            "evidence": "Title: pi2dsh exercise page\n\nContent:\nPI2DSH_EXERCISE_OK\n\nLinks found: 0"
           },
           {
             "kind": "tool",
@@ -1792,8 +1833,8 @@
             "args": {
               "query": "pi2dsh exercise probe"
             },
-            "outcome": "callable-needs-config",
-            "evidence": "Error: fetch failed"
+            "outcome": "working",
+            "evidence": "1. pi2dsh exercise result\n   URL: http://127.0.0.1:55735/page\n   PI2DSH_EXERCISE_OK"
           }
         ]
       },
@@ -1820,7 +1861,7 @@
             "args": {
               "query": "pi2dsh exercise probe",
               "urls": [
-                "http://127.0.0.1:61255/page"
+                "http://127.0.0.1:55735/page"
               ]
             },
             "outcome": "working",
@@ -1845,12 +1886,29 @@
       "downloadsPerMonth": 8485,
       "status": "loaded",
       "verdict": "review",
-      "tools": [],
-      "commands": [],
+      "tools": [
+        "mcp_pi2dsh_fixture_fixture_echo"
+      ],
+      "commands": [
+        "mcp",
+        "mcp-auth",
+        "mcp-start",
+        "mcp-stop"
+      ],
       "skills": [],
       "exercised": {
-        "grade": "nothing-exercisable",
-        "attempts": []
+        "grade": "working",
+        "attempts": [
+          {
+            "kind": "tool",
+            "name": "mcp_pi2dsh_fixture_fixture_echo",
+            "args": {
+              "text": "pi2dsh exercise probe"
+            },
+            "outcome": "working",
+            "evidence": "PI2DSH_EXERCISE_OK pi2dsh exercise probe"
+          }
+        ]
       },
       "degraded": []
     },
@@ -1959,7 +2017,7 @@
         "image-gen"
       ],
       "exercised": {
-        "grade": "callable-needs-config",
+        "grade": "working",
         "attempts": [
           {
             "kind": "tool",
@@ -1967,8 +2025,8 @@
             "args": {
               "prompt": "pi2dsh exercise probe"
             },
-            "outcome": "callable-needs-config",
-            "evidence": "Error: image_generate failed: pi-image-gen.defaultModel is not set. Configure it in settings.json (e.g. \"defaultModel\": \"nano-banana\"). Run /image-gen list to s"
+            "outcome": "working",
+            "evidence": "Generated 1 image(s) via fixture (custom) (pi2dsh-probe). Show each one to the user as inline markdown — copy the lines below verbatim into your reply:\n\n![pi2ds"
           }
         ]
       },

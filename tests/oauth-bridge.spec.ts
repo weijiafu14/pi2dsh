@@ -8,6 +8,7 @@ import {
   oauthInteraction,
   providerSupportsOAuth,
   resolveOAuthApiKey,
+  resolvePiProviderAuth,
 } from '../src/oauth-bridge.js'
 
 const cleanup: string[] = []
@@ -147,5 +148,47 @@ describe('interactive OAuth host seam', () => {
     interaction.notify({ type: 'device_code', userCode: 'WXYZ-7777', verificationUri: 'https://x.test/device' })
     expect(notices).toEqual(['Waiting for authorization…', 'Visit https://x.test/device and enter code WXYZ-7777'])
     expect(await interaction.prompt({ type: 'manual_code', message: 'Paste the authorization code' })).toBe('typed-answer')
+  })
+
+  it('resolves pi-ai provider objects through the FULL Pi auth chain, not OAuth only', async () => {
+    const path = await tempAuthPath()
+    const store = new FileCredentialStore(path)
+    // A pi-ai createProvider()-shaped object: auth.apiKey owns ambient
+    // resolution — its resolve() runs the PACKAGE's logic against the auth
+    // context the host supplies (env access), exactly like pi-provider-litellm.
+    const providerConfig = {
+      id: 'gateway',
+      name: 'Gateway (display name)',
+      auth: {
+        apiKey: {
+          async resolve({ ctx, credential }: { ctx: { env(name: string): Promise<string | undefined> }, credential?: { key?: string } }) {
+            if (credential?.key !== undefined) return { auth: { apiKey: credential.key }, source: 'stored credential' }
+            const key = await ctx.env('PI2DSH_TEST_GATEWAY_KEY')
+            return key === undefined || key === '' ? undefined : { auth: { apiKey: key }, source: 'env' }
+          },
+        },
+      },
+    }
+
+    // Ambient env: the package's own resolve() sees process.env through the context.
+    process.env.PI2DSH_TEST_GATEWAY_KEY = 'env-key-1'
+    try {
+      const viaEnv = await resolvePiProviderAuth({ providerId: 'gateway', providerConfig, store }) as { auth: { apiKey: string }, source: string }
+      expect(viaEnv).toMatchObject({ auth: { apiKey: 'env-key-1' }, source: 'env' })
+    } finally {
+      delete process.env.PI2DSH_TEST_GATEWAY_KEY
+    }
+
+    // A stored api_key credential wins over ambient env — Pi's precedence.
+    await store.modify('gateway', async () => ({ type: 'api_key', key: 'stored-key-9' }))
+    const viaStore = await resolvePiProviderAuth({ providerId: 'gateway', providerConfig, store }) as { auth: { apiKey: string }, source: string }
+    expect(viaStore).toMatchObject({ auth: { apiKey: 'stored-key-9' }, source: 'stored credential' })
+
+    // Nothing stored, nothing ambient → undefined, never a fabricated key.
+    await store.delete('gateway', undefined)
+    expect(await resolvePiProviderAuth({ providerId: 'gateway', providerConfig, store })).toBeUndefined()
+
+    // auth.oauth nested inside a pi-ai provider object is recognized too.
+    expect(providerSupportsOAuth({ auth: { oauth: { login: () => ({}), getApiKey: () => 'k' } } })).toBe(true)
   })
 })

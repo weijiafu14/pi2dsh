@@ -23,8 +23,7 @@ import {
   FileCredentialStore,
   loginPiProvider,
   providerSupportsOAuth,
-  resolveOAuthApiKey,
-  storedOAuthCredential,
+  resolvePiProviderAuth,
 } from './oauth-bridge.js'
 import { builtinProviders } from './compat/pi-ai.js'
 
@@ -476,21 +475,24 @@ function contextFor(
     },
     getProviderAuth: async (provider: string) => {
       const config = providerConfig(provider)
-      if (!providerSupportsOAuth(config)) return undefined
-      const stored = await storedOAuthCredential(oauthStoreOf(state), provider)
-      if (stored === undefined) return undefined
-      const apiKey = await resolveOAuthApiKey({
-        providerId: provider, providerConfig: config as UnknownRecord, store: oauthStoreOf(state),
+      if (config === undefined) return undefined
+      const resolved = await resolvePiProviderAuth({
+        providerId: provider, providerConfig: config, store: oauthStoreOf(state),
       })
-      if (apiKey === undefined) return undefined
-      return { auth: { apiKey, baseUrl: (config as UnknownRecord).baseUrl }, source: 'OAuth' }
+      if (resolved?.auth === undefined) return resolved
+      // Pi fills the provider's declared baseUrl when the credential itself
+      // carries none (OAuth toAuth often returns just the key).
+      return resolved.auth.baseUrl === undefined && config.baseUrl !== undefined
+        ? { ...resolved, auth: { ...resolved.auth, baseUrl: config.baseUrl } }
+        : resolved
     },
     getApiKeyForProvider: async (provider: string) => {
       const config = providerConfig(provider)
-      if (!providerSupportsOAuth(config)) return undefined
-      return resolveOAuthApiKey({
-        providerId: provider, providerConfig: config as UnknownRecord, store: oauthStoreOf(state),
+      if (config === undefined) return undefined
+      const resolved = await resolvePiProviderAuth({
+        providerId: provider, providerConfig: config, store: oauthStoreOf(state),
       })
+      return (resolved?.auth as UnknownRecord | undefined)?.apiKey as string | undefined
     },
     isUsingOAuth: (model: unknown) => {
       const provider = String((model as UnknownRecord | undefined)?.provider ?? '')
@@ -1161,9 +1163,13 @@ function createPiApi(ctx: Context, state: RuntimeState): UnknownRecord {
     },
     getFlag: (name: string) => state.flags.get(name),
     registerProvider(providerOrName: unknown, config?: UnknownRecord) {
+      // pi-ai createProvider() objects are keyed by id in Pi's registry
+      // (name is the display name); extension-generation calls pass the key
+      // explicitly as the first argument.
       const name = typeof providerOrName === 'string'
         ? providerOrName
-        : String((providerOrName as UnknownRecord | undefined)?.name ?? 'unnamed')
+        : String((providerOrName as UnknownRecord | undefined)?.id
+          ?? (providerOrName as UnknownRecord | undefined)?.name ?? 'unnamed')
       const value = typeof providerOrName === 'string' ? config ?? {} : providerOrName as UnknownRecord
       state.providers.set(name, value)
       if (providerSupportsOAuth(value)) {

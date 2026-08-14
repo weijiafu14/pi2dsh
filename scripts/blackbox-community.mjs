@@ -8,11 +8,22 @@
 // Usage: node scripts/blackbox-community.mjs [output.json] [--only name,name] [--exercise]
 //   --exercise: after mounting, EXECUTE representative tools/commands with
 //   schema-derived minimal arguments against local fixture services. Grades:
-//     working              — a real invocation returned success
-//     callable-needs-config — the call executed but wants credentials/config
-//     failed               — invocation errored for another reason
-//   Mutating/destructive tool names are skipped (skipped-unsafe) except exec,
-//   which runs a harmless echo through the real subprocess seam.
+//     working                  — a real invocation returned success
+//     executed-input-validation — business logic ran end-to-end and rejected
+//                                the synthetic probe arguments
+//     callable-needs-config    — the call executed but wants credentials/config
+//     timed-out                — still executing when the 20s probe abort hit
+//     nothing-exercisable      — no safely probeable callable surface (e.g.
+//                                pure event-hook packages)
+//     failed                   — invocation errored for another reason
+//   The bridge's own host-native surface (measured by mounting a
+//   zero-contribution fixture extension) is subtracted from every probe.
+//   Mutating/destructive tool names are skipped (word-level match) except
+//   exec, which runs a harmless echo through the real subprocess seam.
+//   Optional env: DEEPSEEK_API_KEY (real-credential probes),
+//   PI2DSH_BLACKBOX_PI_BIN (a real `pi` binary for child-pi dispatch;
+//   wrapped with --provider deepseek so dispatched children answer live),
+//   PI2DSH_BLACKBOX_PI_ARGS (override that default provider/model).
 import { execFile as execFileCallback } from 'node:child_process'
 import { createServer } from 'node:http'
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
@@ -64,6 +75,16 @@ const fixtureServer = createServer((request, response) => {
     response.end(JSON.stringify({ data: [{ b64_json: tinyPng, revised_prompt: 'PI2DSH_EXERCISE_OK' }] }))
     return
   }
+  // LiteLLM-gateway-shaped skills API (pi-provider-litellm manages skills
+  // through GET/POST {LITELLM_BASE_URL}/v1/skills).
+  if (request.url?.startsWith('/v1/skills')) {
+    response.writeHead(200, { 'content-type': 'application/json' })
+    response.end(JSON.stringify({
+      skills: [{ name: 'pi2dsh-fixture-skill', description: 'PI2DSH_EXERCISE_OK', instructions: 'PI2DSH_EXERCISE_OK' }],
+      data: [{ name: 'pi2dsh-fixture-skill', description: 'PI2DSH_EXERCISE_OK' }],
+    }))
+    return
+  }
   response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' })
   response.end('<html><head><title>pi2dsh exercise page</title></head><body><h1>PI2DSH_EXERCISE_OK</h1></body></html>')
 })
@@ -98,30 +119,94 @@ await new Promise(resolveListen => {
   ollamaFixture.listen(11434, '127.0.0.1', resolveListen)
 })
 
-// Pi agent home with the settings image-model packages read
-// (~/.pi/agent/settings.json equivalent, isolated via PI_AGENT_HOME):
-// pi-image-gen resolves its default model through an OpenAI-compatible
-// custom provider pointed at the fixture's images endpoint.
+// Pi settings image-model packages read: pi-image-gen resolves its default
+// model through an OpenAI-compatible custom provider pointed at the fixture's
+// images endpoint. Pi's shared settings loader resolves the CONFIG dir as
+// PI_CODING_AGENT_DIR > PI_AGENT_HOME > ~/.pi/agent, so write the same
+// settings.json into both isolated dirs.
 const agentHome = join(scratch, 'pi-agent-home')
 await mkdir(agentHome, { recursive: true })
-await writeFile(join(agentHome, 'settings.json'), JSON.stringify({
-  'pi-image-gen': {
-    defaultModel: 'pi2dsh-probe',
-    customProviders: {
-      fixture: {
-        baseUrl: `${fixtureBase}/v1`,
-        apiKey: 'pi2dsh-fixture-key',
-        models: [{ id: 'pi2dsh-probe' }],
-      },
-    },
-  },
-}, null, 2))
 process.env.PI_AGENT_HOME = agentHome
 process.env.SEARXNG_URL = fixtureBase
 
 // Pi state (settings, sidecars) stays inside the scratch dir.
 process.env.PI_CODING_AGENT_DIR = join(scratch, 'pi-agent')
 await mkdir(process.env.PI_CODING_AGENT_DIR, { recursive: true })
+const piSettings = JSON.stringify({
+  'pi-image-gen': {
+    defaultModel: 'pi2dsh-probe',
+    customProviders: {
+      fixture: {
+        api: 'openai',
+        baseUrl: `${fixtureBase}/v1`,
+        apiKey: 'pi2dsh-fixture-key',
+        models: [{ id: 'pi2dsh-probe' }],
+      },
+    },
+  },
+}, null, 2)
+// pi-provider-litellm's skill tools talk to a LiteLLM gateway; point them at
+// the fixture's /v1/skills endpoint.
+process.env.LITELLM_BASE_URL = fixtureBase
+process.env.LITELLM_API_KEY = 'pi2dsh-fixture-key'
+await writeFile(join(agentHome, 'settings.json'), piSettings)
+await writeFile(join(process.env.PI_CODING_AGENT_DIR, 'settings.json'), piSettings)
+
+// A real (minimal) MCP stdio server plus a .pi/mcp.json pointing at it, so
+// MCP client packages register their command/tool surface and can exercise a
+// genuine end-to-end tool bridge. The probe process itself runs chdir'd into
+// the workspace: Pi extensions resolve project config from process.cwd() at
+// load time, exactly like a user launching the host inside their project.
+await writeFile(join(workspace, 'mcp-fixture-server.mjs'), `#!/usr/bin/env node
+import { createInterface } from 'node:readline'
+const reply = (id, result) => process.stdout.write(JSON.stringify({ jsonrpc: '2.0', id, result }) + '\\n')
+createInterface({ input: process.stdin }).on('line', line => {
+  let message
+  try { message = JSON.parse(line) } catch { return }
+  if (message.id === undefined) return
+  if (message.method === 'initialize') {
+    reply(message.id, {
+      protocolVersion: message.params?.protocolVersion ?? '2024-11-05',
+      capabilities: { tools: {} },
+      serverInfo: { name: 'pi2dsh-fixture', version: '0.0.0' },
+    })
+  } else if (message.method === 'tools/list') {
+    reply(message.id, { tools: [{
+      name: 'fixture_echo',
+      description: 'Echo back the given text (pi2dsh black-box fixture).',
+      inputSchema: { type: 'object', properties: { text: { type: 'string', description: 'text to echo' } }, required: ['text'] },
+    }] })
+  } else if (message.method === 'tools/call') {
+    reply(message.id, { content: [{ type: 'text', text: 'PI2DSH_EXERCISE_OK ' + String(message.params?.arguments?.text ?? '') }], isError: false })
+  } else {
+    reply(message.id, {})
+  }
+})
+`)
+await mkdir(join(workspace, '.pi'), { recursive: true })
+await writeFile(join(workspace, '.pi', 'mcp.json'), JSON.stringify({
+  mcpServers: {
+    'pi2dsh-fixture': {
+      command: process.execPath,
+      args: [join(workspace, 'mcp-fixture-server.mjs')],
+      lifecycle: 'eager',
+    },
+  },
+}, null, 2))
+process.chdir(workspace)
+
+// Real child-`pi` dispatch: packages like @mjasnikovs/pi-task spawn a `pi`
+// CLI process (PI_BIN is pi's own documented override seam). When the runner
+// provides a real pi binary (PI2DSH_BLACKBOX_PI_BIN) plus model credentials,
+// wrap it with a default provider/model so dispatched children answer with a
+// real model. Without both, such packages stay timed-out — honestly.
+if (process.env.PI2DSH_BLACKBOX_PI_BIN && process.env.DEEPSEEK_API_KEY) {
+  const piWrapper = join(scratch, 'pi-bin-wrapper.sh')
+  const piDefaultArgs = process.env.PI2DSH_BLACKBOX_PI_ARGS ?? '--provider deepseek --model deepseek-chat'
+  await writeFile(piWrapper, `#!/bin/sh\nexec ${JSON.stringify(process.env.PI2DSH_BLACKBOX_PI_BIN)} ${piDefaultArgs} "$@"\n`, { mode: 0o755 })
+  process.env.PI_BIN = piWrapper
+  console.error(`[pi2dsh] child pi dispatch armed: PI_BIN wraps ${process.env.PI2DSH_BLACKBOX_PI_BIN} (${piDefaultArgs})`)
+}
 
 const delay = ms => new Promise(resolveDelay => setTimeout(resolveDelay, ms))
 
@@ -294,9 +379,9 @@ async function loadBundle(bundleDir, { baseline = emptyBaseline, probe = exercis
   await delay(150)
   let assembly = await ctx.systemPrompt.assemble()
   // session_start handlers register tools asynchronously (key checks, model
-  // discovery); take a second assembly after they settle so late registrations
-  // are exercised too.
-  await delay(350)
+  // discovery, eager MCP server spawn + initialize handshake); take a second
+  // assembly after they settle so late registrations are exercised too.
+  await delay(800)
   const second = await ctx.systemPrompt.assemble()
   if (second.tools.length > assembly.tools.length) assembly = second
   // Subtract the host-native surface (the bridge's own contribution, present

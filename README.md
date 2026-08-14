@@ -45,7 +45,7 @@ Three delivery modes:
 Three hard rules keep it general:
 
 1. The core contains **no `if (packageName === …)`** branching.
-2. Every capability has a **public-API contract test** (`pnpm test`, 49 tests); "some plugin loads" is never the success criterion.
+2. Every capability has a **public-API contract test** (`pnpm test`, 50 tests); "some plugin loads" is never the success criterion.
 3. The top-50 corpus is verified **black-box only**: failures file public ABI gaps, and fixing one gap unlocks every package that hits it (e.g. one jiti subpath-alias fix unlocked 4 packages at once).
 
 ## Progress: Pi catalog top 50 by monthly downloads
@@ -54,16 +54,18 @@ Status as of 2026-08-14. Static analysis screens; the black-box run certifies. F
 
 | Tier | Count | Meaning |
 |---|---|---|
-| ✅ **Tested working** | **41 / 50** | Mounted in a real DSH runtime AND real execution verified: 35 returned success, 6 ran their business logic end-to-end and rejected the synthetic probe arguments (4 additionally passed deep verification: real LSP subprocess, web search/fetch, PNG generation, official `dsh plugin` add/activate/remove; 2 of the 41 verified through host mode) |
-| 🟡 **Mounts, not fully verified** | **9 / 50** | Loads and registers its tools/commands/skills in a real DSH runtime; full execution needs user credentials/services (3), exposes no safely-probeable callable surface — event-hook packages or tools whose names indicate shared-state mutation, which the harness never invokes (4), was still executing when the 20s probe timeout hit — it dispatches a child `pi` process the fixture environment cannot serve (1), or hit a test-harness limitation (1: strict live-agent identity checks in userQuestions — the same path passes in the deep-verification layer) |
+| ✅ **Tested working** | **49 / 50** | Mounted in a real DSH runtime AND real execution verified: 42 returned success, 7 ran their business logic end-to-end and rejected the synthetic probe arguments (2 of the 49 verified through host mode). Real-service coverage along the way: a real LSP subprocess, real web search/fetch, PNG generation, a real MCP stdio server bridged end-to-end, real child-`pi` dispatch answered by a live model, real DeepSeek search on user credentials, and the official `dsh plugin` add/activate/remove flow |
+| 🟡 **Mounts, not fully verified** | **1 / 50** | `@alexanderfortin/pi-deepseek-usage` — a pure event-hook package: all four lifecycle subscriptions attach, but every handler is gated on an active DeepSeek model session (it fetches billing usage and renders a footer), so a black-box probe has no safely-assertable callable surface. A harness limit, not a package or bridge gap |
 | ❌ **Not yet supported** | **0 / 50** | The last four Pi-internal-runtime packages are bridged: vendored built-in tool constructors, provider factories, a real-semantics `ExtensionRunner` facade, and `createAgentSession` driving genuine DSH child agents |
 | **Total mountable today** | **50 / 50** | 48 through convert/host bundles directly; 2 snapshot-limited packages through host mode ([evidence](community/host-mode-results.json)) |
+
+The v6 harness also hardened the probe methodology itself: the bridge's own host-native surface (e.g. the built-in `/login` command) is measured by mounting a zero-contribution fixture extension and subtracted from every probe, so a grade reflects the package's own increment only; unsafe-name screening is word-level (`litellm_skill_list` is not a "kill" tool); and the fixture environment serves a real MCP stdio server, a LiteLLM-gateway-shaped skills API, image-model settings under Pi's config-dir contract, and — opt-in via `PI2DSH_BLACKBOX_PI_BIN` + `DEEPSEEK_API_KEY` — real child-`pi` dispatch answered by a live model.
 
 Additional verified layers: a **host bundle** mounting two unmodified packages passed the official plugin-manager flow end-to-end; a **real model run** (`deepseek-v4-flash`) called a migrated Pi tool with the durable session log asserted and zero credential persistence ([evidence](community/live-deepseek-results.json)).
 
 ### How the last four internal-runtime packages were bridged
 
-Each landed as a reusable public-surface bridge, not a package patch: `pi-landstrip` and `pi-fabric` run on Pi's built-in tool constructors (bash/read/edit/write/grep/find/ls) vendored byte-identical with their pure-logic closure; `pi-provider-litellm` runs on the vendored pi-ai `createProvider` factory (model transports stay native to DSH llm); `pi-fabric` additionally hooks a real-semantics `ExtensionRunner` facade — patching `prototype.getAllRegisteredTools` genuinely filters the tool catalog, as under Pi; `@tintinweb/pi-subagents` runs on `createAgentSession` bridged to genuine DSH child agents through `ctx.agents` — the bridge owns no model loop, so compositions without one fail explicitly instead of simulating a subagent.
+Each landed as a reusable public-surface bridge, not a package patch: `pi-landstrip` and `pi-fabric` run on Pi's built-in tool constructors (bash/read/edit/write/grep/find/ls) vendored byte-identical with their pure-logic closure; `pi-provider-litellm` runs on the vendored pi-ai `createProvider` factory — providers key by `id` and the registry's `getProviderAuth` runs Pi's full credential chain (stored OAuth → stored key → the package's own env resolution), while model transports stay native to DSH llm; `pi-fabric` additionally hooks a real-semantics `ExtensionRunner` facade — patching `prototype.getAllRegisteredTools` genuinely filters the tool catalog, as under Pi; `@tintinweb/pi-subagents` runs on `createAgentSession` bridged to genuine DSH child agents through `ctx.agents` — the bridge owns no model loop, so compositions without one fail explicitly instead of simulating a subagent.
 
 ### How the screener judges compatibility
 
@@ -71,7 +73,7 @@ The screener models **load-time vs lazy reachability**: only an unresolvable dep
 
 ### Roadmap
 
-1. Lift the 9 "mounts, not fully verified" to tested-working (credentialed fixtures, per-package probe arguments, a live-agent probe path for userQuestions).
+1. ✅ Done: the 9 "mounts, not fully verified" lifted — 8 grade tested-working (credentialed fixtures, a real MCP stdio server, a live-agent probe path for userQuestions, Pi-config-dir settings, real child-`pi` dispatch, and two registry-semantics fixes in the bridge: providers keyed by `id`, and `getProviderAuth` running Pi's full credential chain instead of OAuth only); the 1 remaining is a pure event-hook package graded honestly as having no probeable surface.
 2. ✅ Done: interactive OAuth host seam — Pi provider `oauth.login/refreshToken/getApiKey` flows run on DSH-native interaction, credentials persist with Pi's `auth.json` semantics with double-checked-lock refresh, and the four official Pi flows ship built in; verified end-to-end against a real ChatGPT Pro account (see "Interactive OAuth" above).
 3. ✅ Done: all four Pi-internal-runtime packages bridged (see above) — every top-50 package mounts.
 4. ✅ Done: the 2 snapshot-limited packages verified through host mode ([evidence](community/host-mode-results.json)).
@@ -135,9 +137,11 @@ Full machine-readable matrix: `pi2dsh matrix --json`. Capability-by-capability a
 ## Development and verification
 
 ```sh
-pnpm verify                                   # typecheck + 49 contract tests + packaging
+pnpm verify                                   # typecheck + 50 contract tests + packaging
 pnpm audit:community                          # static screening, top 50
 node scripts/blackbox-community.mjs community/blackbox-results.json --exercise
+#   add DEEPSEEK_API_KEY=… PI2DSH_BLACKBOX_PI_BIN=$(command -v pi) for the
+#   credentialed probes and real child-pi dispatch (keys from env only)
 pnpm test:community                           # deep runtime + official manager + host e2e
 DEEPSEEK_API_KEY=… pnpm test:live             # real-model acceptance (key from env only)
 ```

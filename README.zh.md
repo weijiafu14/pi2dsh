@@ -45,7 +45,7 @@ DeepSeek Harness 原生服务（Cordis 组合）
 保持通用性的三条硬规则：
 
 1. 核心**没有任何 `if (packageName === …)`** 包名分支。
-2. 每项能力有**公共 API 契约测试**（`pnpm test`，49 个）；"某个插件能加载"从不作为成功标准。
+2. 每项能力有**公共 API 契约测试**（`pnpm test`，50 个）；"某个插件能加载"从不作为成功标准。
 3. 前 50 只做**黑盒验收**：失败产生公共 ABI 缺口工单，修一个缺口、同类包一起解锁（例：一次 jiti 子路径 alias 修复同时解锁 4 个包）。
 
 ## 进度：Pi 官方目录下载量前 50
@@ -54,16 +54,18 @@ DeepSeek Harness 原生服务（Cordis 组合）
 
 | 档位 | 数量 | 含义 |
 |---|---|---|
-| ✅ **已测可用** | **41 / 50** | 在真实 DSH runtime 挂载且**真实执行**验证：35 个成功返回，6 个业务逻辑端到端真跑（拒绝了合成探针参数）；其中 4 个另通过深度验证：真 LSP 子进程、真搜索/抓取、PNG 真落盘、官方 `dsh plugin` 安装/激活/卸载全流程；41 个中有 2 个经 host 模式验证 |
-| 🟡 **能接入、未全测** | **9 / 50** | 在真实 DSH runtime 加载并注册出工具/命令/skill；完整执行还需用户凭证或外部服务（3 个）、没有可安全探测的调用面——纯事件钩子包或工具名表明会改共享状态、探针从不调用（4 个）、探针 20 秒超时时仍在执行——它要派发一个子 `pi` 进程，探针环境无法提供（1 个）、测试装置限制（1 个：userQuestions 严格校验 live agent 身份——同一链路在深度验证层已通过） |
+| ✅ **已测可用** | **49 / 50** | 在真实 DSH runtime 挂载且**真实执行**验证：42 个成功返回，7 个业务逻辑端到端真跑（拒绝了合成探针参数）；49 个中有 2 个经 host 模式验证。一路覆盖的真实服务包括：真 LSP 子进程、真搜索/抓取、PNG 真落盘、真 MCP stdio server 端到端桥接、真子 `pi` 进程派发并由真实模型应答、用真实凭证跑 DeepSeek 搜索、官方 `dsh plugin` 安装/激活/卸载全流程 |
+| 🟡 **能接入、未全测** | **1 / 50** | `@alexanderfortin/pi-deepseek-usage`——纯事件钩子包：4 个生命周期订阅全部接上，但每个 handler 都以"当前在 DeepSeek 模型会话中"为门槛（它拉计费用量并渲染 footer），黑盒探针没有可安全触发并断言的调用面。这是探针方法论的边界，不是包或桥的缺口 |
 | ❌ **尚未接入** | **0 / 50** | 最后 4 个 Pi 内部运行时包已全部桥接：内建工具构造器 vendored、provider 工厂、真语义 `ExtensionRunner` 门面、`createAgentSession` 驱动真实 DSH 子代理 |
 | **今天即可挂载** | **50 / 50** | 48 个经 convert/host bundle 直接挂载；2 个快照受限包经 host 模式（[证据](community/host-mode-results.json)） |
+
+v6 版黑盒装置同时强化了探测方法论本身：桥自带的宿主固有面（例如内建的 `/login` 命令）通过挂载一个零贡献 fixture 扩展测出，并从每个包的探测面里扣除——档位只反映包自己的增量；不安全工具名筛查改为分词级匹配（`litellm_skill_list` 不是 "kill" 工具）；fixture 环境提供真 MCP stdio server、LiteLLM 网关形状的 skills API、按 Pi config-dir 约定放置的图像模型配置，以及（经 `PI2DSH_BLACKBOX_PI_BIN` + `DEEPSEEK_API_KEY` 显式开启）由真实模型应答的子 `pi` 派发。
 
 另有两层验证：**host bundle** 合装两个原样 Pi 包走完官方插件管理器全流程；**真实模型**（deepseek-v4-flash）调用迁移后的 Pi 工具，durable 会话日志逐项断言、凭证零落盘（[证据](community/live-deepseek-results.json)）。
 
 ### 最后 4 个内部运行时包是怎么桥接的
 
-每个都落成了可复用的公共面桥，不是逐包补丁：`pi-landstrip` 与 `pi-fabric` 跑在 vendored 字节级的 Pi 内建工具构造器上（bash/read/edit/write/grep/find/ls 及其纯逻辑闭包）；`pi-provider-litellm` 跑在 vendored 的 pi-ai `createProvider` 工厂上（模型传输始终归 DSH llm 原生）；`pi-fabric` 另挂真语义 `ExtensionRunner` 门面——patch `prototype.getAllRegisteredTools` 能真实过滤工具目录，与 Pi 下行为一致；`@tintinweb/pi-subagents` 跑在 `createAgentSession` → 真实 DSH 子代理桥上（经 `ctx.agents` 走宿主 loop 工厂）——桥不自带模型循环，无 loop 的组合显式失败，绝不假装跑了子代理。
+每个都落成了可复用的公共面桥，不是逐包补丁：`pi-landstrip` 与 `pi-fabric` 跑在 vendored 字节级的 Pi 内建工具构造器上（bash/read/edit/write/grep/find/ls 及其纯逻辑闭包）；`pi-provider-litellm` 跑在 vendored 的 pi-ai `createProvider` 工厂上——provider 按 `id` 入注册表，注册表的 `getProviderAuth` 跑 Pi 完整凭证链（已存 OAuth → 已存 key → 包自己的环境变量解析），模型传输始终归 DSH llm 原生；`pi-fabric` 另挂真语义 `ExtensionRunner` 门面——patch `prototype.getAllRegisteredTools` 能真实过滤工具目录，与 Pi 下行为一致；`@tintinweb/pi-subagents` 跑在 `createAgentSession` → 真实 DSH 子代理桥上（经 `ctx.agents` 走宿主 loop 工厂）——桥不自带模型循环，无 loop 的组合显式失败，绝不假装跑了子代理。
 
 ### 筛查器如何判定兼容性
 
@@ -71,7 +73,7 @@ DeepSeek Harness 原生服务（Cordis 组合）
 
 ### 路线图
 
-1. 把 9 个"能接入、未全测"提升为"已测可用"（带凭证的 fixture、按包定制探针参数、给 userQuestions 补 live agent 探针链路）。
+1. ✅ 已完成：9 个"能接入、未全测"提级——8 个达到已测可用（带凭证的 fixture、真 MCP stdio server、userQuestions 的 live agent 探针链路、Pi config-dir 配置、真子 `pi` 派发，外加桥内两处注册表语义修正：provider 按 `id` 入表、`getProviderAuth` 跑 Pi 完整凭证链而非仅 OAuth）；剩下 1 个是纯事件钩子包，如实定档为无可探测面。
 2. ✅ 已完成：交互式 OAuth host seam——Pi provider 的 `oauth.login/refreshToken/getApiKey` 流跑在 DSH 原生交互上，凭证按 Pi `auth.json` 语义持久化并带双检锁刷新，四条官方流内建；已用真实 ChatGPT Pro 账号端到端验证（见上文"交互式 OAuth"）。
 3. ✅ 已完成：4 个 Pi 内部运行时包全部桥接（见上）——前 50 全部可挂载。
 4. ✅ 已完成：2 个快照受限包经 host 模式实测通过（[证据](community/host-mode-results.json)）。
@@ -135,9 +137,11 @@ DSH 原生只有静态 HTTP headers；pi2dsh 把 Pi 生态的交互式 OAuth 层
 ## 开发与验证
 
 ```sh
-pnpm verify                                   # 类型检查 + 49 契约测试 + 打包检查
+pnpm verify                                   # 类型检查 + 50 契约测试 + 打包检查
 pnpm audit:community                          # 前 50 静态筛查
 node scripts/blackbox-community.mjs community/blackbox-results.json --exercise
+#   前缀 DEEPSEEK_API_KEY=… PI2DSH_BLACKBOX_PI_BIN=$(command -v pi) 可开启
+#   带凭证探测与真子 pi 派发（key 仅从环境读）
 pnpm test:community                           # 深链路 + 官方插件管理器 + host e2e
 DEEPSEEK_API_KEY=… pnpm test:live             # 真实模型验收（key 仅从环境读）
 ```

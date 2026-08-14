@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { mkdir, rename, writeFile } from 'node:fs/promises'
 import { dirname } from 'node:path'
 import { InMemoryCredentialStore } from './compat/vendor/pi-ai-credential-store.js'
@@ -127,7 +127,10 @@ export function oauthInteraction(ui: OAuthUiSurface, signal?: AbortSignal): {
 }
 
 function oauthConfigOf(providerConfig: UnknownRecord | undefined): UnknownRecord | undefined {
+  // Extension-generation configs carry oauth at the top level; pi-ai
+  // createProvider() objects carry it under auth.oauth. Pi accepts both.
   const oauth = providerConfig?.oauth
+    ?? (providerConfig?.auth as UnknownRecord | undefined)?.oauth
   return typeof oauth === 'object' && oauth !== null && typeof (oauth as UnknownRecord).login === 'function'
     ? oauth as UnknownRecord
     : undefined
@@ -202,4 +205,34 @@ export async function resolveOAuthApiKey(options: {
 export async function storedOAuthCredential(store: FileCredentialStore, providerId: string): Promise<UnknownRecord | undefined> {
   const stored = await store.read(providerId, undefined) as UnknownRecord | undefined
   return stored?.type === 'oauth' ? stored : undefined
+}
+
+// Pi's FULL getProviderAuth precedence over the vendored resolver — stored
+// OAuth (double-checked-lock refresh), then stored api_key, then the
+// provider's own auth.apiKey ambient resolution (its resolve() reads env vars
+// and probes credential files through the auth context). The package's
+// resolve code runs verbatim; the bridge supplies only the context.
+export async function resolvePiProviderAuth(options: {
+  providerId: string
+  providerName?: string
+  providerConfig: UnknownRecord
+  store: FileCredentialStore
+  signal?: AbortSignal
+}): Promise<{ auth?: UnknownRecord, source?: string } | undefined> {
+  const oauthConfig = oauthConfigOf(options.providerConfig)
+  const declaredApiKey = (options.providerConfig.auth as UnknownRecord | undefined)?.apiKey
+  if (oauthConfig === undefined && declaredApiKey === undefined) return undefined
+  const auth: UnknownRecord = {}
+  if (oauthConfig !== undefined) auth.oauth = oauthAdapterOf(oauthConfig)
+  if (declaredApiKey !== undefined) auth.apiKey = declaredApiKey
+  const provider = { id: options.providerId, name: options.providerName ?? options.providerId, auth }
+  return await resolveProviderAuth(
+    provider,
+    options.store,
+    {
+      env: async (name: string) => process.env[name],
+      fileExists: async (path: string) => existsSync(path),
+    },
+    options.signal !== undefined ? { signal: options.signal } : undefined,
+  ) as { auth?: UnknownRecord, source?: string } | undefined
 }
