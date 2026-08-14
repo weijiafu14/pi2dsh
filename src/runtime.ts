@@ -25,7 +25,7 @@ import {
   providerSupportsOAuth,
   resolvePiProviderAuth,
 } from './oauth-bridge.js'
-import { __setPiAiLlmBridge, builtinProviders } from './compat/pi-ai.js'
+import { __setPiAiLlmBridge, builtinProviders, realBuiltinProvider } from './compat/pi-ai.js'
 import { ModelCatalog, llmOf, streamViaDshLlm } from './model-bridge.js'
 import { registerPiProviderRoute } from './provider-adapter.js'
 
@@ -368,6 +368,19 @@ function agentSession(agent: UnknownRecord | undefined): { id: string; events: u
   return record as unknown as { id: string; events: unknown }
 }
 
+// A child agent's session (subagent origin: reviewer sessions, tool workers)
+// is not a Pi host session; its lifecycle and event stream must never project
+// into the Pi extensions mounted on the parent.
+function isSubagentOrigin(subject: UnknownRecord | undefined): boolean {
+  const session = (subject?.session ?? subject) as UnknownRecord | undefined
+  const header = session?.header as UnknownRecord | undefined
+  // The durable header carries creation meta FLATTENED (origin sits beside
+  // id/cwd/parentSession); older/mock shapes may nest it under meta.
+  return header?.origin === 'subagent'
+    || (header?.meta as UnknownRecord | undefined)?.origin === 'subagent'
+    || (session?.meta as UnknownRecord | undefined)?.origin === 'subagent'
+}
+
 // Pi ctx.model: a setModel() override wins; otherwise the live DSH agent's
 // own route (Agent.options.provider/model), enriched from the catalog.
 function currentPiModel(state: RuntimeState, agent: UnknownRecord): UnknownRecord | undefined {
@@ -517,26 +530,50 @@ function contextFor(
       return provider.length > 0
         && (state.providers.has(provider) || (catalog?.all() ?? []).some(entry => entry.provider === provider))
     },
-    // Pi's per-model credential read: the package-registered provider's own
-    // chain resolves the key and headers (stored OAuth → stored key → the
-    // provider's ambient env resolution). DSH-route credentials stay inside
-    // the DSH adapter by design (assertUsableApiKey: keys never leave), so a
-    // catalog-only provider answers not-ok here while still routing real
-    // calls through the loop.
+    // Pi's per-model credential read, two families with one resolver:
+    // package-registered providers use their own declared chain; DSH built-in
+    // routes resolve through the REAL pi-ai's builtinProviders() definition —
+    // the same source DSH's own llm adapter builds its directory from — so
+    // env-held keys (e.g. DEEPSEEK_API_KEY) resolve with Pi's exact
+    // semantics. Neither family fabricates a key: no resolution → not ok.
     getApiKeyAndHeaders: async (model: unknown) => {
       const provider = String((model as UnknownRecord | undefined)?.provider ?? '')
-      const config = providerConfig(provider)
-      if (config === undefined) return { ok: false }
-      const resolved = await resolvePiProviderAuth({
-        providerId: provider, providerConfig: config, store: oauthStoreOf(state),
-      })
-      const auth = resolved?.auth as UnknownRecord | undefined
-      if (auth?.apiKey === undefined) return { ok: false }
-      return {
-        ok: true,
-        apiKey: auth.apiKey,
-        ...(auth.headers === undefined ? {} : { headers: auth.headers }),
-        ...(auth.baseUrl === undefined && config.baseUrl === undefined ? {} : { baseUrl: auth.baseUrl ?? config.baseUrl }),
+      const config = providerConfig(provider) ?? await realBuiltinProvider(provider)
+      if (config !== undefined) {
+        const resolved = await resolvePiProviderAuth({
+          providerId: provider, providerConfig: config, store: oauthStoreOf(state),
+        })
+        const auth = resolved?.auth as UnknownRecord | undefined
+        if (auth?.apiKey === undefined) return { ok: false }
+        return {
+          ok: true,
+          apiKey: auth.apiKey,
+          ...(auth.headers === undefined ? {} : { headers: auth.headers }),
+          ...(auth.baseUrl === undefined && config.baseUrl === undefined ? {} : { baseUrl: auth.baseUrl ?? config.baseUrl }),
+        }
+      }
+      // A DSH adapter route: its credential reference lives in the public
+      // configurable-provider directory (settingsNs/settingsPath), the
+      // profile's apiKeyEnv, and the credentials service — three public
+      // seams, no name guessing. Any missing step answers not-ok honestly.
+      try {
+        const llm = llmOf(ctx) as unknown as { listConfigurableProviders?(): Array<{ provider: string, settingsNs: string, settingsPath: readonly string[] }> } | undefined
+        const entry = llm?.listConfigurableProviders?.()?.find(candidate => candidate.provider === provider)
+        if (entry === undefined) return { ok: false }
+        const settings = (ctx as unknown as { get(name: string): unknown }).get('settings') as { get(ns: string): unknown } | undefined
+        const section = settings?.get(entry.settingsNs)
+        const profile = entry.settingsPath.reduce<unknown>(
+          (node, key) => (typeof node === 'object' && node !== null ? (node as UnknownRecord)[key] : undefined),
+          section,
+        ) as UnknownRecord | undefined
+        const ref = profile?.apiKeyEnv
+        if (typeof ref !== 'string' || ref.length === 0) return { ok: false }
+        const credentials = (ctx as unknown as { get(name: string): unknown }).get('credentials') as { resolve(ref: string): Promise<{ value?: string } | undefined> } | undefined
+        const resolved = await credentials?.resolve(ref)
+        if (typeof resolved?.value !== 'string' || resolved.value.length === 0) return { ok: false }
+        return { ok: true, apiKey: resolved.value }
+      } catch {
+        return { ok: false }
       }
     },
     getProviderAuthStatus: (provider: string) =>
@@ -686,6 +723,16 @@ function subscribeLifecycle(ctx: Context, state: RuntimeState): void {
 
   cordis.on('agent/session-start', (payload: UnknownRecord) => {
     const agent = payload.agent as UnknownRecord
+    // Child agents (subagent-origin sessions — reviewer sessions, tool
+    // workers) are NOT Pi host sessions: a Pi extension lives in exactly one
+    // session, and leaking a child's lifecycle into it reads as "a new
+    // session started" mid-turn (packages then reset their runtime state
+    // while their own child is mid-flight). Track the agent for scoped
+    // routing but never project the Pi lifecycle event.
+    if (isSubagentOrigin(agent)) {
+      state.activeAgents.add(agent)
+      return
+    }
     state.activeAgents.add(agent)
     const session = agentSession(agent)
     if (session !== undefined) state.bridge.load(session.id)
@@ -704,12 +751,17 @@ function subscribeLifecycle(ctx: Context, state: RuntimeState): void {
     }
     if (typeof agent === 'object' && agent !== null && !state.disposedAgents.has(agent)) {
       state.disposedAgents.add(agent)
-      void dispatch(state, 'session_shutdown', { type: 'session_shutdown', reason: 'quit' }, contextFor(ctx, state, agent, undefined))
-        .catch(error => warn('session_shutdown', error))
+      // Child-agent disposal is not the Pi host session shutting down.
+      if (!isSubagentOrigin(agent)) {
+        void dispatch(state, 'session_shutdown', { type: 'session_shutdown', reason: 'quit' }, contextFor(ctx, state, agent, undefined))
+          .catch(error => warn('session_shutdown', error))
+      }
     }
   })
 
   cordis.on('session/event', (session: UnknownRecord, event: UnknownRecord) => {
+    // Child-agent sessions never project into the parent's Pi extensions.
+    if (isSubagentOrigin(session)) return
     const agent = [...state.activeAgents].find(candidate => candidate.session === session)
     const eventContext = contextFor(ctx, state, agent, undefined)
     const type = event.type
@@ -945,6 +997,18 @@ function oauthStoreOf(state: RuntimeState): FileCredentialStore {
 function ensureLoginCommand(ctx: Context, state: RuntimeState): void {
   if (state.loginCommandRegistered === true) return
   state.loginCommandRegistered = true
+  // A host bundle mounts several packages, each with its own runtime state;
+  // the first mount wins the shared /login name. Later mounts must not fail
+  // over a duplicate — their OAuth providers are served by builtin preload
+  // parity, and a same-name registration would abort the whole package.
+  try {
+    registerLoginCommand(ctx, state)
+  } catch (error) {
+    logger(ctx).warn(`[pi2dsh] /login is already registered by an earlier package in this host; this package's providers use that command (${error instanceof Error ? error.message : String(error)})`)
+  }
+}
+
+function registerLoginCommand(ctx: Context, state: RuntimeState): void {
   registerCommand(ctx, state, {
     name: 'login',
     description: 'Log in to a Pi provider through its own OAuth flow',
@@ -1279,6 +1343,35 @@ function createPiApi(ctx: Context, state: RuntimeState): UnknownRecord {
         logger(ctx).info(`[pi2dsh] Pi provider ${JSON.stringify(name)} registered as a native DSH llm route`)
       } else if (!providerSupportsOAuth(value)) {
         logger(ctx).info(`[pi2dsh] recorded Pi provider ${JSON.stringify(name)}; model calls stay on DSH llm adapters`)
+      }
+      // Pi hosts refresh a registered provider's dynamic model catalog
+      // (fetchModels against its gateway); best-effort and non-blocking, with
+      // pi-ai's publish/store contract and the provider's own resolved
+      // credential (gateway discovery needs one).
+      const refreshModels = (value as { refreshModels?: unknown }).refreshModels
+      if (typeof refreshModels === 'function') {
+        void (async () => {
+          const resolved = await resolvePiProviderAuth({
+            providerId: name, providerConfig: value, store: oauthStoreOf(state),
+          }).catch(() => undefined)
+          const apiKey = (resolved?.auth as UnknownRecord | undefined)?.apiKey
+          await Promise.resolve(refreshModels.call(value, {
+            stored: undefined,
+            ...(apiKey === undefined ? {} : { credential: { type: 'api_key', key: apiKey } }),
+            store: {
+              read: async () => undefined,
+              write: async () => {},
+              delete: async () => {},
+            },
+            allowNetwork: true,
+            signal: new AbortController().signal,
+            publish: async (publication: { update?: () => void }) => {
+              publication.update?.()
+              return true
+            },
+          }))
+          void state.modelCatalog?.refresh()
+        })().catch(error => logger(ctx).warn(`[pi2dsh] model catalog refresh for Pi provider ${JSON.stringify(name)} failed (its registry entries stay static): ${error instanceof Error ? error.message : String(error)}`))
       }
     },
     unregisterProvider(name: string) {
@@ -1630,7 +1723,10 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
   if (llm !== undefined) {
     const cordisCtx = ctx as unknown as { on(name: string, callback: (...args: unknown[]) => unknown): () => void }
     cordisCtx.on('llm/adapters-updated', () => { void state.modelCatalog?.refresh() })
-    void state.modelCatalog.refresh()
+    // Pi hosts finish loading the model directory before extensions can see
+    // the registry, so extension-visible reads (guardian reviewer probes)
+    // never race the initial catalog fill. Later refreshes stay concurrent.
+    await state.modelCatalog.refresh()
     __setPiAiLlmBridge((model, context, callOptions) => streamViaDshLlm(llm, { model, context, options: callOptions }))
     ctx.effect(() => () => __setPiAiLlmBridge(undefined))
   }

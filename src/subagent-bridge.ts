@@ -188,8 +188,14 @@ export class PiBridgedAgentSession {
 
   abort(): void {
     this.#aborted = true
-    const cancel = (this.#handle.agent as { cancel?: (reason: UnknownRecord) => void }).cancel
-    cancel?.({ kind: 'hook', reason: 'pi2dsh subagent abort()' })
+    // Pi's session.abort() is idempotent and safe at any lifecycle point;
+    // DSH's Agent.cancel throws once the agent is disposed, so contain it.
+    try {
+      const cancel = (this.#handle.agent as { cancel?: (reason: UnknownRecord) => void }).cancel
+      cancel?.({ kind: 'hook', reason: 'pi2dsh subagent abort()' })
+    } catch {
+      // already disposed — nothing left to abort
+    }
   }
 
   setSessionName(name: string): void {
@@ -255,6 +261,24 @@ export async function createBridgedAgentSession(
     // agentOptions carry the provider route and model id the child's loop
     // will call (reviewer sessions, model division of labor).
     const requestedModel = options.model as { provider?: unknown, id?: unknown } | undefined
+    // Pi's createAgentSession carries the caller's behavior contract on two
+    // public surfaces: a plain systemPrompt option, or a ResourceLoader whose
+    // getSystemPrompt() yields the override (guardian builds its reviewer
+    // this way: DefaultResourceLoader with systemPromptOverride). An override
+    // REPLACES the host's default prompt in Pi, and appendSystemPrompt
+    // entries follow it.
+    const loader = options.resourceLoader as {
+      getSystemPrompt?(): string | undefined
+      getAppendSystemPrompt?(): string[]
+    } | undefined
+    const overrideText = typeof options.systemPrompt === 'string' && options.systemPrompt.length > 0
+      ? options.systemPrompt
+      : (typeof loader?.getSystemPrompt === 'function' ? loader.getSystemPrompt() : undefined)
+    const appendTexts = (typeof loader?.getAppendSystemPrompt === 'function' ? loader.getAppendSystemPrompt() : [])
+      .filter((text): text is string => typeof text === 'string' && text.length > 0)
+    const systemPrompt = overrideText !== undefined && overrideText.length > 0
+      ? [overrideText, ...appendTexts].join('\n\n')
+      : undefined
     handle = await agents.create({
       sessionId,
       meta: {
@@ -273,6 +297,22 @@ export async function createBridgedAgentSession(
           }
         : {}),
     })
+    // Registered through the child's own Agent.ctx: ctx.get() returns a
+    // caller-bound service view, so the section lands in this agent's scope
+    // layer (dsh-scope kScope tag on Agent.ctx) and unwinds on disposal —
+    // never visible to the parent or sibling sessions. `complete: true` is
+    // DSH's sole-prompt-section semantics, matching Pi's systemPromptOverride
+    // replacing the default prompt.
+    if (systemPrompt !== undefined) {
+      const agentCtx = (handle.agent as { ctx?: { get?(name: string): unknown } }).ctx
+      const prompt = (typeof agentCtx?.get === 'function' ? agentCtx.get('systemPrompt') : undefined) as
+        | { section(input: { name: string, order: number, text: string, complete?: boolean }): unknown }
+        | undefined
+      if (prompt === undefined) {
+        throw new Error('pi2dsh: createAgentSession() got a system prompt but the DSH composition has no systemPrompt service to carry it')
+      }
+      prompt.section({ name: 'pi2dsh:subagent-system-prompt', order: -1_000_000, text: systemPrompt, complete: true })
+    }
   } catch (error) {
     throw new Error(
       'pi2dsh: subagent creation needs the DSH host loop (model runtime) to provide the agent factory; '

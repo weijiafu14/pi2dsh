@@ -7,6 +7,7 @@
 // package-agnostic runtime as converted bundles. One host, any package —
 // there is deliberately no per-package branching here.
 
+import { existsSync, readFileSync } from 'node:fs'
 import { readdir, readFile, stat, writeFile, mkdir, cp } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import { basename, dirname, join, relative } from 'node:path'
@@ -91,7 +92,19 @@ function normalizeSpecs(config: PiHostConfig): PiHostPackageSpec[] {
 
 function resolveInstalledDir(anchor: string, packageName: string): string {
   const require = createRequire(anchor)
-  return dirname(require.resolve(`${packageName}/package.json`))
+  try {
+    return dirname(require.resolve(`${packageName}/package.json`))
+  } catch {
+    // Modern strict `exports` maps refuse the package.json subpath, and pure
+    // ESM packages (no "require" condition) refuse CJS entry resolution too.
+    // Locate the installed directory on the filesystem instead: probe every
+    // node_modules candidate on the resolution path — no exports involved.
+    for (const candidate of require.resolve.paths(packageName) ?? []) {
+      const dir = join(candidate, packageName)
+      if (existsSync(join(dir, 'package.json'))) return dir
+    }
+    throw new Error(`cannot locate the installed package directory for ${JSON.stringify(packageName)} near ${JSON.stringify(anchor)}`)
+  }
 }
 
 /**
@@ -212,6 +225,11 @@ export async function generateHostBundle(options: HostBundleOptions): Promise<{ 
       'cross-spawn': '^7.0.6',
       diff: '^9.0.0',
       '@deepseek-ai/dsh-skill-filesystem': '^0.1.0-rc.6',
+      // The REAL pi-ai: a host bundle provides the peer exactly as a Pi host
+      // would. Packages still import the shim (jiti alias); the bridge's
+      // wire-protocol transport factories (openai-completions etc.) forward
+      // to this real implementation so gateway providers stream for real.
+      '@earendil-works/pi-ai': '*',
     },
     peerDependencies: {
       '@deepseek-ai/dsh-llm': '^0.1.0-rc.6',

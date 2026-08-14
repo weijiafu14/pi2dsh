@@ -100,4 +100,63 @@ describe('Pi createAgentSession bridged onto real DSH agents', () => {
     await pi.dispose()
     expect(disposed).toBe(1)
   })
+
+  // The caller's behavior contract arrives on two public Pi surfaces; both
+  // must land on the child's own systemPrompt service as a complete section
+  // (Pi's systemPromptOverride replaces the default prompt).
+  function makeCtxWithFactory(sections: UnknownRecord[], options?: { agentCtx?: false }): Context {
+    const ctx = new Context()
+    const realGet = (ctx as unknown as { get(name: string): unknown }).get.bind(ctx)
+    const agentCtx = options?.agentCtx === false
+      ? undefined
+      : { get: (name: string) => (name === 'systemPrompt' ? { section: (input: UnknownRecord) => sections.push(input) } : undefined) }
+    const mockAgents = {
+      async create(createOptions: UnknownRecord) {
+        return {
+          agent: { id: String(createOptions.sessionId), session: {}, ...(agentCtx === undefined ? {} : { ctx: agentCtx }) },
+          dispose: async () => {},
+        }
+      },
+    }
+    ;(ctx as unknown as { get(name: string): unknown }).get = (name: string) =>
+      name === 'agents' ? mockAgents : realGet(name)
+    return ctx
+  }
+
+  it('registers a resourceLoader systemPromptOverride as the child\'s sole prompt section (guardian\'s path)', async () => {
+    const sections: UnknownRecord[] = []
+    const ctx = makeCtxWithFactory(sections)
+    const deliveries: Array<{ mode: string, message: unknown }> = []
+    await createBridgedAgentSession(makeHost(ctx, deliveries), {
+      resourceLoader: {
+        getSystemPrompt: () => 'You are a reviewer. Respond with JSON only.',
+        getAppendSystemPrompt: () => ['Appendix: extra rules.'],
+      },
+    })
+    expect(sections).toHaveLength(1)
+    expect(sections[0]).toMatchObject({
+      name: 'pi2dsh:subagent-system-prompt',
+      complete: true,
+      text: 'You are a reviewer. Respond with JSON only.\n\nAppendix: extra rules.',
+    })
+  })
+
+  it('registers a plain systemPrompt option the same way, taking precedence over the loader', async () => {
+    const sections: UnknownRecord[] = []
+    const ctx = makeCtxWithFactory(sections)
+    const deliveries: Array<{ mode: string, message: unknown }> = []
+    await createBridgedAgentSession(makeHost(ctx, deliveries), {
+      systemPrompt: 'Direct contract.',
+      resourceLoader: { getSystemPrompt: () => 'loader contract (must lose)' },
+    })
+    expect(sections).toHaveLength(1)
+    expect(sections[0]).toMatchObject({ complete: true, text: 'Direct contract.' })
+  })
+
+  it('fails loud when a contract is supplied but the child has no systemPrompt service', async () => {
+    const ctx = makeCtxWithFactory([], { agentCtx: false })
+    const deliveries: Array<{ mode: string, message: unknown }> = []
+    await expect(createBridgedAgentSession(makeHost(ctx, deliveries), { systemPrompt: 'contract' }))
+      .rejects.toThrowError(/no systemPrompt service/u)
+  })
 })

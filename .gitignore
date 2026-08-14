@@ -7,3 +7,4 @@ coverage/
 .write-review/
 marketing/
 .oauth-e2e/
+.pi/
