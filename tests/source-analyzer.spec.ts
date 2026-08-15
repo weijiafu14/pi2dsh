@@ -46,7 +46,7 @@ describe('Pi package discovery and compatibility analysis', () => {
         expect.objectContaining({ capability: 'registerFlag', level: 'partial' }),
         expect.objectContaining({ capability: 'getFlag', level: 'partial' }),
         expect.objectContaining({ capability: 'on(tool_call)', level: 'partial' }),
-        expect.objectContaining({ capability: 'on(before_agent_start)', level: 'partial' }),
+        expect.objectContaining({ capability: 'on(before_agent_start)', level: 'full' }),
         expect.objectContaining({ capability: 'on(session_start)', level: 'full' }),
       ]))
     } finally {

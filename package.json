@@ -82,6 +82,7 @@
     "marked": "^16.4.2",
     "pacote": "^21.0.0",
     "tinyglobby": "^0.2.15",
+    "typebox": "^1.0.4",
     "typescript": "^5.9.3",
     "yaml": "^2.8.1"
   },
@@ -141,7 +142,6 @@
     "@vitest/coverage-v8": "^4.1.10",
     "publint": "^0.3.23",
     "tsdown": "^0.22.14",
-    "typebox": "^1.0.4",
     "undici": "^8.10.0",
     "vitest": "^4.1.10"
   }

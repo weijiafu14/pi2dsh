@@ -27,6 +27,13 @@ import {
 } from './oauth-bridge.js'
 import { __setPiAiLlmBridge, builtinProviders, realBuiltinProvider } from './compat/pi-ai.js'
 import { ModelCatalog, llmOf, streamViaDshLlm } from './model-bridge.js'
+import {
+  applyModelsJsonConfiguredAuth,
+  loadModelsJsonSnapshot,
+  modelsJsonAuthConfigured,
+  resolveModelsJsonAuth,
+  type ModelsJsonSnapshot,
+} from './models-json.js'
 import { registerPiProviderRoute } from './provider-adapter.js'
 
 type UnknownRecord = Record<string, unknown>
@@ -72,6 +79,9 @@ interface RuntimeState {
   toolRestrictions: WeakMap<object, () => void>
   pendingActiveTools?: string[]
   commands: Map<string, PiCommand>
+  // DSH-side disposers for registered commands, so Pi's same-name
+  // registerCommand replacement (Map.set semantics) can release the old one.
+  commandDisposers: Map<string, () => void>
   flags: Map<string, boolean | string | undefined>
   notifications: string[]
   activeAgents: Set<UnknownRecord>
@@ -100,6 +110,9 @@ interface RuntimeState {
   // Per-agent model/thinking overrides applied through the agent/request waterfall.
   modelOverrides: WeakMap<object, { provider?: string; model?: string }>
   thinkingLevels: WeakMap<object, string>
+  // Per-agent, per-turn system-prompt override returned by before_agent_start
+  // (Pi resets to the base prompt when a turn's handlers return none).
+  turnSystemPromptOverrides: WeakMap<object, string>
   globalThinkingLevel: string
   // Pi tool_call handlers mutate event.input in place; mutations apply to
   // pi2dsh-owned tools through this channel (DSH core deliberately forbids
@@ -111,6 +124,9 @@ interface RuntimeState {
   lastLoggedModels: WeakMap<object, string>
   // Pi Model catalog projected from the DSH llm service (empty without one).
   modelCatalog?: ModelCatalog
+  // Pi's standard user-defined model registry: ~/.pi/agent/models.json under
+  // the redirected agent dir, loaded before extensions and on refresh().
+  modelsJson?: ModelsJsonSnapshot
   // Live DSH llm routes registered for transport-carrying Pi providers.
   providerRouteDisposers: Map<string, () => void>
 }
@@ -511,24 +527,47 @@ function contextFor(
     }
     return out
   }
+  // Pi-family models, third source: the user's models.json providers (Pi's
+  // standard custom-model configuration file), composed at mount/refresh.
+  const modelsJsonModels = (): UnknownRecord[] => state.modelsJson?.models ?? []
   const allModels = () => {
     const fromLlm = catalog?.all() ?? []
     const seen = new Set(fromLlm.map(model => `${model.provider} ${model.id}`))
-    return [...fromLlm, ...piProviderModels().filter(model => !seen.has(`${String(model.provider)} ${String(model.id)}`))]
+    const merged: UnknownRecord[] = [...fromLlm]
+    for (const model of [...piProviderModels(), ...modelsJsonModels()]) {
+      const key = `${String(model.provider)} ${String(model.id)}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      merged.push(model)
+    }
+    return merged
   }
   const modelRegistry = {
     getAll: () => allModels(),
     getAvailable: () => allModels(),
     find: (provider: string, modelId: string) => catalog?.find(provider, modelId)
-      ?? piProviderModels().find(model => model.provider === provider && model.id === modelId),
-    getError: () => undefined,
+      ?? piProviderModels().find(model => model.provider === provider && model.id === modelId)
+      ?? modelsJsonModels().find(model => model.provider === provider && model.id === modelId),
+    getError: () => {
+      const problems = state.modelsJson?.errors ?? []
+      return problems.length > 0 ? problems.join('\n') : undefined
+    },
     hasConfiguredAuth: (model: unknown) => {
       // Configuration check, not key liveness (Pi's is also a config check):
-      // the route resolves iff its provider is in the live llm directory or
-      // registered by a package.
+      // the route resolves iff its provider is in the live llm directory,
+      // registered by a package, or configured in models.json. A models.json
+      // apiKey answers with Pi's configured-status semantics (a templated key
+      // counts only while its env vars are present).
       const provider = String((model as UnknownRecord | undefined)?.provider ?? '')
-      return provider.length > 0
-        && (state.providers.has(provider) || (catalog?.all() ?? []).some(entry => entry.provider === provider))
+      if (provider.length === 0) return false
+      const jsonProvider = state.modelsJson?.providers.get(provider)
+      if (jsonProvider !== undefined) {
+        const configured = modelsJsonAuthConfigured(jsonProvider)
+        if (configured !== undefined) return configured
+      }
+      return state.providers.has(provider)
+        || (catalog?.all() ?? []).some(entry => entry.provider === provider)
+        || jsonProvider !== undefined
     },
     // Pi's per-model credential read, two families with one resolver:
     // package-registered providers use their own declared chain; DSH built-in
@@ -538,18 +577,42 @@ function contextFor(
     // semantics. Neither family fabricates a key: no resolution → not ok.
     getApiKeyAndHeaders: async (model: unknown) => {
       const provider = String((model as UnknownRecord | undefined)?.provider ?? '')
-      const config = providerConfig(provider) ?? await realBuiltinProvider(provider)
+      // Pi's configured-key precedence (composeApiKeyAuth.resolve): a
+      // package-registered provider keeps its own declared chain, a
+      // models.json apiKey answers next, and builtin env resolution is the
+      // inherited fallback. models.json headers/authHeader layer over the
+      // other families' answers exactly like Pi's withConfiguredAuth.
+      const jsonProvider = state.modelsJson?.providers.get(provider)
+      const config = providerConfig(provider)
+        ?? (jsonProvider?.apiKey !== undefined ? undefined : await realBuiltinProvider(provider))
       if (config !== undefined) {
         const resolved = await resolvePiProviderAuth({
           providerId: provider, providerConfig: config, store: oauthStoreOf(state),
         })
         const auth = resolved?.auth as UnknownRecord | undefined
         if (auth?.apiKey === undefined) return { ok: false }
+        const configured = jsonProvider === undefined
+          ? undefined
+          : applyModelsJsonConfiguredAuth(provider, jsonProvider, {
+              apiKey: auth.apiKey as string,
+              ...(auth.headers === undefined ? {} : { headers: auth.headers as Record<string, string> }),
+            })
+        if (configured !== undefined && !configured.ok) return { ok: false, error: configured.error }
+        const headers = configured?.ok ? configured.headers : auth.headers as Record<string, string> | undefined
         return {
           ok: true,
           apiKey: auth.apiKey,
-          ...(auth.headers === undefined ? {} : { headers: auth.headers }),
+          ...(headers === undefined ? {} : { headers }),
           ...(auth.baseUrl === undefined && config.baseUrl === undefined ? {} : { baseUrl: auth.baseUrl ?? config.baseUrl }),
+        }
+      }
+      if (jsonProvider !== undefined) {
+        const resolved = resolveModelsJsonAuth(provider, jsonProvider)
+        if (!resolved.ok) return { ok: false, error: resolved.error }
+        return {
+          ok: true,
+          ...(resolved.apiKey === undefined ? {} : { apiKey: resolved.apiKey }),
+          ...(resolved.headers === undefined ? {} : { headers: resolved.headers }),
         }
       }
       // A DSH adapter route: its credential reference lives in the public
@@ -578,11 +641,12 @@ function contextFor(
     },
     getProviderAuthStatus: (provider: string) =>
       providerSupportsOAuth(providerConfig(provider)) ? 'oauth' : 'none',
-    getProvider: (provider: string) => providerConfig(provider),
+    getProvider: (provider: string) => providerConfig(provider)
+      ?? (state.modelsJson?.providers.get(provider) as UnknownRecord | undefined),
     getRegisteredProviderConfig: (provider: string) => providerConfig(provider),
     getRegisteredProviderIds: () => [...state.providers.keys()],
     getProviderDisplayName: (provider: string) => {
-      const config = providerConfig(provider)
+      const config = providerConfig(provider) ?? state.modelsJson?.providers.get(provider)
       return typeof config?.name === 'string' ? config.name : provider
     },
     getProviderAuth: async (provider: string) => {
@@ -611,8 +675,10 @@ function contextFor(
       return provider.length > 0 && providerSupportsOAuth(providerConfig(provider))
     },
     refresh: async () => {
+      // Pi's refresh() reloads models.json alongside the provider directory.
       await catalog?.refresh()
-      return { models: catalog?.all() ?? [], errors: [] }
+      state.modelsJson = await loadModelsJsonSnapshot(realBuiltinProvider)
+      return { models: allModels(), errors: [...state.modelsJson.errors] }
     },
   }
   const base: UnknownRecord = {
@@ -963,11 +1029,91 @@ function subscribeInterceptors(ctx: Context, state: RuntimeState): void {
     return downstream
   })
 
+  // Pi's before_agent_start fires once per user prompt: after the user
+  // message is known, before the first model call. DSH's agent/pre-step
+  // waterfall is exactly that seam — the step-1 decision carries the turn's
+  // entering user messages, so the Pi event sees the real prompt text and
+  // image attachments (Pi's expandedText/currentImages), returned custom
+  // messages join the step beside the user message as plugin-sourced context
+  // (Pi's role:"custom" append), and a returned systemPrompt becomes this
+  // turn's override, consumed by the assembly interceptor below and reset
+  // next turn exactly as Pi resets to the base prompt.
+  cordis.on('agent/pre-step', async (payload: UnknownRecord, next: () => Promise<UnknownRecord>) => {
+    const decision = await next() as UnknownRecord & { kind?: string, messages?: UnknownRecord[] }
+    if (decision.kind !== 'enter' || payload.step !== 1) return decision
+    if ((state.handlers.get('before_agent_start')?.length ?? 0) === 0) return decision
+    const agent = payload.agent as UnknownRecord
+    if (isSubagentOrigin(agent)) return decision
+    const signal = payload.signal as AbortSignal | undefined
+    const messages = decision.messages ?? []
+    const userMessages = messages.filter(message =>
+      ((message as { source?: { kind?: string } }).source?.kind ?? 'user') === 'user')
+    const prompt = userMessages
+      .flatMap(message => textBlocks((message as { content?: unknown }).content))
+      .map(block => block.text)
+      .join('\n')
+    const images = await collectPiImages(ctx, userMessages)
+    state.turnSystemPromptOverrides.delete(agent)
+    const event: UnknownRecord = {
+      type: 'before_agent_start',
+      prompt,
+      ...(images.length > 0 ? { images } : {}),
+      systemPrompt: state.currentSystemPrompt,
+      systemPromptOptions: {},
+    }
+    const results = await dispatch(state, 'before_agent_start', event, contextFor(ctx, state, agent, signal))
+    const injected: UnknownRecord[] = []
+    for (const result of results) {
+      if (typeof result !== 'object' || result === null) continue
+      const record = result as UnknownRecord
+      if (typeof record.systemPrompt === 'string') {
+        state.turnSystemPromptOverrides.set(agent, record.systemPrompt)
+        event.systemPrompt = record.systemPrompt
+      }
+      const message = record.message as UnknownRecord | undefined
+      if (message !== undefined) {
+        const content = message.content
+        const blocks = await piToDshContent(ctx, typeof content === 'string' ? [{ type: 'text', text: content }] : content ?? [])
+        injected.push(createUserMessage({
+          content: blocks,
+          // piCustomType rides the merge-extensible source so the durable log
+          // (and every later projection) keeps Pi's role:"custom" identity.
+          source: {
+            kind: 'plugin', plugin: state.messageSource,
+            ...(typeof message.customType === 'string' ? { piCustomType: message.customType } : {}),
+          },
+        }) as unknown as UnknownRecord)
+      }
+    }
+    const stepMessages = injected.length === 0 ? messages : [...messages, ...injected]
+    // Pi's context event fires before every model call with the full message
+    // array and may return a transformed copy. DSH's durable history is
+    // append-only, so the projection splits: entered history is read-only,
+    // and only this step's not-yet-entered messages accept the transform —
+    // which is exactly the slice packages rewrite (their own custom messages
+    // and the turn's user message, e.g. image placeholders → guide text).
+    const transformed = await applyPiContextTransform(ctx, state, agent, signal, stepMessages)
+    if (transformed === stepMessages && injected.length === 0) return decision
+    return { ...decision, messages: transformed }
+  })
+
   cordis.on('system-prompt/assemble', async (assembly: UnknownRecord, assembleContext: UnknownRecord, next: () => Promise<UnknownRecord>) => {
     const downstream = await next()
     if ((state.handlers.get('before_agent_start')?.length ?? 0) === 0) return downstream
     const original = renderPrompt(downstream as never)
     state.currentSystemPrompt = original
+    const agent = (assembleContext.agent ?? assembleContext.scope) as UnknownRecord | undefined
+    if (agent !== undefined && !isSubagentOrigin(agent)) {
+      // A live agent assembly: the pre-step bridge above owns the Pi event
+      // for its turn; this interceptor only applies the stored override.
+      const override = state.turnSystemPromptOverrides.get(agent)
+      if (override === undefined) return downstream
+      state.currentSystemPrompt = override
+      return { ...downstream, sections: [{ name: 'pi2dsh:system-prompt', text: override }] }
+    }
+    // No live agent (diagnostics, compositions without the agent loop): keep
+    // the assembly-time dispatch so systemPrompt-replacement packages still
+    // run; Pi's prompt/images/custom-message surfaces need a real turn.
     const event: UnknownRecord = {
       type: 'before_agent_start', prompt: '', systemPrompt: original, systemPromptOptions: {},
     }
@@ -978,13 +1124,109 @@ function subscribeInterceptors(ctx: Context, state: RuntimeState): void {
         replacement = (result as UnknownRecord).systemPrompt as string
         event.systemPrompt = replacement
       }
-      if (typeof result === 'object' && result !== null && (result as UnknownRecord).message !== undefined) {
-        logger(ctx).warn('[pi2dsh] before_agent_start custom-message injection is unsupported and was ignored')
-      }
     }
     state.currentSystemPrompt = replacement
     return { ...downstream, sections: [{ name: 'pi2dsh:system-prompt', text: replacement }] }
   })
+}
+
+// Project one not-yet-entered DSH message as the Pi message shape context
+// handlers expect: a piCustomType source marker restores Pi's role:"custom"
+// identity, everything else is a user message.
+function piShapeOfPending(message: UnknownRecord): UnknownRecord {
+  const source = message.source as UnknownRecord | undefined
+  const content = dshToPiContent((message.content ?? []) as ContentBlock[])
+  return typeof source?.piCustomType === 'string'
+    ? { role: 'custom', customType: source.piCustomType, content }
+    : { role: 'user', content }
+}
+
+// Pi's context event on the DSH seam: full history (read-only projection from
+// the durable log) plus this step's pending messages (transformable). A
+// handler's returned array must keep the length; only the pending tail is
+// applied, with each message's blocks rebuilt from the returned Pi content.
+async function applyPiContextTransform(
+  ctx: Context,
+  state: RuntimeState,
+  agent: UnknownRecord,
+  signal: AbortSignal | undefined,
+  pending: UnknownRecord[],
+): Promise<UnknownRecord[]> {
+  if ((state.handlers.get('context')?.length ?? 0) === 0) return pending
+  const session = agentSession(agent)
+  const history: UnknownRecord[] = []
+  for (const event of ((session?.events ?? []) as UnknownRecord[])) {
+    const projected = messageFromSessionEvent(event)
+    if (projected === undefined) continue
+    if (event.type === 'user/message') {
+      const customType = ((event.data as UnknownRecord | undefined)?.source as UnknownRecord | undefined)?.piCustomType
+      if (typeof customType === 'string') {
+        history.push({ ...projected, role: 'custom', customType })
+        continue
+      }
+    }
+    history.push(projected)
+  }
+  const projectedPending = pending.map(piShapeOfPending)
+  const event: UnknownRecord = { type: 'context', messages: [...history, ...projectedPending] }
+  const results = await dispatch(state, 'context', event, contextFor(ctx, state, agent, signal))
+  let current = event.messages as UnknownRecord[]
+  for (const result of results) {
+    if (typeof result !== 'object' || result === null) continue
+    const returned = (result as UnknownRecord).messages
+    if (!Array.isArray(returned)) continue
+    if (returned.length !== current.length) {
+      logger(ctx).warn('[pi2dsh] a Pi context handler changed the message count; DSH durable history is append-only, so the transform was ignored')
+      continue
+    }
+    current = returned as UnknownRecord[]
+  }
+  if (current === event.messages) return pending
+  const tail = current.slice(history.length)
+  const rebuilt: UnknownRecord[] = []
+  for (const [index, original] of pending.entries()) {
+    const shape = tail[index]
+    if (shape === undefined) { rebuilt.push(original); continue }
+    const blocks = await piToDshContent(ctx, typeof shape.content === 'string'
+      ? [{ type: 'text', text: shape.content }]
+      : shape.content ?? [])
+    rebuilt.push(createUserMessage({
+      content: blocks,
+      source: (original.source ?? { kind: 'plugin', plugin: state.messageSource }) as never,
+    }) as unknown as UnknownRecord)
+  }
+  return rebuilt
+}
+
+// Pi's before_agent_start images: the entering user messages' image
+// attachments, read back from the DSH attachment store as base64
+// ImageContent. Messages without attachments (or compositions without the
+// attachment service) simply contribute none — the path-in-prompt flow the
+// vision packages document works either way.
+async function collectPiImages(ctx: Context, messages: UnknownRecord[]): Promise<UnknownRecord[]> {
+  const attachments = (ctx as unknown as { get(name: string): unknown }).get('attachments') as {
+    readImage(attachment: unknown): Promise<{ data: ArrayBufferLike }>
+  } | undefined
+  if (attachments === undefined) return []
+  const images: UnknownRecord[] = []
+  for (const message of messages) {
+    const content = (message as { content?: unknown }).content
+    if (!Array.isArray(content)) continue
+    for (const block of content as UnknownRecord[]) {
+      if (block?.type !== 'image' || block.attachment === undefined) continue
+      try {
+        const stored = await attachments.readImage(block.attachment)
+        images.push({
+          type: 'image',
+          data: Buffer.from(stored.data).toString('base64'),
+          mimeType: String((block.attachment as UnknownRecord).mediaType ?? 'image/png'),
+        })
+      } catch {
+        // An unreadable attachment contributes no image; Pi passes what exists.
+      }
+    }
+  }
+  return images
 }
 
 function oauthStoreOf(state: RuntimeState): FileCredentialStore {
@@ -1248,7 +1490,15 @@ function dshCommandName(ctx: Context, piName: string): string {
 }
 
 function registerCommand(ctx: Context, state: RuntimeState, command: PiCommand): void {
-  if (state.commands.has(command.name)) throw new Error(`Pi command ${JSON.stringify(command.name)} is already registered`)
+  // Pi's registerCommand is Map.set: a same-name registration replaces the
+  // earlier one and never throws (loader.ts extension.commands.set). Replace
+  // within this package, and treat a cross-package collision on the shared
+  // DSH command namespace like the /login precedent: the first mount keeps
+  // the name, later mounts warn instead of aborting their whole package.
+  if (state.commands.has(command.name)) {
+    state.commandDisposers.get(command.name)?.()
+    state.commandDisposers.delete(command.name)
+  }
   state.commands.set(command.name, command)
   const commands = (ctx as unknown as { get(name: string): unknown }).get('commands') as {
     register(definition: UnknownRecord): () => void
@@ -1257,18 +1507,22 @@ function registerCommand(ctx: Context, state: RuntimeState, command: PiCommand):
     logger(ctx).warn(`[pi2dsh] command /${command.name} was not registered because this DSH composition has no ctx.commands`)
     return
   }
-  commands.register({
-    name: dshCommandName(ctx, command.name),
-    description: command.description || `Migrated Pi command /${command.name}`,
-    ...(command.argumentHint !== undefined ? { input: { hint: command.argumentHint } } : {}),
-    async handler(invocation: UnknownRecord) {
-      const agent = invocation.agent as UnknownRecord
-      const commandContext = contextFor(ctx, state, agent, invocation.signal as AbortSignal, true)
-      await state.agentScope.run(agent, () => command.handler(String(invocation.rawInput ?? '').trimStart(), commandContext))
-      const notices = commandContext.__notices as string[]
-      return { kind: 'success', ...(notices.length > 0 ? { text: notices.join('\n') } : {}) }
-    },
-  })
+  try {
+    state.commandDisposers.set(command.name, commands.register({
+      name: dshCommandName(ctx, command.name),
+      description: command.description || `Migrated Pi command /${command.name}`,
+      ...(command.argumentHint !== undefined ? { input: { hint: command.argumentHint } } : {}),
+      async handler(invocation: UnknownRecord) {
+        const agent = invocation.agent as UnknownRecord
+        const commandContext = contextFor(ctx, state, agent, invocation.signal as AbortSignal, true)
+        await state.agentScope.run(agent, () => command.handler(String(invocation.rawInput ?? '').trimStart(), commandContext))
+        const notices = commandContext.__notices as string[]
+        return { kind: 'success', ...(notices.length > 0 ? { text: notices.join('\n') } : {}) }
+      },
+    }))
+  } catch (error) {
+    logger(ctx).warn(`[pi2dsh] command /${command.name} is already registered by an earlier package in this host; keeping the first registration (${error instanceof Error ? error.message : String(error)})`)
+  }
 }
 
 function requireSession(state: RuntimeState, operation: string): { id: string; events: unknown } {
@@ -1668,6 +1922,7 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
     toolDisposers: new Map(),
     toolRestrictions: new WeakMap(),
     commands: new Map(),
+    commandDisposers: new Map(),
     flags: new Map(),
     notifications: [],
     activeAgents: new Set(),
@@ -1687,6 +1942,7 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
     toolsExpanded: false,
     modelOverrides: new WeakMap(),
     thinkingLevels: new WeakMap(),
+    turnSystemPromptOverrides: new WeakMap(),
     globalThinkingLevel: 'off',
     argMutations: new WeakMap(),
     streamingTexts: new Map(),
@@ -1730,6 +1986,12 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
     __setPiAiLlmBridge((model, context, callOptions) => streamViaDshLlm(llm, { model, context, options: callOptions }))
     ctx.effect(() => () => __setPiAiLlmBridge(undefined))
   }
+  // Pi's models.json joins the same pre-extension model-directory fill: a
+  // user-defined provider must be visible to the first registry read, exactly
+  // like the catalog above. Composition errors warn per entry and never block
+  // the mount (Pi surfaces them through registry.getError()).
+  state.modelsJson = await loadModelsJsonSnapshot(realBuiltinProvider)
+  for (const problem of state.modelsJson.errors) logger(ctx).warn(`[pi2dsh] models.json: ${problem}`)
   // createAgentSession builds a real DSH child agent through ctx.agents; the
   // factory lives for exactly the runtime's lifetime.
   __setSubagentSessionFactory(subagentOptions => createBridgedAgentSession({

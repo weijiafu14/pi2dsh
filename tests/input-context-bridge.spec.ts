@@ -1,0 +1,163 @@
+// Input/Context Bridge contracts — Pi's before_agent_start and context events
+// running on DSH's agent/pre-step waterfall: the Pi event sees the turn's real
+// prompt, returned custom messages enter the step with their Pi identity, the
+// context transform rewrites the step's not-yet-entered slice, a returned
+// systemPrompt overrides this turn's assembly, and Pi's registerCommand keeps
+// its Map.set same-name replacement semantics.
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { pathToFileURL } from 'node:url'
+import { afterEach, describe, expect, it } from 'vitest'
+import { Context, type Plugin } from '@deepseek-ai/cordis'
+import AgentRegistry, { agentEvents } from '@deepseek-ai/dsh-agent'
+import { createUserMessage } from '@deepseek-ai/dsh-llm'
+import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
+import SystemPrompt, { renderPrompt } from '@deepseek-ai/dsh-system-prompt'
+import ToolRuntime from '@deepseek-ai/dsh-tools'
+import CommandRuntime from '@deepseek-ai/dsh-commands'
+import SkillRegistry from '@deepseek-ai/dsh-skill'
+import { applyPiPackage } from '../src/runtime.js'
+import type { GeneratedRuntimeManifest } from '../src/types.js'
+
+const cleanup: string[] = []
+
+afterEach(async () => {
+  delete (globalThis as Record<string, unknown>).__icb
+  await Promise.all(cleanup.splice(0).map(path => rm(path, { recursive: true, force: true })))
+})
+
+const PROBE_EXTENSION = [
+  "export default function probe(pi: any) {",
+  "  const record: any = ((globalThis as any).__icb ??= {})",
+  "  pi.on('before_agent_start', async (event: any) => {",
+  "    record.beforeAgentStart = { prompt: event.prompt, systemPrompt: event.systemPrompt }",
+  "    return {",
+  "      systemPrompt: 'OVERRIDDEN BY TEST',",
+  "      message: { customType: 'test-bridge', content: 'bridge analysis result', display: true },",
+  "    }",
+  "  })",
+  "  pi.on('context', async (event: any) => {",
+  "    record.contextShapes = event.messages.map((m: any) => ({ role: m.role, customType: m.customType }))",
+  "    return {",
+  "      messages: event.messages.map((m: any) => {",
+  "        if (m.role === 'custom' && m.customType === 'test-bridge') {",
+  "          return { ...m, content: [{ type: 'text', text: '[prefixed] bridge analysis result' }] }",
+  "        }",
+  "        if (m.role === 'user') {",
+  "          const content = (Array.isArray(m.content) ? m.content : []).map((b: any) =>",
+  "            b.type === 'text' ? { ...b, text: b.text.replace('/tmp/x.png', '[image handled]') } : b)",
+  "          return { ...m, content }",
+  "        }",
+  "        return m",
+  "      }),",
+  "    }",
+  "  })",
+  "  pi.registerCommand('icb-dup', { description: 'first', handler: async () => { record.command = 'first' } })",
+  "  pi.registerCommand('icb-dup', { description: 'second', handler: async () => { record.command = 'second' } })",
+  "}",
+].join('\n')
+
+async function mountedContext() {
+  const bundle = await mkdtemp(join(tmpdir(), 'pi2dsh-icb-'))
+  cleanup.push(bundle)
+  await mkdir(join(bundle, 'extensions'), { recursive: true })
+  await writeFile(join(bundle, 'extensions/probe.ts'), PROBE_EXTENSION)
+  const manifest: GeneratedRuntimeManifest = {
+    schemaVersion: 1,
+    package: { name: '@pi2dsh-fixtures/input-context-probe', version: '0.0.0', source: 'fixture' },
+    extensions: ['extensions/probe.ts'],
+    skillDirs: [],
+    prompts: [],
+  }
+  const plugin: Plugin.Object = {
+    name: 'pi2dsh:test-input-context',
+    inject: ['tools', 'systemPrompt', 'commands', 'skills'],
+    async apply(ctx) {
+      await applyPiPackage(ctx, { rootUrl: pathToFileURL(`${bundle}/`), manifest })
+    },
+  }
+  const ctx = new Context()
+  await ctx.plugin(SessionStore)
+  await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
+  await ctx.plugin(ToolRuntime)
+  await ctx.plugin(CommandRuntime)
+  await ctx.plugin(SkillRegistry)
+  await ctx.plugin(AgentRegistry)
+  await ctx.plugin(plugin)
+  await new Promise(resolve => setTimeout(resolve, 25))
+
+  const typedCtx = ctx as unknown as {
+    sessions: { create(id: unknown, options: Record<string, unknown>): { id: unknown } }
+    agents: { register(agent: Record<string, unknown>): () => void }
+    commands: { execute(agent: never, input: string, signal: AbortSignal): Promise<{ result: { kind: string } } | undefined> }
+    systemPrompt: { assemble(input?: Record<string, unknown>): Promise<Record<string, unknown>> }
+  }
+  const session = typedCtx.sessions.create(SessionId('pi2dsh-icb'), {
+    meta: { createdAt: Date.now(), cwd: bundle },
+  })
+  const agent = { id: session.id, session, options: {}, steer() {}, inject() {}, followup() {}, whenIdle: () => Promise.resolve() }
+  typedCtx.agents.register(agent)
+  return { ctx, typedCtx, agent }
+}
+
+describe('input/context bridge in the real DSH runtime', () => {
+  it('runs before_agent_start at pre-step with the real prompt, injects the custom message, and applies the context transform', async () => {
+    const { ctx, agent } = await mountedContext()
+    const signal = new AbortController().signal
+    const entering = createUserMessage({
+      content: [{ type: 'text', text: 'What color fills /tmp/x.png ?' }],
+      source: { kind: 'user' },
+    })
+    const decision = await (agentEvents(ctx, agent as never) as unknown as {
+      waterfall(name: string, payload: Record<string, unknown>, terminal: () => Promise<unknown>): Promise<{
+        kind: string
+        messages: Array<{ content: Array<{ type: string; text?: string }>; source: Record<string, unknown> }>
+      }>
+    }).waterfall('agent/pre-step', { turn: 1, step: 1, signal }, async () => ({ kind: 'enter', messages: [entering] }))
+
+    const record = (globalThis as Record<string, unknown>).__icb as {
+      beforeAgentStart?: { prompt: string }
+      contextShapes?: Array<{ role: string; customType?: string }>
+    }
+    // Pi saw the turn's real prompt text — not an empty assembly-time string.
+    expect(record.beforeAgentStart?.prompt).toBe('What color fills /tmp/x.png ?')
+    // The context event saw both the user message and the custom identity.
+    expect(record.contextShapes).toEqual(expect.arrayContaining([
+      expect.objectContaining({ role: 'user' }),
+      expect.objectContaining({ role: 'custom', customType: 'test-bridge' }),
+    ]))
+
+    expect(decision.kind).toBe('enter')
+    expect(decision.messages).toHaveLength(2)
+    const user = decision.messages[0]!
+    const custom = decision.messages[1]!
+    // The context transform rewrote the step's user message in place.
+    expect(user.content[0]?.text).toBe('What color fills [image handled] ?')
+    // The injected message entered with Pi's custom identity and the prefix.
+    expect(custom.source).toMatchObject({ kind: 'plugin', piCustomType: 'test-bridge' })
+    expect(custom.content[0]?.text).toBe('[prefixed] bridge analysis result')
+  })
+
+  it("applies the returned systemPrompt as this turn's assembly override", async () => {
+    const { ctx, typedCtx, agent } = await mountedContext()
+    const signal = new AbortController().signal
+    await (agentEvents(ctx, agent as never) as unknown as {
+      waterfall(name: string, payload: Record<string, unknown>, terminal: () => Promise<unknown>): Promise<unknown>
+    }).waterfall('agent/pre-step', { turn: 1, step: 1, signal }, async () => ({
+      kind: 'enter',
+      messages: [createUserMessage({ content: [{ type: 'text', text: 'hello' }], source: { kind: 'user' } })],
+    }))
+    const assembly = await typedCtx.systemPrompt.assemble({ agent })
+    expect(renderPrompt(assembly as never)).toContain('OVERRIDDEN BY TEST')
+  })
+
+  it("keeps Pi's same-name registerCommand replacement: the second handler wins without aborting the package", async () => {
+    const { typedCtx, agent } = await mountedContext()
+    const signal = new AbortController().signal
+    const outcome = await typedCtx.commands.execute(agent as never, '/icb-dup', signal)
+    expect(outcome?.result.kind).toBe('success')
+    const record = (globalThis as Record<string, unknown>).__icb as { command?: string }
+    expect(record.command).toBe('second')
+  })
+})

@@ -252,7 +252,7 @@ export const CONTEXT_RULES: Readonly<Record<string, Rule>> = Object.freeze({
   getSystemPromptOptions: rule('partial', 'Returns an empty Pi option projection in command contexts.'),
   waitForIdle: rule('partial', 'Mapped to the DSH agent idle boundary when available.'),
   sessionManager: rule('partial', 'A real read-only projection: DSH durable messages plus pi2dsh sidecar entries, exposed through Pi\'s exact 14-method surface as a single-branch tree.'),
-  modelRegistry: rule('partial', 'A live registry: the DSH llm directory plus package-registered providers project as Pi Models; getProviderAuth/getApiKeyAndHeaders run Pi\'s full credential chain. DSH-route credentials stay inside DSH adapters by design.'),
+  modelRegistry: rule('partial', 'A live registry: the DSH llm directory, package-registered providers, and the user\'s ~/.pi/agent/models.json project as Pi Models; getProviderAuth/getApiKeyAndHeaders run Pi\'s full credential chain (models.json keys resolve with Pi\'s $ENV/!command semantics). DSH-route credentials stay inside DSH adapters by design.'),
   model: rule('partial', 'The agent\'s real provider/model route (a setModel() override wins), enriched from the projected catalog.'),
   scopedModels: rule('partial', 'The projected model catalog (DSH llm directory plus package-registered providers).'),
   hasConfiguredAuth: rule('partial', 'Configuration check on the projected registry: true when the model\'s provider has a live route or package registration (not a key-liveness probe).'),
@@ -432,8 +432,8 @@ export const EVENT_RULES: Readonly<Record<string, Rule>> = Object.freeze({
     detail: 'Text replacement and success-to-error blocking are supported; arbitrary details and error recovery are not.',
   },
   before_agent_start: {
-    level: 'partial',
-    detail: 'System-prompt replacement is supported; Pi raw prompt and custom-message injection are unavailable at DSH assembly time.',
+    level: 'full',
+    detail: 'Fires at the turn\'s first pre-step with the real prompt text and image attachments; returned custom messages enter the turn beside the user message, and a returned systemPrompt overrides this turn\'s assembly.',
   },
   agent_end: {
     level: 'partial',
@@ -472,8 +472,8 @@ export const EVENT_RULES: Readonly<Record<string, Rule>> = Object.freeze({
     detail: 'Fired by setThinkingLevel(); DSH-side reasoning changes surface through request/header projection.',
   },
   context: {
-    level: 'unsupported',
-    detail: 'Pi context-list replacement conflicts with DSH append-only request reconstruction; the handler is accepted but never fires.',
+    level: 'partial',
+    detail: 'Fires before each step with the full message projection; the transform applies to the step\'s not-yet-entered messages (the slice packages rewrite), while already-entered history stays read-only under DSH\'s append-only log.',
   },
   before_provider_request: {
     level: 'unsupported',
