@@ -187,7 +187,12 @@ export async function realBuiltinProvider(providerId: string): Promise<UnknownRe
 }
 
 export function openAICompletionsApi(): unknown {
-  return lazyApiForCompat(async () => realTransport('openai-completions', 'openAICompletionsApi'), undefined)
+  // Served by the bridge's OWN client (openai SDK → Pi event stream, Pi
+  // client semantics): the one wire protocol virtually every models.json
+  // gateway speaks must not require pi-ai — whose transitive install
+  // scripts (@google/genai → protobufjs) would fail `dsh plugin add` for
+  // the engine. The rarer apis below still use a real pi-ai when present.
+  return lazyApiForCompat(async () => import('./openai-completions-lite.js'), undefined)
 }
 
 export function openAIResponsesApi(): unknown {

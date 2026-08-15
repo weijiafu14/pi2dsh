@@ -12,9 +12,10 @@ dsh plugin --profile headless add pi-vision-tool
 ```
 
 没有转换步骤、没有生成产物：引擎自动发现你加进 profile 的每个 Pi 包，
-全部经一份桥实例挂载。卸载用 `dsh plugin remove <包>`；升级引擎
-`dsh plugin add pi2dsh@latest`（插件不动），升级插件
-`dsh plugin add <包>@latest`（引擎不动）。
+全部经一份桥实例挂载。挂载发生在启动时——**加/卸插件后要重启 `dsh`**。
+卸插件用 `dsh plugin remove <包>`（先卸插件再卸引擎，否则插件留在依赖里
+没人挂载）；升级引擎 `dsh plugin add pi2dsh@latest`（插件不动），升级
+插件 `dsh plugin add <包>@latest`（引擎不动）。
 
 如果 add 报 `ERR_PNPM_IGNORED_BUILDS`（pnpm 默认拦依赖的构建脚本）：
 在 profile 的 `pnpm-workspace.yaml` 里把列出的包在 `allowBuilds` 下设为

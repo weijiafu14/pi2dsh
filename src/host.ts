@@ -225,11 +225,12 @@ export async function generateHostBundle(options: HostBundleOptions): Promise<{ 
       'cross-spawn': '^7.0.6',
       diff: '^9.0.0',
       '@deepseek-ai/dsh-skill-filesystem': '^0.1.0-rc.6',
-      // The REAL pi-ai: a host bundle provides the peer exactly as a Pi host
-      // would. Packages still import the shim (jiti alias); the bridge's
-      // wire-protocol transport factories (openai-completions etc.) forward
-      // to this real implementation so gateway providers stream for real.
-      '@earendil-works/pi-ai': '*',
+      // The bridge's own openai-completions client (openai SDK) serves the
+      // common gateway protocol; rarer apis lazily use a real pi-ai from
+      // the mounted packages' own dependency trees. A direct pi-ai
+      // dependency would drag @google/genai → protobufjs, whose blocked
+      // install script fails `dsh plugin add` for transitive dependencies.
+      openai: '^6.40.0',
     },
     peerDependencies: {
       '@deepseek-ai/dsh-llm': '^0.1.0-rc.6',

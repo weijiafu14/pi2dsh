@@ -13,9 +13,12 @@ dsh plugin --profile headless add pi-vision-tool
 
 No conversion step, no generated bundles: the engine discovers every Pi
 package you added to the profile and mounts them all through one bridge
-instance. Remove with `dsh plugin remove <pkg>`; upgrade the engine with
-`dsh plugin add pi2dsh@latest` (your plugins are untouched), upgrade a
-plugin with `dsh plugin add <pkg>@latest` (the engine is untouched).
+instance. Mounting happens at startup — **restart `dsh` after adding or
+removing plugins**. Remove a plugin with `dsh plugin remove <pkg>` (remove
+plugins before removing the engine, or they sit unmounted); upgrade the
+engine with `dsh plugin add pi2dsh@latest` (your plugins are untouched),
+upgrade a plugin with `dsh plugin add <pkg>@latest` (the engine is
+untouched).
 
 If an add stops with `ERR_PNPM_IGNORED_BUILDS` (pnpm blocks dependency
 build scripts by default), set the listed packages to `true` under

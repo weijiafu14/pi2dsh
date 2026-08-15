@@ -114,9 +114,11 @@ export const name = 'pi2dsh'
 export const inject = ['tools', 'systemPrompt', 'commands', 'skills']
 
 export async function apply(ctx: Context, config: EngineConfig = {}): Promise<void> {
+  // Same emission as the runtime's logger helper: the cordis logger AND the
+  // console — profile logger levels must never hide what the engine mounted.
   const log = (ctx as unknown as { logger?: { info?(m: string): void, warn?(m: string): void } }).logger
-  const warn = log?.warn?.bind(log) ?? console.warn
-  const info = log?.info?.bind(log) ?? console.log
+  const warn = (message: string): void => { log?.warn?.(message); console.warn(message) }
+  const info = (message: string): void => { log?.info?.(message); console.log(message) }
 
   // The loader resolves plugins against the profile's baseUrl; that IS the
   // profile root. The ancestor walk from the installed engine is the

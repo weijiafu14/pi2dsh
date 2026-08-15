@@ -210,11 +210,13 @@ function generatedPackageJson(
     ...(runtimeSpec === undefined
       ? { jiti: '^2.7.0', 'get-east-asian-width': '^1.6.0', marked: '^16.4.1', typebox: '^1.0.4', 'cross-spawn': '^7.0.6', diff: '^9.0.0' }
       : {}),
-    // The real pi-ai wire clients back the single model directory: providers
-    // without their own transport (models.json entries, catalog-only
-    // packages) stream through them — a bundle is a deployment unit, so it
-    // carries the transport library a Pi host would provide.
-    '@earendil-works/pi-ai': '^0.84.1',
+    // The bridge's own openai-completions client (openai SDK) backs the
+    // single model directory's most common wire protocol; the rarer apis
+    // lazily use a real pi-ai when a mounted package's dependency tree
+    // carries one. Depending on pi-ai here would drag @google/genai →
+    // protobufjs, whose blocked install script fails `dsh plugin add`
+    // for transitive dependencies.
+    openai: '^6.40.0',
     ...(hasSkills ? { '@deepseek-ai/dsh-skill-filesystem': '^0.1.0-rc.6' } : {}),
     ...(runtimeSpec !== undefined ? { pi2dsh: runtimeSpec } : {}),
   }
