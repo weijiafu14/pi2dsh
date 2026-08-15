@@ -10,6 +10,7 @@ function makeHost(ctx: Context, deliveries: Array<{ mode: string, message: unkno
     cordis: ctx,
     cwd: () => process.cwd(),
     parentSessionId: () => 'parent-session',
+    parentDelegationDepth: () => 0,
     piContentToDsh: async content => (Array.isArray(content) ? content : []) as never,
     deliver: (_agent, message, mode) => {
       deliveries.push({ mode, message })

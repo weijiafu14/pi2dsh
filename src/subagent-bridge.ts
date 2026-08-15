@@ -21,6 +21,8 @@ export interface SubagentHost {
   cordis: Context
   cwd(): string
   parentSessionId(): string | undefined
+  /** The delegating parent's delegation depth (DSH's recursion budget); 0 for a top-level parent. */
+  parentDelegationDepth(): number
   piContentToDsh(content: unknown): Promise<ContentBlock[]>
   deliver(agent: UnknownRecord, message: unknown, mode: 'inject' | 'steer' | 'followup'): void
   messageFromSessionEvent(event: UnknownRecord): UnknownRecord | undefined
@@ -284,6 +286,10 @@ export async function createBridgedAgentSession(
       meta: {
         cwd: typeof options.cwd === 'string' ? options.cwd : host.cwd(),
         origin: 'subagent',
+        // DSH's durable recursion budget (childSessionMeta semantics): the
+        // child persists parent depth + 1 so resumed children cannot delegate
+        // as if they were top-level.
+        delegationDepth: host.parentDelegationDepth() + 1,
         ...(host.parentSessionId() !== undefined ? { parentSession: host.parentSessionId() } : {}),
       },
       ...(typeof requestedModel?.id === 'string' && requestedModel.id.length > 0

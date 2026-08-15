@@ -2129,6 +2129,17 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
       const session = agentSession(currentAgent(state))
       return session === undefined ? undefined : String(session.id ?? '') || undefined
     },
+    parentDelegationDepth: () => {
+      // DSH's delegationDepthOf semantics: header depth and runtime option
+      // depth may each deepen the count; absence means top-level zero.
+      const parent = currentAgent(state)
+      const header = (agentSession(parent) as { header?: { delegationDepth?: unknown } } | undefined)?.header
+      const fromHeader = typeof header?.delegationDepth === 'number' ? header.delegationDepth : 0
+      const fromOptions = typeof (parent as { options?: { subagentDepth?: unknown } } | undefined)?.options?.subagentDepth === 'number'
+        ? (parent as { options: { subagentDepth: number } }).options.subagentDepth
+        : 0
+      return Math.max(fromHeader, fromOptions)
+    },
     piContentToDsh: content => piToDshContent(ctx, content),
     deliver: (agent, message, mode) => deliverAgentMessage(agent as DshAgent, message, mode),
     messageFromSessionEvent,
