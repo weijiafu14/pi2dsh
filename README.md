@@ -150,13 +150,49 @@ set `visionCompanions` in the engine's plugin config
 
 Full runnable version, with probe images: [`examples/vision-bridge`](examples/vision-bridge/).
 
-## What you can install today
+## What actually works today
 
-The Pi catalog's **top 50 packages by monthly downloads**, all verified on a
-real DSH runtime — mounted, then actually exercised. Status as of 2026-08-14;
-per-package machine-readable evidence in [`community/`](community/).
+Two levels, and they are not the same claim.
 
-**47 of 50 verified working · 1 with no probeable surface · 2 pending a re-run.**
+### Level 1 — verified end to end, with a runnable example
+
+Someone sat down, used the plugin's real feature on a real DSH loop, and saw
+it work. **This is the list to trust.**
+
+| Plugin | What was exercised | Where | Example |
+|---|---|---|---|
+| [`@kassing/pi-vision`](https://www.npmjs.com/package/@kassing/pi-vision) | Image analysis delegated to a vision model; image-admission companion route; analysis injected into a text-only model's turn | CLI + web | [`vision-bridge`](examples/vision-bridge/) |
+| [`pi-btw`](https://www.npmjs.com/package/pi-btw) | `/btw <question>` as a real child session in DSH's subagent UI; `/btw-inject`; `/btw --save`; main thread stays clean | CLI + web | [`side-conversation`](examples/side-conversation/) |
+| [`pi-vision-tool`](https://www.npmjs.com/package/pi-vision-tool) | Tool registration through a JSON-Schema shape DSH had to convert (`anyOf` → `oneOf`) | CLI + web | — |
+| [`pi-approval-guardian`](https://www.npmjs.com/package/pi-approval-guardian) | Every tool call reviewed by a second model before execution; allow and deny both observed | CLI (bare env) | — |
+| [`pi-hermes-memory`](https://www.npmjs.com/package/pi-hermes-memory) | Cross-session memory: written in one process, read back in a second, fresh one | CLI | — |
+
+Examples for the last three are still to be written; per this project's own
+rule they get re-verified from scratch before an example lands, so the table
+says plainly which have one today.
+
+### Level 2 — mounts and its surface answers a probe
+
+The Pi catalog's **top 50 packages by monthly downloads**, each mounted in a
+real DSH runtime and then called through a black-box probe. Status as of
+2026-08-14; per-package machine-readable evidence in
+[`community/`](community/).
+
+**47 of 50 exercised successfully · 1 with no probeable surface · 2 pending a
+re-run.**
+
+**What this level does not tell you:** that the plugin's actual feature works
+the way you would use it. A probe calls a registered surface with synthetic
+arguments; a user runs a workflow. `pi-btw` is the cautionary example — it
+graded "working" here for weeks while `/btw <question>` failed on a real
+session, because the feature needed two ABI gaps closed (Pi's settable
+`AgentState.messages`, and an input descriptor on bridged commands) that no
+probe exercised. Both are fixed in 0.11.0, and both were general fixes that
+unlock every plugin doing the same thing.
+
+So read the table below as **"the bridge covers what this plugin touches"**,
+not as "this plugin is known-good". When you try one, a report either way is
+useful.
 
 | Area | Packages |
 |---|---|
@@ -186,6 +222,10 @@ safely callable to assert.
 Packages outside the top 50 are not a separate case — the bridge has no
 per-package code. If one hits an ABI gap, fixing that gap unlocks every
 package that shares it.
+
+Level 1 grows by working through Level 2 one plugin at a time. The full
+verification ladder, with what each rung does and does not prove:
+[support matrix](docs/posting-kit/support-matrix.md).
 
 ## How it works
 

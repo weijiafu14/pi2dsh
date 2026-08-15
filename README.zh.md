@@ -134,13 +134,42 @@ Web 里**直接粘图**——哪怕你的主模型是纯文本的。DSH 正常�
 
 完整可跑版本（含纯色探针图）：[`examples/vision-bridge`](examples/vision-bridge/)。
 
-## 现在能装哪些插件
+## 现在到底哪些真能用
 
-Pi 目录里**月下载量前 50 的包**，全部在真实 DSH 运行时上验证过——先挂载，再真的
-调起来跑。状态截至 2026-08-14；逐包的机器可读证据在
-[`community/`](community/)。
+分两级，这两件事不是一回事。
 
-**50 个里 47 个实测可用 · 1 个没有可探测面 · 2 个待复跑。**
+### 第一级——端到端实测过，配可跑示例
+
+有人真坐下来，在真实 DSH loop 上用了这个插件的真功能，亲眼看到它工作。
+**要信就信这张表。**
+
+| 插件 | 验证了什么 | 在哪验的 | 示例 |
+|---|---|---|---|
+| [`@kassing/pi-vision`](https://www.npmjs.com/package/@kassing/pi-vision) | 图片委托给视觉模型；贴图伴生路由；分析结果注入纯文本模型的这一轮 | CLI + Web | [`vision-bridge`](examples/vision-bridge/) |
+| [`pi-btw`](https://www.npmjs.com/package/pi-btw) | `/btw <问题>` 跑成 DSH 子代理界面里的真子会话；`/btw-inject`；`/btw --save`；主会话保持干净 | CLI + Web | [`side-conversation`](examples/side-conversation/) |
+| [`pi-vision-tool`](https://www.npmjs.com/package/pi-vision-tool) | 工具注册，且带一个 DSH 需要转换的 JSON Schema 形状（`anyOf` → `oneOf`） | CLI + Web | — |
+| [`pi-approval-guardian`](https://www.npmjs.com/package/pi-approval-guardian) | 每次工具调用先由第二个模型审批；放行与拒绝两条路都看到了 | CLI（裸环境） | — |
+| [`pi-hermes-memory`](https://www.npmjs.com/package/pi-hermes-memory) | 跨会话记忆：一个进程写入，另一个全新进程读回 | CLI | — |
+
+后三个的示例还没写。按本项目自己的规矩，补示例前必须重新端到端验证一遍，所以
+这张表如实标出今天谁有示例。
+
+### 第二级——能挂载，且注册面能被探针调起来
+
+Pi 目录里**月下载量前 50 的包**，每个都在真实 DSH 运行时里挂载，然后用黑盒探针
+调用。状态截至 2026-08-14；逐包的机器可读证据在 [`community/`](community/)。
+
+**50 个里 47 个探针调用成功 · 1 个没有可探测面 · 2 个待复跑。**
+
+**这一级不能说明的事**：不能说明这个插件的真功能按你的用法能跑通。探针是拿合成
+参数去调一个注册面，用户跑的是一整条工作流。`pi-btw` 就是最好的反例——它在这张
+表里挂着"working"挂了好几周，而真实会话里 `/btw <问题>` 是直接失败的：这个功能
+需要补两个 ABI 缺口（Pi 公开可写的 `AgentState.messages`，以及给桥接命令声明输入
+描述符），而任何探针都不会碰到它们。两个缺口都在 0.11.0 修好了，而且都是通用修
+复——同样用法的插件一起解锁。
+
+所以下面这张表请读成**"桥覆盖了这个插件用到的面"**，而不是"这个插件已知可用"。
+你要是试了哪个，不管成没成，反馈回来都有用。
 
 | 能力 | 插件 |
 |---|---|
@@ -167,6 +196,9 @@ Pi 目录里**月下载量前 50 的包**，全部在真实 DSH 运行时上验�
 
 前 50 之外的包不是另一类情况——桥里没有任何逐包代码。哪个包撞上 ABI 缺口，补上
 那个缺口，撞同一处的包一起解锁。
+
+第一级是靠一个一个啃第二级长出来的。完整的验证阶梯、以及每一级分别能证明什么、
+不能证明什么：[support matrix](docs/posting-kit/support-matrix.md)。
 
 ## 技术架构
 

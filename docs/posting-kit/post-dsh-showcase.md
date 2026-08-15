@@ -81,7 +81,7 @@ Full runnable example: [`examples/side-conversation`](https://github.com/weijiaf
 
 ## Where things stand
 
-- The top-50 Pi catalog by downloads passes static screening with **zero blocked** packages.
+- The top-50 Pi catalog by downloads passes static screening with **zero blocked** packages, and 47 of 50 answer a black-box probe after mounting. That means the bridge covers the surfaces those packages touch — it does *not* mean each plugin's own feature is known-good end to end, which is a separate, slower list (the plugins named in the next bullet). Worth being precise about: `pi-btw` graded "probe-working" while `/btw <question>` actually failed on a real session, until two general ABI gaps were closed in 0.11.0.
 - End-to-end verified on a real DSH loop, CLI **and** web: tools, slash commands (including commands with arguments), prompt commands, skills, lifecycle events, `before_agent_start` input bridging, context transforms, interactive OAuth `/login`, subagents through `ctx.agents`, side conversations as real child sessions, and the vision path above.
 - 95 public-API contract tests; `pnpm verify` (typecheck + tests + packaging) is the gate for every release.
 

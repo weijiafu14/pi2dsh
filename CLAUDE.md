@@ -165,6 +165,17 @@ pi2dsh：通用 Pi Host ABI 兼容层，让 Pi 生态插件原样跑在 DeepSeek
   超链接到 `docs/capabilities/` 分门别类的细表。
 - **对外文档只写现状，不写演变史**：不许出现"过去翻译错了又改回来"这类内部
   返工过程（用户明令）。判断依据是读者要不要知道，不是我想不想解释。
+- **能力清单必须按验证等级分级，禁止把"黑盒探针跑过"说成"能用"**（事故：
+  README 把 top50 的 47/50 写成"verified working / 实测可用"，被用户当场
+  拆穿——"你随便 check 两个比如 btw 比如 visontool，你就有这么多翻译工作
+  需要补"）。铁证：**pi-btw 黑盒 grade=working 挂了好几周，而真敲
+  `/btw <问题>` 直接炸**，直到补了 AgentState.messages + 命令 input
+  描述符两个缺口才通。所以对外只有两级：
+  ① **端到端实测过（配 example）**——有人在真 DSH loop 上用真功能亲眼看到
+  它工作，这一级放**最前面**，是"能用"清单；
+  ② **能挂载 + 探针能调起来**——只代表"桥覆盖了这个插件用到的面"，属于
+  **待实测**，必须显式写明它不能说明什么。
+  探针拿合成参数调注册面 ≠ 用户跑一整条工作流；下载量排名不是能力证据。
 - `docs/capabilities/*.md` 由 `scripts/generate-capability-docs.mjs` **从
   src/compatibility.ts 的规则生成**，prose 写在脚本里，md 里绝不手改；
   `pnpm verify` 带 `check:docs` 拦截漂移。新增 Pi 面必须归入某个能力域，
