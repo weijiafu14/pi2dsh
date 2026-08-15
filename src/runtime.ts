@@ -2076,7 +2076,14 @@ function registerCommand(ctx: Context, state: RuntimeState, command: PiCommand):
   const definitionFor = (dshName: string): UnknownRecord => ({
     name: dshName,
     description: command.description || `Migrated Pi command /${command.name}`,
-    ...(command.argumentHint !== undefined ? { input: { hint: command.argumentHint } } : {}),
+    // EVERY Pi command takes a free-form argument string by contract
+    // (`handler(args, ctx)`), whether or not the package declared a hint. DSH
+    // surfaces only pass arguments to commands that declare an `input`
+    // descriptor — without one, "/name some args" is sent as a chat message
+    // instead of invoking the command (ui-commands' matchEnter: an argued
+    // line for an input-less command is not claimed). So the descriptor is
+    // always declared, using the package's hint when it has one.
+    input: { hint: command.argumentHint ?? 'arguments (optional)' },
     async handler(invocation: UnknownRecord) {
       const agent = invocation.agent as UnknownRecord
       const commandContext = contextFor(ctx, state, agent, invocation.signal as AbortSignal, true)

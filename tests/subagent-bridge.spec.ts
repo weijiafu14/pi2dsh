@@ -102,6 +102,80 @@ describe('Pi createAgentSession bridged onto real DSH agents', () => {
     expect(disposed).toBe(1)
   })
 
+  // Pi's AgentState is public and `messages` is settable: packages seed a
+  // child transcript by assigning it (pi-btw builds its side thread that
+  // way), reading it back through `session.state.messages`. Both
+  // `session.state` and `session.agent.state` must be the SAME object, as in
+  // Pi's own AgentSession.
+  it('exposes Pi\'s settable AgentState transcript and carries a seeded transcript into the child', async () => {
+    const ctx = new Context()
+    await ctx.plugin(SessionStore)
+    const session = ctx.sessions.create(SessionId(`seed-${Date.now()}`), {
+      meta: { createdAt: Date.now(), cwd: process.cwd() },
+    })
+    const realGet = (ctx as unknown as { get(name: string): unknown }).get.bind(ctx)
+    const mockAgents = {
+      async create() {
+        return { agent: { id: session.id, session }, dispose: async () => {} }
+      },
+    }
+    ;(ctx as unknown as { get(name: string): unknown }).get = (name: string) =>
+      name === 'agents' ? mockAgents : realGet(name)
+
+    const deliveries: Array<{ mode: string, message: unknown }> = []
+    const { session: pi } = await createBridgedAgentSession(makeHost(ctx, deliveries), { tools: [{ name: 'read' }] })
+    const typed = pi as unknown as {
+      state: { messages: UnknownRecord[], isStreaming: boolean, tools: unknown[] }
+      agent: { state?: unknown }
+      prompt(text: string): Promise<void>
+      messages: UnknownRecord[]
+    }
+
+    // One shared AgentState object, exactly like Pi's AgentSession.
+    expect(typed.agent.state).toBe(typed.state)
+    expect(typed.state.messages).toEqual([])
+    expect(typed.state.tools).toEqual([{ name: 'read' }])
+
+    // The assignment Pi packages use.
+    typed.state.messages = [
+      { role: 'user', content: [{ type: 'text', text: 'earlier question' }] },
+      { role: 'assistant', content: [{ type: 'text', text: 'earlier answer' }] },
+    ]
+    expect(typed.state.messages).toHaveLength(2)
+    expect(pi.messages).toHaveLength(2)
+
+    const prompted = typed.prompt('follow-up question')
+    await new Promise(resolve => setTimeout(resolve, 10))
+    ;(ctx as unknown as { emit(name: string, ...args: unknown[]): void })
+      .emit('session/event', session, { type: 'turn/end', data: { turn: 1 } })
+    await prompted
+
+    // The seeded transcript really reached the child before its prompt.
+    expect(deliveries).toHaveLength(2)
+    expect(deliveries[0]?.mode).toBe('inject')
+    const seedText = JSON.stringify(deliveries[0]?.message)
+    expect(seedText).toContain('earlier question')
+    expect(seedText).toContain('earlier answer')
+    expect(seedText).toContain('prior-conversation')
+    expect(deliveries[1]?.mode).toBe('followup')
+    expect(JSON.stringify(deliveries[1]?.message)).toContain('follow-up question')
+
+    // A second assignment that repeats known messages does not re-deliver them.
+    typed.state.messages = [
+      { role: 'user', content: [{ type: 'text', text: 'earlier question' }] },
+      { role: 'assistant', content: [{ type: 'text', text: 'earlier answer' }] },
+    ]
+    const again = typed.prompt('second follow-up')
+    await new Promise(resolve => setTimeout(resolve, 10))
+    ;(ctx as unknown as { emit(name: string, ...args: unknown[]): void })
+      .emit('session/event', session, { type: 'turn/end', data: { turn: 2 } })
+    await again
+    expect(deliveries).toHaveLength(3)
+    expect(deliveries[2]?.mode).toBe('followup')
+
+    await pi.dispose()
+  })
+
   // The caller's behavior contract arrives on two public Pi surfaces; both
   // must land on the child's own systemPrompt service as a complete section
   // (Pi's systemPromptOverride replaces the default prompt).

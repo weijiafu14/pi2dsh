@@ -48,13 +48,36 @@ interface PiSubagentFacade {
     context: { toolCall: { name: string, id: string, arguments: unknown } },
     signal: AbortSignal | undefined,
   ) => Promise<BeforeToolCallDecision | undefined> | BeforeToolCallDecision | undefined
+  /** Pi's AgentState — the same object `session.state` returns. */
+  state?: UnknownRecord
 }
 
 let subagentSerial = 0
 
+/** Flatten a Pi message's content to text for transcript seeding. */
+function piMessageText(message: UnknownRecord): string {
+  const content = message.content
+  if (typeof content === 'string') return content
+  if (!Array.isArray(content)) return ''
+  return content
+    .map(block => {
+      const record = block as UnknownRecord | undefined
+      if (record?.type === 'text' && typeof record.text === 'string') return record.text
+      if (record?.type === 'toolCall' && typeof record.name === 'string') {
+        return `(tool ${record.name})`
+      }
+      return ''
+    })
+    .filter(text => text.length > 0)
+    .join('\n')
+}
+
 export class PiBridgedAgentSession {
   readonly agent: PiSubagentFacade = {}
   readonly messages: UnknownRecord[] = []
+  // Transcript assigned through Pi's public `state.messages` setter and not
+  // yet carried into the child's durable log (see #state).
+  #seed: UnknownRecord[] = []
 
   readonly #host: SubagentHost
   readonly #handle: { agent: UnknownRecord, dispose(): Promise<void> }
@@ -63,6 +86,10 @@ export class PiBridgedAgentSession {
   readonly #subscribers = new Set<PiSessionEventHandler>()
   readonly #disposers: Array<() => void> = []
   #activeToolNames: string[]
+  #state!: UnknownRecord
+  #model: unknown
+  #streaming = false
+  #pendingToolCalls = new Set<string>()
   #sessionName = ''
   #turns = 0
   #aborted = false
@@ -105,6 +132,45 @@ export class PiBridgedAgentSession {
       return next()
     })
     this.#disposers.push(offEvents, offPre)
+    // Pi's AgentSession exposes ONE AgentState object as both `session.state`
+    // and `session.agent.state` (agent-session.ts: `get state() { return
+    // this.agent.state }`). `messages` is a PUBLIC settable member of
+    // AgentState, and packages seed a child transcript by assigning it
+    // (pi-btw builds its side thread that way). DSH history is an append-only
+    // durable log, so an assignment cannot rewrite history: the assigned
+    // transcript is carried into the child with the next prompt instead
+    // (documented in compatibility.ts).
+    const session = this
+    this.#state = {
+      get systemPrompt(): string { return '' },
+      get model(): unknown { return session.#model },
+      get thinkingLevel(): string { return 'off' },
+      get tools(): unknown[] { return [...session.#tools] },
+      set tools(_next: unknown[]) { /* DSH owns the child's tool scope */ },
+      get messages(): UnknownRecord[] { return [...session.messages] },
+      set messages(next: UnknownRecord[]) { session.#assignTranscript(next) },
+      get isStreaming(): boolean { return session.#streaming },
+      get pendingToolCalls(): ReadonlySet<string> { return new Set(session.#pendingToolCalls) },
+    } as unknown as UnknownRecord
+    this.agent.state = this.#state
+  }
+
+  /** Pi's AgentState projection, shared by `session.state` and `session.agent.state`. */
+  get state(): UnknownRecord {
+    return this.#state
+  }
+
+  /**
+   * Pi's `state.messages = …` assignment. Messages already present in this
+   * child's projection stay as they are (they are durable); anything new is
+   * queued and delivered with the next prompt so the child model really sees
+   * the transcript the package seeded.
+   */
+  #assignTranscript(next: readonly UnknownRecord[]): void {
+    const identity = (message: UnknownRecord): string => JSON.stringify([message.role, message.content])
+    const known = new Set(this.messages.map(identity))
+    this.#seed = next.filter(message => !known.has(identity(message)))
+    for (const message of this.#seed) this.messages.push(message)
   }
 
   #project(event: UnknownRecord): void {
@@ -119,10 +185,23 @@ export class PiBridgedAgentSession {
       }
     }
     if (type === 'turn/start') {
+      this.#streaming = true
       emit({ type: 'turn_start', turnIndex: Number((event.data as UnknownRecord).turn ?? 1) - 1 })
+    }
+    if (type === 'request/header') {
+      // The route this child is actually calling, in Pi Model shape.
+      const config = ((event.data as UnknownRecord).config ?? {}) as UnknownRecord
+      if (typeof config.model === 'string') {
+        this.#model = { id: config.model, provider: String(config.provider ?? '') }
+      }
+    }
+    if (type === 'tools/result' || type === 'tool/result') {
+      const data = event.data as UnknownRecord
+      this.#pendingToolCalls.delete(String(data.callId ?? ''))
     }
     if (type === 'tool/call') {
       const data = event.data as UnknownRecord
+      this.#pendingToolCalls.add(String(data.callId ?? ''))
       let args: unknown = {}
       try {
         args = JSON.parse(String(data.arguments ?? '{}'))
@@ -148,6 +227,8 @@ export class PiBridgedAgentSession {
     }
     if (type === 'turn/end') {
       this.#turns += 1
+      this.#streaming = false
+      this.#pendingToolCalls.clear()
       emit({ type: 'turn_end', turnIndex: Number((event.data as UnknownRecord).turn ?? 1) - 1, message: { role: 'assistant', content: [] }, toolResults: [] })
     }
   }
@@ -158,6 +239,29 @@ export class PiBridgedAgentSession {
   }
 
   async prompt(text: string): Promise<void> {
+    // Carry a seeded transcript (Pi's `state.messages = …`) into the child's
+    // durable log before the prompt it is meant to precede.
+    if (this.#seed.length > 0) {
+      const seeded = this.#seed
+      this.#seed = []
+      const rendered = seeded
+        .map(message => {
+          const role = String(message.role ?? 'user')
+          const content = piMessageText(message)
+          return content.length === 0 ? undefined : `[${role}]: ${content}`
+        })
+        .filter((line): line is string => line !== undefined)
+      if (rendered.length > 0) {
+        const seedBlocks = await this.#host.piContentToDsh([{
+          type: 'text',
+          text: `<prior-conversation>\n${rendered.join('\n\n')}\n</prior-conversation>`,
+        }])
+        this.#host.deliver(this.#handle.agent, createUserMessage({
+          content: seedBlocks,
+          source: { kind: 'plugin', plugin: this.#host.messageSource },
+        }), 'inject')
+      }
+    }
     const blocks = await this.#host.piContentToDsh([{ type: 'text', text: String(text) }])
     const cordis = this.#host.cordis as unknown as {
       on(name: string, callback: (...args: any[]) => unknown): () => void

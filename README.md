@@ -190,7 +190,20 @@ Both layers are verified against a real ChatGPT Pro account: browser authorizati
 | Session control | REAL on DSH's own surfaces: `newSession` creates a DSH session with lineage, `fork` uses DSH's official prefix-fork (landing on completed-turn boundaries), `navigateTree` forks at the target with an optional vendored branch summary, `switchSession` targets live sessions. The DSH tree lives *between* sessions (fork lineage); which session the surface shows stays a host choice |
 | Compaction & summaries | `ctx.compact()` triggers DSH's official manual compaction; Pi's `generateSummary`/`generateBranchSummary`/`findCutPoint` are vendored with model calls on the DSH llm bridge |
 | shutdown / reload | `shutdown` is absorbed (Pi defines its behavior as host-provided; the user owns DSH process exit); `reload` really remounts extension entries — skills/prompts/themes reload with dsh itself |
-| Host-owned capabilities | `ModelRuntime` and `DefaultPackageManager` stay unavailable **by design** (the host owns model configuration and package install with its security gates). Importing them is flagged at startup; constructing them throws a structured error, and doing so during plugin startup marks the plugin unusable with a clear removal hint. Every capability gap is reported to you once per plugin — never a silent failure, never a fake success. **Known plugins unusable for this reason: none so far** (this list will name any we find) |
+| Host-owned capabilities | `ModelRuntime` and `DefaultPackageManager` stay unavailable **by design** (the host owns model configuration and package install with its security gates). Importing them is flagged at startup; constructing them throws a structured error, and doing so during plugin startup marks the plugin unusable with a clear removal hint. Every capability gap is reported to you once per plugin — never a silent failure, never a fake success |
+| Pi transcript assignment | Pi's settable `state.messages` works on a bridged child session: DSH history is append-only, so an assigned transcript is carried into the child with its next prompt rather than rewriting history |
+
+### Known limitation we own
+
+**Plugin-drawn UI in the web app.** Pi plugins can ship their own renderers
+(`registerMessageRenderer` / `registerEntryRenderer`) and mark a custom message
+`display: true` to render it as their own card. Today pi2dsh accepts those
+registrations without invoking them, and such a note appears as a native
+`Context injection · pi2dsh:<package>` row — content reaches the user and the
+model, but without the plugin's styling. DSH does expose the machinery for
+this (a `dsh.client` package half plus the `conversation.chat.node` slot
+registry); pi2dsh ships only the Node half so far. Building the client half is
+a tracked next step.
 | Terminal decoration | footer/statusline/shortcuts register but never fire — matching Pi's own non-TUI modes |
 
 Full machine-readable matrix: `pi2dsh matrix --json`. Capability-by-capability acceptance evidence: [docs/acceptance.md](docs/acceptance.md). The complete 114-item Pi-surface → DSH-semantics verdict (3 red / 21 yellow / ~90 green): [docs/pi-abi-coverage.md](docs/pi-abi-coverage.md).

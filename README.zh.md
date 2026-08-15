@@ -175,7 +175,18 @@ DSH 原生只有静态 HTTP headers；pi2dsh 把 Pi 生态的交互式 OAuth 层
 | 压缩与摘要 | `ctx.compact()` 触发 DSH 官方手动压缩；Pi 的 `generateSummary`/`generateBranchSummary`/`findCutPoint` 已 vendored，模型调用走 DSH llm 桥 |
 | shutdown / reload | `shutdown` 被吸收（Pi 官方就把该行为定义为宿主提供；DSH 进程退出权在用户）；`reload` 真实重挂扩展入口——skills/prompts/themes 随 dsh 重启生效 |
 | 宿主专属能力 | `ModelRuntime` 与 `DefaultPackageManager` **设计上**不可用（模型配置与装包连同安全门归宿主）。import 它们在启动时即被标记提示；构造它们抛结构化错误，若发生在插件启动期则整个插件被标记不可用并给出卸载指引。每个能力缺口按插件只向你报告一次——绝不静默失败、绝不伪装成功。**已知因此不可用的插件：目前没有**（一旦发现会列名在此） |
+| Pi 会话记录赋值 | Pi 公开可写的 `state.messages` 在桥接子会话上可用：DSH 日志只能追加，所以赋值的记录随该子会话的下一次 prompt 带入，而不是改写历史 |
 | 终端装饰 | footer/statusline/快捷键注册成功但永不触发——与 Pi 自己的非 TUI 模式一致 |
+
+### 我们自己欠的一块
+
+**插件自绘界面**。Pi 插件可以自带渲染器（`registerMessageRenderer` /
+`registerEntryRenderer`），也可以把自定义消息标 `display: true` 让它渲染成
+插件自己的卡片。目前 pi2dsh 接受这些注册但不调用，这类笔记在 Web 上显示为
+原生的 `Context injection · pi2dsh:<包名>` 行——内容用户和模型都能拿到，但
+没有插件自己的样式。DSH **是提供这套机制的**（包声明 `dsh.client` 导出
+`./client`，加上 `conversation.chat.node` 插槽注册），只是 pi2dsh 目前只做了
+Node 半边。客户端半边是明确的下一步。
 
 完整机器可读矩阵：`pi2dsh matrix --json`。十项能力逐项验收证据：[docs/acceptance.md](docs/acceptance.md)。114 项 Pi 暴露面 → DSH 语义完整判决（红 3 / 黄 21 / 绿约 90）：[docs/pi-abi-coverage.md](docs/pi-abi-coverage.md)。
 
