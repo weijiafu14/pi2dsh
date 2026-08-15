@@ -141,6 +141,16 @@ OAuth /login、MCP 配置转换、host 模式）的 example 待补——补前�
 - `dsh plugin` 内部调 PATH 上的 pnpm；profile 由 pnpm@11 初始化，本机
   pnpm 版本不一致会假失败（用 pnpm@11 shim）。
 - 用户配置入口：模型网关写 `$DSH_HOME/settings.yaml` 的 `llm-pi-ai:`
-  段；伴生路由写 profile `cordis.patch.yml` 的 `- id: pi2dsh` config；
-  默认模型选择是 DSH_HOME 级共享而伴生是 per-profile——CLI 端没配伴生
-  时会 NO_ADAPTER。
+  段。**贴图伴生路由默认全自动**（0.9.0 起）：目录里每个纯文本路由自动
+  得到 `<路由>-vision` 分身，订阅 llm/adapters-updated 热跟随（新路由补
+  注册、原路由消失 dispose），sweep 防重入合并（自己注册也触发该事件）；
+  `visionCompanions: false` 全关、显式 map 收窄是仅有的两个配置入口——
+  "让用户手动配置每个伴生"是被否掉的旧姿势，别退回去。自动化后默认模型
+  选择（DSH_HOME 级）指向伴生在所有 profile 都可解析，旧 NO_ADAPTER 坑
+  消失。
+- BSD grep 对打包后的超长单行 .mjs 会静默失败——判 dist 内容用
+  `node -e '...readFileSync(...).includes(...)'`，别信 grep 空结果。
+- CLI 入口（cli.ts）与 index.ts 同款纪律：analyzer/generator（拖
+  typescript optional peer）只许命令分支内动态 import——matrix/
+  mcp-config/host 必须在无 typescript 安装下可跑（verify 的打包冒烟
+  测这个）。
