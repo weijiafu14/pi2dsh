@@ -1,6 +1,6 @@
 {
   "name": "pi2dsh",
-  "version": "0.3.5",
+  "version": "0.4.0",
   "description": "Bridge the Pi and DeepSeek Harness ecosystems: a general Pi Host ABI that runs unmodified Pi extensions as native DSH plugins, plus per-package conversion and MCP config translation.",
   "type": "module",
   "bin": {
