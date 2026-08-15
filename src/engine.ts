@@ -24,6 +24,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { Context } from '@deepseek-ai/cordis'
 import { applyPiHost } from './host.js'
+import { ensureModelsJsonRoutes } from './runtime.js'
 import { resolvePiPackage } from './source.js'
 
 export interface EngineConfig {
@@ -134,6 +135,10 @@ export async function apply(ctx: Context, config: EngineConfig = {}): Promise<vo
         warn,
       })
   if (packages.length === 0) {
+    // The single-directory capability (models.json providers + companion
+    // routes in the DSH picker) is the bridge's own — it works with zero
+    // Pi packages installed.
+    await ensureModelsJsonRoutes(ctx)
     info('[pi2dsh engine] no Pi packages installed in this profile yet — add one with: dsh plugin --profile <p> add <pi-package>')
     return
   }

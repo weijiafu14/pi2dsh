@@ -1351,7 +1351,26 @@ function sharedHostStateOf(ctx: Context): SharedHostState {
 // the single-directory contract: models.json is a configuration ENTRY, the
 // DSH llm directory is the one runtime model directory, and the Pi registry
 // is its projection. Load errors warn per entry and surface via getError().
-async function reloadModelsJson(ctx: Context, state: RuntimeState, force = false): Promise<void> {
+type ModelsJsonStateSlice = Pick<RuntimeState, 'shared' | 'modelsJson' | 'modelsJsonProviders' | 'companionRoutes' | 'providerRouteDisposers'>
+
+/**
+ * Load models.json routes for a host with NO mounted Pi package yet — the
+ * single-directory capability (custom providers + image-admission
+ * companions in the DSH picker) is the bridge's own, not any plugin's.
+ * A later package mount adopts the same shared snapshot.
+ */
+export async function ensureModelsJsonRoutes(ctx: Context): Promise<void> {
+  const shared = sharedHostStateOf(ctx)
+  const slice: ModelsJsonStateSlice = {
+    shared,
+    modelsJsonProviders: shared.modelsJsonProviders,
+    companionRoutes: shared.companionRoutes,
+    providerRouteDisposers: shared.providerRouteDisposers,
+  }
+  await reloadModelsJson(ctx, slice)
+}
+
+async function reloadModelsJson(ctx: Context, state: ModelsJsonStateSlice, force = false): Promise<void> {
   // models.json is a HOST-level load: the first package in a host performs
   // it, later packages adopt the shared snapshot, and only an explicit
   // registry refresh() re-reads the file and re-registers the routes.
@@ -1414,7 +1433,7 @@ async function reloadModelsJson(ctx: Context, state: RuntimeState, force = false
 // route that admits images and forwards text-only to the original. The
 // companion is an ordinary directory entry (single-directory contract);
 // Pi's ctx.model reports the original route for it (companionRoutes).
-function registerCompanionRoutes(ctx: Context, state: RuntimeState): void {
+function registerCompanionRoutes(ctx: Context, state: ModelsJsonStateSlice): void {
   const companions = state.modelsJson?.companions
   if (companions === undefined || companions.size === 0) return
   const llm = llmOf(ctx)

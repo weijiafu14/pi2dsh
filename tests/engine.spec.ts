@@ -138,15 +138,37 @@ describe('engine mounting on a real DSH composition', () => {
     expect(result.content[0]?.text).toBe('engine-mounted')
   })
 
-  it('reports an empty profile instead of failing', async () => {
+  it('serves models.json routes with ZERO Pi packages installed (the bridge\'s own capability)', async () => {
     const root = await makeProfile({})
-    const ctx = new Context()
-    await ctx.plugin(SessionStore)
-    await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
-    await ctx.plugin(ToolRuntime)
-    await ctx.plugin(CommandRuntime)
-    await ctx.plugin(SkillRegistry)
-    ;(ctx as unknown as { baseUrl: string }).baseUrl = `file://${root}/cordis.yml`
-    await expect(apply(ctx, {})).resolves.toBeUndefined()
+    const agentDir = await mkdtemp(join(tmpdir(), 'pi2dsh-engine-agentdir-'))
+    cleanup.push(agentDir)
+    const savedAgentDir = process.env.PI_CODING_AGENT_DIR
+    process.env.PI_CODING_AGENT_DIR = agentDir
+    try {
+      await writeFile(join(agentDir, 'models.json'), JSON.stringify({
+        providers: {
+          'engine-only': {
+            baseUrl: 'http://gateway.example/v1',
+            api: 'openai-completions',
+            models: [{ id: 'eo-mini' }],
+          },
+        },
+      }))
+      const ctx = new Context()
+      await ctx.plugin(SessionStore)
+      await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
+      await ctx.plugin(ToolRuntime)
+      await ctx.plugin(CommandRuntime)
+      await ctx.plugin(SkillRegistry)
+      const { default: LlmRuntime } = await import('@deepseek-ai/dsh-llm')
+      await ctx.plugin(LlmRuntime as never, {} as never)
+      ;(ctx as unknown as { baseUrl: string }).baseUrl = `file://${root}/cordis.yml`
+      await apply(ctx, {})
+      const llm = (ctx as unknown as { llm: { listProviders(): Array<{ id: string }> } }).llm
+      expect(llm.listProviders().map(provider => provider.id)).toContain('engine-only')
+    } finally {
+      if (savedAgentDir === undefined) delete process.env.PI_CODING_AGENT_DIR
+      else process.env.PI_CODING_AGENT_DIR = savedAgentDir
+    }
   })
 })

@@ -37,13 +37,15 @@ declares modalities; `// comments` and trailing commas are tolerated.
 JSON-schema violations and per-provider composition errors surface through
 `modelRegistry.getError()` and never block the mount.
 
-## 2. Install any pi2dsh bundle and start DSH
+## 2. Install the pi2dsh engine and start DSH
 
-The registry ships inside every generated bundle — install one (see the
-[`vision-bridge`](../vision-bridge/) example) and start `dsh web` or the
-CLI with your key exported:
+The registry ships inside the bridge — installing the engine is enough
+(any Pi plugin you add rides the same bridge; see the
+[`vision-bridge`](../vision-bridge/) example). Start `dsh web` or the CLI
+with your key exported:
 
 ```sh
+dsh plugin --profile <your-profile> add pi2dsh
 export OPENROUTER_API_KEY=sk-...
 dsh web
 ```

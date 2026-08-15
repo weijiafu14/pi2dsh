@@ -11,14 +11,18 @@ plugin's `/vision` command sits in the web command palette).
 Everything below is copy-paste runnable. Verified end to end on a real DSH
 loop — CLI and web — with the test images in [`test-images/`](test-images/).
 
-## 1. Convert and install the plugin
+## 1. Install the engine, then the plugin
 
 ```sh
-npx pi2dsh convert @kassing/pi-vision --out vision-bundle
-dsh plugin --profile <your-profile> add file:$PWD/vision-bundle
+dsh plugin --profile <your-profile> add pi2dsh
+dsh plugin --profile <your-profile> add @kassing/pi-vision
 ```
 
-If the add stops with `ERR_PNPM_IGNORED_BUILDS` (pnpm blocks dependency
+That's the whole install: the pi2dsh engine mounts every Pi package you
+add to the profile — no conversion step, no generated bundles. (The
+`npx pi2dsh convert` flow still exists for unpublished/local packages.)
+
+If an add stops with `ERR_PNPM_IGNORED_BUILDS` (pnpm blocks dependency
 build scripts by default): run `pnpm approve-builds` inside
 `$DSH_HOME/profiles/<your-profile>` — or set the listed packages to `true`
 under `allowBuilds` in that profile's `pnpm-workspace.yaml` — then re-run
