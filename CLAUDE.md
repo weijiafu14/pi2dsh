@@ -48,6 +48,13 @@ pi2dsh：通用 Pi Host ABI 兼容层，让 Pi 生态插件原样跑在 DeepSeek
   用户写 Pi 格式文件，最终全链删除）。
 - 我们兼容的对象是**插件代码**，不是把 Pi 生态的用户习惯搬给 DSH 用户。
   "Pi 教程照搬可用"不是目标，是泄漏。
+- **Pi 扩展工厂没有参数位**（`ExtensionFactory = (pi) => void`，
+  ../pi types.ts 实锤）：Pi 官方不存在"装插件给插件传参数"的通道，插件
+  配置一律由插件自己定义来源（环境变量是事实标准，如 VISION_BRIDGE_*）。
+  applyPiPackage 的 options.config 只喂中间层自己（visionCompanions），
+  永远进不了插件视野。**别为这个不存在的通道发明 per-package 透传**；
+  若上游 Pi 某天给工厂加了 config 参数，再按 DSH 惯例（管理者插件
+  config 按名嵌套，llm-pi-ai providers 同款）一步接上。
 
 ## 三、中间层开发标准
 
