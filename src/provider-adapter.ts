@@ -1,15 +1,15 @@
-// Pi provider → DSH llm route. Every Pi provider — package-registered or
-// models.json-defined — becomes a real DSH adapter through the public
-// `llm.registerAdapter` seam, so the DSH llm directory is the ONE model
-// directory both worlds read: DSH routes to these models natively (loop,
-// child agents, hand-built calls), and the Pi registry is a projection of
-// that same directory. A provider carrying its own transport (pi-ai
-// createProvider's stream) streams through it; a config-only provider gets
-// the real pi-ai wire client for each model's declared `api`. Credentials
-// resolve per request through Pi's own chain; the key rides the provider's
-// stream options and never enters logs.
+// Pi provider → DSH llm route. A package-registered Pi provider carrying
+// its own transport (pi-ai createProvider's stream) becomes a real DSH
+// adapter through the public `llm.registerAdapter` seam, so the DSH llm
+// directory is the ONE model directory both worlds read: DSH routes to
+// these models natively (loop, child agents, hand-built calls), and the Pi
+// registry is a projection of that same directory. Credentials resolve per
+// request through Pi's own chain; the key rides the provider's stream
+// options and never enters logs. A provider that only declares a catalog
+// (no stream of its own) is not given a bridge transport: model transports
+// belong to the host — configure the gateway in the host's llm settings
+// (the official llm-pi-ai adapter) instead.
 
-import { anthropicMessagesApi, openAICompletionsApi, openAIResponsesApi } from './compat/pi-ai.js'
 import { dshRequestToPiContext, piEventsToDshChunks, type DshLlmLike } from './model-bridge.js'
 
 type UnknownRecord = Record<string, unknown>
@@ -19,56 +19,6 @@ interface PiTransportProvider {
   getModels?(): UnknownRecord[]
   name?: unknown
   [key: string]: unknown
-}
-
-// Pi's wire-protocol clients by models.json `api` value — the same registry
-// Pi's own composeModelProvider streams through. Each factory is the compat
-// lazy shell: it forwards to the REAL pi-ai when the host installs it and
-// fails explicitly otherwise.
-const PI_API_FACTORIES: Record<string, () => unknown> = {
-  'openai-completions': openAICompletionsApi,
-  'openai-responses': openAIResponsesApi,
-  'anthropic-messages': anthropicMessagesApi,
-}
-
-interface PiApiClient {
-  stream(model: UnknownRecord, context: UnknownRecord, options: UnknownRecord): AsyncIterable<UnknownRecord>
-  streamSimple?(model: UnknownRecord, context: UnknownRecord, options: UnknownRecord): AsyncIterable<UnknownRecord>
-}
-
-function piApiClientFor(api: unknown): PiApiClient | undefined {
-  const factory = typeof api === 'string' ? PI_API_FACTORIES[api] : undefined
-  return factory === undefined ? undefined : factory() as PiApiClient
-}
-
-/**
- * Give a config-only Pi provider (models.json entries, packages that declare
- * models without a stream) Pi's own transport: each call dispatches on the
- * model's declared `api` to the real pi-ai client, exactly as Pi's
- * provider composer does. Undispatchable providers (no models, or an api
- * with no client) answer undefined and stay off the directory.
- */
-export function withSynthesizedTransport(provider: UnknownRecord): (PiTransportProvider & UnknownRecord) | undefined {
-  const models = typeof (provider as { getModels?: unknown }).getModels === 'function'
-    ? (provider as { getModels(): UnknownRecord[] }).getModels()
-    : Array.isArray(provider.models) ? provider.models as UnknownRecord[] : []
-  if (models.length === 0) return undefined
-  if (!models.some(model => piApiClientFor(model.api) !== undefined)) return undefined
-  const dispatch = (simple: boolean) =>
-    (model: UnknownRecord, context: UnknownRecord, options: UnknownRecord): AsyncIterable<UnknownRecord> => {
-      const client = piApiClientFor(model.api)
-      if (client === undefined) {
-        throw new Error(`pi2dsh: no wire-protocol client for api ${JSON.stringify(String(model.api))} (model ${String(model.provider)}/${String(model.id)})`)
-      }
-      const call = simple ? client.streamSimple ?? client.stream : client.stream
-      return call.call(client, model, context, options)
-    }
-  return {
-    ...provider,
-    getModels: () => models,
-    stream: dispatch(false),
-    streamSimple: dispatch(true),
-  }
 }
 
 export interface ProviderAdapterHost {
@@ -211,7 +161,7 @@ async function textOnlyMessages(
 export interface CompanionRouteOptions {
   /** The existing DSH route this companion forwards to. */
   originalId: string
-  /** Model ids the user's models.json modelOverrides declared image input for. */
+  /** Model ids the host configuration declared image admission for. */
   imageModels: Set<string>
   llm: DshLlmLike
   /**
@@ -223,7 +173,7 @@ export interface CompanionRouteOptions {
 
 /**
  * A DSH route that admits images on behalf of a text-only route — the
- * single-directory answer to models.json modelOverrides declaring
+ * single-directory answer to host configuration declaring
  * `input: ["text", "image"]` for models of a route this bridge does not own.
  * The companion honestly declares image input (so the host's admission and
  * model-switch checks pass), replaces image blocks with an explicit notice,
@@ -286,10 +236,15 @@ export interface RegisterPiProviderRouteOptions {
 export function registerPiProviderRoute(options: RegisterPiProviderRouteOptions): (() => void) | undefined {
   const { llm, providerId, provider, host } = options
   if (llm === undefined) return undefined
-  const transport = providerCarriesTransport(provider) ? provider : withSynthesizedTransport(provider)
-  if (transport === undefined) return undefined
+  if (!providerCarriesTransport(provider)) {
+    // Model transports belong to the host. A catalog-only registration gets
+    // no bridge-synthesized wire client; the same gateway is host
+    // configuration (the official llm-pi-ai adapter's settings).
+    host.warn(`[pi2dsh] Pi provider ${JSON.stringify(providerId)} declares a model catalog but no transport; it was not added as a DSH llm route — configure the gateway in the host's llm settings instead`)
+    return undefined
+  }
   try {
-    return llm.registerAdapter([providerId], piProviderDshAdapter(providerId, transport, host))
+    return llm.registerAdapter([providerId], piProviderDshAdapter(providerId, provider, host))
   } catch (error) {
     host.warn(`[pi2dsh] Pi provider ${JSON.stringify(providerId)} was not added as a DSH llm route (${error instanceof Error ? error.message : String(error)}); the existing route keeps the name`)
     return undefined

@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import { CallId } from '@deepseek-ai/dsh-llm'
+import { CallId, LlmAdapter, type StreamChunk } from '@deepseek-ai/dsh-llm'
 import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
@@ -138,37 +138,40 @@ describe('engine mounting on a real DSH composition', () => {
     expect(result.content[0]?.text).toBe('engine-mounted')
   })
 
-  it('serves models.json routes with ZERO Pi packages installed (the bridge\'s own capability)', async () => {
+  it('registers configured vision-companion routes with ZERO Pi packages installed (DSH-shaped config)', async () => {
     const root = await makeProfile({})
-    const agentDir = await mkdtemp(join(tmpdir(), 'pi2dsh-engine-agentdir-'))
-    cleanup.push(agentDir)
-    const savedAgentDir = process.env.PI_CODING_AGENT_DIR
-    process.env.PI_CODING_AGENT_DIR = agentDir
-    try {
-      await writeFile(join(agentDir, 'models.json'), JSON.stringify({
-        providers: {
-          'engine-only': {
-            baseUrl: 'http://gateway.example/v1',
-            api: 'openai-completions',
-            models: [{ id: 'eo-mini' }],
-          },
-        },
-      }))
-      const ctx = new Context()
-      await ctx.plugin(SessionStore)
-      await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
-      await ctx.plugin(ToolRuntime)
-      await ctx.plugin(CommandRuntime)
-      await ctx.plugin(SkillRegistry)
-      const { default: LlmRuntime } = await import('@deepseek-ai/dsh-llm')
-      await ctx.plugin(LlmRuntime as never, {} as never)
-      ;(ctx as unknown as { baseUrl: string }).baseUrl = `file://${root}/cordis.yml`
-      await apply(ctx, {})
-      const llm = (ctx as unknown as { llm: { listProviders(): Array<{ id: string }> } }).llm
-      expect(llm.listProviders().map(provider => provider.id)).toContain('engine-only')
-    } finally {
-      if (savedAgentDir === undefined) delete process.env.PI_CODING_AGENT_DIR
-      else process.env.PI_CODING_AGENT_DIR = savedAgentDir
+    const ctx = new Context()
+    await ctx.plugin(SessionStore)
+    await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
+    await ctx.plugin(ToolRuntime)
+    await ctx.plugin(CommandRuntime)
+    await ctx.plugin(SkillRegistry)
+    const { default: LlmRuntime, LlmAdapter: Adapter } = await import('@deepseek-ai/dsh-llm')
+    await ctx.plugin(LlmRuntime as never, {} as never)
+    class TextOnly extends (Adapter as typeof LlmAdapter) {
+      override providerInfo(id: string) { return { id, name: `Gateway ${id}` } }
+      override async listModels(id: string) {
+        return [{ provider: id, id: 'gw-mini', name: 'GW Mini', inputModalities: ['text'] as const }]
+      }
+      override async resolveModel(id: string, model: string) {
+        return { provider: id, id: model, name: model, inputModalities: ['text'] } as never
+      }
+      override async *stream(): AsyncIterable<StreamChunk> {
+        yield { type: 'finish', reason: { kind: 'stop' } }
+      }
     }
+    const llm = (ctx as unknown as {
+      llm: {
+        registerAdapter(providers: string[], adapter: unknown): unknown
+        listProviders(): Array<{ id: string }>
+        listModels(provider: string): Promise<Array<Record<string, unknown>>>
+      }
+    }).llm
+    llm.registerAdapter(['gateway'], new TextOnly())
+    ;(ctx as unknown as { baseUrl: string }).baseUrl = `file://${root}/cordis.yml`
+    await apply(ctx, { visionCompanions: { gateway: ['gw-mini'] } })
+    expect(llm.listProviders().map(provider => provider.id)).toContain('gateway-vision')
+    const models = await llm.listModels('gateway-vision')
+    expect(models[0]?.inputModalities).toEqual(['text', 'image'])
   })
 })

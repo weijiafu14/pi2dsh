@@ -21,12 +21,25 @@ pi2dsh：通用 Pi Host ABI 兼容层，让 Pi 生态插件原样跑在 DeepSeek
          看到的只是普通插件与普通 llm adapter。
 ```
 
+**用户面前只有 DSH，Pi 只活在插件视野里（铁律，违反=返工）。**
+- 用户接触面——要动手写的配置文件、要看的文档教程、要敲的命令、报错里
+  的指引——**一律 DSH 形状、DSH 官方机制**。禁止把任何 Pi 的配置文件、
+  文件格式、使用习惯引入用户面前（真实事故：models.json 作为"Pi 标准配
+  置入口"被搬进 DSH 用户世界，教 DSH 用户写 Pi 格式文件——错，砍）。
+- Pi 形状只允许存在于两处：插件视野（shim/投影/事件）与中间层内部实现
+  （vendored 源码、内部存储）。判据：用户需要亲手读写的东西里出现 Pi
+  词汇/格式 = 泄漏。
+- DSH 已有官方能力（llm-pi-ai 模型接入、dsh-mcp-client 等）一律"配置
+  翻译 + 官方实现"，禁止自建平行运行时/传输/第二套配置入口（真实事故：
+  给 models.json 路由自建 wire client，而官方 llm-pi-ai 本就把任意
+  OpenAI 兼容网关做成了纯配置）。动手前先查 DSH 官方有没有。
+
 **单一目录、单一调用路径。**
-- 配置入口可以多个（models.json、DSH 原生配置），运行时模型目录只有一个：
-  DSH llm 目录。models.json 装载即注册成普通 DSH 路由；Pi registry 是该目录
-  的精确投影（出口 restore 注册源的完整 Pi 形状——账本是中间层的本职）。
-- 配置的存在性由路由归属裁决：路由名没拿到（冲突/无 llm）＝这份配置在投影里
-  不存在，绝不让别人路由的模型穿我们配置的 baseUrl。
+- 模型配置只有 DSH 一处（settings 的 llm-pi-ai 段、cordis 插件 config），
+  运行时模型目录只有一个：DSH llm 目录。Pi registry 是该目录的精确投影
+  （包注册路由出口 restore 注册源的完整 Pi 形状——账本是中间层的本职）。
+- 包注册 provider 的投影存在性由路由归属裁决：路由名没拿到（冲突/无 llm）
+  ＝不在投影里，绝不让别人路由的模型穿这份注册的 baseUrl。
 - 插件的一切标准模型调用（registry.complete、getProvider().stream、pi-ai 顶层
   complete/stream、createAgentSession）必经中间层转给 DSH llm 路由。wire
   client 只活在 route adapter 内部，插件面永远拿不到直连传输。
@@ -61,10 +74,10 @@ ERR_PNPM_IGNORED_BUILDS）。example 里的每条命令必须实际跑过；对�
 出现内部端点/凭证（示例用 OpenRouter 等公开服务占位）。README（双语）的
 Examples 章节同步更新。
 
-已有：examples/vision-bridge（视觉委托）、examples/custom-models
-（models.json 单一目录）。存量已验证能力（guardian 审批、跨会话记忆、OAuth
-/login、MCP 配置转换、host 模式）的 example 待补——补前必须按上述判据重新
-端到端验证，禁止凭记忆写。
+已有：examples/vision-bridge（视觉委托）、examples/custom-gateways
+（DSH settings 网关配置）。存量已验证能力（guardian 审批、跨会话记忆、
+OAuth /login、MCP 配置转换、host 模式）的 example 待补——补前必须按上述
+判据重新端到端验证，禁止凭记忆写。
 
 ## 工作流程红线
 
@@ -75,7 +88,7 @@ Examples 章节同步更新。
 - E2E 装置：DSH CLI 必须在 deepseek-harness 目录跑；发现"跑很久"先查结果
   文件而不是傻等。**引擎形态是默认用户姿势**（`dsh plugin add pi2dsh` +
   直接 add Pi 包，engine.ts 从 profile 依赖清单发现并经一份桥挂载；host
-  级资源 models.json/登录/provider 目录/catalog 单份共享，见 runtime.ts
+  级资源 登录/provider 目录/catalog/伴生映射 单份共享，见 runtime.ts
   SharedHostState）。E2E 改 src 后：pnpm build，且 profile 里 file: 装的
   pi2dsh 是拷贝（pnpm file: 有缓存，update 不重拷）——必须手动
   `rm -rf <profile>/node_modules/pi2dsh/dist && cp -R dist ...` 同步。

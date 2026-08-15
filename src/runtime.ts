@@ -27,16 +27,8 @@ import {
   providerSupportsOAuth,
   resolvePiProviderAuth,
 } from './oauth-bridge.js'
-import { __setPiAiLlmBridge, builtinProviders, realBuiltinProvider } from './compat/pi-ai.js'
+import { __setPiAiLlmBridge, builtinProviders } from './compat/pi-ai.js'
 import { ModelCatalog, llmOf, streamViaDshLlm } from './model-bridge.js'
-import {
-  applyModelsJsonConfiguredAuth,
-  loadModelsJsonSnapshot,
-  modelsJsonAuthConfigured,
-  modelsJsonPiProvider,
-  resolveModelsJsonAuth,
-  type ModelsJsonSnapshot,
-} from './models-json.js'
 import { imageAdmissionCompanionAdapter, registerPiProviderRoute } from './provider-adapter.js'
 
 type UnknownRecord = Record<string, unknown>
@@ -125,15 +117,9 @@ interface RuntimeState {
   lastLoggedModels: WeakMap<object, string>
   // Pi Model catalog projected from the DSH llm service (empty without one).
   modelCatalog?: ModelCatalog
-  // Pi's standard user-defined model registry: ~/.pi/agent/models.json under
-  // the redirected agent dir, loaded before extensions and on refresh().
-  modelsJson?: ModelsJsonSnapshot
   // HOST-level slices (same instances across every package in this host —
-  // see SharedHostState): the models.json ledger, companion mapping, live
-  // route disposers, and the provider directory.
-  // models.json providers as Pi Provider objects (models + per-api
-  // transport), registered as DSH llm routes; getProvider answers these.
-  modelsJsonProviders: Map<string, UnknownRecord>
+  // see SharedHostState): companion mapping, live route disposers, and the
+  // provider directory.
   // Image-admission companion routes (companion id → original route id).
   // Pi's ctx.model reports the ORIGINAL route for a companion selection: the
   // model actually generating is the original text-only one, and extensions
@@ -519,14 +505,14 @@ function contextFor(
     },
   }
   const session = agentSession(agent)
-  // Pi's ModelRegistry surface over the ONE model directory: every Pi
-  // provider — package-registered or models.json-defined — is a DSH llm
-  // route, and this registry is a faithful Pi projection of that directory
-  // (route entries carry their full Pi Model fields through it). Neither
+  // Pi's ModelRegistry surface over the ONE model directory — the DSH llm
+  // directory — projected faithfully into Pi vocabulary (package-registered
+  // route entries carry their full Pi Model fields through it). Neither
   // side sees the other: packages read exact Pi Models, DSH routes to
-  // ordinary adapters. The provider-auth half resolves Pi's full credential
-  // chain (vendored double-checked-lock refresh) against the Pi-format
-  // auth.json and the models.json configured keys.
+  // ordinary adapters. The provider-auth half resolves package-registered
+  // providers through Pi's full credential chain (vendored
+  // double-checked-lock refresh) and DSH routes through the host's public
+  // configurable-provider and credentials seams.
   const providerConfig = (name: string): UnknownRecord | undefined => state.providers.get(name)
   const catalog = state.modelCatalog
   // Directory membership comes from the DSH llm directory alone. The DSH
@@ -537,12 +523,10 @@ function contextFor(
   // between. DSH-owned routes project as-is.
   const piNativeEntry = (provider: string, id: string): UnknownRecord | undefined => {
     // Restore only entries OUR route registration put in the directory
-    // (models.json providers survive in modelsJsonProviders exactly when
-    // their route won the name; package providers restore only while they
-    // own their route). A foreign adapter's models never wear a Pi-native
-    // configuration's fields.
-    const source = (state.modelsJsonProviders.get(provider)
-      ?? (state.providerRouteDisposers.has(provider) ? state.providers.get(provider) : undefined)) as
+    // (package providers restore only while they own their route). A
+    // foreign adapter's models never wear a Pi-native configuration's
+    // fields.
+    const source = (state.providerRouteDisposers.has(provider) ? state.providers.get(provider) : undefined) as
       | { getModels?(): unknown; models?: unknown }
       | undefined
     if (source === undefined) return undefined
@@ -584,71 +568,35 @@ function contextFor(
       const entry = catalog?.find(provider, modelId)
       return entry === undefined ? undefined : restorePiShape(entry)
     },
-    getError: () => {
-      const problems = state.modelsJson?.errors ?? []
-      return problems.length > 0 ? problems.join('\n') : undefined
-    },
+    getError: () => undefined,
     hasConfiguredAuth: (model: unknown) => {
       // Configuration check, not key liveness (Pi's is also a config check):
-      // the route resolves iff its provider is in the live llm directory,
-      // registered by a package, or configured in models.json. A models.json
-      // apiKey answers with Pi's configured-status semantics (a templated key
-      // counts only while its env vars are present).
+      // the route resolves iff its provider is in the live llm directory or
+      // registered by a package.
       const provider = String((model as UnknownRecord | undefined)?.provider ?? '')
       if (provider.length === 0) return false
-      const jsonProvider = state.modelsJson?.providers.get(provider)
-      if (jsonProvider !== undefined) {
-        const configured = modelsJsonAuthConfigured(jsonProvider)
-        if (configured !== undefined) return configured
-      }
       return state.providers.has(provider)
         || (catalog?.all() ?? []).some(entry => entry.provider === provider)
-        || jsonProvider !== undefined
     },
     // Pi's per-model credential read, two families with one resolver:
-    // package-registered providers use their own declared chain; DSH built-in
-    // routes resolve through the REAL pi-ai's builtinProviders() definition —
-    // the same source DSH's own llm adapter builds its directory from — so
-    // env-held keys (e.g. DEEPSEEK_API_KEY) resolve with Pi's exact
-    // semantics. Neither family fabricates a key: no resolution → not ok.
+    // package-registered providers use their own declared chain; DSH routes
+    // resolve through the host's public configurable-provider directory and
+    // credentials service. Neither family fabricates a key: no resolution →
+    // not ok.
     getApiKeyAndHeaders: async (model: unknown) => {
       const provider = String((model as UnknownRecord | undefined)?.provider ?? '')
-      // Pi's configured-key precedence (composeApiKeyAuth.resolve): a
-      // package-registered provider keeps its own declared chain, a
-      // models.json apiKey answers next, and builtin env resolution is the
-      // inherited fallback. models.json headers/authHeader layer over the
-      // other families' answers exactly like Pi's withConfiguredAuth.
-      const jsonProvider = state.modelsJson?.providers.get(provider)
       const config = providerConfig(provider)
-        ?? (jsonProvider?.apiKey !== undefined ? undefined : await realBuiltinProvider(provider))
       if (config !== undefined) {
         const resolved = await resolvePiProviderAuth({
           providerId: provider, providerConfig: config, store: oauthStoreOf(state),
         })
         const auth = resolved?.auth as UnknownRecord | undefined
         if (auth?.apiKey === undefined) return { ok: false }
-        const configured = jsonProvider === undefined
-          ? undefined
-          : applyModelsJsonConfiguredAuth(provider, jsonProvider, {
-              apiKey: auth.apiKey as string,
-              ...(auth.headers === undefined ? {} : { headers: auth.headers as Record<string, string> }),
-            })
-        if (configured !== undefined && !configured.ok) return { ok: false, error: configured.error }
-        const headers = configured?.ok ? configured.headers : auth.headers as Record<string, string> | undefined
         return {
           ok: true,
           apiKey: auth.apiKey,
-          ...(headers === undefined ? {} : { headers }),
+          ...(auth.headers === undefined ? {} : { headers: auth.headers as Record<string, string> }),
           ...(auth.baseUrl === undefined && config.baseUrl === undefined ? {} : { baseUrl: auth.baseUrl ?? config.baseUrl }),
-        }
-      }
-      if (jsonProvider !== undefined) {
-        const resolved = resolveModelsJsonAuth(provider, jsonProvider)
-        if (!resolved.ok) return { ok: false, error: resolved.error }
-        return {
-          ok: true,
-          ...(resolved.apiKey === undefined ? {} : { apiKey: resolved.apiKey }),
-          ...(resolved.headers === undefined ? {} : { headers: resolved.headers }),
         }
       }
       // A DSH adapter route: its credential reference lives in the public
@@ -681,14 +629,12 @@ function contextFor(
     // stream surface runs through the DSH llm route — packages never hold a
     // wire transport. A package-registered provider keeps its fields (Pi's
     // read-back contract) with its stream rerouted while its route is live;
-    // a models.json provider exists exactly while its route does; a
-    // DSH-owned route answers a synthesized Pi Provider over its directory
-    // models.
+    // a DSH-owned route answers a synthesized Pi Provider over its
+    // directory models.
     getProvider: (provider: string) => {
-      const base = providerConfig(provider) ?? state.modelsJsonProviders.get(provider)
+      const base = providerConfig(provider)
       if (base !== undefined) {
         const routed = state.providerRouteDisposers.has(provider)
-          || state.providerRouteDisposers.has(`${MODELS_JSON_ROUTE_PREFIX}${provider}`)
         // A package provider that never became a route keeps its own object:
         // that transport is the package's own asset, not a bridge surface.
         return routed ? dshRoutedPiProvider(base, provider) : base
@@ -713,7 +659,7 @@ function contextFor(
     getRegisteredProviderConfig: (provider: string) => providerConfig(provider),
     getRegisteredProviderIds: () => [...state.providers.keys()],
     getProviderDisplayName: (provider: string) => {
-      const config = providerConfig(provider) ?? state.modelsJsonProviders.get(provider)
+      const config = providerConfig(provider)
       return typeof config?.name === 'string' ? config.name : provider
     },
     getProviderAuth: async (provider: string) => {
@@ -742,11 +688,9 @@ function contextFor(
       return provider.length > 0 && providerSupportsOAuth(providerConfig(provider))
     },
     refresh: async () => {
-      // Pi's refresh() reloads models.json: routes re-register from the new
-      // snapshot, then the directory projection re-reads.
-      await reloadModelsJson(ctx, state, true)
+      // Pi's refresh() re-reads the model directory projection.
       await catalog?.refresh()
-      return { models: allModels(), errors: [...(state.modelsJson?.errors ?? [])] }
+      return { models: allModels(), errors: [] }
     },
   }
   const base: UnknownRecord = {
@@ -1308,22 +1252,20 @@ function oauthStoreOf(state: RuntimeState): FileCredentialStore {
   return state.shared.oauthStore
 }
 
-const MODELS_JSON_ROUTE_PREFIX = 'models.json/'
+const COMPANION_ROUTE_PREFIX = 'pi2dsh-companion/'
 
 // HOST-level state, shared by every Pi package mounted into one host
 // composition (the engine and host bundles mount several packages through
 // one module graph and one Context). Pi's own semantics make these
-// singular per host: ONE models.json load, ONE provider directory, ONE
-// /login command, ONE credential store, ONE catalog projection. Package
-// state (tools, commands, events, runner) stays per-package. Separate
-// converted bundles each carry their own module graph, so this map is
-// naturally per-bundle there — existing behavior unchanged.
+// singular per host: ONE provider directory, ONE /login command, ONE
+// credential store, ONE catalog projection. Package state (tools,
+// commands, events, runner) stays per-package. Separate converted bundles
+// each carry their own module graph, so this map is naturally per-bundle
+// there — existing behavior unchanged.
 interface SharedHostState {
-  modelsJsonProviders: Map<string, UnknownRecord>
   companionRoutes: Map<string, string>
   providerRouteDisposers: Map<string, () => void>
   providers: Map<string, UnknownRecord>
-  modelsJson?: ModelsJsonSnapshot
   modelCatalog?: ModelCatalog
   catalogSubscribed?: boolean
   loginRegistered?: boolean
@@ -1337,7 +1279,6 @@ function sharedHostStateOf(ctx: Context): SharedHostState {
   let shared = SHARED_HOST_STATE.get(key)
   if (shared === undefined) {
     shared = {
-      modelsJsonProviders: new Map(),
       companionRoutes: new Map(),
       providerRouteDisposers: new Map(),
       providers: new Map(),
@@ -1347,119 +1288,52 @@ function sharedHostStateOf(ctx: Context): SharedHostState {
   return shared
 }
 
-// (Re)load Pi's models.json and register each provider as a DSH llm route —
-// the single-directory contract: models.json is a configuration ENTRY, the
-// DSH llm directory is the one runtime model directory, and the Pi registry
-// is its projection. Load errors warn per entry and surface via getError().
-type ModelsJsonStateSlice = Pick<RuntimeState, 'shared' | 'modelsJson' | 'modelsJsonProviders' | 'companionRoutes' | 'providerRouteDisposers'>
-
 /**
- * Load models.json routes for a host with NO mounted Pi package yet — the
- * single-directory capability (custom providers + image-admission
- * companions in the DSH picker) is the bridge's own, not any plugin's.
- * A later package mount adopts the same shared snapshot.
+ * Image-admission companion routes, configured on the DSH side (the
+ * engine's or a bundle's cordis config): `{ <existingRoute>: [modelIds] }`
+ * registers a `<route>-vision` route that admits images at the host's
+ * admission checks, replaces image blocks with explicit path-carrying
+ * notices, and forwards text-only to the original route. The companion is
+ * an ordinary directory entry (single-directory contract); Pi's ctx.model
+ * reports the original route for it (companionRoutes). Idempotent per
+ * host: repeated calls (several packages, engine + bundle) keep one live
+ * adapter and one mapping.
  */
-export async function ensureModelsJsonRoutes(ctx: Context): Promise<void> {
+export function registerVisionCompanions(
+  ctx: Context,
+  companions: Record<string, readonly string[]> | undefined,
+): void {
+  if (companions === undefined) return
   const shared = sharedHostStateOf(ctx)
-  const slice: ModelsJsonStateSlice = {
-    shared,
-    modelsJsonProviders: shared.modelsJsonProviders,
-    companionRoutes: shared.companionRoutes,
-    providerRouteDisposers: shared.providerRouteDisposers,
-  }
-  await reloadModelsJson(ctx, slice)
-}
-
-async function reloadModelsJson(ctx: Context, state: ModelsJsonStateSlice, force = false): Promise<void> {
-  // models.json is a HOST-level load: the first package in a host performs
-  // it, later packages adopt the shared snapshot, and only an explicit
-  // registry refresh() re-reads the file and re-registers the routes.
-  if (!force && state.shared.modelsJson !== undefined) {
-    state.modelsJson = state.shared.modelsJson
+  const llm = llmOf(ctx)
+  if (llm === undefined) {
+    logger(ctx).warn('[pi2dsh] visionCompanions configured, but this composition mounts no llm service; no companion route was registered')
     return
   }
-  for (const [key, dispose] of state.providerRouteDisposers) {
-    if (!key.startsWith(MODELS_JSON_ROUTE_PREFIX)) continue
-    state.providerRouteDisposers.delete(key)
-    dispose()
-  }
-  state.modelsJsonProviders.clear()
-  state.companionRoutes.clear()
-  state.modelsJson = await loadModelsJsonSnapshot(realBuiltinProvider)
-  state.shared.modelsJson = state.modelsJson
-  for (const problem of state.modelsJson.errors) logger(ctx).warn(`[pi2dsh] models.json: ${problem}`)
-  for (const [providerId, providerConfig] of state.modelsJson.providers) {
-    const models = state.modelsJson.models.filter(model => model.provider === providerId)
-    const provider = modelsJsonPiProvider(providerId, providerConfig, models)
-    const routeDisposer = registerPiProviderRoute({
-      llm: llmOf(ctx) as never,
-      providerId,
-      provider,
-      host: {
-        resolveAuth: async () => {
-          const resolved = resolveModelsJsonAuth(providerId, providerConfig)
-          if (!resolved.ok) return undefined
-          return {
-            auth: {
-              ...(resolved.apiKey === undefined ? {} : { apiKey: resolved.apiKey }),
-              ...(resolved.headers === undefined ? {} : { headers: resolved.headers }),
-              ...(providerConfig.baseUrl === undefined ? {} : { baseUrl: providerConfig.baseUrl }),
-            },
-          }
-        },
-        warn: message => logger(ctx).warn(message),
-      },
-    })
-    // The directory is the only authority. A provider exists in the Pi
-    // projection (getProvider, the exit-restore join) exactly when ITS route
-    // registration owns the directory entries — a name conflict or a missing
-    // llm service means this configuration is NOT in the directory, so it
-    // must not answer anywhere (otherwise another adapter's models would
-    // wear this configuration's baseUrl). The ledger keeps the DEFINITION
-    // only; wire transports live inside the route adapter, and the provider
-    // surface packages read streams through the DSH route (getProvider).
-    if (routeDisposer !== undefined) {
-      state.modelsJsonProviders.set(providerId, provider)
-      state.providerRouteDisposers.set(`${MODELS_JSON_ROUTE_PREFIX}${providerId}`, routeDisposer)
-      logger(ctx).info(`[pi2dsh] models.json provider ${JSON.stringify(providerId)} registered as a native DSH llm route (${models.length} models)`)
-    }
-  }
-  registerCompanionRoutes(ctx, state)
-}
-
-// Image-admission companions: a models.json entry that only carries
-// modelOverrides declaring `input: ["text", "image"]` for models of an
-// EXISTING route (one this bridge does not own) registers a `<route>-vision`
-// route that admits images and forwards text-only to the original. The
-// companion is an ordinary directory entry (single-directory contract);
-// Pi's ctx.model reports the original route for it (companionRoutes).
-function registerCompanionRoutes(ctx: Context, state: ModelsJsonStateSlice): void {
-  const companions = state.modelsJson?.companions
-  if (companions === undefined || companions.size === 0) return
-  const llm = llmOf(ctx)
-  if (llm === undefined) return
-  for (const [originalId, imageModels] of companions) {
+  for (const [originalId, modelIds] of Object.entries(companions)) {
+    if (!Array.isArray(modelIds) || modelIds.length === 0) continue
+    const companionId = `${originalId}-vision`
+    // The companion→original mapping is a CONFIGURATION fact, not a
+    // registration outcome: in a host with several bundles, one bundle wins
+    // the route name and the others' registration is refused, but every
+    // bundle's ctx.model projection must still report the original route
+    // for a companion selection.
+    shared.companionRoutes.set(companionId, originalId)
     if (!llm.listProviders().some(provider => provider.id === originalId)) {
-      logger(ctx).warn(`[pi2dsh] models.json: modelOverrides for ${JSON.stringify(originalId)} declare image input, but no such llm route exists; no companion route was registered`)
+      logger(ctx).warn(`[pi2dsh] visionCompanions names route ${JSON.stringify(originalId)}, but no such llm route exists; no companion route was registered`)
       continue
     }
-    const companionId = `${originalId}-vision`
-    // The companion→original mapping is a CONFIGURATION fact (models.json
-    // declares it), not a registration outcome: in a host with several
-    // bundles, one bundle wins the route name and the others' registration
-    // is refused, but every bundle's ctx.model projection must still report
-    // the original route for a companion selection.
-    state.companionRoutes.set(companionId, originalId)
+    if (shared.providerRouteDisposers.has(`${COMPANION_ROUTE_PREFIX}${companionId}`)) continue
     try {
       const dispose = (llm as unknown as { registerAdapter(providers: string[], adapter: unknown): () => void })
         .registerAdapter([companionId], imageAdmissionCompanionAdapter({
           originalId,
-          imageModels,
+          imageModels: new Set(modelIds.map(String)),
           llm,
           materializeImage: attachment => materializeAttachmentImage(ctx, attachment),
         }))
-      state.providerRouteDisposers.set(`${MODELS_JSON_ROUTE_PREFIX}${companionId}`, dispose)
-      logger(ctx).info(`[pi2dsh] image-admission companion route ${JSON.stringify(companionId)} registered for ${JSON.stringify(originalId)} (${imageModels.size} models)`)
+      shared.providerRouteDisposers.set(`${COMPANION_ROUTE_PREFIX}${companionId}`, dispose)
+      logger(ctx).info(`[pi2dsh] image-admission companion route ${JSON.stringify(companionId)} registered for ${JSON.stringify(originalId)} (${modelIds.length} models)`)
     } catch (error) {
       logger(ctx).warn(`[pi2dsh] companion route ${JSON.stringify(companionId)} already has a live adapter in this host (${error instanceof Error ? error.message : String(error)}); reusing it`)
     }
@@ -2202,7 +2076,6 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
     toolRestrictions: new WeakMap(),
     commands: new Map(),
     commandDisposers: new Map(),
-    modelsJsonProviders: shared.modelsJsonProviders,
     companionRoutes: shared.companionRoutes,
     flags: new Map(),
     notifications: [],
@@ -2252,17 +2125,15 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
       })
     }
   }
-  // Model Runtime Bridge: ONE model directory. Pi's models.json providers
-  // register as DSH llm routes first (Pi's per-api wire clients as their
-  // transport), then the DSH directory — now containing every route — is
-  // projected as Pi's model catalog, and hand-built pi-ai complete()/stream()
+  // Model Runtime Bridge: ONE model directory — the DSH llm directory —
+  // projected as Pi's model catalog; hand-built pi-ai complete()/stream()
   // calls route through the native llm service. Compositions without llm
   // keep the empty-catalog semantics.
   const llm = llmOf(ctx)
   // ONE catalog projection and ONE adapters-updated subscription per host;
   // every package's registry reads the same directory view.
   state.modelCatalog = shared.modelCatalog ??= new ModelCatalog(llm)
-  await reloadModelsJson(ctx, state)
+  registerVisionCompanions(ctx, (options.config as { visionCompanions?: Record<string, readonly string[]> } | undefined)?.visionCompanions)
   if (llm !== undefined) {
     if (shared.catalogSubscribed !== true) {
       shared.catalogSubscribed = true

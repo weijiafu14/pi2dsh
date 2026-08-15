@@ -124,7 +124,7 @@ npx pi2dsh mcp-config                               # Pi mcpServers → DSH patc
 | 示例 | 你得到什么 |
 |---|---|
 | [`examples/vision-bridge`](examples/vision-bridge/) | 纯文本模型回答图片问题：消息里带图片路径，配置的视觉模型识图，分析结果注入对话（CLI 与 DSH Web 都能用；附探针测试图） |
-| [`examples/custom-models`](examples/custom-models/) | 在 Pi 标准 `models.json` 里定义一次 provider——它成为原生 DSH llm 路由：出现在 DSH Web 模型选择器、可当主模型对话、所有 Pi 插件经同一个目录可见可调 |
+| [`examples/custom-gateways`](examples/custom-gateways/) | 用 DSH 官方方式（DSH settings 的 `llm-pi-ai:` 段）接入任意 OpenAI 兼容网关——出现在 DSH 模型选择器、可当主模型、所有 Pi 插件经桥的 registry 投影看到同一路由；桥自身零模型配置 |
 
 更多已验证能力（审批 guardian、跨会话记忆、交互式 OAuth、MCP 配置转换、host 模式）的示例，将按同一标准逐个重新端到端验证后补齐。
 

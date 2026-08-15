@@ -13,7 +13,7 @@ import { createRequire } from 'node:module'
 import { basename, dirname, join, relative } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import type { Context } from '@deepseek-ai/cordis'
-import { applyPiPackage } from './runtime.js'
+import { applyPiPackage, registerVisionCompanions } from './runtime.js'
 import { resolvePiPackage } from './source.js'
 import type { GeneratedRuntimeManifest, ResolvedPiPackage } from './types.js'
 
@@ -28,6 +28,8 @@ export interface PiHostPackageSpec {
 
 export interface PiHostConfig {
   packages: Array<string | PiHostPackageSpec>
+  /** Image-admission companion routes (host-level): `{ <existingRoute>: [modelIds] }`. */
+  visionCompanions?: Record<string, readonly string[]>
 }
 
 function parseFrontmatter(text: string): { attributes: Record<string, string>; body: string } {
@@ -114,6 +116,7 @@ function resolveInstalledDir(anchor: string, packageName: string): string {
  */
 export async function applyPiHost(ctx: Context, config: PiHostConfig, anchor?: string): Promise<void> {
   const anchorPath = anchor ?? fileURLToPath(import.meta.url)
+  registerVisionCompanions(ctx, config.visionCompanions)
   const errors: Array<{ name: string; error: string }> = []
   for (const spec of normalizeSpecs(config)) {
     try {

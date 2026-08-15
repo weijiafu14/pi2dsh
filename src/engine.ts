@@ -24,7 +24,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { Context } from '@deepseek-ai/cordis'
 import { applyPiHost } from './host.js'
-import { ensureModelsJsonRoutes } from './runtime.js'
+import { registerVisionCompanions } from './runtime.js'
 import { resolvePiPackage } from './source.js'
 
 export interface EngineConfig {
@@ -32,6 +32,13 @@ export interface EngineConfig {
   packages?: string[]
   /** Never mount these packages even when discovered. */
   exclude?: string[]
+  /**
+   * Image-admission companion routes: `{ <existingRoute>: [modelIds] }`
+   * registers `<route>-vision` — it admits pasted images, hands them to a
+   * mounted vision extension through the turn's entering messages, and
+   * forwards text-only to the original route.
+   */
+  visionCompanions?: Record<string, readonly string[]>
 }
 
 /** Locate the DSH profile root: the nearest ancestor holding cordis.yml. */
@@ -137,17 +144,19 @@ export async function apply(ctx: Context, config: EngineConfig = {}): Promise<vo
         warn,
       })
   if (packages.length === 0) {
-    // The single-directory capability (models.json providers + companion
-    // routes in the DSH picker) is the bridge's own — it works with zero
-    // Pi packages installed.
-    await ensureModelsJsonRoutes(ctx)
+    // Companion routes are the bridge's own capability — they work with
+    // zero Pi packages installed.
+    registerVisionCompanions(ctx, config.visionCompanions)
     info('[pi2dsh engine] no Pi packages installed in this profile yet — add one with: dsh plugin --profile <p> add <pi-package>')
     return
   }
   info(`[pi2dsh engine] mounting ${packages.length} Pi package(s): ${packages.map(pkg => pkg.name).join(', ')}`)
   await applyPiHost(
     ctx,
-    { packages: packages.map(pkg => ({ name: pkg.name })) },
+    {
+      packages: packages.map(pkg => ({ name: pkg.name })),
+      ...(config.visionCompanions === undefined ? {} : { visionCompanions: config.visionCompanions }),
+    },
     join(profileRoot, 'package.json'),
   )
 }

@@ -136,7 +136,7 @@ is aspirational.
 | Example | What you get |
 |---|---|
 | [`examples/vision-bridge`](examples/vision-bridge/) | A text-only model answers questions about images: mention an image path, a configured vision model reads it, the analysis is injected into the conversation (works in CLI and the DSH web app; probe images included) |
-| [`examples/custom-models`](examples/custom-models/) | Define a provider once in Pi's standard `models.json` — it becomes a native DSH llm route: visible in the DSH web model picker, usable as the main model, and resolvable/callable by every Pi plugin through one directory |
+| [`examples/custom-gateways`](examples/custom-gateways/) | Add any OpenAI-compatible gateway the official DSH way (the `llm-pi-ai:` section of DSH settings) — it appears in the DSH model picker, works as the main model, and every Pi plugin sees it through the bridge's registry projection; the bridge owns zero model configuration |
 
 More verified capabilities (approval guardian, cross-session memory,
 interactive OAuth, MCP config conversion, host mode) get their examples as
