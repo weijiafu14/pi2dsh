@@ -410,7 +410,7 @@ function currentPiModel(state: RuntimeState, agent: UnknownRecord): UnknownRecor
   const id = String(override?.model ?? options?.model ?? '')
   if (id.length === 0) return override
   const known = provider.length > 0 ? state.modelCatalog?.find(provider, id) : undefined
-  return known ?? { id, name: id, provider, api: 'dsh-llm', input: ['text'], reasoning: false }
+  return known ?? { id, name: id, provider, api: 'faux', input: ['text'], reasoning: false }
 }
 
 function thinkingLevelOf(state: RuntimeState, agent: UnknownRecord | undefined): string {
