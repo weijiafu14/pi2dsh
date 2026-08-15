@@ -1,4 +1,6 @@
-import { access, readFile } from 'node:fs/promises'
+import { access, mkdir, readFile, writeFile } from 'node:fs/promises'
+import { existsSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { EventEmitter } from 'node:events'
 import { AsyncLocalStorage } from 'node:async_hooks'
 import { createRequire } from 'node:module'
@@ -35,7 +37,7 @@ import {
   resolveModelsJsonAuth,
   type ModelsJsonSnapshot,
 } from './models-json.js'
-import { registerPiProviderRoute } from './provider-adapter.js'
+import { imageAdmissionCompanionAdapter, registerPiProviderRoute } from './provider-adapter.js'
 
 type UnknownRecord = Record<string, unknown>
 type PiHandler = (event: UnknownRecord, context: UnknownRecord) => unknown | Promise<unknown>
@@ -131,6 +133,12 @@ interface RuntimeState {
   // models.json providers as Pi Provider objects (models + per-api
   // transport), registered as DSH llm routes; getProvider answers these.
   modelsJsonProviders: Map<string, UnknownRecord>
+  // Image-admission companion routes (companion id → original route id).
+  // Pi's ctx.model reports the ORIGINAL route for a companion selection: the
+  // model actually generating is the original text-only one, and extensions
+  // branching on input modalities (a vision bridge deciding whether to act)
+  // need that truth, not the admission face.
+  companionRoutes: Map<string, string>
   // Live DSH llm routes registered for transport-carrying Pi providers.
   providerRouteDisposers: Map<string, () => void>
 }
@@ -403,10 +411,14 @@ function isSubagentOrigin(subject: UnknownRecord | undefined): boolean {
 
 // Pi ctx.model: a setModel() override wins; otherwise the live DSH agent's
 // own route (Agent.options.provider/model), enriched from the catalog.
+// An image-admission companion selection reports its ORIGINAL route: the
+// generating model is the original text-only one, and that truth is what
+// extensions branching on input modalities need.
 function currentPiModel(state: RuntimeState, agent: UnknownRecord): UnknownRecord | undefined {
   const override = state.modelOverrides.get(agent)
   const options = agent.options as { provider?: unknown, model?: unknown } | undefined
-  const provider = String(override?.provider ?? options?.provider ?? '')
+  const selectedProvider = String(override?.provider ?? options?.provider ?? '')
+  const provider = state.companionRoutes.get(selectedProvider) ?? selectedProvider
   const id = String(override?.model ?? options?.model ?? '')
   if (id.length === 0) return override
   const known = provider.length > 0 ? state.modelCatalog?.find(provider, id) : undefined
@@ -1306,6 +1318,7 @@ async function reloadModelsJson(ctx: Context, state: RuntimeState): Promise<void
     dispose()
   }
   state.modelsJsonProviders.clear()
+  state.companionRoutes.clear()
   state.modelsJson = await loadModelsJsonSnapshot(realBuiltinProvider)
   for (const problem of state.modelsJson.errors) logger(ctx).warn(`[pi2dsh] models.json: ${problem}`)
   for (const [providerId, providerConfig] of state.modelsJson.providers) {
@@ -1343,6 +1356,76 @@ async function reloadModelsJson(ctx: Context, state: RuntimeState): Promise<void
       state.providerRouteDisposers.set(`${MODELS_JSON_ROUTE_PREFIX}${providerId}`, routeDisposer)
       logger(ctx).info(`[pi2dsh] models.json provider ${JSON.stringify(providerId)} registered as a native DSH llm route (${models.length} models)`)
     }
+  }
+  registerCompanionRoutes(ctx, state)
+}
+
+// Image-admission companions: a models.json entry that only carries
+// modelOverrides declaring `input: ["text", "image"]` for models of an
+// EXISTING route (one this bridge does not own) registers a `<route>-vision`
+// route that admits images and forwards text-only to the original. The
+// companion is an ordinary directory entry (single-directory contract);
+// Pi's ctx.model reports the original route for it (companionRoutes).
+function registerCompanionRoutes(ctx: Context, state: RuntimeState): void {
+  const companions = state.modelsJson?.companions
+  if (companions === undefined || companions.size === 0) return
+  const llm = llmOf(ctx)
+  if (llm === undefined) return
+  for (const [originalId, imageModels] of companions) {
+    if (!llm.listProviders().some(provider => provider.id === originalId)) {
+      logger(ctx).warn(`[pi2dsh] models.json: modelOverrides for ${JSON.stringify(originalId)} declare image input, but no such llm route exists; no companion route was registered`)
+      continue
+    }
+    const companionId = `${originalId}-vision`
+    // The companion→original mapping is a CONFIGURATION fact (models.json
+    // declares it), not a registration outcome: in a host with several
+    // bundles, one bundle wins the route name and the others' registration
+    // is refused, but every bundle's ctx.model projection must still report
+    // the original route for a companion selection.
+    state.companionRoutes.set(companionId, originalId)
+    try {
+      const dispose = (llm as unknown as { registerAdapter(providers: string[], adapter: unknown): () => void })
+        .registerAdapter([companionId], imageAdmissionCompanionAdapter({
+          originalId,
+          imageModels,
+          llm,
+          materializeImage: attachment => materializeAttachmentImage(ctx, attachment),
+        }))
+      state.providerRouteDisposers.set(`${MODELS_JSON_ROUTE_PREFIX}${companionId}`, dispose)
+      logger(ctx).info(`[pi2dsh] image-admission companion route ${JSON.stringify(companionId)} registered for ${JSON.stringify(originalId)} (${imageModels.size} models)`)
+    } catch (error) {
+      logger(ctx).warn(`[pi2dsh] companion route ${JSON.stringify(companionId)} already has a live adapter in this host (${error instanceof Error ? error.message : String(error)}); reusing it`)
+    }
+  }
+}
+
+const IMAGE_EXTENSIONS: Record<string, string> = {
+  'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif',
+}
+
+// Give a stored image attachment a filesystem path so path-taking tools
+// (Pi's read, vision tools) can reach it — Pi's own world has no attachment
+// store, images are inline or file paths, so a path IS the Pi-shaped answer.
+// Files are cached per attachment id under the OS temp dir.
+async function materializeAttachmentImage(ctx: Context, attachment: UnknownRecord): Promise<string | undefined> {
+  const attachments = (ctx as unknown as { get(name: string): unknown }).get('attachments') as {
+    readImage(attachment: unknown): Promise<{ data: ArrayBufferLike }>
+  } | undefined
+  const id = typeof attachment.attachmentId === 'string' ? attachment.attachmentId : undefined
+  if (attachments === undefined || id === undefined) return undefined
+  const extension = IMAGE_EXTENSIONS[String(attachment.mediaType)] ?? 'png'
+  const dir = join(tmpdir(), 'pi2dsh-attached-images')
+  const filePath = join(dir, `${id}.${extension}`)
+  try {
+    if (!existsSync(filePath)) {
+      const stored = await attachments.readImage(attachment)
+      await mkdir(dir, { recursive: true })
+      await writeFile(filePath, Buffer.from(stored.data))
+    }
+    return filePath
+  } catch {
+    // An unreadable attachment simply keeps the plain omission notice.
+    return undefined
   }
 }
 
@@ -2053,6 +2136,7 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
     commands: new Map(),
     commandDisposers: new Map(),
     modelsJsonProviders: new Map(),
+    companionRoutes: new Map(),
     flags: new Map(),
     notifications: [],
     activeAgents: new Set(),

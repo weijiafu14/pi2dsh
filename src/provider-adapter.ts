@@ -10,7 +10,7 @@
 // stream options and never enters logs.
 
 import { anthropicMessagesApi, openAICompletionsApi, openAIResponsesApi } from './compat/pi-ai.js'
-import { dshRequestToPiContext, piEventsToDshChunks } from './model-bridge.js'
+import { dshRequestToPiContext, piEventsToDshChunks, type DshLlmLike } from './model-bridge.js'
 
 type UnknownRecord = Record<string, unknown>
 
@@ -156,6 +156,114 @@ export function piProviderDshAdapter(providerId: string, provider: PiTransportPr
         ...(typeof options.temperature === 'number' ? { temperature: options.temperature } : {}),
       }
       yield* piEventsToDshChunks(provider.stream(model, piContext, piOptions))
+    },
+  }
+}
+
+// ---- image-admission companion route ---------------------------------------
+
+const IMAGE_OMITTED_TEXT = '[image attachment omitted: the selected model reads text only]'
+
+const imageNoticeText = (path: string | undefined): string => path === undefined
+  ? IMAGE_OMITTED_TEXT
+  : `[image attached at ${path} — the selected model reads text only; use an image-capable tool to view it]`
+
+// Replace image blocks with an explicit text notice, recursing into
+// tool-result content the way DSH's contentHasImage does. The original
+// route's adapter rejects image content loudly (llm-deepseek throws
+// UNSUPPORTED_CONTENT), so the companion must hand it text-only — and a
+// visible notice, never a silent drop, keeps the model aware something was
+// there. When the attachment can be materialized to a file, the notice
+// carries its path (Pi's own image vocabulary is inline-or-path, and a path
+// lets the model reach the image through any path-taking tool); in the
+// vision-bridge composition the image's ANALYSIS additionally arrives
+// through the turn's entering messages.
+async function textOnlyBlocks(
+  blocks: UnknownRecord[],
+  materialize: (attachment: UnknownRecord) => Promise<string | undefined>,
+): Promise<UnknownRecord[]> {
+  const out: UnknownRecord[] = []
+  for (const block of blocks) {
+    if (block.type === 'image') {
+      const attachment = block.attachment
+      const path = typeof attachment === 'object' && attachment !== null
+        ? await materialize(attachment as UnknownRecord)
+        : undefined
+      out.push({ type: 'text', text: imageNoticeText(path) })
+    } else if (block.type === 'tool-result' && Array.isArray(block.content)) {
+      out.push({ ...block, content: await textOnlyBlocks(block.content as UnknownRecord[], materialize) })
+    } else {
+      out.push(block)
+    }
+  }
+  return out
+}
+
+async function textOnlyMessages(
+  messages: UnknownRecord[],
+  materialize: (attachment: UnknownRecord) => Promise<string | undefined>,
+): Promise<UnknownRecord[]> {
+  return Promise.all(messages.map(async message => Array.isArray(message.content)
+    ? { ...message, content: await textOnlyBlocks(message.content as UnknownRecord[], materialize) }
+    : message))
+}
+
+export interface CompanionRouteOptions {
+  /** The existing DSH route this companion forwards to. */
+  originalId: string
+  /** Model ids the user's models.json modelOverrides declared image input for. */
+  imageModels: Set<string>
+  llm: DshLlmLike
+  /**
+   * Give a stored image attachment a filesystem path (cached per attachment).
+   * Absent or failing, the text notice simply omits the path.
+   */
+  materializeImage?: (attachment: UnknownRecord) => Promise<string | undefined>
+}
+
+/**
+ * A DSH route that admits images on behalf of a text-only route — the
+ * single-directory answer to models.json modelOverrides declaring
+ * `input: ["text", "image"]` for models of a route this bridge does not own.
+ * The companion honestly declares image input (so the host's admission and
+ * model-switch checks pass), replaces image blocks with an explicit notice,
+ * and forwards every call to the original route. It never carries a wire
+ * transport of its own; the images themselves are served by whatever vision
+ * extension handles the turn's entering messages.
+ */
+export function imageAdmissionCompanionAdapter(options: CompanionRouteOptions): UnknownRecord {
+  const { originalId, imageModels, llm } = options
+  const materialize = options.materializeImage ?? (async () => undefined)
+  const admitImage = (info: UnknownRecord, id: string): UnknownRecord => {
+    const modalities = Array.isArray(info.inputModalities) ? (info.inputModalities as string[]).slice() : ['text']
+    if (!modalities.includes('image')) modalities.push('image')
+    return { ...info, provider: id, inputModalities: modalities }
+  }
+  return {
+    providerInfo: (id: string) => {
+      const origin = llm.listProviders().find(provider => provider.id === originalId)
+      return { id, name: `${origin?.name ?? originalId} + Vision Bridge` }
+    },
+    providerRetryPolicy: () => undefined,
+    // The directory face mirrors the original route's own entries — the
+    // service layer has already normalized them, so this is a DSH→DSH
+    // carriage, not a cross-vocabulary one. Only the models the user
+    // declared image input for are listed; others stay on the original.
+    listModels: async (id: string) => (await llm.listModels(originalId))
+      .filter(model => imageModels.has(String(model.id)))
+      .map(model => admitImage(model, id)),
+    resolveModel: async (id: string, modelId: string) => {
+      const info = await llm.resolveModelInfo(originalId, modelId)
+      return imageModels.has(modelId) ? admitImage(info, id) : { ...info, provider: id }
+    },
+    async *stream(streamOptions: UnknownRecord): AsyncIterable<UnknownRecord> {
+      yield* llm.stream({
+        ...streamOptions,
+        provider: originalId,
+        ...(Array.isArray(streamOptions.messages)
+          ? { messages: await textOnlyMessages(streamOptions.messages as UnknownRecord[], materialize) }
+          : {}),
+      })
     },
   }
 }

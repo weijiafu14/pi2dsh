@@ -24,6 +24,13 @@ export interface ModelsJsonSnapshot {
   models: UnknownRecord[]
   providers: Map<string, ModelsJsonProvider>
   errors: string[]
+  // Override-only provider entries whose modelOverrides declare image input
+  // for a route this bridge does not own: the user's Pi-standard statement
+  // "treat this model as image-capable under my setup". Each becomes an
+  // image-admission companion route (<provider>-vision) — a real DSH route
+  // that accepts images, hands them to the vision bridge via the turn's
+  // entering messages, and forwards text-only requests to the original route.
+  companions: Map<string, Set<string>>
 }
 
 export type ResolvedModelsJsonAuth =
@@ -34,7 +41,21 @@ export function modelsJsonPath(): string {
   return join(getAgentDir(), 'models.json')
 }
 
-const emptySnapshot = (): ModelsJsonSnapshot => ({ models: [], providers: new Map(), errors: [] })
+const emptySnapshot = (): ModelsJsonSnapshot => ({ models: [], providers: new Map(), errors: [], companions: new Map() })
+
+// An override-only provider entry (no baseUrl/models/apiKey of its own) whose
+// modelOverrides add "image" names an image-admission companion, not a
+// standalone provider composition.
+function companionImageModels(provider: ModelsJsonProvider): Set<string> | undefined {
+  if (provider.baseUrl !== undefined || provider.models !== undefined || provider.apiKey !== undefined) return undefined
+  const overrides = provider.modelOverrides
+  if (overrides === undefined) return undefined
+  const imageModels = new Set<string>()
+  for (const [modelId, override] of Object.entries(overrides)) {
+    if (Array.isArray(override.input) && override.input.includes('image')) imageModels.add(modelId)
+  }
+  return imageModels.size > 0 ? imageModels : undefined
+}
 
 /**
  * One load of models.json projected to Pi Model objects. Mirrors Pi's
@@ -56,6 +77,11 @@ export async function loadModelsJsonSnapshot(
   for (const providerId of config.getProviderIds()) {
     const providerConfig = config.getProvider(providerId)
     if (providerConfig === undefined) continue
+    const imageModels = companionImageModels(providerConfig)
+    if (imageModels !== undefined) {
+      snapshot.companions.set(providerId, imageModels)
+      continue
+    }
     try {
       const base = await baseProviderOf?.(providerId)
       const baseModels = typeof (base as { getModels?: unknown } | undefined)?.getModels === 'function'

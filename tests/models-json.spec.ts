@@ -148,6 +148,37 @@ describe('models.json loading and composition', () => {
     expect(snapshot.models[0]).toMatchObject({ id: 'gpt-5', name: 'Vision GPT-5', input: ['text', 'image'] })
   })
 
+  it('classifies an override-only provider declaring image input as a companion, not a provider', async () => {
+    await writeModelsJson({
+      providers: {
+        // Only modelOverrides, no baseUrl/models/apiKey → image-admission companion.
+        deepseek: { modelOverrides: { 'deepseek-chat': { input: ['text', 'image'] }, 'deepseek-reasoner': { contextWindow: 64000 } } },
+        // Full provider definitions keep their normal path even with image overrides.
+        jdcloud: {
+          ...jdcloudProviders.providers.jdcloud,
+          modelOverrides: { 'gpt-5': { input: ['text', 'image'] } },
+        },
+        // Override-only WITHOUT image input is Pi's plain builtin-override path.
+        basefam: { modelOverrides: { inherited: { contextWindow: 9000 } } },
+      },
+    })
+    const snapshot = await loadModelsJsonSnapshot(async providerId => providerId === 'basefam'
+      ? {
+          getModels: () => [{
+            id: 'inherited', name: 'Inherited', api: 'openai-completions', provider: 'basefam',
+            baseUrl: 'http://base.example/v1', reasoning: false, input: ['text'],
+            cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, contextWindow: 1000, maxTokens: 100,
+          }],
+        }
+      : undefined)
+    expect(snapshot.errors).toEqual([])
+    expect([...snapshot.companions.keys()]).toEqual(['deepseek'])
+    expect([...snapshot.companions.get('deepseek') ?? []]).toEqual(['deepseek-chat'])
+    expect(snapshot.providers.has('deepseek')).toBe(false)
+    expect(snapshot.providers.has('jdcloud')).toBe(true)
+    expect(snapshot.models.find(model => model.provider === 'basefam')).toMatchObject({ contextWindow: 9000 })
+  })
+
   it('upserts over a base provider catalog when one exists for the id', async () => {
     await writeModelsJson({
       providers: {
@@ -239,6 +270,203 @@ describe('models.json credential resolution', () => {
     expect(modelsJsonAuthConfigured({ baseUrl: 'http://x', apiKey: `$${KEY_ENV}` })).toBe(false)
     process.env[KEY_ENV] = 'present'
     expect(modelsJsonAuthConfigured({ baseUrl: 'http://x', apiKey: `$${KEY_ENV}` })).toBe(true)
+  })
+})
+
+describe('image-admission companion routes in the real DSH runtime', () => {
+  it('registers <route>-vision for override-only image declarations, admits images, and forwards text-only', async () => {
+    await writeModelsJson({
+      providers: {
+        // fixture is a DSH-owned text-only route → companion expected.
+        fixture: { modelOverrides: { 'fx-mini': { input: ['text', 'image'] } } },
+        // ghost has no llm route → the companion must be skipped, not ghost-registered.
+        ghost: { modelOverrides: { g1: { input: ['text', 'image'] } } },
+      },
+    })
+
+    const bundle = await mkdtemp(join(tmpdir(), 'pi2dsh-companion-bundle-'))
+    cleanup.push(bundle)
+    await mkdir(join(bundle, 'extensions'), { recursive: true })
+    await writeFile(join(bundle, 'extensions/probe.ts'), [
+      "export default function probe(pi: any) {",
+      "  pi.registerTool({",
+      "    name: 'companion_probe',",
+      "    label: 'Companion probe',",
+      "    description: 'Reads the registry and ctx.model the way a vision extension does.',",
+      "    parameters: { type: 'object', properties: {}, additionalProperties: false },",
+      "    async execute(_toolCallId: unknown, _params: unknown, _signal: unknown, _onUpdate: unknown, ctx: any) {",
+      "      const entries = ctx.modelRegistry.getAll().map((m: any) => ({ provider: m.provider, id: m.id, input: m.input }))",
+      "      return { content: [{ type: 'text', text: JSON.stringify({ entries, current: ctx.model }) }] }",
+      "    },",
+      "  })",
+      "}",
+    ].join('\n'))
+    const manifest: GeneratedRuntimeManifest = {
+      schemaVersion: 1,
+      package: { name: '@pi2dsh-fixtures/companion-probe', version: '0.0.0', source: 'fixture' },
+      extensions: ['extensions/probe.ts'],
+      skillDirs: [],
+      prompts: [],
+    }
+
+    const ctx = new Context()
+    await ctx.plugin(SessionStore)
+    await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
+    await ctx.plugin(ToolRuntime)
+    await ctx.plugin(CommandRuntime)
+    await ctx.plugin(SkillRegistry)
+    await ctx.plugin(AgentRegistry)
+    await ctx.plugin(LlmRuntime as never, {} as never)
+    const received: GenerateOptions[] = []
+    class TextOnlyAdapter extends LlmAdapter {
+      override providerInfo(id: string) { return { id, name: `Fixture ${id}` } }
+      override async listModels(id: string) {
+        return [
+          { provider: id, id: 'fx-mini', name: 'Fixture Mini', inputModalities: ['text'] as const },
+          { provider: id, id: 'fx-side', name: 'Fixture Side', inputModalities: ['text'] as const },
+        ]
+      }
+      override async resolveModel(id: string, model: string) {
+        return { provider: id, id: model, name: `Fixture ${model}`, inputModalities: ['text'] } as never
+      }
+      override async *stream(options: GenerateOptions): AsyncIterable<StreamChunk> {
+        received.push(options)
+        yield { type: 'block-start', index: 0, blockType: 'text' }
+        yield { type: 'text-delta', index: 0, text: 'routed through dsh' }
+        yield { type: 'block-end', index: 0, block: { type: 'text', text: 'routed through dsh' } }
+        yield { type: 'finish', reason: { kind: 'stop' } }
+      }
+    }
+    const llm = (ctx as unknown as {
+      llm: {
+        registerAdapter(providers: string[], adapter: unknown): unknown
+        listProviders(): Array<{ id: string, name: string }>
+        listModels(provider: string): Promise<Array<Record<string, unknown>>>
+        stream(options: Record<string, unknown>): AsyncIterable<Record<string, unknown>>
+      }
+    }).llm
+    llm.registerAdapter(['fixture'], new TextOnlyAdapter())
+    await ctx.plugin({
+      name: 'pi2dsh:test-companion',
+      inject: ['tools', 'systemPrompt', 'commands', 'skills'],
+      async apply(pluginCtx) {
+        await applyPiPackage(pluginCtx, { rootUrl: pathToFileURL(`${bundle}/`), manifest })
+      },
+    } satisfies Plugin.Object)
+    await new Promise(resolve => setTimeout(resolve, 25))
+
+    // Directory face: the companion route exists, names its origin, lists
+    // ONLY the declared models, and admits images for them.
+    const providers = llm.listProviders()
+    expect(providers.map(provider => provider.id)).toContain('fixture-vision')
+    expect(providers.map(provider => provider.id)).not.toContain('ghost-vision')
+    expect(providers.find(provider => provider.id === 'fixture-vision')?.name).toBe('Fixture fixture + Vision Bridge')
+    const companionModels = await llm.listModels('fixture-vision')
+    expect(companionModels.map(model => model.id)).toEqual(['fx-mini'])
+    expect(companionModels[0]?.inputModalities).toEqual(['text', 'image'])
+
+    // Call face: image blocks (top-level and nested in tool results) leave as
+    // explicit text notices, and the original route serves the stream.
+    const chunks: Array<Record<string, unknown>> = []
+    for await (const chunk of llm.stream({
+      provider: 'fixture-vision',
+      model: 'fx-mini',
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: 'what color is this?' },
+            { type: 'image', attachment: { attachmentId: 'att-1', mediaType: 'image/png', bytes: 4, width: 1, height: 1 } },
+          ],
+          source: { kind: 'user' },
+        },
+        {
+          role: 'user',
+          content: [{
+            type: 'tool-result',
+            toolCallId: 'tc-1',
+            content: [{ type: 'image', attachment: { attachmentId: 'att-2', mediaType: 'image/png', bytes: 4, width: 1, height: 1 } }],
+          }],
+          source: { kind: 'tool', callId: 'tc-1' },
+        },
+      ],
+    })) chunks.push(chunk)
+    expect(chunks.at(-1)).toMatchObject({ type: 'finish', reason: { kind: 'stop' } })
+    expect(received).toHaveLength(1)
+    const forwarded = received[0] as unknown as { messages: Array<{ content: Array<Record<string, unknown>> }> }
+    const flatten = (blocks: Array<Record<string, unknown>>): Array<Record<string, unknown>> =>
+      blocks.flatMap(block => [block, ...(Array.isArray(block.content) ? flatten(block.content as never) : [])])
+    const allBlocks = forwarded.messages.flatMap(message => flatten(message.content))
+    expect(allBlocks.some(block => block.type === 'image')).toBe(false)
+    expect(allBlocks.filter(block => block.type === 'text' && String(block.text).includes('[image attachment omitted'))).toHaveLength(2)
+    expect(allBlocks.some(block => block.type === 'text' && block.text === 'what color is this?')).toBe(true)
+
+    // Pi projection: the companion entry is in the registry with image input,
+    // while ctx.model for a companion selection reports the ORIGINAL route —
+    // the truth a vision extension's activation check needs.
+    const typedCtx = ctx as unknown as {
+      sessions: { create(id: unknown, options: Record<string, unknown>): { id: unknown } }
+      agents: { register(agent: Record<string, unknown>): () => void }
+      tools: { execute(request: Record<string, unknown>): Promise<{ isError?: boolean; content: Array<{ type: string; text?: string }> }> }
+    }
+    const session = typedCtx.sessions.create(SessionId('pi2dsh-companion'), {
+      meta: { createdAt: Date.now(), cwd: bundle },
+    })
+    const agent = {
+      id: session.id, session,
+      options: { provider: 'fixture-vision', model: 'fx-mini' },
+      steer() {}, inject() {}, followup() {}, whenIdle: () => Promise.resolve(),
+    }
+    typedCtx.agents.register(agent)
+    const result = await typedCtx.tools.execute({
+      signal: new AbortController().signal,
+      callId: CallId('companion-probe'),
+      name: 'companion_probe',
+      arguments: {},
+      agent: agent as never,
+    })
+    expect(result.isError ?? false).toBe(false)
+    const probe = JSON.parse(result.content[0]?.text ?? '{}') as {
+      entries: Array<{ provider: string, id: string, input: string[] }>
+      current?: { provider: string, id: string, input: string[] }
+    }
+    expect(probe.entries.find(entry => entry.provider === 'fixture-vision' && entry.id === 'fx-mini')?.input)
+      .toEqual(['text', 'image'])
+    expect(probe.current).toMatchObject({ provider: 'fixture', id: 'fx-mini', input: ['text'] })
+  })
+
+  it('carries a materialized file path in the omission notice so path-taking tools can reach the image', async () => {
+    const { imageAdmissionCompanionAdapter } = await import('../src/provider-adapter.js')
+    const received: Array<Record<string, unknown>> = []
+    const llm = {
+      listProviders: () => [{ id: 'fixture', name: 'Fixture fixture' }],
+      listModels: async () => [],
+      resolveModelInfo: async () => ({}),
+      async *stream(options: Record<string, unknown>) {
+        received.push(options)
+        yield { type: 'finish', reason: { kind: 'stop' } }
+      },
+    }
+    const adapter = imageAdmissionCompanionAdapter({
+      originalId: 'fixture',
+      imageModels: new Set(['fx-mini']),
+      llm: llm as never,
+      materializeImage: async attachment => `/tmp/pi2dsh-attached-images/${String(attachment.attachmentId)}.png`,
+    }) as { stream(options: Record<string, unknown>): AsyncIterable<Record<string, unknown>> }
+    for await (const _chunk of adapter.stream({
+      provider: 'fixture-vision',
+      model: 'fx-mini',
+      messages: [{
+        role: 'user',
+        content: [{ type: 'image', attachment: { attachmentId: 'att-9', mediaType: 'image/png' } }],
+        source: { kind: 'user' },
+      }],
+    })) void _chunk
+    const forwarded = received[0] as { messages: Array<{ content: Array<Record<string, unknown>> }> }
+    expect(forwarded.messages[0]?.content[0]).toEqual({
+      type: 'text',
+      text: '[image attached at /tmp/pi2dsh-attached-images/att-9.png — the selected model reads text only; use an image-capable tool to view it]',
+    })
   })
 })
 
