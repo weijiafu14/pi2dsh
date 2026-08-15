@@ -94,6 +94,23 @@ node dist/cli.mjs mcp-config                        # Pi mcpServers → DSH patc
 dsh plugin --profile headless add file:$PWD/pi-host
 ```
 
+## Examples: copy-paste working capabilities
+
+**Every verified capability ships as a complete, runnable example under
+[`examples/`](examples/)** — clone the repo, follow one example's README from
+zero to seeing the feature run. Every command in an example has actually been
+executed against a real DSH loop (CLI and web) before landing here; nothing
+is aspirational.
+
+| Example | What you get |
+|---|---|
+| [`examples/vision-bridge`](examples/vision-bridge/) | A text-only model answers questions about images: mention an image path, a configured vision model reads it, the analysis is injected into the conversation (works in CLI and the DSH web app; probe images included) |
+| [`examples/custom-models`](examples/custom-models/) | Define a provider once in Pi's standard `models.json` — it becomes a native DSH llm route: visible in the DSH web model picker, usable as the main model, and resolvable/callable by every Pi plugin through one directory |
+
+More verified capabilities (approval guardian, cross-session memory,
+interactive OAuth, MCP config conversion, host mode) get their examples as
+each one is re-verified end to end under the same bar.
+
 ## Interactive OAuth: sign in with your subscription
 
 DSH ships static HTTP headers only; pi2dsh adds the interactive OAuth layer from the Pi ecosystem. Any Pi provider package that registers an `oauth` block gets a working `/login <provider>` command on DSH, driven by the package's own protocol code. Pi's four official flows ship built in (vendored byte-identical): **OpenAI Codex (ChatGPT Plus/Pro)**, **Anthropic**, **GitHub Copilot**, **Kimi Code**.

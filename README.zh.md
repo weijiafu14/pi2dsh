@@ -94,6 +94,17 @@ node dist/cli.mjs mcp-config                        # Pi mcpServers → DSH patc
 dsh plugin --profile headless add file:$PWD/pi-host
 ```
 
+## Examples：每个能力都有完整可跑的示例
+
+**每个已验证的能力，都在 [`examples/`](examples/) 下有一份完整可直接运行的示例**——克隆仓库，照任意一个示例的 README 从零走到看到效果。示例里的每条命令都在真实 DSH loop（CLI 和 Web 双端）上实际执行过才收录，没有"理论上可以"的内容。
+
+| 示例 | 你得到什么 |
+|---|---|
+| [`examples/vision-bridge`](examples/vision-bridge/) | 纯文本模型回答图片问题：消息里带图片路径，配置的视觉模型识图，分析结果注入对话（CLI 与 DSH Web 都能用；附探针测试图） |
+| [`examples/custom-models`](examples/custom-models/) | 在 Pi 标准 `models.json` 里定义一次 provider——它成为原生 DSH llm 路由：出现在 DSH Web 模型选择器、可当主模型对话、所有 Pi 插件经同一个目录可见可调 |
+
+更多已验证能力（审批 guardian、跨会话记忆、交互式 OAuth、MCP 配置转换、host 模式）的示例，将按同一标准逐个重新端到端验证后补齐。
+
 ## 交互式 OAuth：用你的订阅账号登录
 
 DSH 原生只有静态 HTTP headers；pi2dsh 把 Pi 生态的交互式 OAuth 层带了过来。任何注册了 `oauth` 块的 Pi provider 包，在 DSH 上都直接获得可用的 `/login <provider>` 命令，登录流程由包自己的协议代码驱动。Pi 的四条官方流内建（vendored 字节级）：**OpenAI Codex（ChatGPT Plus/Pro）**、**Anthropic**、**GitHub Copilot**、**Kimi Code**。

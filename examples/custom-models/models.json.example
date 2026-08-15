@@ -1,0 +1,13 @@
+{
+  "providers": {
+    "my-gateway": {
+      "name": "My Vision Gateway",
+      "baseUrl": "https://openrouter.ai/api/v1",
+      "apiKey": "$OPENROUTER_API_KEY",
+      "api": "openai-completions",
+      "models": [
+        { "id": "qwen/qwen2.5-vl-72b-instruct", "input": ["text", "image"] }
+      ]
+    }
+  }
+}
