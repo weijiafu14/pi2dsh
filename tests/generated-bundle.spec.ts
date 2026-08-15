@@ -56,7 +56,18 @@ describe('generated bundle through the official DSH plugin manager', () => {
       await pkg.dispose()
     }
 
+    // First add can stop at pnpm's build-script gate (the bundle carries the
+    // real pi-ai, whose deps declare install scripts). Mirror the documented
+    // user flow: approve the listed builds in the profile's workspace file,
+    // then re-run the add.
     const installed = await runDsh(home, ['plugin', '--profile', 'headless', 'add', `file:${bundle}`])
+      .catch(async (error: { stdout?: string; stderr?: string }) => {
+        if (!`${String(error.stdout ?? '')}${String(error.stderr ?? '')}`.includes('ERR_PNPM_IGNORED_BUILDS')) throw error
+        const workspaceFile = join(home, 'profiles/headless/pnpm-workspace.yaml')
+        const workspace = await readFile(workspaceFile, 'utf8')
+        await writeFile(workspaceFile, workspace.replace(/set this to true or false/g, 'true'))
+        return runDsh(home, ['plugin', '--profile', 'headless', 'add', `file:${bundle}`])
+      })
     expect(installed.stderr).not.toContain('ERR_')
 
     const profileRoot = join(home, 'profiles/headless')

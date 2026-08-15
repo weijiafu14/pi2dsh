@@ -132,6 +132,29 @@ export function applyModelsJsonConfiguredAuth(
 }
 
 /**
+ * One models.json provider as a Pi Provider object: the composed Pi Models
+ * as its catalog and Pi's per-api wire clients as its transport (attached by
+ * the provider adapter's synthesis). Registered as a DSH llm route, this
+ * makes the DSH directory the single model directory — the Pi registry
+ * projects it back, and registry.getProvider() answers a genuine Pi
+ * Provider, so packages that stream through the provider surface work
+ * unchanged.
+ */
+export function modelsJsonPiProvider(
+  providerId: string,
+  provider: ModelsJsonProvider,
+  models: UnknownRecord[],
+): UnknownRecord {
+  return {
+    id: providerId,
+    name: provider.name ?? providerId,
+    ...(provider.baseUrl === undefined ? {} : { baseUrl: provider.baseUrl }),
+    ...(provider.api === undefined ? {} : { api: provider.api }),
+    getModels: () => models,
+  }
+}
+
+/**
  * Pi's configured-check (not liveness) for a models.json provider — the
  * configuredRequestAuthStatus semantics: a literal or !command key counts as
  * configured, a templated key counts only when its env vars are present, and

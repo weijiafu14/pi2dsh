@@ -31,10 +31,11 @@ import {
   applyModelsJsonConfiguredAuth,
   loadModelsJsonSnapshot,
   modelsJsonAuthConfigured,
+  modelsJsonPiProvider,
   resolveModelsJsonAuth,
   type ModelsJsonSnapshot,
 } from './models-json.js'
-import { registerPiProviderRoute } from './provider-adapter.js'
+import { providerCarriesTransport, registerPiProviderRoute, withSynthesizedTransport } from './provider-adapter.js'
 
 type UnknownRecord = Record<string, unknown>
 type PiHandler = (event: UnknownRecord, context: UnknownRecord) => unknown | Promise<unknown>
@@ -127,6 +128,9 @@ interface RuntimeState {
   // Pi's standard user-defined model registry: ~/.pi/agent/models.json under
   // the redirected agent dir, loaded before extensions and on refresh().
   modelsJson?: ModelsJsonSnapshot
+  // models.json providers as Pi Provider objects (models + per-api
+  // transport), registered as DSH llm routes; getProvider answers these.
+  modelsJsonProviders: Map<string, UnknownRecord>
   // Live DSH llm routes registered for transport-carrying Pi providers.
   providerRouteDisposers: Map<string, () => void>
 }
@@ -500,54 +504,48 @@ function contextFor(
     },
   }
   const session = agentSession(agent)
-  // Pi's ModelRegistry surface. The catalog half projects the DSH llm
-  // service's advisory directory (empty in compositions without one); the
-  // provider-auth half resolves Pi's full credential chain (vendored
-  // double-checked-lock refresh) against the Pi-format auth.json.
+  // Pi's ModelRegistry surface over the ONE model directory: every Pi
+  // provider — package-registered or models.json-defined — is a DSH llm
+  // route, and this registry is a faithful Pi projection of that directory
+  // (route entries carry their full Pi Model fields through it). Neither
+  // side sees the other: packages read exact Pi Models, DSH routes to
+  // ordinary adapters. The provider-auth half resolves Pi's full credential
+  // chain (vendored double-checked-lock refresh) against the Pi-format
+  // auth.json and the models.json configured keys.
   const providerConfig = (name: string): UnknownRecord | undefined => state.providers.get(name)
   const catalog = state.modelCatalog
-  // Pi-family models: entries declared by providers the PACKAGE registered
-  // (pi-ai createProvider objects carry getModels()). Merged after the DSH
-  // llm directory, matching Pi's registry-of-registered-providers semantics.
-  const piProviderModels = (): UnknownRecord[] => {
-    const out: UnknownRecord[] = []
-    for (const [key, value] of state.providers) {
-      let models: unknown
-      try {
-        models = typeof (value as { getModels?: unknown }).getModels === 'function'
-          ? (value as { getModels(): unknown }).getModels()
-          : (value as { models?: unknown }).models
-      } catch {
-        continue
-      }
-      if (!Array.isArray(models)) continue
-      for (const model of models as UnknownRecord[]) {
-        out.push({ ...model, provider: String(model.provider ?? key) })
-      }
+  // Directory membership comes from the DSH llm directory alone. The DSH
+  // catalog channel detaches entries to its own metadata contract, so the
+  // projection restores each Pi-native route's entry from the registration
+  // source at the exit — packages read the EXACT Pi Model (api, baseUrl,
+  // cost, …) they configured, and never see that a DSH directory sat in
+  // between. DSH-owned routes project as-is.
+  const piNativeEntry = (provider: string, id: string): UnknownRecord | undefined => {
+    const source = (state.modelsJsonProviders.get(provider) ?? state.providers.get(provider)) as
+      | { getModels?(): unknown; models?: unknown }
+      | undefined
+    if (source === undefined) return undefined
+    let models: unknown
+    try {
+      models = typeof source.getModels === 'function' ? source.getModels() : source.models
+    } catch {
+      return undefined
     }
-    return out
+    if (!Array.isArray(models)) return undefined
+    return (models as UnknownRecord[]).find(model => model.id === id)
   }
-  // Pi-family models, third source: the user's models.json providers (Pi's
-  // standard custom-model configuration file), composed at mount/refresh.
-  const modelsJsonModels = (): UnknownRecord[] => state.modelsJson?.models ?? []
-  const allModels = () => {
-    const fromLlm = catalog?.all() ?? []
-    const seen = new Set(fromLlm.map(model => `${model.provider} ${model.id}`))
-    const merged: UnknownRecord[] = [...fromLlm]
-    for (const model of [...piProviderModels(), ...modelsJsonModels()]) {
-      const key = `${String(model.provider)} ${String(model.id)}`
-      if (seen.has(key)) continue
-      seen.add(key)
-      merged.push(model)
-    }
-    return merged
+  const restorePiShape = (entry: UnknownRecord): UnknownRecord => {
+    const native = piNativeEntry(String(entry.provider ?? ''), String(entry.id ?? ''))
+    return native === undefined ? entry : { ...entry, ...native, provider: entry.provider }
   }
+  const allModels = () => (catalog?.all() ?? []).map(restorePiShape)
   const modelRegistry = {
     getAll: () => allModels(),
     getAvailable: () => allModels(),
-    find: (provider: string, modelId: string) => catalog?.find(provider, modelId)
-      ?? piProviderModels().find(model => model.provider === provider && model.id === modelId)
-      ?? modelsJsonModels().find(model => model.provider === provider && model.id === modelId),
+    find: (provider: string, modelId: string) => {
+      const entry = catalog?.find(provider, modelId)
+      return entry === undefined ? undefined : restorePiShape(entry)
+    },
     getError: () => {
       const problems = state.modelsJson?.errors ?? []
       return problems.length > 0 ? problems.join('\n') : undefined
@@ -641,12 +639,16 @@ function contextFor(
     },
     getProviderAuthStatus: (provider: string) =>
       providerSupportsOAuth(providerConfig(provider)) ? 'oauth' : 'none',
+    // A models.json provider answers as a genuine Pi Provider object (its
+    // composed models plus Pi's per-api transport, attached at route
+    // registration) — packages that stream through the provider surface
+    // never see the DSH route behind it.
     getProvider: (provider: string) => providerConfig(provider)
-      ?? (state.modelsJson?.providers.get(provider) as UnknownRecord | undefined),
+      ?? state.modelsJsonProviders.get(provider),
     getRegisteredProviderConfig: (provider: string) => providerConfig(provider),
     getRegisteredProviderIds: () => [...state.providers.keys()],
     getProviderDisplayName: (provider: string) => {
-      const config = providerConfig(provider) ?? state.modelsJson?.providers.get(provider)
+      const config = providerConfig(provider) ?? state.modelsJsonProviders.get(provider)
       return typeof config?.name === 'string' ? config.name : provider
     },
     getProviderAuth: async (provider: string) => {
@@ -675,10 +677,11 @@ function contextFor(
       return provider.length > 0 && providerSupportsOAuth(providerConfig(provider))
     },
     refresh: async () => {
-      // Pi's refresh() reloads models.json alongside the provider directory.
+      // Pi's refresh() reloads models.json: routes re-register from the new
+      // snapshot, then the directory projection re-reads.
+      await reloadModelsJson(ctx, state)
       await catalog?.refresh()
-      state.modelsJson = await loadModelsJsonSnapshot(realBuiltinProvider)
-      return { models: allModels(), errors: [...state.modelsJson.errors] }
+      return { models: allModels(), errors: [...(state.modelsJson?.errors ?? [])] }
     },
   }
   const base: UnknownRecord = {
@@ -1182,6 +1185,12 @@ async function applyPiContextTransform(
     current = returned as UnknownRecord[]
   }
   if (current === event.messages) return pending
+  for (let index = 0; index < history.length; index++) {
+    if (current[index] === history[index]) continue
+    if (JSON.stringify(current[index]) === JSON.stringify(history[index])) continue
+    logger(ctx).warn('[pi2dsh] a Pi context handler edited already-entered history; DSH durable history is append-only, so those edits were ignored (only this step\'s not-yet-entered messages accept the transform)')
+    break
+  }
   const tail = current.slice(history.length)
   const rebuilt: UnknownRecord[] = []
   for (const [index, original] of pending.entries()) {
@@ -1232,6 +1241,54 @@ async function collectPiImages(ctx: Context, messages: UnknownRecord[]): Promise
 function oauthStoreOf(state: RuntimeState): FileCredentialStore {
   state.oauthStore ??= new FileCredentialStore(join(getAgentDir(), 'auth.json'))
   return state.oauthStore
+}
+
+const MODELS_JSON_ROUTE_PREFIX = 'models.json/'
+
+// (Re)load Pi's models.json and register each provider as a DSH llm route —
+// the single-directory contract: models.json is a configuration ENTRY, the
+// DSH llm directory is the one runtime model directory, and the Pi registry
+// is its projection. Load errors warn per entry and surface via getError().
+async function reloadModelsJson(ctx: Context, state: RuntimeState): Promise<void> {
+  for (const [key, dispose] of state.providerRouteDisposers) {
+    if (!key.startsWith(MODELS_JSON_ROUTE_PREFIX)) continue
+    state.providerRouteDisposers.delete(key)
+    dispose()
+  }
+  state.modelsJsonProviders.clear()
+  state.modelsJson = await loadModelsJsonSnapshot(realBuiltinProvider)
+  for (const problem of state.modelsJson.errors) logger(ctx).warn(`[pi2dsh] models.json: ${problem}`)
+  for (const [providerId, providerConfig] of state.modelsJson.providers) {
+    const models = state.modelsJson.models.filter(model => model.provider === providerId)
+    const provider = modelsJsonPiProvider(providerId, providerConfig, models)
+    const routeDisposer = registerPiProviderRoute({
+      llm: llmOf(ctx) as never,
+      providerId,
+      provider,
+      host: {
+        resolveAuth: async () => {
+          const resolved = resolveModelsJsonAuth(providerId, providerConfig)
+          if (!resolved.ok) return undefined
+          return {
+            auth: {
+              ...(resolved.apiKey === undefined ? {} : { apiKey: resolved.apiKey }),
+              ...(resolved.headers === undefined ? {} : { headers: resolved.headers }),
+              ...(providerConfig.baseUrl === undefined ? {} : { baseUrl: providerConfig.baseUrl }),
+            },
+          }
+        },
+        warn: message => logger(ctx).warn(message),
+      },
+    })
+    // getProvider answers the transport-carrying Pi Provider shape whether or
+    // not an llm service is mounted; the route itself needs one.
+    const transportProvider = providerCarriesTransport(provider) ? provider : withSynthesizedTransport(provider) ?? provider
+    state.modelsJsonProviders.set(providerId, transportProvider)
+    if (routeDisposer !== undefined) {
+      state.providerRouteDisposers.set(`${MODELS_JSON_ROUTE_PREFIX}${providerId}`, routeDisposer)
+      logger(ctx).info(`[pi2dsh] models.json provider ${JSON.stringify(providerId)} registered as a native DSH llm route (${models.length} models)`)
+    }
+  }
 }
 
 // Pi hosts ship /login <provider> as a built-in; register it once, the first
@@ -1490,11 +1547,17 @@ function dshCommandName(ctx: Context, piName: string): string {
 }
 
 function registerCommand(ctx: Context, state: RuntimeState, command: PiCommand): void {
-  // Pi's registerCommand is Map.set: a same-name registration replaces the
-  // earlier one and never throws (loader.ts extension.commands.set). Replace
-  // within this package, and treat a cross-package collision on the shared
-  // DSH command namespace like the /login precedent: the first mount keeps
-  // the name, later mounts warn instead of aborting their whole package.
+  // Pi's registerCommand never throws. Within one extension it is Map.set —
+  // a same-name registration replaces the earlier one (loader.ts
+  // extension.commands.set). Colliding registrations from DIFFERENT sources
+  // both survive in Pi under numbered invocation names (runner.ts
+  // resolveRegisteredCommands: /name:1, /name:2). On the shared DSH command
+  // namespace the earlier registration's name cannot be rewritten from here,
+  // so the mapped semantics are: this package's re-registration replaces its
+  // own command and keeps the base name; a collision with another package's
+  // command registers under Pi's numbered scheme (/name-2, /name-3 — DSH
+  // command naming takes '-' where Pi takes ':') while the first keeps the
+  // bare name.
   if (state.commands.has(command.name)) {
     state.commandDisposers.get(command.name)?.()
     state.commandDisposers.delete(command.name)
@@ -1507,22 +1570,33 @@ function registerCommand(ctx: Context, state: RuntimeState, command: PiCommand):
     logger(ctx).warn(`[pi2dsh] command /${command.name} was not registered because this DSH composition has no ctx.commands`)
     return
   }
-  try {
-    state.commandDisposers.set(command.name, commands.register({
-      name: dshCommandName(ctx, command.name),
-      description: command.description || `Migrated Pi command /${command.name}`,
-      ...(command.argumentHint !== undefined ? { input: { hint: command.argumentHint } } : {}),
-      async handler(invocation: UnknownRecord) {
-        const agent = invocation.agent as UnknownRecord
-        const commandContext = contextFor(ctx, state, agent, invocation.signal as AbortSignal, true)
-        await state.agentScope.run(agent, () => command.handler(String(invocation.rawInput ?? '').trimStart(), commandContext))
-        const notices = commandContext.__notices as string[]
-        return { kind: 'success', ...(notices.length > 0 ? { text: notices.join('\n') } : {}) }
-      },
-    }))
-  } catch (error) {
-    logger(ctx).warn(`[pi2dsh] command /${command.name} is already registered by an earlier package in this host; keeping the first registration (${error instanceof Error ? error.message : String(error)})`)
+  const baseName = dshCommandName(ctx, command.name)
+  const definitionFor = (dshName: string): UnknownRecord => ({
+    name: dshName,
+    description: command.description || `Migrated Pi command /${command.name}`,
+    ...(command.argumentHint !== undefined ? { input: { hint: command.argumentHint } } : {}),
+    async handler(invocation: UnknownRecord) {
+      const agent = invocation.agent as UnknownRecord
+      const commandContext = contextFor(ctx, state, agent, invocation.signal as AbortSignal, true)
+      await state.agentScope.run(agent, () => command.handler(String(invocation.rawInput ?? '').trimStart(), commandContext))
+      const notices = commandContext.__notices as string[]
+      return { kind: 'success', ...(notices.length > 0 ? { text: notices.join('\n') } : {}) }
+    },
+  })
+  let lastError: unknown
+  for (let ordinal = 1; ordinal <= 9; ordinal++) {
+    const dshName = ordinal === 1 ? baseName : `${baseName}-${ordinal}`
+    try {
+      state.commandDisposers.set(command.name, commands.register(definitionFor(dshName)))
+      if (ordinal > 1) {
+        logger(ctx).warn(`[pi2dsh] command /${command.name} collides with an earlier registration in this host; mounted as /${dshName} (Pi numbers colliding commands the same way)`)
+      }
+      return
+    } catch (error) {
+      lastError = error
+    }
   }
+  logger(ctx).warn(`[pi2dsh] command /${command.name} was not registered: ${lastError instanceof Error ? lastError.message : String(lastError)}`)
 }
 
 function requireSession(state: RuntimeState, operation: string): { id: string; events: unknown } {
@@ -1923,6 +1997,7 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
     toolRestrictions: new WeakMap(),
     commands: new Map(),
     commandDisposers: new Map(),
+    modelsJsonProviders: new Map(),
     flags: new Map(),
     notifications: [],
     activeAgents: new Set(),
@@ -1971,11 +2046,15 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
       })
     }
   }
-  // Model Runtime Bridge: project the DSH llm directory as Pi's model catalog
-  // and route hand-built pi-ai complete()/stream() calls through the native
-  // llm service. Compositions without llm keep the empty-catalog semantics.
+  // Model Runtime Bridge: ONE model directory. Pi's models.json providers
+  // register as DSH llm routes first (Pi's per-api wire clients as their
+  // transport), then the DSH directory — now containing every route — is
+  // projected as Pi's model catalog, and hand-built pi-ai complete()/stream()
+  // calls route through the native llm service. Compositions without llm
+  // keep the empty-catalog semantics.
   const llm = llmOf(ctx)
   state.modelCatalog = new ModelCatalog(llm)
+  await reloadModelsJson(ctx, state)
   if (llm !== undefined) {
     const cordisCtx = ctx as unknown as { on(name: string, callback: (...args: unknown[]) => unknown): () => void }
     cordisCtx.on('llm/adapters-updated', () => { void state.modelCatalog?.refresh() })
@@ -1986,12 +2065,6 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
     __setPiAiLlmBridge((model, context, callOptions) => streamViaDshLlm(llm, { model, context, options: callOptions }))
     ctx.effect(() => () => __setPiAiLlmBridge(undefined))
   }
-  // Pi's models.json joins the same pre-extension model-directory fill: a
-  // user-defined provider must be visible to the first registry read, exactly
-  // like the catalog above. Composition errors warn per entry and never block
-  // the mount (Pi surfaces them through registry.getError()).
-  state.modelsJson = await loadModelsJsonSnapshot(realBuiltinProvider)
-  for (const problem of state.modelsJson.errors) logger(ctx).warn(`[pi2dsh] models.json: ${problem}`)
   // createAgentSession builds a real DSH child agent through ctx.agents; the
   // factory lives for exactly the runtime's lifetime.
   __setSubagentSessionFactory(subagentOptions => createBridgedAgentSession({

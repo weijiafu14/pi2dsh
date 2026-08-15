@@ -252,7 +252,7 @@ export const CONTEXT_RULES: Readonly<Record<string, Rule>> = Object.freeze({
   getSystemPromptOptions: rule('partial', 'Returns an empty Pi option projection in command contexts.'),
   waitForIdle: rule('partial', 'Mapped to the DSH agent idle boundary when available.'),
   sessionManager: rule('partial', 'A real read-only projection: DSH durable messages plus pi2dsh sidecar entries, exposed through Pi\'s exact 14-method surface as a single-branch tree.'),
-  modelRegistry: rule('partial', 'A live registry: the DSH llm directory, package-registered providers, and the user\'s ~/.pi/agent/models.json project as Pi Models; getProviderAuth/getApiKeyAndHeaders run Pi\'s full credential chain (models.json keys resolve with Pi\'s $ENV/!command semantics). DSH-route credentials stay inside DSH adapters by design.'),
+  modelRegistry: rule('partial', 'A live registry over the ONE model directory: every Pi provider (package-registered or ~/.pi/agent/models.json) is a DSH llm route, and the registry is that directory\'s exact Pi projection — Pi-native entries keep api/baseUrl and the full Model shape. getProviderAuth/getApiKeyAndHeaders run Pi\'s full credential chain (models.json keys resolve with Pi\'s $ENV/!command semantics); DSH-owned routes keep their credentials inside their adapters by design.'),
   model: rule('partial', 'The agent\'s real provider/model route (a setModel() override wins), enriched from the projected catalog.'),
   scopedModels: rule('partial', 'The projected model catalog (DSH llm directory plus package-registered providers).'),
   hasConfiguredAuth: rule('partial', 'Configuration check on the projected registry: true when the model\'s provider has a live route or package registration (not a key-liveness probe).'),
@@ -309,7 +309,7 @@ export const API_RULES: Readonly<Record<string, Rule>> = Object.freeze({
   },
   registerCommand: {
     level: 'partial',
-    detail: 'Registered in ctx.commands; ui.notify becomes the result, while interactive Pi TUI methods fail explicitly in headless DSH.',
+    detail: 'Registered in ctx.commands with Pi\'s never-throw collision semantics: a package re-registering its own name replaces it, and cross-source collisions mount under Pi\'s numbered scheme (/name-2 — the earlier registration keeps the bare name, where Pi renumbers both). ui.notify becomes the result, while interactive Pi TUI methods fail explicitly in headless DSH.',
   },
   registerShortcut: {
     level: 'partial',

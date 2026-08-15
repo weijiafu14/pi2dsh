@@ -210,6 +210,11 @@ function generatedPackageJson(
     ...(runtimeSpec === undefined
       ? { jiti: '^2.7.0', 'get-east-asian-width': '^1.6.0', marked: '^16.4.1', typebox: '^1.0.4', 'cross-spawn': '^7.0.6', diff: '^9.0.0' }
       : {}),
+    // The real pi-ai wire clients back the single model directory: providers
+    // without their own transport (models.json entries, catalog-only
+    // packages) stream through them — a bundle is a deployment unit, so it
+    // carries the transport library a Pi host would provide.
+    '@earendil-works/pi-ai': '^0.84.1',
     ...(hasSkills ? { '@deepseek-ai/dsh-skill-filesystem': '^0.1.0-rc.6' } : {}),
     ...(runtimeSpec !== undefined ? { pi2dsh: runtimeSpec } : {}),
   }
@@ -254,7 +259,8 @@ function generatedReadme(pkg: ResolvedPiPackage, packageName: string, report: Co
     + `Compatibility verdict: **${report.verdict}** (full ${report.summary.full}, partial ${report.summary.partial}, unsupported ${report.summary.unsupported}).\n\n`
     + `Review \`pi2dsh.report.json\` before installation. This bundle executes the original Pi extension source and should only be installed when that source is trusted.\n\n`
     + `Install with DeepSeek Harness (keep the \`file:\` prefix so pnpm installs this bundle's dependencies instead of creating a bare link):\n\n`
-    + `\`\`\`sh\ndsh plugin --profile headless add file:$PWD\ndsh --profile headless --dump-config\n\`\`\`\n`
+    + `\`\`\`sh\ndsh plugin --profile headless add file:$PWD\ndsh --profile headless --dump-config\n\`\`\`\n\n`
+    + `If the install stops with \`ERR_PNPM_IGNORED_BUILDS\` (pnpm 10+ blocks dependency build scripts by default), approve the listed packages — either run \`pnpm approve-builds\` inside the profile directory, or set them to \`true\` under \`allowBuilds\` in the profile's \`pnpm-workspace.yaml\` — then re-run the add command.\n`
 }
 
 function pluginSource(manifest: GeneratedRuntimeManifest, runtimeImport: string): string {

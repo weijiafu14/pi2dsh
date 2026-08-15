@@ -152,6 +152,14 @@ function loadRealPiAi(): Promise<Record<string, unknown> | undefined> {
 }
 
 async function realTransport(api: string, factoryName: string): Promise<unknown> {
+  // npm pi-ai ships each wire client as a subpath module —
+  // `@earendil-works/pi-ai/api/<api>` exports {stream, streamSimple} directly
+  // ("API implementations under pi-ai/api/*"). Older layouts expose factory
+  // functions on the main entry; try the module shape first.
+  const subpath = await import(`@earendil-works/pi-ai/api/${api}`).catch(() => undefined) as
+    | Record<string, unknown>
+    | undefined
+  if (typeof subpath?.stream === 'function') return subpath
   const real = await loadRealPiAi()
   const factory = real?.[factoryName]
   if (typeof factory !== 'function') unbridgedTransport(api)

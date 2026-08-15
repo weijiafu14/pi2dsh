@@ -9,7 +9,7 @@ import { pathToFileURL } from 'node:url'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { Context, type Plugin } from '@deepseek-ai/cordis'
 import AgentRegistry from '@deepseek-ai/dsh-agent'
-import { CallId } from '@deepseek-ai/dsh-llm'
+import LlmRuntime, { CallId } from '@deepseek-ai/dsh-llm'
 import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
@@ -289,6 +289,9 @@ describe('models.json in the real DSH runtime registry', () => {
     await ctx.plugin(CommandRuntime)
     await ctx.plugin(SkillRegistry)
     await ctx.plugin(AgentRegistry)
+    // The single-directory contract: models.json providers register as DSH
+    // llm routes, and the Pi registry projects that one directory.
+    await ctx.plugin(LlmRuntime as never, {} as never)
     await ctx.plugin(plugin)
     await new Promise(resolve => setTimeout(resolve, 25))
 
@@ -320,9 +323,12 @@ describe('models.json in the real DSH runtime registry', () => {
     }
     expect(probe.error).toBeUndefined()
     expect(probe.ids).toContain('jdcloud/gpt-5')
+    // The projection is an EXACT Pi Model even though the DSH directory sits
+    // in between: the wire api and baseUrl survive the round trip.
     expect(probe.model).toMatchObject({
       provider: 'jdcloud',
       id: 'gpt-5',
+      api: 'openai-completions',
       baseUrl: 'http://gateway.example/v1',
       input: ['text', 'image'],
     })
