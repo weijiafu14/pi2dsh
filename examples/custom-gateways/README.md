@@ -45,6 +45,10 @@ dsh web
   route (`getAll()`, `find('my-gateway', ...)`, `getProvider(...)
   .streamSimple`), and plugin model calls run through the same DSH llm
   directory — the single call path.
+- **Bonus (0.9.0+)**: if the gateway's models are text-only, the picker
+  also shows an automatic "My Gateway + Vision Bridge" group — pi2dsh's
+  image-admission companion, letting you paste images while chatting on a
+  text-only route (see the [`vision-bridge`](../vision-bridge/) example).
 
 ## What this exercises in pi2dsh
 
