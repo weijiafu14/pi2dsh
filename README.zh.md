@@ -21,6 +21,11 @@ dsh plugin --profile headless add pi-vision-tool
 在 profile 的 `pnpm-workspace.yaml` 里把列出的包在 `allowBuilds` 下设为
 `true`（或在该目录跑 `pnpm approve-builds`），然后重跑 add。
 
+如果刚发新版后 add 装到的却是**旧版本**：这是 pnpm 的供应链保护
+（`minimumReleaseAge`）在跳过发布时间太近的版本。显式钉版本——
+`dsh plugin add pi2dsh@<版本>`——pnpm 会在 profile 的
+`pnpm-workspace.yaml` 里记录单包豁免。
+
 ## 架构
 
 桥只实现**一次** Pi 的公共扩展面，把每个调用映射到 DSH 原生服务。只用公共 API 的包原样运行；无法安全映射的能力显式失败，绝不伪装成功。

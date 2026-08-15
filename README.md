@@ -25,6 +25,12 @@ build scripts by default), set the listed packages to `true` under
 `allowBuilds` in the profile's `pnpm-workspace.yaml` (or run
 `pnpm approve-builds` there), then re-run the add.
 
+If an add silently installs an OLD version right after a release: pnpm's
+supply-chain protection (`minimumReleaseAge`) skips versions published too
+recently. Pin the version explicitly — `dsh plugin add pi2dsh@<version>` —
+and pnpm records a one-package exemption in the profile's
+`pnpm-workspace.yaml`.
+
 ## Architecture
 
 The bridge implements Pi's public extension surface **once**, mapping every call onto DSH's native services. A package that sticks to Pi's public API runs verbatim; capabilities with no safe mapping fail explicitly instead of faking success.
