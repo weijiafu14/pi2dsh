@@ -44,11 +44,11 @@ const locale = flag('locale', 'en-US')
 const UI = {
   'en-US': {
     newSession: 'New session', send: 'Send message', running: 'Running', stop: 'Stop',
-    children: /\d+ subagents?/u, childIdle: /not running/iu,
+    children: /\d+ subagents?/u, childIdle: /not running/iu, dismissNotice: 'Continue',
   },
   'zh-CN': {
     newSession: '新建会话', send: '发送消息', running: '运行中', stop: '停止',
-    children: /\d+ 个子代理/u, childIdle: /当前未运行/u,
+    children: /\d+ 个子代理/u, childIdle: /当前未运行/u, dismissNotice: '继续',
   },
 }[locale]
 if (UI === undefined) throw new Error(`capture: no UI strings for locale ${locale} (known: en-US, zh-CN)`)
@@ -110,6 +110,20 @@ async function send(text) {
 // The app keeps a live connection open, so `networkidle` never arrives; the
 // composer appearing is the real "ready".
 await page.goto(baseUrl, { waitUntil: 'domcontentloaded' })
+// A DSH home that has never been opened greets you with a testing notice whose
+// backdrop swallows clicks. Dismiss it if present — a fresh home is exactly
+// the situation this script has to survive.
+const notice = page.getByRole('button', { name: UI.dismissNotice })
+if (await notice.isVisible({ timeout: 10_000 }).catch(() => false)) {
+  await notice.click()
+  // Wait for the BACKDROP to go, not the button: the button hides first while
+  // the mask lingers through its animation and keeps swallowing clicks.
+  await page.waitForFunction(
+    () => document.querySelectorAll('[class*="_mask_"]').length === 0,
+    undefined,
+    { timeout: 20_000 },
+  )
+}
 await page.getByRole('button', { name: UI.newSession }).first().click({ timeout: 60_000 })
 await send(MAIN_QUESTION)
 await send(SIDE_QUESTION)
