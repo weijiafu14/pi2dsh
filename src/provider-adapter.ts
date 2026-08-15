@@ -90,6 +90,22 @@ function providerModels(provider: PiTransportProvider): UnknownRecord[] {
   }
 }
 
+// Pi Model fields a directory entry may carry (mirrored by the projection's
+// exit restore). A whitelist, never a spread: DSH assigns its own meanings to
+// names like reasoning/context/description, and a Pi-shaped value under those
+// names corrupts the directory contract.
+const PI_CARRIED_FIELDS = [
+  'api', 'baseUrl', 'cost', 'contextWindow', 'maxTokens', 'samplingParams', 'thinkingLevelMap', 'compat', 'headers',
+] as const
+
+function piCarriedFields(model: UnknownRecord): UnknownRecord {
+  const carried: UnknownRecord = {}
+  for (const field of PI_CARRIED_FIELDS) {
+    if (model[field] !== undefined) carried[field] = model[field]
+  }
+  return carried
+}
+
 /**
  * Wrap one Pi provider object as a DSH LlmAdapter-shaped route handler.
  * Structural typing carries it through `llm.registerAdapter`.
@@ -98,12 +114,14 @@ export function piProviderDshAdapter(providerId: string, provider: PiTransportPr
   return {
     providerInfo: (id: string) => ({ id, name: typeof provider.name === 'string' ? provider.name : id }),
     providerRetryPolicy: () => undefined,
-    // The directory entry carries the FULL Pi model (api, baseUrl, cost,
-    // sampling params, …) alongside the DSH directory fields, so the Pi
-    // registry projection restores an exact Pi Model and packages never see
-    // that a DSH directory sat in between.
+    // The directory entry carries the Pi model's OWN fields (api, baseUrl,
+    // cost, sampling params, …) alongside the DSH directory fields, so the
+    // Pi registry projection restores an exact Pi Model and packages never
+    // see that a DSH directory sat in between. Carriage is a whitelist:
+    // names DSH gives its own meaning (reasoning is Pi's boolean but DSH's
+    // {efforts} object) must never ride through with the Pi shape.
     listModels: async (id: string) => providerModels(provider).map(model => ({
-      ...model,
+      ...piCarriedFields(model),
       provider: id,
       id: String(model.id ?? ''),
       name: String(model.name ?? model.id ?? ''),
@@ -112,7 +130,7 @@ export function piProviderDshAdapter(providerId: string, provider: PiTransportPr
     resolveModel: async (id: string, modelId: string) => {
       const known = providerModels(provider).find(model => model.id === modelId)
       return {
-        ...known,
+        ...(known === undefined ? {} : piCarriedFields(known)),
         provider: id,
         id: modelId,
         name: String(known?.name ?? modelId),
