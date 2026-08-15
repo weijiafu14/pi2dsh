@@ -28,8 +28,8 @@ export interface PiHostPackageSpec {
 
 export interface PiHostConfig {
   packages: Array<string | PiHostPackageSpec>
-  /** Image-admission companion routes (host-level): `{ <existingRoute>: [modelIds] }`. */
-  visionCompanions?: Record<string, readonly string[]>
+  /** Image-admission companions: default automatic; `false` off; explicit map narrows. */
+  visionCompanions?: false | Record<string, readonly string[]>
 }
 
 function parseFrontmatter(text: string): { attributes: Record<string, string>; body: string } {

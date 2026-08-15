@@ -1,8 +1,9 @@
+// The analyzer/generator (which pull the 23 MB typescript compiler, an
+// optional peer) load lazily inside their commands only — `matrix`,
+// `mcp-config`, and `host` must run on an install without typescript.
 import { writeFileSync } from 'node:fs'
 import { parseArgs } from 'node:util'
-import { analyzePackage } from './analyzer.js'
 import { API_RULES, CONTEXT_RULES, EVENT_RULES, HOST_IMPORT_RULES, UI_CONTEXT_RULES } from './compatibility.js'
-import { generateBundle } from './generator.js'
 import { convertPiMcpConfig, renderMcpPatch } from './mcp-config.js'
 import { resolvePiPackage } from './source.js'
 import type { CompatibilityReport } from './types.js'
@@ -118,12 +119,14 @@ async function main(): Promise<void> {
   const pkg = await resolvePiPackage(source)
   try {
     if (command === 'inspect') {
+      const { analyzePackage } = await import('./analyzer.js')
       const report = await analyzePackage(pkg)
       console.log(parsed.values.json ? JSON.stringify(report, null, 2) : reportText(report))
       if (report.verdict === 'blocked') process.exitCode = 2
       return
     }
     if (parsed.values.out === undefined) throw new Error('convert requires --out <directory>')
+    const { generateBundle } = await import('./generator.js')
     const result = await generateBundle(pkg, {
       outDir: parsed.values.out,
       ...(parsed.values.runtime !== undefined ? { runtimeSpec: parsed.values.runtime } : {}),

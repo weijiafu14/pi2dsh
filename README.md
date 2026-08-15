@@ -60,7 +60,10 @@ Delivery modes:
 
 Engine config (optional, in the profile's `cordis.patch.yml`): `packages:
 [a, b]` mounts exactly that list instead of discovering; `exclude: [c]`
-skips individual dependencies.
+skips individual dependencies; `visionCompanions: false` turns off the
+automatic `<route>-vision` image-admission companions that every text-only
+model route gets by default (an explicit `{route: [modelIds]}` map narrows
+them instead).
 
 **Plugin upgrades and compatibility.** Installed plugin versions are locked
 by pnpm's lockfile — a plugin never upgrades behind your back; only an

@@ -55,7 +55,9 @@ DeepSeek Harness 原生服务（Cordis 组合）
 | **MCP 配置转换** | Pi 的六层 `mcpServers` 配置 → 官方 `@deepseek-ai/dsh-mcp-client` patch 条目。不运行 pi-mcp-adapter 的代码；`$VAR` 转成 `!!js process.env.VAR`，字面量密钥会告警 |
 
 引擎可选配置（profile 的 `cordis.patch.yml`）：`packages: [a, b]` 只挂
-指定清单（跳过发现）；`exclude: [c]` 排除个别依赖。
+指定清单（跳过发现）；`exclude: [c]` 排除个别依赖；`visionCompanions:
+false` 关闭默认自动注册的 `<路由>-vision` 贴图伴生路由（每个纯文本模型
+路由默认都会得到一个；写 `{路由: [模型id]}` 映射则收窄为仅指定项）。
 
 **插件升级与兼容。** 已装插件的版本被 pnpm lockfile 锁定——插件永远不会
 背着你升级，只有显式 `dsh plugin add <包>@latest` 才会动。升级前先跑

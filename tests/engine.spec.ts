@@ -138,8 +138,13 @@ describe('engine mounting on a real DSH composition', () => {
     expect(result.content[0]?.text).toBe('engine-mounted')
   })
 
-  it('registers configured vision-companion routes with ZERO Pi packages installed (DSH-shaped config)', async () => {
-    const root = await makeProfile({})
+  interface LlmFace {
+    registerAdapter(providers: string[], adapter: unknown): unknown
+    listProviders(): Array<{ id: string }>
+    listModels(provider: string): Promise<Array<Record<string, unknown>>>
+  }
+
+  async function makeLlmContext(root: string): Promise<{ ctx: Context, llm: LlmFace, TextAdapter: new (models: Array<Record<string, unknown>>) => unknown }> {
     const ctx = new Context()
     await ctx.plugin(SessionStore)
     await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
@@ -148,30 +153,69 @@ describe('engine mounting on a real DSH composition', () => {
     await ctx.plugin(SkillRegistry)
     const { default: LlmRuntime, LlmAdapter: Adapter } = await import('@deepseek-ai/dsh-llm')
     await ctx.plugin(LlmRuntime as never, {} as never)
-    class TextOnly extends (Adapter as typeof LlmAdapter) {
+    class ModelListAdapter extends (Adapter as typeof LlmAdapter) {
+      constructor(private readonly models: Array<Record<string, unknown>>) { super() }
       override providerInfo(id: string) { return { id, name: `Gateway ${id}` } }
       override async listModels(id: string) {
-        return [{ provider: id, id: 'gw-mini', name: 'GW Mini', inputModalities: ['text'] as const }]
+        return this.models.map(model => ({ ...model, provider: id })) as never
       }
       override async resolveModel(id: string, model: string) {
-        return { provider: id, id: model, name: model, inputModalities: ['text'] } as never
+        return { ...(this.models.find(entry => entry.id === model) ?? { id: model, name: model, inputModalities: ['text'] }), provider: id } as never
       }
       override async *stream(): AsyncIterable<StreamChunk> {
         yield { type: 'finish', reason: { kind: 'stop' } }
       }
     }
-    const llm = (ctx as unknown as {
-      llm: {
-        registerAdapter(providers: string[], adapter: unknown): unknown
-        listProviders(): Array<{ id: string }>
-        listModels(provider: string): Promise<Array<Record<string, unknown>>>
-      }
-    }).llm
-    llm.registerAdapter(['gateway'], new TextOnly())
+    const llm = (ctx as unknown as { llm: LlmFace }).llm
     ;(ctx as unknown as { baseUrl: string }).baseUrl = `file://${root}/cordis.yml`
-    await apply(ctx, { visionCompanions: { gateway: ['gw-mini'] } })
-    expect(llm.listProviders().map(provider => provider.id)).toContain('gateway-vision')
+    return { ctx, llm, TextAdapter: ModelListAdapter as never }
+  }
+
+  const settle = async (): Promise<void> => new Promise(resolve => setTimeout(resolve, 25))
+
+  it('auto-registers a -vision companion for every text-only route, skipping image-capable routes (zero config)', async () => {
+    const root = await makeProfile({})
+    const { ctx, llm, TextAdapter } = await makeLlmContext(root)
+    llm.registerAdapter(['gateway'], new TextAdapter([{ id: 'gw-mini', name: 'GW Mini', inputModalities: ['text'] }]))
+    llm.registerAdapter(['vlm'], new TextAdapter([{ id: 'vlm-pro', name: 'VLM Pro', inputModalities: ['text', 'image'] }]))
+    await apply(ctx, {})
+    await settle()
+
+    const ids = llm.listProviders().map(provider => provider.id)
+    expect(ids).toContain('gateway-vision')
+    expect(ids).not.toContain('vlm-vision')
+    expect(ids).not.toContain('gateway-vision-vision')
     const models = await llm.listModels('gateway-vision')
     expect(models[0]?.inputModalities).toEqual(['text', 'image'])
+
+    // The directory is live: a route registered AFTER mount gets its
+    // companion through the adapters-updated re-sweep.
+    llm.registerAdapter(['late'], new TextAdapter([{ id: 'late-1', name: 'Late', inputModalities: ['text'] }]))
+    await settle()
+    expect(llm.listProviders().map(provider => provider.id)).toContain('late-vision')
+  })
+
+  it('visionCompanions: false turns companions off; an explicit map narrows to named routes/models', async () => {
+    const offRoot = await makeProfile({})
+    const off = await makeLlmContext(offRoot)
+    off.llm.registerAdapter(['gateway'], new off.TextAdapter([{ id: 'gw-mini', name: 'GW Mini', inputModalities: ['text'] }]))
+    await apply(off.ctx, { visionCompanions: false })
+    await settle()
+    expect(off.llm.listProviders().map(provider => provider.id)).not.toContain('gateway-vision')
+
+    const narrowRoot = await makeProfile({})
+    const narrow = await makeLlmContext(narrowRoot)
+    narrow.llm.registerAdapter(['gateway'], new narrow.TextAdapter([
+      { id: 'gw-mini', name: 'GW Mini', inputModalities: ['text'] },
+      { id: 'gw-max', name: 'GW Max', inputModalities: ['text'] },
+    ]))
+    narrow.llm.registerAdapter(['other'], new narrow.TextAdapter([{ id: 'o1', name: 'O1', inputModalities: ['text'] }]))
+    await apply(narrow.ctx, { visionCompanions: { gateway: ['gw-mini'] } })
+    await settle()
+    const ids = narrow.llm.listProviders().map(provider => provider.id)
+    expect(ids).toContain('gateway-vision')
+    expect(ids).not.toContain('other-vision')
+    const models = await narrow.llm.listModels('gateway-vision')
+    expect(models.map(model => model.id)).toEqual(['gw-mini'])
   })
 })

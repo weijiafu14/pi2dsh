@@ -1269,6 +1269,7 @@ interface SharedHostState {
   modelCatalog?: ModelCatalog
   catalogSubscribed?: boolean
   loginRegistered?: boolean
+  companionSweepSubscribed?: boolean
   oauthStore?: FileCredentialStore
 }
 
@@ -1288,55 +1289,116 @@ function sharedHostStateOf(ctx: Context): SharedHostState {
   return shared
 }
 
+/** Companion configuration: default (auto), `false` (off), or an explicit narrow map. */
+export type VisionCompanionsConfig = false | Record<string, readonly string[]> | undefined
+
 /**
- * Image-admission companion routes, configured on the DSH side (the
- * engine's or a bundle's cordis config): `{ <existingRoute>: [modelIds] }`
- * registers a `<route>-vision` route that admits images at the host's
+ * Image-admission companion routes: for every text-only route in the DSH
+ * llm directory, a `<route>-vision` route that admits images at the host's
  * admission checks, replaces image blocks with explicit path-carrying
- * notices, and forwards text-only to the original route. The companion is
- * an ordinary directory entry (single-directory contract); Pi's ctx.model
- * reports the original route for it (companionRoutes). Idempotent per
- * host: repeated calls (several packages, engine + bundle) keep one live
- * adapter and one mapping.
+ * notices, and forwards text-only to the original route. What happens to
+ * an admitted image is decided at run time by whatever is mounted — a
+ * vision extension analyzes it through the turn's entering messages, and
+ * without one the notice's file path lets any image-capable tool read it —
+ * so companions need no knowledge of any particular plugin and are
+ * registered AUTOMATICALLY (zero configuration). `visionCompanions: false`
+ * turns them off; an explicit `{ <route>: [modelIds] }` map narrows them.
+ * The directory is live: adapters-updated re-sweeps, adding companions for
+ * new text-only routes and disposing companions whose original vanished.
+ * The companion is an ordinary directory entry (single-directory
+ * contract); Pi's ctx.model reports the original route for it
+ * (companionRoutes). Idempotent per host.
  */
-export function registerVisionCompanions(
-  ctx: Context,
-  companions: Record<string, readonly string[]> | undefined,
-): void {
-  if (companions === undefined) return
+export function registerVisionCompanions(ctx: Context, config: VisionCompanionsConfig): void {
+  if (config === false) return
   const shared = sharedHostStateOf(ctx)
   const llm = llmOf(ctx)
-  if (llm === undefined) {
-    logger(ctx).warn('[pi2dsh] visionCompanions configured, but this composition mounts no llm service; no companion route was registered')
-    return
+  if (llm === undefined) return
+  const sweep = async (): Promise<void> => {
+    const explicit = config
+    const providers = llm.listProviders()
+    const wanted = new Map<string, { originalId: string, imageModels: Set<string> | undefined }>()
+    if (explicit !== undefined) {
+      for (const [originalId, modelIds] of Object.entries(explicit)) {
+        if (!Array.isArray(modelIds) || modelIds.length === 0) continue
+        if (!providers.some(provider => provider.id === originalId)) {
+          logger(ctx).warn(`[pi2dsh] visionCompanions names route ${JSON.stringify(originalId)}, but no such llm route exists; no companion route was registered`)
+          continue
+        }
+        wanted.set(`${originalId}-vision`, { originalId, imageModels: new Set(modelIds.map(String)) })
+      }
+    } else {
+      for (const provider of providers) {
+        if (shared.companionRoutes.has(provider.id)) continue
+        try {
+          const models = await llm.listModels(provider.id)
+          if (models.length === 0) continue
+          const textOnly = models.every(model => !(Array.isArray(model.inputModalities) && (model.inputModalities as string[]).includes('image')))
+          // undefined imageModels = every model of the route.
+          if (textOnly) wanted.set(`${provider.id}-vision`, { originalId: provider.id, imageModels: undefined })
+        } catch {
+          // A provider whose adapter fails to list contributes no companion.
+        }
+      }
+    }
+    // Dispose companions whose original route vanished from the directory.
+    for (const [key, dispose] of shared.providerRouteDisposers) {
+      if (!key.startsWith(COMPANION_ROUTE_PREFIX)) continue
+      const companionId = key.slice(COMPANION_ROUTE_PREFIX.length)
+      const originalId = shared.companionRoutes.get(companionId)
+      if (originalId !== undefined && !providers.some(provider => provider.id === originalId)) {
+        shared.providerRouteDisposers.delete(key)
+        dispose()
+        logger(ctx).info(`[pi2dsh] companion route ${JSON.stringify(companionId)} disposed (its original route ${JSON.stringify(originalId)} left the directory)`)
+      }
+    }
+    for (const [companionId, spec] of wanted) {
+      // The companion→original mapping is a CONFIGURATION fact, not a
+      // registration outcome: in a host with several bundles, one bundle
+      // wins the route name and the others' registration is refused, but
+      // every bundle's ctx.model projection must still report the original
+      // route for a companion selection.
+      shared.companionRoutes.set(companionId, spec.originalId)
+      if (shared.providerRouteDisposers.has(`${COMPANION_ROUTE_PREFIX}${companionId}`)) continue
+      try {
+        const dispose = (llm as unknown as { registerAdapter(providers: string[], adapter: unknown): () => void })
+          .registerAdapter([companionId], imageAdmissionCompanionAdapter({
+            originalId: spec.originalId,
+            ...(spec.imageModels === undefined ? {} : { imageModels: spec.imageModels }),
+            llm,
+            materializeImage: attachment => materializeAttachmentImage(ctx, attachment),
+          }))
+        shared.providerRouteDisposers.set(`${COMPANION_ROUTE_PREFIX}${companionId}`, dispose)
+        logger(ctx).info(`[pi2dsh] image-admission companion route ${JSON.stringify(companionId)} registered for ${JSON.stringify(spec.originalId)}`)
+      } catch (error) {
+        logger(ctx).warn(`[pi2dsh] companion route ${JSON.stringify(companionId)} already has a live adapter in this host (${error instanceof Error ? error.message : String(error)}); reusing it`)
+      }
+    }
   }
-  for (const [originalId, modelIds] of Object.entries(companions)) {
-    if (!Array.isArray(modelIds) || modelIds.length === 0) continue
-    const companionId = `${originalId}-vision`
-    // The companion→original mapping is a CONFIGURATION fact, not a
-    // registration outcome: in a host with several bundles, one bundle wins
-    // the route name and the others' registration is refused, but every
-    // bundle's ctx.model projection must still report the original route
-    // for a companion selection.
-    shared.companionRoutes.set(companionId, originalId)
-    if (!llm.listProviders().some(provider => provider.id === originalId)) {
-      logger(ctx).warn(`[pi2dsh] visionCompanions names route ${JSON.stringify(originalId)}, but no such llm route exists; no companion route was registered`)
-      continue
+  // Our own companion registrations fire llm/adapters-updated, so the
+  // event-triggered sweep must coalesce: one in flight, at most one queued.
+  // Convergence: a re-sweep after registration finds nothing new to add.
+  let sweeping = false
+  let queued = false
+  const runSweep = (): void => {
+    if (sweeping) {
+      queued = true
+      return
     }
-    if (shared.providerRouteDisposers.has(`${COMPANION_ROUTE_PREFIX}${companionId}`)) continue
-    try {
-      const dispose = (llm as unknown as { registerAdapter(providers: string[], adapter: unknown): () => void })
-        .registerAdapter([companionId], imageAdmissionCompanionAdapter({
-          originalId,
-          imageModels: new Set(modelIds.map(String)),
-          llm,
-          materializeImage: attachment => materializeAttachmentImage(ctx, attachment),
-        }))
-      shared.providerRouteDisposers.set(`${COMPANION_ROUTE_PREFIX}${companionId}`, dispose)
-      logger(ctx).info(`[pi2dsh] image-admission companion route ${JSON.stringify(companionId)} registered for ${JSON.stringify(originalId)} (${modelIds.length} models)`)
-    } catch (error) {
-      logger(ctx).warn(`[pi2dsh] companion route ${JSON.stringify(companionId)} already has a live adapter in this host (${error instanceof Error ? error.message : String(error)}); reusing it`)
-    }
+    sweeping = true
+    void sweep().finally(() => {
+      sweeping = false
+      if (queued) {
+        queued = false
+        runSweep()
+      }
+    })
+  }
+  runSweep()
+  if (shared.companionSweepSubscribed !== true) {
+    shared.companionSweepSubscribed = true
+    const cordisCtx = ctx as unknown as { on(name: string, callback: (...args: unknown[]) => unknown): () => void }
+    cordisCtx.on('llm/adapters-updated', () => { runSweep() })
   }
 }
 
@@ -2133,7 +2195,7 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
   // ONE catalog projection and ONE adapters-updated subscription per host;
   // every package's registry reads the same directory view.
   state.modelCatalog = shared.modelCatalog ??= new ModelCatalog(llm)
-  registerVisionCompanions(ctx, (options.config as { visionCompanions?: Record<string, readonly string[]> } | undefined)?.visionCompanions)
+  registerVisionCompanions(ctx, (options.config as { visionCompanions?: VisionCompanionsConfig } | undefined)?.visionCompanions)
   if (llm !== undefined) {
     if (shared.catalogSubscribed !== true) {
       shared.catalogSubscribed = true

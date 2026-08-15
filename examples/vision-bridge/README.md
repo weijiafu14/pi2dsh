@@ -70,24 +70,35 @@ color (no dependencies) if you want your own probe.
 ## 4. Paste images in the web app (text-only main model)
 
 DSH's web app only lets you attach images when the selected model declares
-image input — a text-only route would reject the paste. Declare an
-**image-admission companion** for your text-only route in the engine's
-plugin config — the profile's `cordis.patch.yml`
-(`$DSH_HOME/profiles/<your-profile>/cordis.patch.yml`):
+image input — a text-only route would reject the paste. pi2dsh handles this
+**automatically**: for every text-only route in the model directory, the
+engine registers an **image-admission companion** route named
+`<route>-vision`. Nothing to configure.
+
+Start `dsh web`. The model picker shows a **“DeepSeek + Vision Bridge”**
+group next to each text-only provider; select the model there, paste an
+image, and ask. The attachment is accepted, @kassing/pi-vision analyzes it
+and injects the result, your message's image block becomes guide text, and
+the text-only model answers about the picture — pixels never reach the
+text-only wire.
+
+To turn companions off, or to limit them to specific routes/models, set
+`visionCompanions` in the engine's plugin config — the profile's
+`cordis.patch.yml` (`$DSH_HOME/profiles/<your-profile>/cordis.patch.yml`):
 
 ```yaml
 - id: pi2dsh
   config:
-    visionCompanions:
+    visionCompanions: false        # off entirely…
+```
+
+```yaml
+- id: pi2dsh
+  config:
+    visionCompanions:              # …or only this route + model
       deepseek-official:
         - deepseek-v4-flash
 ```
-
-Restart `dsh web`. The model picker now shows a **“DeepSeek + Vision
-Bridge”** group; select the model there, paste an image, and ask. The
-attachment is accepted, @kassing/pi-vision analyzes it and injects the
-result, your message's image block becomes guide text, and the text-only
-model answers about the picture — pixels never reach the text-only wire.
 
 Without the vision plugin (or when it is unconfigured), the companion
 route still keeps the turn honest: each image block is replaced by a
@@ -103,8 +114,8 @@ so the agent can reach the image through any path-taking image tool.
   (image path → guide text, analysis prefix)
 - Pi command registration in the DSH command palette (`/vision`), including
   Pi's numbered-collision semantics when two plugins claim one name
-- the image-admission companion route (`<route>-vision`): DSH-shaped
-  engine config (`visionCompanions`) declaring image admission for an
-  existing route, honest admission, text-only forwarding with
-  path-carrying notices, and `ctx.model` reporting the original route so
-  the vision plugin's activation check sees the truth
+- the image-admission companion route (`<route>-vision`): automatic for
+  every text-only route (live re-sweep as the directory changes), honest
+  admission, text-only forwarding with path-carrying notices, and
+  `ctx.model` reporting the original route so the vision plugin's
+  activation check sees the truth

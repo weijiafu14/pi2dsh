@@ -161,8 +161,8 @@ async function textOnlyMessages(
 export interface CompanionRouteOptions {
   /** The existing DSH route this companion forwards to. */
   originalId: string
-  /** Model ids the host configuration declared image admission for. */
-  imageModels: Set<string>
+  /** Model ids to admit images for; absent = every model of the route. */
+  imageModels?: Set<string>
   llm: DshLlmLike
   /**
    * Give a stored image attachment a filesystem path (cached per attachment).
@@ -182,7 +182,8 @@ export interface CompanionRouteOptions {
  * extension handles the turn's entering messages.
  */
 export function imageAdmissionCompanionAdapter(options: CompanionRouteOptions): UnknownRecord {
-  const { originalId, imageModels, llm } = options
+  const { originalId, llm } = options
+  const admits = (modelId: string): boolean => options.imageModels === undefined || options.imageModels.has(modelId)
   const materialize = options.materializeImage ?? (async () => undefined)
   const admitImage = (info: UnknownRecord, id: string): UnknownRecord => {
     const modalities = Array.isArray(info.inputModalities) ? (info.inputModalities as string[]).slice() : ['text']
@@ -200,11 +201,11 @@ export function imageAdmissionCompanionAdapter(options: CompanionRouteOptions): 
     // carriage, not a cross-vocabulary one. Only the models the user
     // declared image input for are listed; others stay on the original.
     listModels: async (id: string) => (await llm.listModels(originalId))
-      .filter(model => imageModels.has(String(model.id)))
+      .filter(model => admits(String(model.id)))
       .map(model => admitImage(model, id)),
     resolveModel: async (id: string, modelId: string) => {
       const info = await llm.resolveModelInfo(originalId, modelId)
-      return imageModels.has(modelId) ? admitImage(info, id) : { ...info, provider: id }
+      return admits(modelId) ? admitImage(info, id) : { ...info, provider: id }
     },
     async *stream(streamOptions: UnknownRecord): AsyncIterable<UnknownRecord> {
       yield* llm.stream({

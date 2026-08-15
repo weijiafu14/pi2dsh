@@ -33,12 +33,13 @@ export interface EngineConfig {
   /** Never mount these packages even when discovered. */
   exclude?: string[]
   /**
-   * Image-admission companion routes: `{ <existingRoute>: [modelIds] }`
-   * registers `<route>-vision` — it admits pasted images, hands them to a
-   * mounted vision extension through the turn's entering messages, and
-   * forwards text-only to the original route.
+   * Image-admission companion routes. Default: AUTOMATIC — every text-only
+   * llm route gets a \`<route>-vision\` companion that admits pasted images
+   * (a mounted vision extension analyzes them; without one the image is
+   * materialized to a file any image-capable tool can read). \`false\`
+   * turns companions off; an explicit \`{ <route>: [modelIds] }\` narrows.
    */
-  visionCompanions?: Record<string, readonly string[]>
+  visionCompanions?: false | Record<string, readonly string[]>
 }
 
 /** Locate the DSH profile root: the nearest ancestor holding cordis.yml. */
