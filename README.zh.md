@@ -30,11 +30,17 @@ DSH 插件一样装一个 Pi 插件，它就能用。
 一次引擎，之后想装谁装谁：
 
 ```sh
-dsh plugin --profile <你的 profile> add pi2dsh
-dsh plugin --profile <你的 profile> add @kassing/pi-vision
+dsh plugin --profile web add pi2dsh
+dsh plugin --profile web add @kassing/pi-vision
 ```
 
 然后**重启 `dsh`**——插件在启动时挂载。
+
+> **profile 名字请用 `web` 或 `headless`。** DSH 只为这两个名字内置了模板，
+> 每个都带一个界面层（网页应用 / 一次性执行器）。`dsh plugin --profile <别的
+> 名字>` 建出来的 profile **没有任何界面层**，起来之后会**直接挂住、不报任何
+> 错**——这跟 pi2dsh 无关，但第一次装的时候很容易撞上。确实想用别的名字，就
+> 自己往它的 `dsh.profile.bundles` 里加界面 bundle。
 
 就这一种方式。没有转换步骤，没有生成产物，不用构建。引擎会读出你 profile 里的
 Pi 包（每一个都是你显式装的），用同一个桥实例挂载它们：一个模型目录、一个登录、
@@ -53,7 +59,7 @@ Pi 包（每一个都是你显式装的），用同一个桥实例挂载它们�
 两条安装期提示值得提前知道：
 
 - **`ERR_PNPM_IGNORED_BUILDS`**：pnpm 默认拦截依赖的构建脚本。在
-  `$DSH_HOME/profiles/<你的 profile>` 里跑 `pnpm approve-builds`，或者把提示
+  `$DSH_HOME/profiles/web` 里跑 `pnpm approve-builds`，或者把提示
   里的包在该 profile 的 `pnpm-workspace.yaml` 的 `allowBuilds` 下设成 `true`，
   然后重跑 add。（这是你的决定权，桥不会绕过它。）
 - **刚发版后 add 装到了旧版本**：pnpm 的 `minimumReleaseAge` 会跳过刚发布不久
@@ -69,7 +75,7 @@ Pi 生态里正好有插件干这件事：把图片交给你指定的视觉模�
 ### 1. 装插件
 
 ```sh
-dsh plugin --profile <你的 profile> add @kassing/pi-vision
+dsh plugin --profile web add @kassing/pi-vision
 ```
 
 ### 2. 给它配一个多模态模型
@@ -111,7 +117,7 @@ Pi 格式文件。
 CLI 里直接提路径：
 
 ```sh
-dsh --profile <你的 profile> "$PWD/photo.png 这张图是什么颜色？只答一个词。"
+dsh --profile web "$PWD/photo.png 这张图是什么颜色？只答一个词。"
 ```
 
 Web 里**直接粘图**——哪怕你的主模型是纯文本的。DSH 正常情况下会拒绝给纯文本模型
@@ -124,7 +130,7 @@ Web 里**直接粘图**——哪怕你的主模型是纯文本的。DSH 正常�
 那条线。
 
 伴生路由是全自动的。想关掉、或者只给某些路由开，在引擎的插件配置里设
-`visionCompanions`（`$DSH_HOME/profiles/<你的 profile>/cordis.patch.yml`）：
+`visionCompanions`（`$DSH_HOME/profiles/web/cordis.patch.yml`）：
 
 ```yaml
 - id: pi2dsh

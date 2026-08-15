@@ -114,7 +114,13 @@ await page.goto(baseUrl, { waitUntil: 'domcontentloaded' })
 // backdrop swallows clicks. Dismiss it if present — a fresh home is exactly
 // the situation this script has to survive.
 const notice = page.getByRole('button', { name: UI.dismissNotice })
-if (await notice.isVisible({ timeout: 10_000 }).catch(() => false)) {
+// Wait for it rather than probing: `isVisible()` answers immediately, and
+// right after load the notice has not rendered yet — which reads as "no
+// notice" and leaves its backdrop to swallow the next click.
+const noticeShown = await notice.waitFor({ state: 'visible', timeout: 15_000 })
+  .then(() => true)
+  .catch(() => false)
+if (noticeShown) {
   await notice.click()
   // Wait for the BACKDROP to go, not the button: the button hides first while
   // the mask lingers through its animation and keeps swallowing clicks.

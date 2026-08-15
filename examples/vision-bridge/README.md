@@ -14,8 +14,8 @@ loop — CLI and web — with the test images in [`test-images/`](test-images/).
 ## 1. Install the engine, then the plugin
 
 ```sh
-dsh plugin --profile <your-profile> add pi2dsh
-dsh plugin --profile <your-profile> add @kassing/pi-vision
+dsh plugin --profile web add pi2dsh
+dsh plugin --profile web add @kassing/pi-vision
 ```
 
 That's the whole install: the pi2dsh engine mounts every Pi package you
@@ -24,7 +24,7 @@ add to the profile — no conversion step, no generated bundles. (The
 
 If an add stops with `ERR_PNPM_IGNORED_BUILDS` (pnpm blocks dependency
 build scripts by default): run `pnpm approve-builds` inside
-`$DSH_HOME/profiles/<your-profile>` — or set the listed packages to `true`
+`$DSH_HOME/profiles/web` — or set the listed packages to `true`
 under `allowBuilds` in that profile's `pnpm-workspace.yaml` — then re-run
 the add command.
 
@@ -51,7 +51,7 @@ send.
 ## 3. Ask about an image
 
 ```sh
-dsh --profile <your-profile> "What solid color fills the image at $PWD/test-images/solid-green.png ? Answer with just the color name."
+dsh --profile web "What solid color fills the image at $PWD/test-images/solid-green.png ? Answer with just the color name."
 ```
 
 Expected: the answer is `green`. The test images are solid colors with
@@ -84,7 +84,7 @@ text-only wire.
 
 To turn companions off, or to limit them to specific routes/models, set
 `visionCompanions` in the engine's plugin config — the profile's
-`cordis.patch.yml` (`$DSH_HOME/profiles/<your-profile>/cordis.patch.yml`):
+`cordis.patch.yml` (`$DSH_HOME/profiles/web/cordis.patch.yml`):
 
 ```yaml
 - id: pi2dsh

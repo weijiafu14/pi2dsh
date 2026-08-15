@@ -12,8 +12,8 @@ Sharing [pi2dsh](https://github.com/weijiafu14/pi2dsh) (npm: `pi2dsh`) — a com
 ## Two commands
 
 ```sh
-dsh plugin --profile <your-profile> add pi2dsh          # the engine, once
-dsh plugin --profile <your-profile> add @kassing/pi-vision   # any Pi package, as published
+dsh plugin --profile web add pi2dsh          # the engine, once
+dsh plugin --profile web add @kassing/pi-vision   # any Pi package, as published
 ```
 
 Restart dsh. That's the whole install. The engine discovers the Pi packages in your profile's dependencies and mounts them — add one and it's there, remove it and it's gone. Upgrades stay independent: `add pi2dsh@latest` doesn't touch your plugins, `add <pkg>@latest` doesn't touch the engine.

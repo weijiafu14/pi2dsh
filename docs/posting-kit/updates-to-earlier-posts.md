@@ -9,14 +9,14 @@ install flow that no longer exists.
 
 ```sh
 npx pi2dsh@0.3.4 host --packages <pkg> --out <dir>   # ← no longer the way
-pnpm dsh plugin --profile <p> add file:<dir>
+pnpm dsh plugin --profile web add file:<dir>
 ```
 
 **Current install (0.11.0):**
 
 ```sh
-dsh plugin --profile <p> add pi2dsh     # the engine, once
-dsh plugin --profile <p> add <pkg>      # the Pi package, as published
+dsh plugin --profile web add pi2dsh     # the engine, once
+dsh plugin --profile web add <pkg>      # the Pi package, as published
 ```
 
 ---

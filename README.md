@@ -36,11 +36,19 @@ here, you should switch to it. That would be the bridge doing its job.
 One engine, then whatever plugins you want:
 
 ```sh
-dsh plugin --profile <your-profile> add pi2dsh
-dsh plugin --profile <your-profile> add @kassing/pi-vision
+dsh plugin --profile web add pi2dsh
+dsh plugin --profile web add @kassing/pi-vision
 ```
 
 Then **restart `dsh`** — plugins mount at startup.
+
+> **Use `web` or `headless` as the profile name.** DSH ships a template for
+> exactly those two, and each includes a surface (the web app / the one-shot
+> driver). `dsh plugin --profile <any-other-name>` creates a profile with no
+> surface at all, and that profile **starts up and then hangs with no
+> diagnostic** — nothing to do with pi2dsh, but easy to hit on your first
+> install. If you want a differently named profile, add the surface bundle to
+> its `dsh.profile.bundles` yourself.
 
 That is the whole model. There is no conversion step, no generated bundle, no
 build. The engine discovers the Pi packages in your profile (every one is
@@ -62,7 +70,7 @@ Two installer messages worth knowing:
 
 - **`ERR_PNPM_IGNORED_BUILDS`** — pnpm blocks dependency build scripts by
   default. Run `pnpm approve-builds` inside
-  `$DSH_HOME/profiles/<your-profile>`, or set the listed packages to `true`
+  `$DSH_HOME/profiles/web`, or set the listed packages to `true`
   under `allowBuilds` in that profile's `pnpm-workspace.yaml`. Then re-run the
   add. (This is your call to make, so the bridge does not work around it.)
 - **An add silently installs an older version** right after a release —
@@ -81,7 +89,7 @@ analysis back into the conversation.
 ### 1. Install the plugin
 
 ```sh
-dsh plugin --profile <your-profile> add @kassing/pi-vision
+dsh plugin --profile web add @kassing/pi-vision
 ```
 
 ### 2. Point it at a multimodal model
@@ -124,7 +132,7 @@ non-default `temperature` some vision plugins send.
 In the CLI, mention a path:
 
 ```sh
-dsh --profile <your-profile> "What color fills $PWD/photo.png ? One word."
+dsh --profile web "What color fills $PWD/photo.png ? One word."
 ```
 
 In the web app, **just paste the image** — even though your main model is
@@ -140,7 +148,7 @@ text-only wire.
 
 Companions are automatic. To turn them off, or narrow them to specific routes,
 set `visionCompanions` in the engine's plugin config
-(`$DSH_HOME/profiles/<your-profile>/cordis.patch.yml`):
+(`$DSH_HOME/profiles/web/cordis.patch.yml`):
 
 ```yaml
 - id: pi2dsh

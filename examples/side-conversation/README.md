@@ -15,8 +15,8 @@ this exact flow.
 ## 1. Install the engine, then the plugin
 
 ```sh
-dsh plugin --profile <your-profile> add pi2dsh
-dsh plugin --profile <your-profile> add pi-btw
+dsh plugin --profile web add pi2dsh
+dsh plugin --profile web add pi-btw
 ```
 
 That's the whole install: the pi2dsh engine mounts every Pi package you add to
@@ -24,7 +24,7 @@ the profile — no conversion step, no generated bundles.
 
 If an add stops with `ERR_PNPM_IGNORED_BUILDS` (pnpm blocks dependency build
 scripts by default): run `pnpm approve-builds` inside
-`$DSH_HOME/profiles/<your-profile>` — or set the listed packages to `true`
+`$DSH_HOME/profiles/web` — or set the listed packages to `true`
 under `allowBuilds` in that profile's `pnpm-workspace.yaml` — then re-run the
 add command. Restart dsh afterwards: packages mount at startup.
 
@@ -33,7 +33,7 @@ add command. Restart dsh afterwards: packages mount at startup.
 Start a session and ask something normal:
 
 ```sh
-dsh --profile <your-profile>
+dsh --profile web
 ```
 
 ```text
