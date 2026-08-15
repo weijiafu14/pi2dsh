@@ -9,7 +9,7 @@ import { pathToFileURL } from 'node:url'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { Context, type Plugin } from '@deepseek-ai/cordis'
 import AgentRegistry from '@deepseek-ai/dsh-agent'
-import LlmRuntime, { CallId } from '@deepseek-ai/dsh-llm'
+import LlmRuntime, { CallId, LlmAdapter, type GenerateOptions, type StreamChunk } from '@deepseek-ai/dsh-llm'
 import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
@@ -262,7 +262,21 @@ describe('models.json in the real DSH runtime registry', () => {
       "      const auth = model === undefined ? undefined : await ctx.modelRegistry.getApiKeyAndHeaders(model)",
       "      const ids = ctx.modelRegistry.getAll().map((entry: any) => `${entry.provider}/${entry.id}`)",
       "      const error = ctx.modelRegistry.getError()",
-      "      return { content: [{ type: 'text', text: JSON.stringify({ model, auth, ids, error }) }] }",
+      "      // A DSH-owned route's model, called through Pi's standard provider",
+      "      // stream surface and registry.complete — the bridge must route both",
+      "      // through the DSH llm service.",
+      "      const fixture = ctx.modelRegistry.find('fixture', 'fx-mini')",
+      "      const fixtureProvider = ctx.modelRegistry.getProvider('fixture')",
+      "      const llmContext = { messages: [{ role: 'user', content: [{ type: 'text', text: 'hi' }], timestamp: Date.now() }] }",
+      "      let streamedText = ''",
+      "      if (fixture !== undefined && typeof fixtureProvider?.streamSimple === 'function') {",
+      "        for await (const ev of fixtureProvider.streamSimple(fixture, llmContext, {})) {",
+      "          if (ev.type === 'done') streamedText = (ev.message?.content ?? []).filter((b: any) => b.type === 'text').map((b: any) => b.text).join('')",
+      "        }",
+      "      }",
+      "      const completed = fixture === undefined ? undefined : await ctx.modelRegistry.complete(fixture, llmContext)",
+      "      const completedText = (completed?.content ?? []).filter((b: any) => b.type === 'text').map((b: any) => b.text).join('')",
+      "      return { content: [{ type: 'text', text: JSON.stringify({ model, auth, ids, error, streamedText, completedText }) }] }",
       "    },",
       "  })",
       "}",
@@ -290,8 +304,27 @@ describe('models.json in the real DSH runtime registry', () => {
     await ctx.plugin(SkillRegistry)
     await ctx.plugin(AgentRegistry)
     // The single-directory contract: models.json providers register as DSH
-    // llm routes, and the Pi registry projects that one directory.
+    // llm routes, and the Pi registry projects that one directory. A
+    // DSH-owned fixture route stands in for deployment adapters so the test
+    // proves packages call THOSE models through the bridge too.
     await ctx.plugin(LlmRuntime as never, {} as never)
+    class FixtureAdapter extends LlmAdapter {
+      override providerInfo(id: string) { return { id, name: `Fixture ${id}` } }
+      override async listModels(id: string) {
+        return [{ provider: id, id: 'fx-mini', name: 'Fixture Mini', inputModalities: ['text'] as const }]
+      }
+      override async resolveModel(id: string, model: string) {
+        return { provider: id, id: model, name: `Fixture ${model}` } as never
+      }
+      override async *stream(_options: GenerateOptions): AsyncIterable<StreamChunk> {
+        yield { type: 'block-start', index: 0, blockType: 'text' }
+        yield { type: 'text-delta', index: 0, text: 'routed through dsh' }
+        yield { type: 'block-end', index: 0, block: { type: 'text', text: 'routed through dsh' } }
+        yield { type: 'finish', reason: { kind: 'stop' } }
+      }
+    }
+    ;(ctx as unknown as { llm: { registerAdapter(providers: string[], adapter: unknown): unknown } })
+      .llm.registerAdapter(['fixture'], new FixtureAdapter())
     await ctx.plugin(plugin)
     await new Promise(resolve => setTimeout(resolve, 25))
 
@@ -320,9 +353,16 @@ describe('models.json in the real DSH runtime registry', () => {
       auth?: { ok: boolean; apiKey?: string }
       ids: string[]
       error?: string
+      streamedText?: string
+      completedText?: string
     }
     expect(probe.error).toBeUndefined()
     expect(probe.ids).toContain('jdcloud/gpt-5')
+    // A DSH-owned route's model answers through Pi's standard call surfaces —
+    // provider.streamSimple and registry.complete both run the DSH llm route.
+    expect(probe.ids).toContain('fixture/fx-mini')
+    expect(probe.streamedText).toBe('routed through dsh')
+    expect(probe.completedText).toBe('routed through dsh')
     // The projection is an EXACT Pi Model even though the DSH directory sits
     // in between: the wire api and baseUrl survive the round trip.
     expect(probe.model).toMatchObject({

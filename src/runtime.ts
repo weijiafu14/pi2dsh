@@ -35,7 +35,7 @@ import {
   resolveModelsJsonAuth,
   type ModelsJsonSnapshot,
 } from './models-json.js'
-import { providerCarriesTransport, registerPiProviderRoute, withSynthesizedTransport } from './provider-adapter.js'
+import { registerPiProviderRoute } from './provider-adapter.js'
 
 type UnknownRecord = Record<string, unknown>
 type PiHandler = (event: UnknownRecord, context: UnknownRecord) => unknown | Promise<unknown>
@@ -545,6 +545,23 @@ function contextFor(
     return native === undefined ? entry : { ...entry, ...native, provider: entry.provider }
   }
   const allModels = () => (catalog?.all() ?? []).map(restorePiShape)
+  // THE one call path for every standard Pi model call: package → bridge →
+  // DSH llm route → adapter. No provider surface hands a package a direct
+  // wire transport; the wire clients live inside route adapters only.
+  const dshRoutedStream = (model: UnknownRecord, context: UnknownRecord, options?: UnknownRecord) => {
+    const llm = llmOf(ctx)
+    if (llm === undefined) {
+      throw new Error('pi2dsh: model calls need a DSH llm service; this composition mounts none')
+    }
+    return streamViaDshLlm(llm, { model, context, options: options as never })
+  }
+  const dshRoutedPiProvider = (base: UnknownRecord, providerId: string): UnknownRecord => ({
+    ...base,
+    id: providerId,
+    getModels: () => allModels().filter(model => model.provider === providerId),
+    stream: dshRoutedStream,
+    streamSimple: dshRoutedStream,
+  })
   const modelRegistry = {
     getAll: () => allModels(),
     getAvailable: () => allModels(),
@@ -645,12 +662,39 @@ function contextFor(
     },
     getProviderAuthStatus: (provider: string) =>
       providerSupportsOAuth(providerConfig(provider)) ? 'oauth' : 'none',
-    // A models.json provider answers as a genuine Pi Provider object (its
-    // composed models plus Pi's per-api transport, attached at route
-    // registration) — packages that stream through the provider surface
-    // never see the DSH route behind it.
-    getProvider: (provider: string) => providerConfig(provider)
-      ?? state.modelsJsonProviders.get(provider),
+    // Every provider the directory carries answers as a Pi Provider whose
+    // stream surface runs through the DSH llm route — packages never hold a
+    // wire transport. A package-registered provider keeps its fields (Pi's
+    // read-back contract) with its stream rerouted while its route is live;
+    // a models.json provider exists exactly while its route does; a
+    // DSH-owned route answers a synthesized Pi Provider over its directory
+    // models.
+    getProvider: (provider: string) => {
+      const base = providerConfig(provider) ?? state.modelsJsonProviders.get(provider)
+      if (base !== undefined) {
+        const routed = state.providerRouteDisposers.has(provider)
+          || state.providerRouteDisposers.has(`${MODELS_JSON_ROUTE_PREFIX}${provider}`)
+        // A package provider that never became a route keeps its own object:
+        // that transport is the package's own asset, not a bridge surface.
+        return routed ? dshRoutedPiProvider(base, provider) : base
+      }
+      if ((catalog?.all() ?? []).some(entry => entry.provider === provider)) {
+        return dshRoutedPiProvider({ id: provider, name: provider }, provider)
+      }
+      return undefined
+    },
+    // Pi's registry.complete: one designated-model call through the same
+    // single path (the DSH llm route), collected to an AssistantMessage.
+    complete: async (model: unknown, context: unknown, options?: unknown) => {
+      const stream = dshRoutedStream(
+        model as UnknownRecord,
+        (context ?? {}) as UnknownRecord,
+        options as UnknownRecord | undefined,
+      ) as unknown as { result(): Promise<unknown> }
+      const result = await stream.result()
+      if (result instanceof Error) throw result
+      return result
+    },
     getRegisteredProviderConfig: (provider: string) => providerConfig(provider),
     getRegisteredProviderIds: () => [...state.providers.keys()],
     getProviderDisplayName: (provider: string) => {
@@ -1291,10 +1335,11 @@ async function reloadModelsJson(ctx: Context, state: RuntimeState): Promise<void
     // registration owns the directory entries — a name conflict or a missing
     // llm service means this configuration is NOT in the directory, so it
     // must not answer anywhere (otherwise another adapter's models would
-    // wear this configuration's baseUrl).
+    // wear this configuration's baseUrl). The ledger keeps the DEFINITION
+    // only; wire transports live inside the route adapter, and the provider
+    // surface packages read streams through the DSH route (getProvider).
     if (routeDisposer !== undefined) {
-      const transportProvider = providerCarriesTransport(provider) ? provider : withSynthesizedTransport(provider) ?? provider
-      state.modelsJsonProviders.set(providerId, transportProvider)
+      state.modelsJsonProviders.set(providerId, provider)
       state.providerRouteDisposers.set(`${MODELS_JSON_ROUTE_PREFIX}${providerId}`, routeDisposer)
       logger(ctx).info(`[pi2dsh] models.json provider ${JSON.stringify(providerId)} registered as a native DSH llm route (${models.length} models)`)
     }
