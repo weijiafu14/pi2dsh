@@ -17,6 +17,11 @@ instance. Remove with `dsh plugin remove <pkg>`; upgrade the engine with
 `dsh plugin add pi2dsh@latest` (your plugins are untouched), upgrade a
 plugin with `dsh plugin add <pkg>@latest` (the engine is untouched).
 
+If an add stops with `ERR_PNPM_IGNORED_BUILDS` (pnpm blocks dependency
+build scripts by default), set the listed packages to `true` under
+`allowBuilds` in the profile's `pnpm-workspace.yaml` (or run
+`pnpm approve-builds` there), then re-run the add.
+
 ## Architecture
 
 The bridge implements Pi's public extension surface **once**, mapping every call onto DSH's native services. A package that sticks to Pi's public API runs verbatim; capabilities with no safe mapping fail explicitly instead of faking success.

@@ -16,6 +16,10 @@ dsh plugin --profile headless add pi-vision-tool
 `dsh plugin add pi2dsh@latest`（插件不动），升级插件
 `dsh plugin add <包>@latest`（引擎不动）。
 
+如果 add 报 `ERR_PNPM_IGNORED_BUILDS`（pnpm 默认拦依赖的构建脚本）：
+在 profile 的 `pnpm-workspace.yaml` 里把列出的包在 `allowBuilds` 下设为
+`true`（或在该目录跑 `pnpm approve-builds`），然后重跑 add。
+
 ## 架构
 
 桥只实现**一次** Pi 的公共扩展面，把每个调用映射到 DSH 原生服务。只用公共 API 的包原样运行；无法安全映射的能力显式失败，绝不伪装成功。
