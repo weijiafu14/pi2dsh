@@ -521,7 +521,13 @@ function contextFor(
   // cost, …) they configured, and never see that a DSH directory sat in
   // between. DSH-owned routes project as-is.
   const piNativeEntry = (provider: string, id: string): UnknownRecord | undefined => {
-    const source = (state.modelsJsonProviders.get(provider) ?? state.providers.get(provider)) as
+    // Restore only entries OUR route registration put in the directory
+    // (models.json providers survive in modelsJsonProviders exactly when
+    // their route won the name; package providers restore only while they
+    // own their route). A foreign adapter's models never wear a Pi-native
+    // configuration's fields.
+    const source = (state.modelsJsonProviders.get(provider)
+      ?? (state.providerRouteDisposers.has(provider) ? state.providers.get(provider) : undefined)) as
       | { getModels?(): unknown; models?: unknown }
       | undefined
     if (source === undefined) return undefined
@@ -1280,11 +1286,15 @@ async function reloadModelsJson(ctx: Context, state: RuntimeState): Promise<void
         warn: message => logger(ctx).warn(message),
       },
     })
-    // getProvider answers the transport-carrying Pi Provider shape whether or
-    // not an llm service is mounted; the route itself needs one.
-    const transportProvider = providerCarriesTransport(provider) ? provider : withSynthesizedTransport(provider) ?? provider
-    state.modelsJsonProviders.set(providerId, transportProvider)
+    // The directory is the only authority. A provider exists in the Pi
+    // projection (getProvider, the exit-restore join) exactly when ITS route
+    // registration owns the directory entries — a name conflict or a missing
+    // llm service means this configuration is NOT in the directory, so it
+    // must not answer anywhere (otherwise another adapter's models would
+    // wear this configuration's baseUrl).
     if (routeDisposer !== undefined) {
+      const transportProvider = providerCarriesTransport(provider) ? provider : withSynthesizedTransport(provider) ?? provider
+      state.modelsJsonProviders.set(providerId, transportProvider)
       state.providerRouteDisposers.set(`${MODELS_JSON_ROUTE_PREFIX}${providerId}`, routeDisposer)
       logger(ctx).info(`[pi2dsh] models.json provider ${JSON.stringify(providerId)} registered as a native DSH llm route (${models.length} models)`)
     }
