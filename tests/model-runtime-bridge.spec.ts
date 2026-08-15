@@ -60,7 +60,7 @@ describe('model runtime bridge', () => {
 
     const all = catalog.all()
     expect(all.map(model => `${model.provider}/${model.id}`)).toEqual(['fixture/fx-mini', 'fixture/fx-vision'])
-    expect(all[1]).toMatchObject({ name: 'Fixture Vision', api: 'dsh-llm', input: ['text', 'image'] })
+    expect(all[1]).toMatchObject({ name: 'Fixture Vision', api: 'faux', input: ['text', 'image'] })
 
     const resolved = await catalog.resolve('fixture', 'fx-mini')
     expect(resolved).toMatchObject({ contextWindow: 64000, maxTokens: 4096, reasoning: true })
