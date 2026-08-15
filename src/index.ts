@@ -1,3 +1,7 @@
+// Engine surface: `dsh plugin add pi2dsh` resolves this entry as a cordis
+// plugin (named exports, no default — a default export would make the
+// loader discard the function-plugin namespace).
+export { apply, inject, name, discoverProfilePiPackages, findProfileRoot, type EngineConfig } from './engine.js'
 export { analyzePackage } from './analyzer.js'
 export {
   API_RULES,

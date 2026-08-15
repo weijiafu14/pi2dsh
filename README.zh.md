@@ -5,10 +5,16 @@
 **打通 Pi 与 DeepSeek Harness 生态。** pi2dsh 致力于连接 [Pi](https://pi.dev/) 的扩展生态与 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（DSH）：用一层通用的 **Pi Host ABI 兼容层**，让未经修改的 Pi 扩展作为原生 DSH 插件运行——一次开发、批量兼容，不做逐包补丁。
 
 ```sh
-# 一个 bundle 装任意 Pi 包，零转换
-pi2dsh host --packages '@juicesharp/rpiv-web-tools@2.4.0,pi-simplify@0.2.3' --out ./my-pi-host
-dsh plugin --profile headless add file:$PWD/my-pi-host
+# 装一次引擎，然后 Pi 包直接从 npm 装
+dsh plugin --profile headless add pi2dsh
+dsh plugin --profile headless add @kassing/pi-vision
+dsh plugin --profile headless add pi-vision-tool
 ```
+
+没有转换步骤、没有生成产物：引擎自动发现你加进 profile 的每个 Pi 包，
+全部经一份桥实例挂载。卸载用 `dsh plugin remove <包>`；升级引擎
+`dsh plugin add pi2dsh@latest`（插件不动），升级插件
+`dsh plugin add <包>@latest`（引擎不动）。
 
 ## 架构
 
@@ -34,13 +40,24 @@ Pi 包（未经修改的 npm 依赖）
 DeepSeek Harness 原生服务（Cordis 组合）
 ```
 
-三种使用方式：
+使用方式：
 
 | 方式 | 作用 |
 |---|---|
-| **Host bundle**（推荐） | 单一可安装 DSH bundle，把任意 Pi 包列表作为普通 npm 依赖挂载 |
-| **Convert** | 逐包可审查产物：vendored 源码快照 + 机器可读兼容报告，适合供应链敏感场景 |
+| **引擎**（默认） | `dsh plugin add pi2dsh` 装一次桥。之后每个 `dsh plugin add` 的 Pi 包都会从 profile 的依赖清单被发现（清单里每一项都是你显式 add 的——绝不扫 node_modules）并经**一份**桥实例挂载：一个模型目录、一个 `/login`、一个凭证存储、一个升级单元 |
+| **Host bundle** | 生成一个固定包清单的 DSH bundle——适合钉死版本、可复现的组合 |
+| **Convert** | 逐包可审查产物：vendored 源码快照 + 机器可读兼容报告，适合供应链敏感或未发布/本地包 |
 | **MCP 配置转换** | Pi 的六层 `mcpServers` 配置 → 官方 `@deepseek-ai/dsh-mcp-client` patch 条目。不运行 pi-mcp-adapter 的代码；`$VAR` 转成 `!!js process.env.VAR`，字面量密钥会告警 |
+
+引擎可选配置（profile 的 `cordis.patch.yml`）：`packages: [a, b]` 只挂
+指定清单（跳过发现）；`exclude: [c]` 排除个别依赖。
+
+**插件升级与兼容。** 已装插件的版本被 pnpm lockfile 锁定——插件永远不会
+背着你升级，只有显式 `dsh plugin add <包>@latest` 才会动。升级前先跑
+`pi2dsh inspect <包>@<版本>` 看兼容报告。桥拦截了 Pi 运行时 import
+（`pi-coding-agent`/`pi-tui`/`pi-ai` 由 shim 提供），插件自己锁的 Pi 依赖
+版本根本不会被加载——唯一可能咬人的漂移是插件用了桥还没覆盖的 Pi 新
+API，这在报告里能看到，运行时也会按包隔离、显式报错。
 
 保持通用性的三条硬规则：
 
@@ -84,14 +101,15 @@ v6 版黑盒装置同时强化了探测方法论本身：桥自带的宿主固�
 需要 Node.js 22.19+ 与 DeepSeek Harness。
 
 ```sh
-git clone https://github.com/weijiafu14/pi2dsh.git && cd pi2dsh
-corepack pnpm@11.7.0 install && pnpm build
+# 引擎（默认）：装一次，然后直接加 Pi 包
+dsh plugin --profile headless add pi2dsh
+dsh plugin --profile headless add @kassing/pi-vision
 
-node dist/cli.mjs inspect @narumitw/pi-lsp          # 兼容报告
-node dist/cli.mjs convert @narumitw/pi-lsp --out ./dsh-pi-lsp
-node dist/cli.mjs host --packages 'pi-simplify' --out ./pi-host
-node dist/cli.mjs mcp-config                        # Pi mcpServers → DSH patch
-dsh plugin --profile headless add file:$PWD/pi-host
+# 可选 CLI（inspect / convert / host / mcp-config）
+npx pi2dsh inspect @narumitw/pi-lsp                 # 兼容报告
+npx pi2dsh convert @narumitw/pi-lsp --out ./dsh-pi-lsp   # vendored 快照
+npx pi2dsh host --packages 'pi-simplify' --out ./pi-host # 钉版本 bundle
+npx pi2dsh mcp-config                               # Pi mcpServers → DSH patch
 ```
 
 ## Examples：每个能力都有完整可跑的示例

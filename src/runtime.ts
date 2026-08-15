@@ -104,8 +104,6 @@ interface RuntimeState {
   providers: Map<string, UnknownRecord>
   // Pi-format auth.json store, created on first OAuth use; per-provider
   // serialized writes, atomic 0600 persistence (see oauth-bridge).
-  oauthStore?: FileCredentialStore
-  loginCommandRegistered?: boolean
   autocompleteProviders: unknown[]
   editorComponentFactory?: unknown
   editorBuffers: WeakMap<object, string>
@@ -130,6 +128,9 @@ interface RuntimeState {
   // Pi's standard user-defined model registry: ~/.pi/agent/models.json under
   // the redirected agent dir, loaded before extensions and on refresh().
   modelsJson?: ModelsJsonSnapshot
+  // HOST-level slices (same instances across every package in this host —
+  // see SharedHostState): the models.json ledger, companion mapping, live
+  // route disposers, and the provider directory.
   // models.json providers as Pi Provider objects (models + per-api
   // transport), registered as DSH llm routes; getProvider answers these.
   modelsJsonProviders: Map<string, UnknownRecord>
@@ -141,6 +142,8 @@ interface RuntimeState {
   companionRoutes: Map<string, string>
   // Live DSH llm routes registered for transport-carrying Pi providers.
   providerRouteDisposers: Map<string, () => void>
+  // The host-shared slice this package state was built over.
+  shared: SharedHostState
 }
 
 interface PiExecOptions {
@@ -741,7 +744,7 @@ function contextFor(
     refresh: async () => {
       // Pi's refresh() reloads models.json: routes re-register from the new
       // snapshot, then the directory projection re-reads.
-      await reloadModelsJson(ctx, state)
+      await reloadModelsJson(ctx, state, true)
       await catalog?.refresh()
       return { models: allModels(), errors: [...(state.modelsJson?.errors ?? [])] }
     },
@@ -1301,17 +1304,61 @@ async function collectPiImages(ctx: Context, messages: UnknownRecord[]): Promise
 }
 
 function oauthStoreOf(state: RuntimeState): FileCredentialStore {
-  state.oauthStore ??= new FileCredentialStore(join(getAgentDir(), 'auth.json'))
-  return state.oauthStore
+  state.shared.oauthStore ??= new FileCredentialStore(join(getAgentDir(), 'auth.json'))
+  return state.shared.oauthStore
 }
 
 const MODELS_JSON_ROUTE_PREFIX = 'models.json/'
+
+// HOST-level state, shared by every Pi package mounted into one host
+// composition (the engine and host bundles mount several packages through
+// one module graph and one Context). Pi's own semantics make these
+// singular per host: ONE models.json load, ONE provider directory, ONE
+// /login command, ONE credential store, ONE catalog projection. Package
+// state (tools, commands, events, runner) stays per-package. Separate
+// converted bundles each carry their own module graph, so this map is
+// naturally per-bundle there — existing behavior unchanged.
+interface SharedHostState {
+  modelsJsonProviders: Map<string, UnknownRecord>
+  companionRoutes: Map<string, string>
+  providerRouteDisposers: Map<string, () => void>
+  providers: Map<string, UnknownRecord>
+  modelsJson?: ModelsJsonSnapshot
+  modelCatalog?: ModelCatalog
+  catalogSubscribed?: boolean
+  loginRegistered?: boolean
+  oauthStore?: FileCredentialStore
+}
+
+const SHARED_HOST_STATE = new WeakMap<object, SharedHostState>()
+
+function sharedHostStateOf(ctx: Context): SharedHostState {
+  const key = ((ctx as unknown as { root?: object }).root ?? ctx) as object
+  let shared = SHARED_HOST_STATE.get(key)
+  if (shared === undefined) {
+    shared = {
+      modelsJsonProviders: new Map(),
+      companionRoutes: new Map(),
+      providerRouteDisposers: new Map(),
+      providers: new Map(),
+    }
+    SHARED_HOST_STATE.set(key, shared)
+  }
+  return shared
+}
 
 // (Re)load Pi's models.json and register each provider as a DSH llm route —
 // the single-directory contract: models.json is a configuration ENTRY, the
 // DSH llm directory is the one runtime model directory, and the Pi registry
 // is its projection. Load errors warn per entry and surface via getError().
-async function reloadModelsJson(ctx: Context, state: RuntimeState): Promise<void> {
+async function reloadModelsJson(ctx: Context, state: RuntimeState, force = false): Promise<void> {
+  // models.json is a HOST-level load: the first package in a host performs
+  // it, later packages adopt the shared snapshot, and only an explicit
+  // registry refresh() re-reads the file and re-registers the routes.
+  if (!force && state.shared.modelsJson !== undefined) {
+    state.modelsJson = state.shared.modelsJson
+    return
+  }
   for (const [key, dispose] of state.providerRouteDisposers) {
     if (!key.startsWith(MODELS_JSON_ROUTE_PREFIX)) continue
     state.providerRouteDisposers.delete(key)
@@ -1320,6 +1367,7 @@ async function reloadModelsJson(ctx: Context, state: RuntimeState): Promise<void
   state.modelsJsonProviders.clear()
   state.companionRoutes.clear()
   state.modelsJson = await loadModelsJsonSnapshot(realBuiltinProvider)
+  state.shared.modelsJson = state.modelsJson
   for (const problem of state.modelsJson.errors) logger(ctx).warn(`[pi2dsh] models.json: ${problem}`)
   for (const [providerId, providerConfig] of state.modelsJson.providers) {
     const models = state.modelsJson.models.filter(model => model.provider === providerId)
@@ -1429,15 +1477,13 @@ async function materializeAttachmentImage(ctx: Context, attachment: UnknownRecor
   }
 }
 
-// Pi hosts ship /login <provider> as a built-in; register it once, the first
-// time an oauth-capable provider appears.
+// Pi hosts ship /login <provider> as a built-in; register it once per HOST
+// (the provider directory it reads is host-shared, so one command serves
+// every mounted package). The try/catch still guards the separate-bundle
+// layout, where each bundle carries its own module graph and host slice.
 function ensureLoginCommand(ctx: Context, state: RuntimeState): void {
-  if (state.loginCommandRegistered === true) return
-  state.loginCommandRegistered = true
-  // A host bundle mounts several packages, each with its own runtime state;
-  // the first mount wins the shared /login name. Later mounts must not fail
-  // over a duplicate — their OAuth providers are served by builtin preload
-  // parity, and a same-name registration would abort the whole package.
+  if (state.shared.loginRegistered === true) return
+  state.shared.loginRegistered = true
   try {
     registerLoginCommand(ctx, state)
   } catch (error) {
@@ -2127,7 +2173,9 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
       definition: tool,
       sourceInfo: { path: '', source: 'pi2dsh', scope: 'session', origin: 'package' },
     }))
+  const shared = sharedHostStateOf(ctx)
   const state: RuntimeState = {
+    shared,
     handlers: new Map(),
     tools: runtimeTools,
     runner: new ExtensionRunner(piToolRecords),
@@ -2135,8 +2183,8 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
     toolRestrictions: new WeakMap(),
     commands: new Map(),
     commandDisposers: new Map(),
-    modelsJsonProviders: new Map(),
-    companionRoutes: new Map(),
+    modelsJsonProviders: shared.modelsJsonProviders,
+    companionRoutes: shared.companionRoutes,
     flags: new Map(),
     notifications: [],
     activeAgents: new Set(),
@@ -2150,7 +2198,7 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
     shortcuts: new Map(),
     messageRenderers: new Map(),
     entryRenderers: new Map(),
-    providers: new Map(),
+    providers: shared.providers,
     autocompleteProviders: [],
     editorBuffers: new WeakMap(),
     toolsExpanded: false,
@@ -2161,7 +2209,7 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
     argMutations: new WeakMap(),
     streamingTexts: new Map(),
     lastLoggedModels: new WeakMap(),
-    providerRouteDisposers: new Map(),
+    providerRouteDisposers: shared.providerRouteDisposers,
   }
   subscribeLifecycle(ctx, state)
   subscribeInterceptors(ctx, state)
@@ -2192,11 +2240,16 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
   // calls route through the native llm service. Compositions without llm
   // keep the empty-catalog semantics.
   const llm = llmOf(ctx)
-  state.modelCatalog = new ModelCatalog(llm)
+  // ONE catalog projection and ONE adapters-updated subscription per host;
+  // every package's registry reads the same directory view.
+  state.modelCatalog = shared.modelCatalog ??= new ModelCatalog(llm)
   await reloadModelsJson(ctx, state)
   if (llm !== undefined) {
-    const cordisCtx = ctx as unknown as { on(name: string, callback: (...args: unknown[]) => unknown): () => void }
-    cordisCtx.on('llm/adapters-updated', () => { void state.modelCatalog?.refresh() })
+    if (shared.catalogSubscribed !== true) {
+      shared.catalogSubscribed = true
+      const cordisCtx = ctx as unknown as { on(name: string, callback: (...args: unknown[]) => unknown): () => void }
+      cordisCtx.on('llm/adapters-updated', () => { void shared.modelCatalog?.refresh() })
+    }
     // Pi hosts finish loading the model directory before extensions can see
     // the registry, so extension-visible reads (guardian reviewer probes)
     // never race the initial catalog fill. Later refreshes stay concurrent.

@@ -5,10 +5,17 @@
 **Bridging the Pi and DeepSeek Harness ecosystems.** pi2dsh is dedicated to connecting [Pi](https://pi.dev/)'s extension ecosystem with [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (DSH): one general **Pi Host ABI compatibility layer** that runs unmodified Pi extensions as native DSH plugins — not per-package patches.
 
 ```sh
-# one bundle, any Pi packages, no conversion
-pi2dsh host --packages '@juicesharp/rpiv-web-tools@2.4.0,pi-simplify@0.2.3' --out ./my-pi-host
-dsh plugin --profile headless add file:$PWD/my-pi-host
+# install the engine once, then install Pi packages straight from npm
+dsh plugin --profile headless add pi2dsh
+dsh plugin --profile headless add @kassing/pi-vision
+dsh plugin --profile headless add pi-vision-tool
 ```
+
+No conversion step, no generated bundles: the engine discovers every Pi
+package you added to the profile and mounts them all through one bridge
+instance. Remove with `dsh plugin remove <pkg>`; upgrade the engine with
+`dsh plugin add pi2dsh@latest` (your plugins are untouched), upgrade a
+plugin with `dsh plugin add <pkg>@latest` (the engine is untouched).
 
 ## Architecture
 
@@ -34,13 +41,28 @@ Pi package (unmodified npm dependency)
 DeepSeek Harness native services (Cordis composition)
 ```
 
-Three delivery modes:
+Delivery modes:
 
 | Mode | What it does |
 |---|---|
-| **Host bundle** (recommended) | One installable DSH bundle mounts any list of unmodified Pi packages as ordinary npm dependencies |
-| **Convert** | A reviewable per-package bundle: vendored source snapshot + machine-readable compatibility report, for supply-chain-sensitive installs |
+| **Engine** (default) | `dsh plugin add pi2dsh` installs the bridge once as a DSH plugin. Every Pi package you then `dsh plugin add` is discovered from the profile's dependency manifest (each entry is an explicit add — never a node_modules scan) and mounted through ONE bridge instance: one model directory, one `/login`, one credential store, one upgrade unit |
+| **Host bundle** | One generated DSH bundle mounts a fixed list of Pi packages as npm dependencies — for pinned, reproducible compositions |
+| **Convert** | A reviewable per-package bundle: vendored source snapshot + machine-readable compatibility report, for supply-chain-sensitive or unpublished/local packages |
 | **MCP config translation** | Pi's six `mcpServers` layers → official `@deepseek-ai/dsh-mcp-client` patch entries. The Pi MCP adapter's code never runs; `$VAR` becomes `!!js process.env.VAR`, literal secrets are warned about |
+
+Engine config (optional, in the profile's `cordis.patch.yml`): `packages:
+[a, b]` mounts exactly that list instead of discovering; `exclude: [c]`
+skips individual dependencies.
+
+**Plugin upgrades and compatibility.** Installed plugin versions are locked
+by pnpm's lockfile — a plugin never upgrades behind your back; only an
+explicit `dsh plugin add <pkg>@latest` moves it. Before upgrading, run
+`pi2dsh inspect <pkg>@<version>` for the compatibility report. The bridge
+intercepts the Pi runtime imports (`pi-coding-agent`/`pi-tui`/`pi-ai` are
+served by its shims), so a plugin's own Pi dependency pins never load — the
+only drift that can bite is a plugin adopting a Pi host API the bridge does
+not cover yet, which the report shows and which fails loudly, package-
+isolated, at runtime.
 
 Three hard rules keep it general:
 
@@ -84,14 +106,15 @@ The screener models **load-time vs lazy reachability**: only an unresolvable dep
 Requires Node.js 22.19+ and DeepSeek Harness.
 
 ```sh
-git clone https://github.com/weijiafu14/pi2dsh.git && cd pi2dsh
-corepack pnpm@11.7.0 install && pnpm build
+# Engine (default): install once, then add Pi packages directly
+dsh plugin --profile headless add pi2dsh
+dsh plugin --profile headless add @kassing/pi-vision
 
-node dist/cli.mjs inspect @narumitw/pi-lsp          # compatibility report
-node dist/cli.mjs convert @narumitw/pi-lsp --out ./dsh-pi-lsp
-node dist/cli.mjs host --packages 'pi-simplify' --out ./pi-host
-node dist/cli.mjs mcp-config                        # Pi mcpServers → DSH patch
-dsh plugin --profile headless add file:$PWD/pi-host
+# Optional CLI (inspect / convert / host / mcp-config)
+npx pi2dsh inspect @narumitw/pi-lsp                 # compatibility report
+npx pi2dsh convert @narumitw/pi-lsp --out ./dsh-pi-lsp   # vendored snapshot
+npx pi2dsh host --packages 'pi-simplify' --out ./pi-host # pinned bundle
+npx pi2dsh mcp-config                               # Pi mcpServers → DSH patch
 ```
 
 ## Examples: copy-paste working capabilities

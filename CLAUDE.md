@@ -72,6 +72,10 @@ Examples 章节同步更新。
 - 大事先汇报再动手；设计偏离单独拎出来等拍板；说人话不用黑话。
 - 画架构图直接 ASCII，不用工具。
 - 凭证只经环境变量注入，永不落盘/入提交/回显。
-- E2E 装置：DSH CLI 必须在 deepseek-harness 目录跑；bundle 里的 pi2dsh 是
-  file: 拷贝，改 src 后要重新 build 并同步 dist 进 profile；发现"跑很久"先
-  查结果文件而不是傻等。
+- E2E 装置：DSH CLI 必须在 deepseek-harness 目录跑；发现"跑很久"先查结果
+  文件而不是傻等。**引擎形态是默认用户姿势**（`dsh plugin add pi2dsh` +
+  直接 add Pi 包，engine.ts 从 profile 依赖清单发现并经一份桥挂载；host
+  级资源 models.json/登录/provider 目录/catalog 单份共享，见 runtime.ts
+  SharedHostState）。E2E 改 src 后：pnpm build，且 profile 里 file: 装的
+  pi2dsh 是拷贝（pnpm file: 有缓存，update 不重拷）——必须手动
+  `rm -rf <profile>/node_modules/pi2dsh/dist && cp -R dist ...` 同步。
