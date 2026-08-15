@@ -24,7 +24,7 @@ interface DshSessionLike {
 }
 
 interface SidecarRecord {
-  kind: 'custom' | 'label' | 'name'
+  kind: 'custom' | 'label' | 'name' | 'branch_summary'
   id: string
   timestamp: string
   customType?: string
@@ -32,6 +32,8 @@ interface SidecarRecord {
   targetId?: string
   label?: string
   name?: string
+  summary?: string
+  fromId?: string
 }
 
 export interface PiProjectedEntry {
@@ -109,6 +111,14 @@ export class PiSessionBridge {
     this.persist(sessionId, {
       kind: 'custom', id, timestamp: new Date().toISOString(), customType,
       ...(data === undefined ? {} : { data }),
+    })
+    return id
+  }
+
+  appendBranchSummary(sessionId: string, summary: string, fromId: string): string {
+    const id = randomUUID()
+    this.persist(sessionId, {
+      kind: 'branch_summary', id, timestamp: new Date().toISOString(), summary, fromId,
     })
     return id
   }
@@ -202,6 +212,14 @@ export class PiSessionBridge {
             type: 'custom', id: record.id, timestamp: record.timestamp,
             customType: record.customType,
             ...(record.data === undefined ? {} : { data: record.data }),
+          },
+        })
+      } else if (record.kind === 'branch_summary') {
+        merged.push({
+          time,
+          entry: {
+            type: 'branch_summary', id: record.id, timestamp: record.timestamp,
+            summary: record.summary, fromId: record.fromId,
           },
         })
       } else if (record.kind === 'label') {

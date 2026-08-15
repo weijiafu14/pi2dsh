@@ -195,8 +195,19 @@ undefined——被"别让我看见跨层的东西，跨层就会导致不一致�
 - 跨目录通道透传字段用白名单，禁止裸展开。**事故档案**：Pi 的
   `reasoning: false`（boolean）裸穿 DSH 目录撞上 DSH 的
   `reasoning.efforts.length`（对象契约），web 模型菜单当场炸。
-- 映射不了的能力 fails loud，绝不伪装成功；`?.` 不许吞真实失败
-  （吞错曾让排查多绕三轮）。
+- 能力缺口分级处置，禁止无脑报错。**事故档案（0.10.0 返工）**：ctx 的
+  shutdown/compact/newSession/fork/navigateTree/switchSession/reload 全部
+  裸 throw 炸 turn，被斥"这可能带来的影响是未知的，你报错了就完了？插件
+  还能不能用？有人知道么？"。第一轮改成 `{cancelled:true}` 拒绝，又被
+  追问"用 dsh 的开放能力不能组合出来？先讨论清楚是不是真的 dsh 没开放
+  能力"——逐条查证后打脸：ctx.sessions.create/fork（含血统+open-turn
+  校验）、compaction.compactNow、cordis 重挂全是现成官方面，Pi 自己的
+  rpc 模式（无 TUI）里这些也全是真语义。最终标准写进 CLAUDE.md 第三节：
+  先查双方官方→真实现；Pi 官方拒绝/吸收通道优先于报错；只有伪造返回值
+  才结构化报错+CapabilityLedger 一次性告知；真不支持的启动期撞
+  （import 检测+setup 期 unusable），且每发现一个此类包必须写 README
+  并告知用户。
+- 兜底：绝不伪装成功；`?.` 不许吞真实失败（吞错曾让排查多绕三轮）。
 
 ---
 

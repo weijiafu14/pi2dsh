@@ -20,18 +20,21 @@ importers:
       get-east-asian-width:
         specifier: 1.6.0
         version: 1.6.0
+      ignore:
+        specifier: 7.0.5
+        version: 7.0.5
       jiti:
         specifier: ^2.7.0
         version: 2.7.0
       marked:
         specifier: ^16.4.2
         version: 16.4.2
-      openai:
-        specifier: ^6.40.0
-        version: 6.49.0(@aws-sdk/credential-provider-node@3.972.79)(@smithy/signature-v4@5.7.0)(ws@8.21.3)(zod@4.4.3)
       pacote:
         specifier: ^21.0.0
         version: 21.5.1
+      proper-lockfile:
+        specifier: 4.1.2
+        version: 4.1.2
       tinyglobby:
         specifier: ^0.2.15
         version: 0.2.17
@@ -117,6 +120,9 @@ importers:
       '@types/pacote':
         specifier: ^11.1.8
         version: 11.1.8
+      '@types/proper-lockfile':
+        specifier: ^4.1.4
+        version: 4.1.4
       '@vitest/coverage-v8':
         specifier: ^4.1.10
         version: 4.1.10(vitest@4.1.10)
@@ -1059,6 +1065,9 @@ packages:
   '@types/pacote@11.1.8':
     resolution: {integrity: sha512-/XLR0VoTh2JEO0jJg1q/e6Rh9bxjBq9vorJuQmtT7rRrXSiWz7e7NsvXVYJQ0i8JxMlBMPPYDTnrRe7MZRFA8Q==}
 
+  '@types/proper-lockfile@4.1.4':
+    resolution: {integrity: sha512-uo2ABllncSqg9F1D4nugVl9v93RmjxF6LJzQLMLDdPaXCUIDPeOJ21Gbqi43xNKzBi/WQ0Q0dICqufzQbMjipQ==}
+
   '@types/retry@0.12.0':
     resolution: {integrity: sha512-wWKOClTTiizcZhXnPY4wikVAwmdYHp8q6DmC+EJUzAMsycb7HB32Kh9RN4+0gExjmPmZSAQjgURXIGATPegAvA==}
 
@@ -1819,26 +1828,6 @@ packages:
       ws: ^8.18.0
       zod: ^3.25 || ^4.0
     peerDependenciesMeta:
-      ws:
-        optional: true
-      zod:
-        optional: true
-
-  openai@6.49.0:
-    resolution: {integrity: sha512-aYCc0C6L864eR6WSYIwQGyXriw/nIyZx0ObvhzOEVuk0zoBDpynjSbrionWI7q65B5H8jJX0DXR9snEzM6bfPg==}
-    peerDependencies:
-      '@aws-sdk/credential-provider-node': '>=3.972.0 <4'
-      '@smithy/hash-node': '>=4.3.0 <5'
-      '@smithy/signature-v4': '>=5.4.0 <6'
-      ws: ^8.18.0
-      zod: ^3.25 || ^4.0
-    peerDependenciesMeta:
-      '@aws-sdk/credential-provider-node':
-        optional: true
-      '@smithy/hash-node':
-        optional: true
-      '@smithy/signature-v4':
-        optional: true
       ws:
         optional: true
       zod:
@@ -3316,6 +3305,10 @@ snapshots:
       '@types/npmlog': 7.0.0
       '@types/ssri': 7.1.5
 
+  '@types/proper-lockfile@4.1.4':
+    dependencies:
+      '@types/retry': 0.12.0
+
   '@types/retry@0.12.0': {}
 
   '@types/ssri@7.1.5':
@@ -4000,13 +3993,6 @@ snapshots:
 
   openai@6.26.0(ws@8.21.3)(zod@4.4.3):
     optionalDependencies:
-      ws: 8.21.3
-      zod: 4.4.3
-
-  openai@6.49.0(@aws-sdk/credential-provider-node@3.972.79)(@smithy/signature-v4@5.7.0)(ws@8.21.3)(zod@4.4.3):
-    optionalDependencies:
-      '@aws-sdk/credential-provider-node': 3.972.79
-      '@smithy/signature-v4': 5.7.0
       ws: 8.21.3
       zod: 4.4.3
 

@@ -2,13 +2,16 @@
 //
 // Three tiers, all package-agnostic:
 //   1. Vendored Pi source (SessionManager, message transforms, truncation,
+//      compaction/summarization, skills loading, trust store, tool wrappers,
 //      file-mutation queue) — byte-level Pi semantics, see ./vendor/PI-LICENSE.
+//      Summarization model calls fill Pi's own streamFn injection point with
+//      the DSH llm bridge: one model path, no provider SDKs.
 //   2. Headless reimplementations (Theme, settings, shell/clipboard/image
 //      helpers) — same signatures, no terminal or Pi-global state.
-//   3. Explicit-failure stubs (AgentSession runtime, resource loaders) —
-//      importable and constructible so packages load, but running them
-//      requires a native DSH port and fails with a clear message instead of
-//      silently faking success.
+//   3. Host-owned capabilities (package install, standalone model stacks) —
+//      importable so packages load, but constructing them throws a structured
+//      PiCapabilityError naming the DSH-owned replacement, never a silent fake.
+import { PiCapabilityError } from '../capability.js'
 
 export {
   SessionManager,
@@ -248,96 +251,119 @@ export class DynamicBorder implements Component {
 // Message / compaction helpers
 // ---------------------------------------------------------------------------
 
-function contentChars(content: unknown): number {
-  if (typeof content === 'string') return content.length
-  if (!Array.isArray(content)) return 0
-  let chars = 0
-  for (const block of content) {
-    if (typeof block !== 'object' || block === null) continue
-    const record = block as Record<string, unknown>
-    if (typeof record.text === 'string') chars += record.text.length
-    else if (typeof record.thinking === 'string') chars += record.thinking.length
-    else if (record.type === 'image') chars += 1600
-    else if (record.arguments !== undefined) chars += JSON.stringify(record.arguments ?? {}).length
-  }
-  return chars
+// Pi's compaction surface, vendored (vendor/pi-compaction.ts): the pure logic
+// is byte-aligned with Pi, and the ONE seam is the model call — Pi's own
+// streamFn injection point, which these wrappers fill with the DSH llm bridge
+// when the caller does not pass a streamFn. Every summarization model call
+// therefore runs on the single DSH llm path.
+export {
+  estimateTokens,
+  calculateContextTokens,
+  DEFAULT_COMPACTION_SETTINGS,
+  shouldCompact,
+  findCutPoint,
+  findTurnStartIndex,
+  serializeConversation,
+  prepareCompaction,
+  getLastAssistantUsage,
+  collectEntriesForBranchSummary,
+  prepareBranchEntries,
+  type CompactionResult,
+  type CompactionSettings,
+  type CompactionPreparation,
+  type CutPointResult,
+  type FileOperations,
+  type BranchPreparation,
+  type BranchSummaryResult,
+  type CollectEntriesResult,
+  type GenerateBranchSummaryOptions,
+} from './vendor/pi-compaction.js'
+import {
+  compact as vendoredCompact,
+  generateSummary as vendoredGenerateSummary,
+  generateSummaryWithUsage as vendoredGenerateSummaryWithUsage,
+  generateBranchSummary as vendoredGenerateBranchSummary,
+  DEFAULT_COMPACTION_SETTINGS,
+  type CompactionSettings,
+} from './vendor/pi-compaction.js'
+import { __getPiAiLlmBridge } from './pi-ai.js'
+
+export function compact(
+  preparation: unknown,
+  model: unknown,
+  apiKey?: unknown,
+  headers?: unknown,
+  customInstructions?: unknown,
+  signal?: unknown,
+  thinkingLevel?: unknown,
+  streamFn?: unknown,
+  env?: unknown,
+  retry?: unknown,
+  callbacks?: unknown,
+): Promise<unknown> {
+  return vendoredCompact(
+    preparation as never, model, apiKey, headers, customInstructions, signal, thinkingLevel,
+    streamFn ?? __getPiAiLlmBridge(), env, retry, callbacks,
+  )
 }
 
-// chars/4 heuristic, matching Pi's estimateTokens semantics.
-export function estimateTokens(message: AgentMessage): number {
-  const record = message as Record<string, unknown>
-  let chars = contentChars(record.content)
-  if (typeof record.summary === 'string') chars += (record.summary as string).length
-  if (record.role === 'bashExecution') {
-    chars += String(record.command ?? '').length + String(record.output ?? '').length
-  }
-  return Math.ceil(chars / 4)
+export function generateSummary(
+  currentMessages: unknown,
+  model: unknown,
+  reserveTokens: unknown,
+  apiKey?: unknown,
+  headers?: unknown,
+  signal?: unknown,
+  customInstructions?: unknown,
+  previousSummary?: unknown,
+  thinkingLevel?: unknown,
+  streamFn?: unknown,
+  env?: unknown,
+  retry?: unknown,
+  callbacks?: unknown,
+): Promise<string> {
+  return vendoredGenerateSummary(
+    currentMessages, model, reserveTokens, apiKey, headers, signal, customInstructions,
+    previousSummary, thinkingLevel, streamFn ?? __getPiAiLlmBridge(), env, retry, callbacks,
+  )
 }
 
-export function calculateContextTokens(messages: AgentMessage[]): number {
-  return messages.reduce((total, message) => total + estimateTokens(message), 0)
+export function generateSummaryWithUsage(
+  currentMessages: unknown,
+  model: unknown,
+  reserveTokens: unknown,
+  apiKey?: unknown,
+  headers?: unknown,
+  signal?: unknown,
+  customInstructions?: unknown,
+  previousSummary?: unknown,
+  thinkingLevel?: unknown,
+  streamFn?: unknown,
+  env?: unknown,
+  retry?: unknown,
+  callbacks?: unknown,
+): Promise<unknown> {
+  return vendoredGenerateSummaryWithUsage(
+    currentMessages, model, reserveTokens, apiKey, headers, signal, customInstructions,
+    previousSummary, thinkingLevel, streamFn ?? __getPiAiLlmBridge(), env, retry, callbacks,
+  )
 }
 
-export const DEFAULT_COMPACTION_SETTINGS = Object.freeze({
-  enabled: true,
-  reserveTokens: 30_000,
-  keepRecentTokens: 20_000,
-})
-
-export function shouldCompact(..._args: unknown[]): boolean {
-  return false
-}
-
-export function compact(..._args: unknown[]): never {
-  return unsupportedRuntime('compact()')
-}
-
-export function findCutPoint(..._args: unknown[]): never {
-  return unsupportedRuntime('findCutPoint()')
-}
-
-export function generateSummary(..._args: unknown[]): never {
-  return unsupportedRuntime('generateSummary()')
-}
-
-export function generateSummaryWithUsage(..._args: unknown[]): never {
-  return unsupportedRuntime('generateSummaryWithUsage()')
-}
-
-export function generateBranchSummary(..._args: unknown[]): never {
-  return unsupportedRuntime('generateBranchSummary()')
-}
-
-export function serializeConversation(messages: AgentMessage[]): string {
-  return JSON.stringify(messages)
+export function generateBranchSummary(entries: unknown, options: Record<string, unknown>): Promise<unknown> {
+  return vendoredGenerateBranchSummary(entries, {
+    ...options,
+    streamFn: options.streamFn ?? __getPiAiLlmBridge(),
+  } as never)
 }
 
 // ---------------------------------------------------------------------------
 // Frontmatter
 // ---------------------------------------------------------------------------
 
-export function parseFrontmatter(text: string): { attributes: Record<string, string>; body: string } {
-  const normalized = text.replace(/\r\n?/gu, '\n')
-  if (!normalized.startsWith('---')) return { attributes: {}, body: normalized }
-  const endIndex = normalized.indexOf('\n---', 3)
-  if (endIndex === -1) return { attributes: {}, body: normalized }
-  const attributes: Record<string, string> = {}
-  for (const line of normalized.slice(4, endIndex).split('\n')) {
-    const separator = line.indexOf(':')
-    if (separator === -1) continue
-    const key = line.slice(0, separator).trim()
-    let value = line.slice(separator + 1).trim()
-    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
-      value = value.slice(1, -1)
-    }
-    if (key.length > 0) attributes[key] = value
-  }
-  return { attributes, body: normalized.slice(endIndex + 4).replace(/^\n/u, '') }
-}
-
-export function stripFrontmatter(text: string): string {
-  return parseFrontmatter(text).body
-}
+// Vendored Pi frontmatter (vendor/pi-frontmatter.ts): Pi's public API returns
+// { frontmatter, body } with YAML-parsed values. An earlier reimplementation
+// here returned { attributes } with string values — same name, wrong shape.
+export { parseFrontmatter, stripFrontmatter } from './vendor/pi-frontmatter.js'
 
 // ---------------------------------------------------------------------------
 // Clipboard / image / shell helpers
@@ -447,9 +473,12 @@ export function parseSkillBlock(text: string): ParsedSkillBlock | null {
   return { name: match[1]!, content: match[2]!.trim() }
 }
 
-export function wrapRegisteredTool(..._args: unknown[]): never {
-  return unsupportedRuntime('wrapRegisteredTool()')
-}
+// Vendored Pi tool wrappers (vendor/pi-tool-wrapper.ts): pure adapters from a
+// RegisteredTool/ToolDefinition to the AgentTool shape. Pi's `runner` argument
+// is used for exactly createContext() and getActiveTools(), which the pi2dsh
+// projection provides — packages composing their own agent loops get Pi's real
+// wrapping behavior.
+export { wrapRegisteredTool, wrapRegisteredTools, wrapToolDefinition, wrapToolDefinitions } from './vendor/pi-tool-wrapper.js'
 
 export function getBinDir(): string {
   const parts = (process.env.PATH ?? '').split(delimiter)
@@ -470,12 +499,6 @@ export interface RetrySettings {
   enabled: boolean
   maxRetries: number
   baseDelayMs: number
-}
-
-export interface CompactionSettings {
-  enabled: boolean
-  reserveTokens: number
-  keepRecentTokens: number
 }
 
 export type DefaultProjectTrust = 'ask' | 'always' | 'never'
@@ -649,19 +672,13 @@ export class InMemorySettingsStorage {
 
 export class FileSettingsStorage extends InMemorySettingsStorage {}
 
-// ---------------------------------------------------------------------------
-// Explicit-failure stubs for Pi's internal agent runtime
-// ---------------------------------------------------------------------------
 
-function runtimeStubClass(name: string): new (...args: unknown[]) => never {
-  return class {
-    constructor() {
-      return unsupportedRuntime(`new ${name}()`)
-    }
-  } as never
-}
-
-export const ProjectTrustStore = runtimeStubClass('ProjectTrustStore')
+// Vendored Pi trust store (vendor/pi-trust-store.ts): a real locked trust.json
+// under whatever agentDir the caller passes — with the redirected getAgentDir
+// convention that is package-visible state inside the DSH-owned pi2dsh
+// directory. The DSH host never consults this file; ctx.isProjectTrusted
+// stays fail-closed because host trust is a DSH decision.
+export { ProjectTrustStore } from './vendor/pi-trust-store.js'
 
 // Pi's resource loader, headless: subagent packages construct one to control
 // a child session's resources (extensions/skills off, a system-prompt
@@ -720,8 +737,31 @@ export class DefaultResourceLoader {
   async reload(_options?: unknown): Promise<void> {}
 }
 
-export const DefaultPackageManager = runtimeStubClass('DefaultPackageManager')
-export const ModelRuntime = runtimeStubClass('ModelRuntime')
+// Host-infrastructure classes stay unavailable BY DESIGN, as structured
+// capability errors a package can catch:
+// - DefaultPackageManager installs/removes packages — on DSH that is the
+//   user's `dsh plugin add/remove`, behind pnpm's build-script security gate.
+// - ModelRuntime composes a full standalone model stack (credentials +
+//   providers + models.json) — on DSH the ONE model directory is the host llm
+//   configuration, projected through ctx.modelRegistry.
+function hostInfrastructureClass(name: string, reason: string, guidance: string): new (...args: unknown[]) => never {
+  return class {
+    constructor() {
+      throw new PiCapabilityError({ capability: `new ${name}()`, reason, guidance })
+    }
+  } as never
+}
+
+export const DefaultPackageManager = hostInfrastructureClass(
+  'DefaultPackageManager',
+  'installing packages is owned by the DSH host and its security gates.',
+  'Add or remove plugins with: dsh plugin add/remove <package>.',
+)
+export const ModelRuntime = hostInfrastructureClass(
+  'ModelRuntime',
+  'the model directory is owned by the DSH host llm configuration.',
+  "Configure gateways in the host's llm settings; packages read the directory through ctx.modelRegistry.",
+)
 
 export class ModelRegistry {
   private models = new Map<string, unknown>()
@@ -799,9 +839,11 @@ export function createReadOnlyTools(cwd: string, options?: Record<string, { [key
   ]
 }
 
-export function loadSkills(..._args: unknown[]): never {
-  return unsupportedRuntime('loadSkills()')
-}
+// Vendored Pi skills loader (vendor/pi-skills-load.ts): real directory
+// discovery with Pi's exact rules (SKILL.md roots, ignore files, symlink
+// dedup, name/description validation). Default locations resolve through the
+// redirected getAgentDir, i.e. inside the DSH-owned pi2dsh directory.
+export { loadSkills, loadSkillsFromDir } from './vendor/pi-skills-load.js'
 
 // ---------------------------------------------------------------------------
 // Headless host services backing the vendored built-in tools. Each mirrors a
@@ -861,9 +903,6 @@ export async function processImage(
 }
 
 
-export function loadSkillsFromDir(..._args: unknown[]): never {
-  return unsupportedRuntime('loadSkillsFromDir()')
-}
 
 export { formatSkillsForPrompt } from './vendor/pi-skills-format.js'
 

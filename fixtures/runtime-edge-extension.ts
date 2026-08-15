@@ -1,8 +1,8 @@
 type RecordValue = Record<string, unknown>
 
-function captureFailure(failures: string[], name: string, callback: () => unknown): void {
+async function captureFailure(failures: string[], name: string, callback: () => unknown): Promise<void> {
   try {
-    callback()
+    await callback()
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     if (message.includes('requires a native DSH port') || message.includes('requires one active DSH agent')) {
@@ -163,7 +163,7 @@ export default function runtimeEdgeExtension(pi: any): void {
         ['navigateTree', () => ctx.navigateTree()],
         ['switchSession', () => ctx.switchSession()],
         ['reload', () => ctx.reload()],
-      ] as Array<[string, () => unknown]>) captureFailure(unavailable, name, callback)
+      ] as Array<[string, () => unknown]>) await captureFailure(unavailable, name, callback)
       ctx.ui.notify(JSON.stringify({ options: ctx.getSystemPromptOptions(), unavailable }))
     },
   })

@@ -166,7 +166,10 @@ DSH 原生只有静态 HTTP headers；pi2dsh 把 Pi 生态的交互式 OAuth 层
 | Pi TUI | 纯逻辑 vendored 字节一致；组件类同签名 headless 构造；`ui.custom` 与 Pi 官方 rpc 模式一样返回 undefined |
 | Provider/OAuth | 交互式 OAuth 已可用：`/login <provider>` 跑包自己的流程，凭证按 Pi `auth.json` 持久化并自动刷新；模型传输仍由 DSH `llm` 原生持有 |
 | 模型运行时 | `modelRegistry` 把 DSH llm 实时目录投影为 Pi Model 对象（`llm/adapters-updated` 时刷新）；`ctx.model` 反映 agent 真实路由；`setModel`/`setThinkingLevel` 经 `agent/request` waterfall 真切换 loop；pi-ai `complete()`/`stream()` 经 `ctx.llm.stream()` 发起**真实**模型调用并双向转换消息（已对真实模型验证：`scripts/verify-model-bridge-e2e.mjs`） |
-| 会话树写操作 | `fork`/`navigateTree`/`switchSession` 显式失败（DSH 官方将 pi 式 entry tree 列为 deferred） |
+| 会话控制 | **在 DSH 自己的官方面上真实执行**：`newSession` 真建带血统的 DSH 会话，`fork` 走 DSH 官方前缀 fork（落在完整 turn 边界上），`navigateTree` 在目标点 fork 并可附 vendored 分支摘要，`switchSession` 定位活会话。DSH 的树长在**会话之间**（fork 血统）而非单一日志内；界面当前显示哪个会话仍由宿主面选择 |
+| 压缩与摘要 | `ctx.compact()` 触发 DSH 官方手动压缩；Pi 的 `generateSummary`/`generateBranchSummary`/`findCutPoint` 已 vendored，模型调用走 DSH llm 桥 |
+| shutdown / reload | `shutdown` 被吸收（Pi 官方就把该行为定义为宿主提供；DSH 进程退出权在用户）；`reload` 真实重挂扩展入口——skills/prompts/themes 随 dsh 重启生效 |
+| 宿主专属能力 | `ModelRuntime` 与 `DefaultPackageManager` **设计上**不可用（模型配置与装包连同安全门归宿主）。import 它们在启动时即被标记提示；构造它们抛结构化错误，若发生在插件启动期则整个插件被标记不可用并给出卸载指引。每个能力缺口按插件只向你报告一次——绝不静默失败、绝不伪装成功。**已知因此不可用的插件：目前没有**（一旦发现会列名在此） |
 | 终端装饰 | footer/statusline/快捷键注册成功但永不触发——与 Pi 自己的非 TUI 模式一致 |
 
 完整机器可读矩阵：`pi2dsh matrix --json`。十项能力逐项验收证据：[docs/acceptance.md](docs/acceptance.md)。114 项 Pi 暴露面 → DSH 语义完整判决（红 3 / 黄 21 / 绿约 90）：[docs/pi-abi-coverage.md](docs/pi-abi-coverage.md)。

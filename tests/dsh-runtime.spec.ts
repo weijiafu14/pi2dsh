@@ -142,7 +142,10 @@ describe('generated plugin in the real DSH runtime', () => {
       hasUI: true,
       // ui.custom resolves to undefined per Pi's own rpc-mode semantics;
       // abort still fails here because the probe agent has no cancel().
-      unavailable: ['abort', 'shutdown', 'compact'],
+      // shutdown is absorbed (Pi's host-defined semantics) and compact is a
+      // fire-and-forget trigger whose errors flow through the onError
+      // callback — neither throws synchronously anymore.
+      unavailable: ['abort'],
     })
 
     // Pi semantics: a tool_call hook mutates event.input in place and the
@@ -275,10 +278,15 @@ describe('generated plugin in the real DSH runtime', () => {
     const command = await ctx.commands.execute(agent as never, '/pi-hello Ada', signal)
     expect(command?.result).toEqual({ kind: 'success', text: 'Pi command says hello to Ada' })
 
+    // Session-control operations are REAL now (official ctx.sessions
+    // surfaces), so the probe's unavailable list is empty: newSession()
+    // succeeds, and the no-argument fork()/navigateTree()/switchSession()
+    // calls fail with ordinary argument errors — exactly like real Pi —
+    // rather than "needs a native DSH port".
     const contextCommand = await ctx.commands.execute(agent as never, '/pi-context-probe Ada', signal)
     expect(contextCommand?.result).toMatchObject({
       kind: 'success',
-      text: expect.stringContaining('newSession'),
+      text: expect.stringContaining('"unavailable":[]'),
     })
 
     const prompt = await ctx.commands.execute(agent as never, '/pi-review src/index.ts "focus errors"', signal)
@@ -315,11 +323,14 @@ describe('generated plugin in the real DSH runtime', () => {
 
     const probe = await ctx.tools.execute({ signal, callId: CallId('probe-1'), name: 'pi_probe', arguments: {} })
     const counters = JSON.parse((probe.content[0] as { type: 'text'; text: string }).text) as Record<string, number>
+    // The context-probe command really runs ctx.reload() now, which remounts
+    // the extension entries once: setup-time counters (flag_default,
+    // package_event) tick again on the remount pass.
     expect(counters).toMatchObject({
       session_start: 1,
       session_shutdown: 1,
-      package_event: 1,
-      flag_default: 1,
+      package_event: 2,
+      flag_default: 2,
       command: 1,
       tool_execute: 1,
       tool_call: 12,

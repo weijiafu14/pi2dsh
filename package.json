@@ -1,6 +1,6 @@
 {
   "name": "pi2dsh",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "description": "Bridge the Pi and DeepSeek Harness ecosystems: a general Pi Host ABI that runs unmodified Pi extensions as native DSH plugins, plus per-package conversion and MCP config translation.",
   "type": "module",
   "bin": {
@@ -85,7 +85,8 @@
     "tinyglobby": "^0.2.15",
     "typebox": "^1.0.4",
     "yaml": "^2.8.1",
-    "openai": "^6.40.0"
+    "ignore": "7.0.5",
+    "proper-lockfile": "4.1.2"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.1",
@@ -148,7 +149,8 @@
     "publint": "^0.3.23",
     "tsdown": "^0.22.14",
     "undici": "^8.10.0",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.10",
+    "@types/proper-lockfile": "^4.1.4"
   },
   "dsh": {
     "bundle": {

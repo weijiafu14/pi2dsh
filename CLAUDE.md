@@ -48,6 +48,19 @@ pi2dsh：通用 Pi Host ABI 兼容层，让 Pi 生态插件原样跑在 DeepSeek
   用户写 Pi 格式文件，最终全链删除）。
 - 我们兼容的对象是**插件代码**，不是把 Pi 生态的用户习惯搬给 DSH 用户。
   "Pi 教程照搬可用"不是目标，是泄漏。
+- **插件自身配置的标准**（用户怎么配好一个 Pi 插件）分三层：
+  1. **环境变量**（主路径）：Pi 插件生态的主流配置面是 env
+     （VISION_BRIDGE_*/PI_VISION_*），env 是宿主中立的——DSH 用户设
+     env 是纯 DSH 动作，零泄漏。examples 教这条。
+  2. **插件自带斜杠命令**：插件用命令管理自己的配置（/vision），命令经
+     中间层进 DSH 命令面板——用户敲的是 DSH 面板里的命令。
+  3. **插件内部落盘**：插件以为在写 Pi config 目录，实际被重定向到
+     `$DSH_HOME/pi2dsh/` 内部目录——文件在，但**不是用户接触面**，任何
+     文档都不教用户碰它（auth.json 同理）。
+  判据：用户给插件配置的动作只有"设 env、敲插件命令"两种；**任何"教用户
+  手工编辑 Pi 格式文件"的路径都不存在**。若未来出现只认手工配置文件的
+  插件（top50 无此形态），标准处置=引擎 config 加 per-package 的 DSH
+  形状配置槽由中间层翻译落盘——出现第一个消费者时按此补，不预制。
 - **Pi 扩展工厂没有参数位**（`ExtensionFactory = (pi) => void`，
   ../pi types.ts 实锤）：Pi 官方不存在"装插件给插件传参数"的通道，插件
   配置一律由插件自己定义来源（环境变量是事实标准，如 VISION_BRIDGE_*）。
@@ -99,7 +112,29 @@ pi2dsh：通用 Pi Host ABI 兼容层，让 Pi 生态插件原样跑在 DeepSeek
 - 跨目录通道透传字段用白名单，禁止裸展开：DSH 对 reasoning/context 等
   名字有自己的语义（事故：Pi 的 reasoning:false 撞 DSH 的
   reasoning.efforts.length）。
-- 映射不了的能力 fails loud，绝不伪装成功；`?.` 不许吞真实失败。
+- **能力缺口分级处置（禁止无脑报错）**。判定顺序（事故：ctx 七件全部
+  裸 throw 炸 turn，被斥"影响未知、没人知道插件还能不能用"；返工后逐条
+  查证，发现大半根本不该报错）：
+  1. **先查双方官方**：DSH 开放能力能组合出来的一律真实现（事故：
+     newSession/fork/navigateTree/switchSession 全有官方面
+     `ctx.sessions.create/fork`，compact 有官方 `compaction.compactNow`，
+     reload 可官方 remount，我却全标了"报错"）；Pi 侧纯逻辑可 vendored
+     的真实现（findCutPoint/loadSkills/ProjectTrustStore/
+     generateSummary——Pi 官方 streamFn 注入口接 DSH llm 桥）。
+  2. **Pi 协议自带的拒绝/吸收通道优先于报错**：返回
+     `{cancelled:true}`、host-defined 行为（shutdown）、onError 回调
+     （compact）都是 Pi 官方语义，不是伪装。
+  3. **只有伪造返回值=撒谎的才报错**，且必须是结构化
+     PiCapabilityError（插件 catch 得住）＋记入 CapabilityLedger＋
+     用户面一次性提示（同包同能力只报一次；文案讲清"哪个功能不工作、
+     其余照常、若这是主要用途建议 dsh plugin remove X"——核心与否
+     由用户判，中间层不猜）。
+  4. **启动期撞**：真不支持的能力尽量在挂载期暴露——插件源码 import
+     宿主基建符号（ModelRuntime/DefaultPackageManager）在挂载时即检测
+     告知；入口 setup 期撞缺口=整包标记 unusable+建议卸载。**每发现
+     一个真因启动期撞而不可用的包：写进 README 的不支持清单，并且
+     必须告诉用户**（用户明令）。
+- 兜底纪律不变：绝不伪装成功；`?.` 不许吞真实失败。
 
 ## 四、完成判据（铁律）
 
@@ -155,6 +190,14 @@ OAuth /login、MCP 配置转换、host 模式）的 example 待补——补前�
   "让用户手动配置每个伴生"是被否掉的旧姿势，别退回去。自动化后默认模型
   选择（DSH_HOME 级）指向伴生在所有 profile 都可解析，旧 NO_ADAPTER 坑
   消失。
+- **改了 package.json 依赖后刷 profile 光拷 dist 不够**：新依赖要在
+  profile 里 `npx -y pnpm@11.7.0 install --force`（file: 缓存不重解析
+  依赖集；0.10.0 的 proper-lockfile 缺失就是真机才炸出来的）。
+- web 真机：`node --import tsx/esm apps/cli/src/bin.ts --profile web
+  --port 5178`（`web` 子命令别与 `--profile` 混用）；斜杠命令=输入框
+  行首敲 `/名字` 出建议浮层点选（浏览器 key 事件不可靠，输入框用
+  form_input 设值最稳）。会话四件的常驻探针包在两个 profile 的
+  `pi-session-probe`（file: 依赖），命令 `/cap-sessions`。
 - BSD grep 对打包后的超长单行 .mjs 会静默失败——判 dist 内容用
   `node -e '...readFileSync(...).includes(...)'`，别信 grep 空结果。
 - CLI 入口（cli.ts）与 index.ts 同款纪律：analyzer/generator（拖

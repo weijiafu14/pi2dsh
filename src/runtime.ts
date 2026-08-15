@@ -18,8 +18,9 @@ import type {
   ToolExecutionResult,
 } from '@deepseek-ai/dsh-tools'
 import type { GeneratedRuntimeManifest } from './types.js'
+import { CapabilityLedger, PiCapabilityError } from './capability.js'
 import { PiSessionBridge } from './session-bridge.js'
-import { ExtensionRunner, Theme, __setSubagentSessionFactory, getAgentDir } from './compat/pi-coding-agent.js'
+import { ExtensionRunner, Theme, __setSubagentSessionFactory, generateBranchSummary, getAgentDir } from './compat/pi-coding-agent.js'
 import { createBridgedAgentSession } from './subagent-bridge.js'
 import {
   FileCredentialStore,
@@ -64,6 +65,7 @@ interface PiCommand {
 }
 
 interface RuntimeState {
+  packageName: string
   handlers: Map<string, PiHandler[]>
   tools: Map<string, PiTool>
   // The Pi runner facade tool-catalog packages (pi-fabric) hook by patching
@@ -344,6 +346,16 @@ function unsupported(name: string): never {
   throw new Error(`pi2dsh: Pi API ${name} requires a native DSH port; inspect the compatibility report`)
 }
 
+// One capability ledger per host: capability-gap hits are package facts with a
+// host-level user-facing report channel (once per package+capability).
+function capabilityLedgerOf(ctx: Context, state: RuntimeState): CapabilityLedger {
+  const shared = state.shared
+  if (shared.capabilityLedger === undefined) {
+    shared.capabilityLedger = new CapabilityLedger(message => logger(ctx).warn(message))
+  }
+  return shared.capabilityLedger
+}
+
 function optionalService<T>(ctx: Context, name: string): T | undefined {
   return (ctx as unknown as { get(name: string): unknown }).get(name) as T | undefined
 }
@@ -422,12 +434,79 @@ function thinkingLevelOf(state: RuntimeState, agent: UnknownRecord | undefined):
   return state.globalThinkingLevel
 }
 
+// Durable-log projection entries carry their source seq in the id ("dsh-<seq>").
+// Sidecar entries (package-appended) have generated ids and are NOT part of the
+// durable log, so they cannot anchor a fork.
+function durableSeqOf(entryId: string): number | undefined {
+  const match = /^dsh-(\d+)$/.exec(entryId)
+  return match === null ? undefined : Number(match[1])
+}
+
+interface DshSessionsService {
+  create(id?: unknown, options?: UnknownRecord): UnknownRecord
+  fork(source: unknown, boundary?: number, childSessionId?: unknown): UnknownRecord
+  get(id: unknown): UnknownRecord | undefined
+  list(): UnknownRecord[]
+}
+
+// DSH's official fork constraint: the seed must not end inside an open turn.
+// Pi allows forking at any entry, so the requested boundary shrinks to the
+// nearest safe position at or before it (documented in compatibility.ts).
+function shrinkToTurnBoundary(events: readonly UnknownRecord[], boundary: number): number {
+  const slice = events.slice(0, boundary + 1)
+  for (let i = slice.length - 1; i >= 0; i--) {
+    const type = slice[i]?.type
+    if (type === 'turn/end') return boundary
+    if (type === 'turn/start') return Number(slice[i]!.seq) - 1
+  }
+  return boundary
+}
+
+// Summarize the durable slice abandoned by navigateTree, with Pi's own
+// vendored summarizer; the model call runs on the DSH llm bridge. Returns
+// undefined (navigation proceeds unsummarized) when no model route or no
+// abandoned content exists.
+async function summarizeAbandonedBranch(
+  ctx: Context,
+  state: RuntimeState,
+  agent: UnknownRecord | undefined,
+  events: readonly UnknownRecord[],
+  boundary: number,
+  options: UnknownRecord,
+): Promise<string | undefined> {
+  const abandoned = events.slice(boundary + 1)
+  if (abandoned.length === 0) return undefined
+  const model = agent === undefined ? undefined : currentPiModel(state, agent)
+  if (model === undefined) {
+    logger(ctx).warn('[pi2dsh] ctx.navigateTree: no current model route, navigating without a branch summary')
+    return undefined
+  }
+  const projection = state.bridge.readonlySessionManager(
+    { id: 'pi2dsh-abandoned-branch', events: abandoned } as never,
+    cwdOf(agent),
+  ) as { getEntries?(): unknown[] }
+  const entries = projection.getEntries?.() ?? []
+  if (entries.length === 0) return undefined
+  const result = await generateBranchSummary(entries, {
+    model,
+    signal: new AbortController().signal,
+    ...(typeof options.customInstructions === 'string' ? { customInstructions: options.customInstructions } : {}),
+    ...(options.replaceInstructions === true ? { replaceInstructions: true } : {}),
+  }) as { summary?: string; error?: string; aborted?: boolean }
+  if (result.error !== undefined) {
+    logger(ctx).warn(`[pi2dsh] ctx.navigateTree: branch summarization failed (${result.error}), navigating without a summary`)
+    return undefined
+  }
+  return result.summary
+}
+
 function contextFor(
   ctx: Context,
   state: RuntimeState,
   agent: UnknownRecord | undefined,
   signal: AbortSignal | undefined,
   command = false,
+  sessionOverride?: UnknownRecord,
 ): UnknownRecord {
   const notices: string[] = []
   const userQuestions = optionalService(ctx, 'userQuestions')
@@ -504,7 +583,10 @@ function contextFor(
       state.toolsExpanded = expanded === true
     },
   }
-  const session = agentSession(agent)
+  // A replaced-session context (Pi's withSession callback) binds to the
+  // replacement session while the live agent — and everything that needs
+  // one — stays with the turn that initiated the operation.
+  const session = sessionOverride ?? agentSession(agent)
   // Pi's ModelRegistry surface over the ONE model directory — the DSH llm
   // directory — projected faithfully into Pi vocabulary (package-registered
   // route entries carry their full Pi Model fields through it). Neither
@@ -693,14 +775,17 @@ function contextFor(
       return { models: allModels(), errors: [] }
     },
   }
+  const contextCwd = typeof (sessionOverride?.header as UnknownRecord | undefined)?.cwd === 'string'
+    ? (sessionOverride!.header as { cwd: string }).cwd
+    : cwdOf(agent)
   const base: UnknownRecord = {
     ui,
     mode: 'rpc',
     hasUI: userQuestions !== undefined,
-    cwd: cwdOf(agent),
+    cwd: contextCwd,
     sessionManager: session === undefined
-      ? state.bridge.readonlySessionManager({ id: 'pi2dsh-detached', events: [] }, cwdOf(agent))
-      : state.bridge.readonlySessionManager(session as never, cwdOf(agent)),
+      ? state.bridge.readonlySessionManager({ id: 'pi2dsh-detached', events: [] }, contextCwd)
+      : state.bridge.readonlySessionManager(session as never, contextCwd),
     modelRegistry,
     // Current effective model: a setModel() override wins; otherwise the DSH
     // agent's own provider/model route (Agent.options), enriched from the
@@ -717,9 +802,82 @@ function contextFor(
       target.cancel({ kind: 'hook', reason: 'pi2dsh: aborted by migrated Pi extension' })
     },
     hasPendingMessages: () => false,
-    shutdown: () => unsupported('ctx.shutdown'),
+    // Pi defines shutdown() as "request a graceful shutdown; the actual
+    // behavior is provided by the host" (runner.ts bindExtensions). This
+    // host's behavior: on DSH the user owns process exit, so the request is
+    // absorbed — reported to the user once, and the package keeps running.
+    shutdown: () => {
+      capabilityLedgerOf(ctx, state).reportHostDecision({
+        capability: 'ctx.shutdown',
+        reason: 'Pi delegates shutdown behavior to the host, and on DSH the user owns process exit.',
+        guidance: 'The shutdown request was recorded and ignored.',
+        packageName: state.packageName,
+      })
+    },
     getContextUsage: () => undefined,
-    compact: () => unsupported('ctx.compact'),
+    // Pi's compact() is a fire-and-forget trigger (void; completion flows
+    // through the options callbacks). Translated to the official DSH manual
+    // compaction surface: ctx.compaction.compactNow() on the live agent.
+    compact: (options?: UnknownRecord) => {
+      const ledger = capabilityLedgerOf(ctx, state)
+      const compaction = optionalService<{
+        compactNow(agent: unknown, signal: AbortSignal): Promise<unknown>
+      }>(ctx, 'compaction')
+      const target = agent as {
+        runMaintenance?: <T>(job: (signal: AbortSignal) => Promise<T>) => Promise<T>
+      } | undefined
+      const onError = (options?.onError as ((error: Error) => void) | undefined)
+      if (compaction === undefined || typeof target?.runMaintenance !== 'function') {
+        const gap = new PiCapabilityError({
+          capability: 'ctx.compact',
+          reason: compaction === undefined
+            ? 'this DSH composition mounts no compaction service.'
+            : 'compaction needs a live DSH agent for this turn.',
+          guidance: 'Compaction runs through the host compaction plugin when one is composed.',
+          packageName: state.packageName,
+        })
+        ledger.reportDegraded({
+          capability: 'ctx.compact',
+          reason: gap.message,
+          guidance: '',
+          packageName: state.packageName,
+        })
+        // Pi's own error channel for compact() is the onError callback, not a
+        // synchronous throw from a void trigger.
+        onError?.(gap)
+        return
+      }
+      void compaction.compactNow(target, new AbortController().signal)
+        .then(result => {
+          if (result === null || result === undefined) return
+          const dsh = result as { summary?: unknown; shadowedTokenCount?: number }
+          const summaryBlocks = Array.isArray(dsh.summary) ? dsh.summary : []
+          const summaryText = summaryBlocks
+            .filter((block): block is { type: string; text: string } =>
+              typeof block === 'object' && block !== null
+              && (block as UnknownRecord).type === 'text'
+              && typeof (block as UnknownRecord).text === 'string')
+            .map(block => block.text)
+            .join('\n')
+          const onComplete = options?.onComplete as ((result: UnknownRecord) => void) | undefined
+          // Honest projection: summary text and the shadowed-content token
+          // estimate are real; the DSH log has no Pi entry ids, so
+          // firstKeptEntryId is empty (documented in compatibility.ts).
+          onComplete?.({
+            summary: summaryText,
+            firstKeptEntryId: '',
+            tokensBefore: dsh.shadowedTokenCount ?? 0,
+          })
+        })
+        .catch((error: unknown) => {
+          const failure = error instanceof Error ? error : new Error(String(error))
+          if (onError !== undefined) {
+            onError(failure)
+            return
+          }
+          logger(ctx).warn(`[pi2dsh] plugin "${state.packageName}": ctx.compact failed: ${failure.message}`)
+        })
+    },
     getSystemPrompt: () => state.currentSystemPrompt,
     __agent: agent,
     __notices: notices,
@@ -731,11 +889,190 @@ function contextFor(
         const wait = agent?.whenIdle
         if (typeof wait === 'function') await wait.call(agent)
       },
-      newSession: () => unsupported('ctx.newSession'),
-      fork: () => unsupported('ctx.fork'),
-      navigateTree: () => unsupported('ctx.navigateTree'),
-      switchSession: () => unsupported('ctx.switchSession'),
-      reload: () => unsupported('ctx.reload'),
+      // Pi's session-tree operations, on DSH's OWN official surfaces:
+      // ctx.sessions.create() (new session), ctx.sessions.fork() (prefix fork
+      // with lineage + open-turn validation), and the live session store
+      // (switch). The replacement/forked session really exists — it appears in
+      // the host's session surfaces, and the withSession callback operates on
+      // it through a projection context. What DSH deliberately does NOT have
+      // is a host-level "current session pointer" a plugin could move: which
+      // session the user is looking at stays a host-surface choice, announced
+      // once through the ledger.
+      newSession: async (options?: UnknownRecord) => {
+        const sessions = optionalService<DshSessionsService>(ctx, 'sessions')
+        if (sessions === undefined) {
+          capabilityLedgerOf(ctx, state).reportDegraded({
+            capability: 'ctx.newSession',
+            reason: 'this DSH composition mounts no session service.',
+            guidance: '',
+            packageName: state.packageName,
+          })
+          return { cancelled: true }
+        }
+        const parent = agentSession(agent) as { id?: unknown } | undefined
+        const created = sessions.create(undefined, {
+          meta: {
+            cwd: cwdOf(agent),
+            ...(parent?.id === undefined ? {} : { parentSession: parent.id }),
+          },
+        })
+        const withSession = options?.withSession as ((replaced: unknown) => Promise<void>) | undefined
+        await withSession?.(contextFor(ctx, state, agent, signal, true, created))
+        capabilityLedgerOf(ctx, state).reportHostDecision({
+          capability: 'ctx.newSession',
+          reason: `a new DSH session was created (${String((created as { id?: unknown }).id)}).`,
+          guidance: 'Which session the surface shows stays a host choice — open it from the DSH session list.',
+          packageName: state.packageName,
+        })
+        return { cancelled: false }
+      },
+      fork: async (entryId: string, options?: UnknownRecord) => {
+        const sessions = optionalService<DshSessionsService>(ctx, 'sessions')
+        const source = agentSession(agent)
+        if (sessions === undefined || source === undefined) {
+          capabilityLedgerOf(ctx, state).reportDegraded({
+            capability: 'ctx.fork',
+            reason: sessions === undefined
+              ? 'this DSH composition mounts no session service.'
+              : 'forking needs the live session of an active agent.',
+            guidance: '',
+            packageName: state.packageName,
+          })
+          return { cancelled: true }
+        }
+        const seq = durableSeqOf(String(entryId))
+        if (seq === undefined) {
+          throw new Error(
+            `pi2dsh: ctx.fork(${JSON.stringify(String(entryId))}) — only durable-log entries (projected ids "dsh-<seq>") `
+            + 'can anchor a fork; package-appended sidecar entries are not part of the DSH durable log',
+          )
+        }
+        // Pi's default position is "before": fork the history strictly before
+        // the entry; "at" includes it.
+        const position = (options?.position as string | undefined) ?? 'before'
+        const events = ((source as { events?: readonly UnknownRecord[] }).events ?? []) as readonly UnknownRecord[]
+        const requested = Math.min(position === 'at' ? seq : seq - 1, events.length - 1)
+        const boundary = requested < 0 ? -1 : shrinkToTurnBoundary(events, requested)
+        const child = boundary < 0
+          ? sessions.create(undefined, {
+              meta: { cwd: cwdOf(agent), parentSession: (source as { id?: unknown }).id },
+            })
+          : sessions.fork(source, boundary)
+        const withSession = options?.withSession as ((replaced: unknown) => Promise<void>) | undefined
+        await withSession?.(contextFor(ctx, state, agent, signal, true, child))
+        capabilityLedgerOf(ctx, state).reportHostDecision({
+          capability: 'ctx.fork',
+          reason: `the session was forked on DSH's official prefix-fork surface (child ${String((child as { id?: unknown }).id)}; DSH forks land on completed-turn boundaries).`,
+          guidance: 'Open the forked session from the DSH session list.',
+          packageName: state.packageName,
+        })
+        return { cancelled: false }
+      },
+      navigateTree: async (targetId: string, options?: UnknownRecord) => {
+        const sessions = optionalService<DshSessionsService>(ctx, 'sessions')
+        const source = agentSession(agent)
+        if (sessions === undefined || source === undefined) {
+          capabilityLedgerOf(ctx, state).reportDegraded({
+            capability: 'ctx.navigateTree',
+            reason: sessions === undefined
+              ? 'this DSH composition mounts no session service.'
+              : 'tree navigation needs the live session of an active agent.',
+            guidance: '',
+            packageName: state.packageName,
+          })
+          return { cancelled: true }
+        }
+        const seq = durableSeqOf(String(targetId))
+        if (seq === undefined) {
+          throw new Error(
+            `pi2dsh: ctx.navigateTree(${JSON.stringify(String(targetId))}) — only durable-log entries (projected ids "dsh-<seq>") `
+            + 'can be navigation targets; package-appended sidecar entries are not part of the DSH durable log',
+          )
+        }
+        const events = ((source as { events?: readonly UnknownRecord[] }).events ?? []) as readonly UnknownRecord[]
+        const capped = Math.min(seq, events.length - 1)
+        const boundary = capped < 0 ? -1 : shrinkToTurnBoundary(events, capped)
+        const child = boundary < 0
+          ? sessions.create(undefined, {
+              meta: { cwd: cwdOf(agent), parentSession: (source as { id?: unknown }).id },
+            })
+          : sessions.fork(source, boundary)
+        // Pi's navigateTree can summarize the branch being left. The vendored
+        // Pi summarizer runs it over the abandoned durable slice, with the
+        // model call on the DSH llm bridge; without a current model route the
+        // navigation still happens, just unsummarized.
+        if (options?.summarize === true) {
+          const summary = await summarizeAbandonedBranch(ctx, state, agent, events, boundary, options)
+          if (summary !== undefined) {
+            state.bridge.appendBranchSummary(String((child as { id?: unknown }).id), summary, String(targetId))
+          }
+        }
+        if (typeof options?.label === 'string') {
+          state.bridge.appendLabel(String((child as { id?: unknown }).id), String(targetId), options.label)
+        }
+        capabilityLedgerOf(ctx, state).reportHostDecision({
+          capability: 'ctx.navigateTree',
+          reason: `navigation forked the session at the target on DSH's official surface (child ${String((child as { id?: unknown }).id)}; the DSH tree lives BETWEEN sessions via fork lineage, not inside one log).`,
+          guidance: 'Open the navigated session from the DSH session list.',
+          packageName: state.packageName,
+        })
+        return { cancelled: false }
+      },
+      switchSession: async (sessionPath: string, options?: UnknownRecord) => {
+        const sessions = optionalService<DshSessionsService>(ctx, 'sessions')
+        if (sessions === undefined) {
+          capabilityLedgerOf(ctx, state).reportDegraded({
+            capability: 'ctx.switchSession',
+            reason: 'this DSH composition mounts no session service.',
+            guidance: '',
+            packageName: state.packageName,
+          })
+          return { cancelled: true }
+        }
+        // Pi passes a session FILE path; the DSH identity is the session id.
+        // Accept either the bare id or a path whose basename is "<id>.jsonl".
+        const raw = String(sessionPath)
+        const base = raw.replace(/\\/g, '/').split('/').pop() ?? raw
+        const candidate = base.endsWith('.jsonl') ? base.slice(0, -'.jsonl'.length) : base
+        const target = sessions.get(candidate) ?? sessions.list().find(entry => String((entry as { id?: unknown }).id) === candidate)
+        if (target === undefined) {
+          throw new Error(
+            `pi2dsh: ctx.switchSession(${JSON.stringify(raw)}) — no live DSH session ${JSON.stringify(candidate)}; `
+            + 'switching to persisted sessions is host-owned (resume them from the DSH surface first)',
+          )
+        }
+        const withSession = options?.withSession as ((replaced: unknown) => Promise<void>) | undefined
+        await withSession?.(contextFor(ctx, state, agent, signal, true, target))
+        capabilityLedgerOf(ctx, state).reportHostDecision({
+          capability: 'ctx.switchSession',
+          reason: `the live DSH session ${JSON.stringify(candidate)} was targeted.`,
+          guidance: 'Which session the surface shows stays a host choice — open it from the DSH session list.',
+          packageName: state.packageName,
+        })
+        return { cancelled: false }
+      },
+      // Pi's reload() re-runs extensions: every mounted package disposes its
+      // registrations and its entries run again through a fresh loader, so
+      // edited plugin code takes effect. Skills/prompts/themes stay
+      // host-managed (they reload with dsh itself) — documented in
+      // compatibility.ts.
+      reload: async () => {
+        const remounts = state.shared.packageRemounts
+        if (remounts === undefined || remounts.size === 0) return
+        for (const [name, remount] of remounts) {
+          try {
+            await remount()
+          } catch (error) {
+            logger(ctx).warn(`[pi2dsh] ctx.reload: remounting "${name}" failed: ${error instanceof Error ? error.message : String(error)}`)
+          }
+        }
+        capabilityLedgerOf(ctx, state).reportHostDecision({
+          capability: 'ctx.reload',
+          reason: 'extension entries were disposed and remounted through a fresh loader.',
+          guidance: 'Skills, prompts, and themes are host-managed and reload when dsh restarts.',
+          packageName: state.packageName,
+        })
+      },
     })
   }
   return base
@@ -1271,6 +1608,12 @@ interface SharedHostState {
   loginRegistered?: boolean
   companionSweepSubscribed?: boolean
   oauthStore?: FileCredentialStore
+  capabilityLedger?: CapabilityLedger
+  // Per-package remount closures backing Pi's ctx.reload(): dispose every
+  // extension-owned registration and run the extension entries again through
+  // a fresh loader, so edited plugin code takes effect. Host-managed resources
+  // (skills, prompts) reload with dsh itself.
+  packageRemounts?: Map<string, () => Promise<void>>
 }
 
 const SHARED_HOST_STATE = new WeakMap<object, SharedHostState>()
@@ -1490,8 +1833,20 @@ function registerLoginCommand(ctx: Context, state: RuntimeState): void {
 function registerTool(ctx: Context, state: RuntimeState, tool: PiTool): void {
   // Pi's runner stores tools in a name-keyed Map (set + refreshTools):
   // re-registering a name replaces the previous definition. Mirror that —
-  // catalog packages (pi-fabric) re-register wrapped variants at runtime.
-  if (state.tools.has(tool.name)) unregisterTool(state, tool.name)
+  // catalog packages (pi-fabric) re-register wrapped variants at runtime,
+  // and the reload remount re-registers every tool. The DSH-side
+  // registration STAYS on a replacement: its execute() resolves the live
+  // ledger entry, so swapping the ledger swaps the behavior. (Re-registering
+  // on the DSH side from an execution stack would attach the effect to the
+  // wrong fiber scope and hide the tool from registered agents.)
+  if (state.tools.has(tool.name)) {
+    const previous = state.tools.get(tool.name)!
+    state.tools.set(tool.name, tool)
+    if (JSON.stringify(previous.parameters ?? null) !== JSON.stringify(tool.parameters ?? null)) {
+      logger(ctx).warn(`[pi2dsh] tool ${tool.name} was re-registered with a different parameter schema; the new schema takes effect when dsh restarts (behavior is already live)`)
+    }
+    return
+  }
   const normalized = normalizeToolSchema(tool.parameters)
   for (const warning of normalized.warnings) logger(ctx).warn(`[pi2dsh] tool ${tool.name}: ${warning}`)
   state.tools.set(tool.name, tool)
@@ -1506,12 +1861,14 @@ function registerTool(ctx: Context, state: RuntimeState, tool: PiTool): void {
     },
     isConcurrencySafe: () => tool.executionMode === 'parallel',
     async execute(args, exec) {
+      // Live ledger resolution (see the re-registration note above).
+      const live = state.tools.get(tool.name) ?? tool
       const mutated = state.argMutations.get(exec as unknown as object)
       if (mutated !== undefined) state.argMutations.delete(exec as unknown as object)
       const effective = mutated ?? args
-      const prepared = tool.prepareArguments?.(cloneJson(effective)) ?? effective
+      const prepared = live.prepareArguments?.(cloneJson(effective)) ?? effective
       const agent = exec.agent as unknown as UnknownRecord | undefined
-      const result = await normalizeToolResultForDsh(ctx, await state.agentScope.run(agent, () => tool.execute(
+      const result = await normalizeToolResultForDsh(ctx, await state.agentScope.run(agent, () => live.execute(
           String(exec.callId),
           prepared,
           exec.signal,
@@ -1698,8 +2055,14 @@ function registerCommand(ctx: Context, state: RuntimeState, command: PiCommand):
   // command naming takes '-' where Pi takes ':') while the first keeps the
   // bare name.
   if (state.commands.has(command.name)) {
-    state.commandDisposers.get(command.name)?.()
-    state.commandDisposers.delete(command.name)
+    // Same-name re-registration (Pi's Map.set semantics, and the reload
+    // remount path): the DSH-side registration STAYS — its handler resolves
+    // the live command from the ledger below, so replacing the ledger entry
+    // is the complete replacement. Re-registering on the DSH side from a
+    // command execution stack would attach the effect to the wrong fiber
+    // scope and make the command invisible to registered agents.
+    state.commands.set(command.name, command)
+    return
   }
   state.commands.set(command.name, command)
   const commands = (ctx as unknown as { get(name: string): unknown }).get('commands') as {
@@ -1717,7 +2080,11 @@ function registerCommand(ctx: Context, state: RuntimeState, command: PiCommand):
     async handler(invocation: UnknownRecord) {
       const agent = invocation.agent as UnknownRecord
       const commandContext = contextFor(ctx, state, agent, invocation.signal as AbortSignal, true)
-      await state.agentScope.run(agent, () => command.handler(String(invocation.rawInput ?? '').trimStart(), commandContext))
+      // Resolve the LIVE command from the ledger: a same-name re-registration
+      // (including a reload remount) replaces the ledger entry while this one
+      // DSH-side registration keeps serving the name.
+      const live = state.commands.get(command.name) ?? command
+      await state.agentScope.run(agent, () => live.handler(String(invocation.rawInput ?? '').trimStart(), commandContext))
       const notices = commandContext.__notices as string[]
       return { kind: 'success', ...(notices.length > 0 ? { text: notices.join('\n') } : {}) }
     },
@@ -2049,6 +2416,8 @@ async function loadExtensions(
   manifest: GeneratedRuntimeManifest,
   api: UnknownRecord,
   onExtensionError?: (failure: string) => void,
+  onCapabilityGap?: (error: PiCapabilityError, extension: string) => void,
+  onHostInfraReference?: (symbol: string, extension: string) => void,
 ): Promise<void> {
   const resolveShim = async (name: string): Promise<string> => {
     const compiled = fileURLToPath(new URL(`./compat/${name}.mjs`, import.meta.url))
@@ -2101,6 +2470,16 @@ async function loadExtensions(
   const failures: string[] = []
   let mounted = 0
   for (const extension of manifest.extensions) {
+    // Startup check, BEFORE the entry runs: an import of a host-owned symbol
+    // that cannot work on DSH is surfaced at mount time, so the user learns
+    // at startup instead of when some later code path constructs it.
+    try {
+      const source = await readFile(join(rootDir, extension), 'utf8')
+      const infraImport = /import[^;]*?\b(ModelRuntime|DefaultPackageManager)\b[^;]*?from\s*['"]@(?:earendil-works|mariozechner)\/pi-coding-agent['"]/su.exec(source)
+      if (infraImport !== null) onHostInfraReference?.(infraImport[1]!, extension)
+    } catch {
+      // Unreadable entries fail below through the loader with a real error.
+    }
     try {
       const loaded: unknown = await jiti.import(join(rootDir, extension))
       const candidate = typeof loaded === 'object' && loaded !== null && 'default' in loaded
@@ -2110,6 +2489,14 @@ async function loadExtensions(
       await candidate(api)
       mounted += 1
     } catch (error) {
+      // A capability gap during entry setup means this package cannot start
+      // at all — the user gets the unusable verdict, not just a skip line.
+      // Matched by name: the shim chunk carries its own compiled copy of the
+      // class, so instanceof does not hold across that bundle boundary.
+      if (error instanceof PiCapabilityError
+        || (error instanceof Error && error.name === 'PiCapabilityError')) {
+        onCapabilityGap?.(error as PiCapabilityError, extension)
+      }
       failures.push(`${extension}: ${error instanceof Error ? error.message : String(error)}`)
     }
   }
@@ -2131,6 +2518,7 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
   const shared = sharedHostStateOf(ctx)
   const state: RuntimeState = {
     shared,
+    packageName: options.manifest.package.name,
     handlers: new Map(),
     tools: runtimeTools,
     runner: new ExtensionRunner(piToolRecords),
@@ -2236,9 +2624,51 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
   }, subagentOptions))
   ctx.effect(() => () => __setSubagentSessionFactory(undefined))
   await registerPromptCommands(ctx, state, rootDir, options.manifest)
-  await loadExtensions(rootDir, options.manifest, createPiApi(ctx, state),
-    failure => logger(ctx).warn(`[pi2dsh] extension entry failed and was skipped (matching Pi's per-extension error isolation): ${failure}`))
-  logger(ctx).info(`[pi2dsh] loaded ${options.manifest.package.name}: ${state.tools.size} tools, ${state.commands.size} commands, ${options.manifest.skillDirs.length} skill roots`)
+  const onExtensionError = (failure: string): void =>
+    logger(ctx).warn(`[pi2dsh] extension entry failed and was skipped (matching Pi's per-extension error isolation): ${failure}`)
+  const onCapabilityGap = (gap: PiCapabilityError): void =>
+    capabilityLedgerOf(ctx, state).reportUnusable({
+      capability: gap.capability,
+      reason: 'this package needs it during startup.',
+      guidance: gap.message,
+      packageName: state.packageName,
+    })
+  const onHostInfraReference = (symbol: string): void =>
+    capabilityLedgerOf(ctx, state).reportStartupReference({
+      capability: symbol,
+      reason: symbol === 'DefaultPackageManager'
+        ? 'installing packages is owned by the DSH host and its security gates (dsh plugin add/remove).'
+        : "standalone model stacks are owned by the DSH host llm configuration (packages read ctx.modelRegistry).",
+      guidance: '',
+      packageName: state.packageName,
+    })
+  const mountExtensions = (): Promise<void> => loadExtensions(
+    rootDir, options.manifest, createPiApi(ctx, state), onExtensionError, onCapabilityGap, onHostInfraReference)
+  await mountExtensions()
+  // Pi's ctx.reload() remount: dispose every extension-owned registration and
+  // run the entries again through a fresh loader. Prompt commands are package
+  // registrations too (they share the command ledger), so they re-register
+  // with the entries.
+  const remounts = (shared.packageRemounts ??= new Map())
+  remounts.set(state.packageName, async () => {
+    // Tool and command registrations on the DSH side stay in place — their
+    // handlers resolve the live ledger entries, and re-registering from a
+    // command execution stack would attach effects to the wrong fiber scope.
+    // The remounted entries replace ledger entries through the same-name
+    // registration path; event handlers (both Pi lifecycle handlers and the
+    // package-local event bus) start from a clean slate — without this every
+    // reload would double the subscriptions.
+    state.handlers.clear()
+    state.eventBus.removeAllListeners()
+    await registerPromptCommands(ctx, state, rootDir, options.manifest)
+    await mountExtensions()
+  })
+  ctx.effect(() => () => { remounts.delete(state.packageName) })
+  const health = state.shared.capabilityLedger?.healthOf(state.packageName)
+  const healthSuffix = health === undefined || health.status === 'ok'
+    ? ''
+    : ` — ${health.status.toUpperCase()}: missing Pi capabilities ${health.gaps.join(', ')}`
+  logger(ctx).info(`[pi2dsh] loaded ${options.manifest.package.name}: ${state.tools.size} tools, ${state.commands.size} commands, ${options.manifest.skillDirs.length} skill roots${healthSuffix}`)
 }
 
 export const runtimeInternals = {

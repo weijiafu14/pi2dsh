@@ -235,6 +235,15 @@ export function __setPiAiLlmBridge(bridge: PiAiLlmBridge | undefined): void {
   activeLlmBridge = bridge
 }
 
+// Internal bridge access for the pi-coding-agent shim: the vendored
+// summarization/compaction functions take Pi's own streamFn injection point,
+// and pi2dsh injects this bridge there so every model call runs on the ONE
+// path (the DSH llm route). Undefined without a mounted llm service — the
+// vendored fallback then fails loud instead of reaching a provider SDK.
+export function __getPiAiLlmBridge(): PiAiLlmBridge | undefined {
+  return activeLlmBridge
+}
+
 function requireLlmBridge(api: string): PiAiLlmBridge {
   if (activeLlmBridge === undefined) {
     throw new Error(`pi2dsh: pi-ai ${api}() needs a DSH llm service; this composition mounts none, so model calls cannot be routed`)
