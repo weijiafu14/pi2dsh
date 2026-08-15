@@ -8,7 +8,7 @@ the file is named so a reader can re-run it.
 
 | Level | What it means | Coverage |
 |---|---|---|
-| **Contract tests** | Public-API behavior pinned by tests, no plugin required | 93 tests / 17 files (`pnpm verify`) |
+| **Contract tests** | Public-API behavior pinned by tests, no plugin required | 95 tests / 17 files (`pnpm verify`) |
 | **Static screening** | Every Pi API a package touches is classified against the compatibility table | top-50 Pi packages by downloads: **50/50 audited, 0 blocked** (`community/audit-results.json` — all 50 land in `review`, i.e. every use maps to a `full`/`partial` rule; nothing hits a fatal one) |
 | **Black-box mount** | Package really mounts in a Cordis composition with official DSH service plugins | **48/50 mounted**, 2 failed for a reason inside the harness's own snapshot step, not an ABI gap (`community/blackbox-results.json`: `pi-hashline-edit-pro`, `pi-interview` — `vendor/index.ts ENOENT`; both need a re-run before being reported as anything) |
 | **End-to-end on a real DSH loop** | Real model, real turn, CLI **and** web, seen with our own eyes | the plugins listed below |
@@ -21,7 +21,7 @@ the file is named so a reader can re-run it.
 | [pi-vision-tool](https://www.npmjs.com/package/pi-vision-tool) | Tool registration with a JSON-Schema shape DSH had to convert (`anyOf` → `oneOf`) | CLI + web |
 | [pi-approval-guardian](https://www.npmjs.com/package/pi-approval-guardian) | Every tool call reviewed by a separate model before execution; allow/deny both observed | CLI (bare environment, `danger-full-access`) |
 | [pi-hermes-memory](https://www.npmjs.com/package/pi-hermes-memory) | Cross-session memory: written in one process, read back in a second, fresh process | CLI |
-| [pi-btw](https://www.npmjs.com/package/pi-btw) | Side conversation with a seeded transcript; `/btw <question> --save` visible in the web transcript | web (0.11.0 fixes — see below) |
+| [pi-btw](https://www.npmjs.com/package/pi-btw) | Side conversation as a real child session: `/btw <question>`, `/btw-inject`, `/btw --save`; main thread stays clean | CLI + web (screenshots in `assets/`) |
 | [pi-fabric](https://www.npmjs.com/package/pi-fabric) | Tool-catalog wrapping through Pi's runner prototype | contract level |
 
 ## Capabilities
@@ -56,9 +56,24 @@ registration and never fire — the same as Pi's own non-TUI modes.
 **Known plugins unusable for a deliberate boundary: none.** (This line names
 any we find; it is currently empty.)
 
+## Side conversations, in DSH's own UI
+
+Pi packages whose commands open a side thread (the `/btw` family) run it as a
+real DSH child agent. The bridge appends the host's own identity event
+(`subagent/descriptor`, the `dsh-subagent` vocabulary) inside the child's log,
+which is what makes DSH list it: the thread appears in the native subagent
+dropdown, opens as its own view with its own composer, and stays continuable.
+**The main conversation gains nothing but the command's status line** — the
+answer lives in the side thread until the plugin's own command (`--save`,
+`/btw-inject`) merges it, which stays the user's explicit action.
+
+No client-side plugin of ours is involved: listing, opening and continuing a
+child session are DSH's own capabilities, and the bridge only has to speak the
+host's identity vocabulary for a Pi side thread to qualify as one.
+
 ## Known gap we own
 
-**Plugin-drawn UI in the DSH web app.** Pi plugins can carry their own
+**Plugin-drawn cards in the DSH web app.** Pi plugins can carry their own
 renderers (`registerMessageRenderer` / `registerEntryRenderer`) and mark a
 custom message `display: true` so it renders as their own card. On DSH today
 those registrations are accepted and never invoked, and such a note surfaces
@@ -66,17 +81,16 @@ as a native `Context injection · pi2dsh:<package>` row instead of the plugin's
 own card — the content reaches both the user and the model, but not with the
 plugin's styling.
 
-This is **our** missing half, not a DSH limitation: DSH has a public client
-plugin mechanism (a package declares `dsh.client` and exports `./client`; the
-host serves it to the web app) and a slot registry
+DSH has the machinery for this (a package declares `dsh.client` and exports
+`./client`; the host serves it to the web app) plus a slot registry
 (`ctx.slots.register({ name: 'conversation.chat.node', key }, Component)`) that
-the app's own node renderers use. pi2dsh only ships the Node half today.
-Building the client half is a tracked next step.
+the app's own node renderers use. Drawing those cards is a tracked next step,
+and the only part of the Pi UI surface that would need a client half of ours.
 
 ## Reproduce
 
 ```sh
-pnpm verify                      # typecheck + 93 contract tests + packaging
+pnpm verify                      # typecheck + 95 contract tests + packaging
 pnpm audit:community             # static screening over the top-50 corpus
 pnpm test:community              # deep runtime + official plugin manager + host e2e
 ```

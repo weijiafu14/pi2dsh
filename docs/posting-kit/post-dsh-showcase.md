@@ -3,6 +3,7 @@
 **Title**: Run Pi ecosystem plugins on DSH, unmodified — `dsh plugin add pi2dsh`, then add any Pi package
 
 **Attach**: `assets/01-vision-companion-model-picker.png`, `assets/02-image-accepted-by-text-only-model.png`, `assets/03-vision-bridge-answer.png`
+(optional second set, for the side-conversation section: `assets/01-side-conversation-main-thread-clean.png`, `assets/02-side-conversation-host-catalog.png`, `assets/04-side-conversation-child-view.png`)
 
 ---
 
@@ -49,11 +50,40 @@ green
 
 Full runnable example, including the probe images: [`examples/vision-bridge`](https://github.com/weijiafu14/pi2dsh/tree/main/examples/vision-bridge).
 
+## Example: a side question that doesn't derail the thread
+
+Pi has a family of plugins for asking something off-topic mid-session
+(`pi-btw`). On DSH that side thread becomes a **real child session**: it shows
+up in DSH's own subagent dropdown, opens in its own view with its own
+composer, and stays continuable.
+
+```text
+Name three classic sorting algorithms, one line each.
+→ (answers)
+
+/btw who wrote the novel Dune? name only
+→ btw · Completed          ← the only thing added to the main conversation
+```
+
+The answer (`Frank Herbert.`) lives in the side thread. Merging it back is
+your explicit action — `/btw-inject` — and only then does it enter the main
+conversation. Nothing of ours is drawing this: the child records DSH's own
+identity event (`subagent/descriptor`), and the host's native subagent UI does
+the rest.
+
+Two general ABI gaps closed to make this work, neither package-specific: Pi's
+public, settable `AgentState.messages`, and an input descriptor on every
+bridged command (without it the web app parses `/btw <question>` as chat
+rather than a command — worth knowing for anyone bridging commands with
+arguments).
+
+Full runnable example: [`examples/side-conversation`](https://github.com/weijiafu14/pi2dsh/tree/main/examples/side-conversation).
+
 ## Where things stand
 
 - The top-50 Pi catalog by downloads passes static screening with **zero blocked** packages.
-- End-to-end verified on a real DSH loop, CLI **and** web: tools, slash commands, prompt commands, skills, lifecycle events, `before_agent_start` input bridging, context transforms, interactive OAuth `/login`, subagents through `ctx.agents`, and the vision path above.
-- 92 public-API contract tests; `pnpm verify` (typecheck + tests + packaging) is the gate for every release.
+- End-to-end verified on a real DSH loop, CLI **and** web: tools, slash commands (including commands with arguments), prompt commands, skills, lifecycle events, `before_agent_start` input bridging, context transforms, interactive OAuth `/login`, subagents through `ctx.agents`, side conversations as real child sessions, and the vision path above.
+- 95 public-API contract tests; `pnpm verify` (typecheck + tests + packaging) is the gate for every release.
 
 ## Honest boundaries
 

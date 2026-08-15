@@ -2628,6 +2628,7 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
     deliver: (agent, message, mode) => deliverAgentMessage(agent as DshAgent, message, mode),
     messageFromSessionEvent,
     messageSource: state.messageSource,
+    packageName: state.packageName,
   }, subagentOptions))
   ctx.effect(() => () => __setSubagentSessionFactory(undefined))
   await registerPromptCommands(ctx, state, rootDir, options.manifest)

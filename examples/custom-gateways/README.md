@@ -35,7 +35,7 @@ the route serves on the next request, no restart needed.
 ## 2. Use it
 
 ```sh
-export OPENROUTER_API_KEY=sk-...
+export OPENROUTER_API_KEY='<your-openrouter-key>'
 dsh web
 ```
 

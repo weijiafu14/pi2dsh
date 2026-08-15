@@ -148,6 +148,28 @@ pi2dsh：通用 Pi Host ABI 兼容层，让 Pi 生态插件原样跑在 DeepSeek
 - `pnpm verify` 全绿（tsc + 全部测试 + publint）后才许提交；发 npm 后
   必须裸环终验（干净 DSH_HOME 走完整用户流程）。
 
+## 四点五、对外文档标准（README 是门面，铁律）
+
+**README 只讲一种安装方式：`dsh plugin add pi2dsh` + `dsh plugin add <Pi包>`。**
+
+- 事故：README 把 engine / host bundle / convert / mcp-config **并列成"四种
+  交付模式"**摆在架构区，用户读完不知道自己该用哪个——被斥"host 你妈啊，我们
+  就一种模式，你想给我们用户误导成什么样"。convert/host 是内部特例（未发布/
+  本地/供应链冻结），**不许出现在用户面的安装叙事里**；inspect/matrix/
+  mcp-config 只能作为"其它工具"一两行带过。
+- README 结构固定（用户拍板）：① 这是什么、为什么有它（DSH 理念好但生态早期→
+  用 Pi 成熟插件补位→乐见更原生的插件替换我们）② 安装使用，**以 vision 为例
+  并把"怎么配多模态模型"写到用户不会懵**（这是最容易懵的一步，必须单独讲清
+  插件的视觉模型 ≠ 聊天模型）③ 已实测插件表（读者要一眼看到"能装哪些"）
+  ④ 技术架构（三层 + 标准职责，大体即可）⑤ Pi 开放能力 → DSH 落点总表，每项
+  超链接到 `docs/capabilities/` 分门别类的细表。
+- **对外文档只写现状，不写演变史**：不许出现"过去翻译错了又改回来"这类内部
+  返工过程（用户明令）。判断依据是读者要不要知道，不是我想不想解释。
+- `docs/capabilities/*.md` 由 `scripts/generate-capability-docs.mjs` **从
+  src/compatibility.ts 的规则生成**，prose 写在脚本里，md 里绝不手改；
+  `pnpm verify` 带 `check:docs` 拦截漂移。新增 Pi 面必须归入某个能力域，
+  否则生成脚本 fails loud。
+
 ## 五、Examples 义务（铁律）
 
 **每支持并验证一个能力，必须同步在 `examples/` 放一个完整可直接运行的

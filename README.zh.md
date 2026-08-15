@@ -2,206 +2,281 @@
 
 [English](README.md) | **中文**
 
-**打通 Pi 与 DeepSeek Harness 生态。** pi2dsh 致力于连接 [Pi](https://pi.dev/) 的扩展生态与 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（DSH）：用一层通用的 **Pi Host ABI 兼容层**，让未经修改的 Pi 扩展作为原生 DSH 插件运行——一次开发、批量兼容，不做逐包补丁。
+**让 Pi 生态的插件原样跑在 DeepSeek Harness 上。**
 
 ```sh
-# 装一次引擎，然后 Pi 包直接从 npm 装
-dsh plugin --profile headless add pi2dsh
-dsh plugin --profile headless add @kassing/pi-vision
-dsh plugin --profile headless add pi-vision-tool
+dsh plugin add pi2dsh          # 装一次
+dsh plugin add <任意 Pi 插件>   # 之后想装谁装谁，直接用 npm 原包
 ```
 
-没有转换步骤、没有生成产物：引擎自动发现你加进 profile 的每个 Pi 包，
-全部经一份桥实例挂载。挂载发生在启动时——**加/卸插件后要重启 `dsh`**。
-卸插件用 `dsh plugin remove <包>`（先卸插件再卸引擎，否则插件留在依赖里
-没人挂载）；升级引擎 `dsh plugin add pi2dsh@latest`（插件不动），升级
-插件 `dsh plugin add <包>@latest`（引擎不动）。
+## 为什么有这个项目
 
-如果 add 报 `ERR_PNPM_IGNORED_BUILDS`（pnpm 默认拦依赖的构建脚本）：
-在 profile 的 `pnpm-workspace.yaml` 里把列出的包在 `allowBuilds` 下设为
-`true`（或在该目录跑 `pnpm approve-builds`），然后重跑 add。
+[DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（DSH）的
+理念值得押注——可重建的持久会话日志、干净的服务组合、一条真能讲清楚的 agent
+循环。它现在缺的是插件生态：还处在早期，而大家开箱就想要的那些能力——联网搜索、
+记忆、代码导航、子代理、看图——大多还没人为它写。
 
-如果刚发新版后 add 装到的却是**旧版本**：这是 pnpm 的供应链保护
-（`minimumReleaseAge`）在跳过发布时间太近的版本。显式钉版本——
-`dsh plugin add pi2dsh@<版本>`——pnpm 会在 profile 的
-`pnpm-workspace.yaml` 里记录单包豁免。
+[Pi](https://pi.dev/) 的生态已经成熟：几百个已发布的包，很多都有真实用户。
 
-## 架构
+pi2dsh 是一层兼容层，把 Pi 的公开扩展 ABI 实现在 DSH 的原生服务之上，让 Pi 包
+**以发布的原样**跑在 DSH 上——不 fork、不打补丁、不为每个包写适配器。你像装任何
+DSH 插件一样装一个 Pi 插件，它就能用。
 
-桥只实现**一次** Pi 的公共扩展面，把每个调用映射到 DSH 原生服务。只用公共 API 的包原样运行；无法安全映射的能力显式失败，绝不伪装成功。
+这是桥，不是终点。你在这里用到的每一项能力，DSH 自己的生态早晚都会有原生实现；
+哪天某个能力出现了更原生、更好的插件，你就应该换过去——那正说明这座桥起到了作用。
 
-```
-Pi 包（未经修改的 npm 依赖）
-  │  原样加载：default 导出工厂函数，package.json 的 pi.extensions
-  ▼
-┌────────────────── Pi Host ABI（pi2dsh）─────────────────────┐
-│ registerTool / setActiveTools → DSH tools + 按 agent restrict │
-│ 33 个 Pi 生命周期事件          → DSH durable 事件与 hook 缝   │
-│ exec                          → DSH subprocess（local / E2B） │
-│ sendMessage / sendUserMessage → DSH inject / steer / followup │
-│ ui.select/confirm/input       → DSH userQuestions（真实等待） │
-│ 会话 entry / label / name     → durable sidecar + 日志投影    │
-│ 图片                          → DSH attachments（引用非 base64）│
-│ pi-tui / pi-coding-agent / pi-ai 导入 → vendored/headless shim │
-│   （宽度/按键/会话数学与 Pi 字节一致，MIT 保留版权）           │
-│ setModel / setThinkingLevel   → agent/request 缝按 agent 覆盖 │
-└────────────────────────────────────────────────────────────────┘
-  ▼
-DeepSeek Harness 原生服务（Cordis 组合）
+## 安装
+
+一次引擎，之后想装谁装谁：
+
+```sh
+dsh plugin --profile <你的 profile> add pi2dsh
+dsh plugin --profile <你的 profile> add @kassing/pi-vision
 ```
 
-使用方式：
+然后**重启 `dsh`**——插件在启动时挂载。
 
-| 方式 | 作用 |
+就这一种方式。没有转换步骤，没有生成产物，不用构建。引擎会读出你 profile 里的
+Pi 包（每一个都是你显式装的），用同一个桥实例挂载它们：一个模型目录、一个登录、
+一个凭证存储、一个升级单元。
+
+日常操作：
+
+| 要做的事 | 命令 |
 |---|---|
-| **引擎**（默认） | `dsh plugin add pi2dsh` 装一次桥。之后每个 `dsh plugin add` 的 Pi 包都会从 profile 的依赖清单被发现（清单里每一项都是你显式 add 的——绝不扫 node_modules）并经**一份**桥实例挂载：一个模型目录、一个 `/login`、一个凭证存储、一个升级单元 |
-| **Host bundle** | 生成一个固定包清单的 DSH bundle——适合钉死版本、可复现的组合 |
-| **Convert** | 逐包可审查产物：vendored 源码快照 + 机器可读兼容报告，适合供应链敏感或未发布/本地包 |
-| **MCP 配置转换** | Pi 的六层 `mcpServers` 配置 → 官方 `@deepseek-ai/dsh-mcp-client` patch 条目。不运行 pi-mcp-adapter 的代码；`$VAR` 转成 `!!js process.env.VAR`，字面量密钥会告警 |
+| 装插件 | `dsh plugin add <包名>`（然后重启 dsh） |
+| 卸插件 | `dsh plugin remove <包名>`——先卸插件，再卸引擎 |
+| 升级插件 | `dsh plugin add <包名>@latest`，引擎不动 |
+| 升级引擎 | `dsh plugin add pi2dsh@latest`，插件不动 |
+| 升级前先体检 | `npx pi2dsh inspect <包名>@<版本>` |
 
-引擎可选配置（profile 的 `cordis.patch.yml`）：`packages: [a, b]` 只挂
-指定清单（跳过发现）；`exclude: [c]` 排除个别依赖；`visionCompanions:
-false` 关闭默认自动注册的 `<路由>-vision` 贴图伴生路由（每个纯文本模型
-路由默认都会得到一个；写 `{路由: [模型id]}` 映射则收窄为仅指定项）。
+两条安装期提示值得提前知道：
 
-**插件升级与兼容。** 已装插件的版本被 pnpm lockfile 锁定——插件永远不会
-背着你升级，只有显式 `dsh plugin add <包>@latest` 才会动。升级前先跑
-`pi2dsh inspect <包>@<版本>` 看兼容报告。桥拦截了 Pi 运行时 import
-（`pi-coding-agent`/`pi-tui`/`pi-ai` 由 shim 提供），插件自己锁的 Pi 依赖
-版本根本不会被加载——唯一可能咬人的漂移是插件用了桥还没覆盖的 Pi 新
-API，这在报告里能看到，运行时也会按包隔离、显式报错。
+- **`ERR_PNPM_IGNORED_BUILDS`**：pnpm 默认拦截依赖的构建脚本。在
+  `$DSH_HOME/profiles/<你的 profile>` 里跑 `pnpm approve-builds`，或者把提示
+  里的包在该 profile 的 `pnpm-workspace.yaml` 的 `allowBuilds` 下设成 `true`，
+  然后重跑 add。（这是你的决定权，桥不会绕过它。）
+- **刚发版后 add 装到了旧版本**：pnpm 的 `minimumReleaseAge` 会跳过刚发布不久
+  的版本。显式钉版本即可：`dsh plugin add pi2dsh@<版本>`。
 
-保持通用性的三条硬规则：
+需要 Node.js 22.19+ 和 DeepSeek Harness。
 
-1. 核心**没有任何 `if (packageName === …)`** 包名分支。
-2. 每项能力有**公共 API 契约测试**（`pnpm test`，55 个）；"某个插件能加载"从不作为成功标准。
-3. 前 50 只做**黑盒验收**：失败产生公共 ABI 缺口工单，修一个缺口、同类包一起解锁（例：一次 jiti 子路径 alias 修复同时解锁 4 个包）。
+## 走一遍：让纯文本模型能看图
 
-## 进度：Pi 官方目录下载量前 50
+这个例子最能说明这座桥值什么。DeepSeek 系列是纯文本模型，DSH 没法把图片发给它。
+Pi 生态里正好有插件干这件事：把图片交给你指定的视觉模型，再把分析结果注入回对话。
 
-以 2026-08-14 为准。静态分析只做筛查，黑盒真跑才算认证。逐包机器可读证据在 [community/](community/)。
-
-| 档位 | 数量 | 含义 |
-|---|---|---|
-| ✅ **已测可用** | **49 / 50** | 在真实 DSH runtime 挂载且**真实执行**验证：42 个成功返回，7 个业务逻辑端到端真跑（拒绝了合成探针参数）；49 个中有 2 个经 host 模式验证。一路覆盖的真实服务包括：真 LSP 子进程、真搜索/抓取、PNG 真落盘、真 MCP stdio server 端到端桥接、真子 `pi` 进程派发并由真实模型应答、用真实凭证跑 DeepSeek 搜索、官方 `dsh plugin` 安装/激活/卸载全流程 |
-| 🟡 **能接入、未全测** | **1 / 50** | `@alexanderfortin/pi-deepseek-usage`——纯事件钩子包：4 个生命周期订阅全部接上，但每个 handler 都以"当前在 DeepSeek 模型会话中"为门槛（它拉计费用量并渲染 footer），黑盒探针没有可安全触发并断言的调用面。这是探针方法论的边界，不是包或桥的缺口 |
-| ❌ **尚未接入** | **0 / 50** | 最后 4 个 Pi 内部运行时包已全部桥接：内建工具构造器 vendored、provider 工厂、真语义 `ExtensionRunner` 门面、`createAgentSession` 驱动真实 DSH 子代理 |
-| **今天即可挂载** | **50 / 50** | 48 个经 convert/host bundle 直接挂载；2 个快照受限包经 host 模式（[证据](community/host-mode-results.json)） |
-
-v6 版黑盒装置同时强化了探测方法论本身：桥自带的宿主固有面（例如内建的 `/login` 命令）通过挂载一个零贡献 fixture 扩展测出，并从每个包的探测面里扣除——档位只反映包自己的增量；不安全工具名筛查改为分词级匹配（`litellm_skill_list` 不是 "kill" 工具）；fixture 环境提供真 MCP stdio server、LiteLLM 网关形状的 skills API、按 Pi config-dir 约定放置的图像模型配置，以及（经 `PI2DSH_BLACKBOX_PI_BIN` + `DEEPSEEK_API_KEY` 显式开启）由真实模型应答的子 `pi` 派发。
-
-另有两层验证：**host bundle** 合装两个原样 Pi 包走完官方插件管理器全流程；**真实模型**（deepseek-v4-flash）调用迁移后的 Pi 工具，durable 会话日志逐项断言、凭证零落盘（[证据](community/live-deepseek-results.json)）。
-
-### 最后 4 个内部运行时包是怎么桥接的
-
-每个都落成了可复用的公共面桥，不是逐包补丁：`pi-landstrip` 与 `pi-fabric` 跑在 vendored 字节级的 Pi 内建工具构造器上（bash/read/edit/write/grep/find/ls 及其纯逻辑闭包）；`pi-provider-litellm` 跑在 vendored 的 pi-ai `createProvider` 工厂上——provider 按 `id` 入注册表，注册表的 `getProviderAuth` 跑 Pi 完整凭证链（已存 OAuth → 已存 key → 包自己的环境变量解析），模型传输始终归 DSH llm 原生；`pi-fabric` 另挂真语义 `ExtensionRunner` 门面——patch `prototype.getAllRegisteredTools` 能真实过滤工具目录，与 Pi 下行为一致；`@tintinweb/pi-subagents` 跑在 `createAgentSession` → 真实 DSH 子代理桥上（经 `ctx.agents` 走宿主 loop 工厂）——桥不自带模型循环，无 loop 的组合显式失败，绝不假装跑了子代理。
-
-### 筛查器如何判定兼容性
-
-筛查器区分**加载期与惰性可达**：只有加载期静态闭包上解析不了的依赖才会阻断一个包——函数体内的动态 import、仅经动态 import 可达的文件、worker/数据资源都是惰性路径，与 Pi 下行为完全一致，只标记为可审阅、绝不判死。`bun:*` 与 `node:*` 同等对待（Pi 官方发行版是 Bun 编译二进制的宿主内建），快照逐字节保留发布文件布局。这些规则有契约测试钉着；在这套规则下，混用 Bun 分支、可选重依赖、打包器生成 worker 路径的包——`pi-hermes-memory`、`@mjasnikovs/pi-task`、`pi-harness-runtime`、`mitsupi`、`pi-lens`——全部按发布原样挂载可用，上游无需任何改动。
-
-### 路线图
-
-1. ✅ 已完成：9 个"能接入、未全测"提级——8 个达到已测可用（带凭证的 fixture、真 MCP stdio server、userQuestions 的 live agent 探针链路、Pi config-dir 配置、真子 `pi` 派发，外加桥内两处注册表语义修正：provider 按 `id` 入表、`getProviderAuth` 跑 Pi 完整凭证链而非仅 OAuth）；剩下 1 个是纯事件钩子包，如实定档为无可探测面。
-2. ✅ 已完成：交互式 OAuth host seam——Pi provider 的 `oauth.login/refreshToken/getApiKey` 流跑在 DSH 原生交互上，凭证按 Pi `auth.json` 语义持久化并带双检锁刷新，四条官方流内建；已用真实 ChatGPT Pro 账号端到端验证（见上文"交互式 OAuth"）。
-3. ✅ 已完成：4 个 Pi 内部运行时包全部桥接（见上）——前 50 全部可挂载。
-4. ✅ 已完成：2 个快照受限包经 host 模式实测通过（[证据](community/host-mode-results.json)）。
-5. ✅ 已完成：加载期/惰性可达筛查规则落地；由此解锁的 5 个包全部可挂载、4 个已测可用（见上）。
-
-## 快速开始
-
-需要 Node.js 22.19+ 与 DeepSeek Harness。
+### 1. 装插件
 
 ```sh
-# 引擎（默认）：装一次，然后直接加 Pi 包
-dsh plugin --profile headless add pi2dsh
-dsh plugin --profile headless add @kassing/pi-vision
-
-# 可选 CLI（inspect / convert / host / mcp-config）
-npx pi2dsh inspect @narumitw/pi-lsp                 # 兼容报告
-npx pi2dsh convert @narumitw/pi-lsp --out ./dsh-pi-lsp   # vendored 快照
-npx pi2dsh host --packages 'pi-simplify' --out ./pi-host # 钉版本 bundle
-npx pi2dsh mcp-config                               # Pi mcpServers → DSH patch
+dsh plugin --profile <你的 profile> add @kassing/pi-vision
 ```
 
-## Examples：每个能力都有完整可跑的示例
+### 2. 给它配一个多模态模型
 
-**每个已验证的能力，都在 [`examples/`](examples/) 下有一份完整可直接运行的示例**——克隆仓库，照任意一个示例的 README 从零走到看到效果。示例里的每条命令都在真实 DSH loop（CLI 和 Web 双端）上实际执行过才收录，没有"理论上可以"的内容。
+**这一步是关键**——插件需要它自己的视觉模型，这个模型和你聊天用的那个不是同一个。
+任何 OpenAI 兼容的视觉端点都行（OpenRouter、DashScope/Qwen-VL、自建 vLLM……）。
 
-| 示例 | 你得到什么 |
-|---|---|
-| [`examples/vision-bridge`](examples/vision-bridge/) | 纯文本模型回答图片问题：消息里带图片路径，配置的视觉模型识图，分析结果注入对话（CLI 与 DSH Web 都能用；附探针测试图） |
-| [`examples/custom-gateways`](examples/custom-gateways/) | 用 DSH 官方方式（DSH settings 的 `llm-pi-ai:` 段）接入任意 OpenAI 兼容网关——出现在 DSH 模型选择器、可当主模型、所有 Pi 插件经桥的 registry 投影看到同一路由；桥自身零模型配置 |
-
-更多已验证能力（审批 guardian、跨会话记忆、交互式 OAuth、MCP 配置转换、host 模式）的示例，将按同一标准逐个重新端到端验证后补齐。
-
-## 交互式 OAuth：用你的订阅账号登录
-
-DSH 原生只有静态 HTTP headers；pi2dsh 把 Pi 生态的交互式 OAuth 层带了过来。任何注册了 `oauth` 块的 Pi provider 包，在 DSH 上都直接获得可用的 `/login <provider>` 命令，登录流程由包自己的协议代码驱动。Pi 的四条官方流内建（vendored 字节级）：**OpenAI Codex（ChatGPT Plus/Pro）**、**Anthropic**、**GitHub Copilot**、**Kimi Code**。
+插件从环境变量读自己的配置——这是 Pi 插件生态的主流做法，对你来说就是一个纯粹的
+DSH 侧动作：
 
 ```sh
-# 在挂载了 pi2dsh host bundle 的 DSH 会话里
-/login openai-codex     # 打印授权 URL，同时拉起 localhost 回调服务
-# → 浏览器里点击授权；凭证落盘 auth.json（0600）
+export VISION_BRIDGE_BASE_URL=https://openrouter.ai/api/v1
+export VISION_BRIDGE_MODEL=qwen/qwen2.5-vl-72b-instruct
+export VISION_BRIDGE_API_KEY=$OPENROUTER_API_KEY
 ```
 
-端到端你得到的是：PKCE + `localhost:1455` 回调（无头环境有 device-code 备选）、凭证按 Pi 的 `auth.json` 格式持久化——所以 `@narumitw/pi-accounts` 这类包管理的就是它们熟悉的同一份文件——自动刷新走 Pi 的双检锁轮换（5 分钟过期窗口，轮换后的 token 先落盘再放锁）、扩展注册表的 `getProviderAuth`/`getApiKeyForProvider` 返回真实可用的 key。
-
-**而且 token 直接驱动 DSH 原生链路的真实模型调用。** `pi2dsh/credentials-oauth` 是一个标准 `dsh-credentials` provider：形如 `PI2DSH_OAUTH_<PROVIDER>` 的引用每次请求都从 `auth.json` 解析（途中跑刷新轮换），其余引用回落环境变量。把官方 `@deepseek-ai/dsh-llm-pi-ai` 的 route 指向它，`ctx.llm.stream()` 就跑在你的订阅上：
+配到这里就能用了。如果你还想让这个视觉模型出现在 DSH 自己的模型选择器里（这样
+你也能直接和它聊），就再把它按普通 DSH 路由配一份——`$DSH_HOME/settings.yaml`
+的 `llm-pi-ai:` 段：
 
 ```yaml
-- id: llm
-  name: '@deepseek-ai/dsh-llm-pi-ai'
-  config:
-    providers:
-      openai-codex:
-        apiKeyEnv: PI2DSH_OAUTH_OPENAI_CODEX
-        models:
-          - id: gpt-5.6-luna
+llm-pi-ai:
+  providers:
+    openrouter:
+      baseUrl: https://openrouter.ai/api/v1
+      apiKeyEnv: OPENROUTER_API_KEY
+      models:
+        - id: qwen/qwen2.5-vl-72b-instruct
 ```
 
-两层都已用真实 ChatGPT Pro 账号验证：浏览器授权 → 回调 → 换 token → 落盘 → 可刷新的 key（`scripts/verify-oauth-e2e.mjs`），然后 credentials provider → 官方 pi-ai route → DSH 原生 `ctx.llm.stream()` → 订阅上的真实模型回复（`scripts/verify-oauth-llm-e2e.mjs`）。需要代理的网络下两个脚本都尊重 `HTTPS_PROXY`。
+这两处都是普通的 DSH 配置。桥自己不持有任何模型配置，也没有任何需要你手写的
+Pi 格式文件。
 
-## 兼容边界（显式声明，绝不静默）
+视觉后端别选 GPT-5/o 系列：那一代模型会拒绝非默认的 `temperature`，而有些视觉
+插件会带这个参数。
 
-| 领域 | 映射 |
+### 3. 问一张图
+
+CLI 里直接提路径：
+
+```sh
+dsh --profile <你的 profile> "$PWD/photo.png 这张图是什么颜色？只答一个词。"
+```
+
+Web 里**直接粘图**——哪怕你的主模型是纯文本的。DSH 正常情况下会拒绝给纯文本模型
+上传图片，所以引擎会给模型目录里**每一个纯文本路由**自动注册一个贴图伴生路由，
+名字是 `<路由>-vision`。在模型选择器里选它（显示为 “+ Vision Bridge” 分组），
+粘图，提问。
+
+你会看到：你消息里的图片块变成引导文本，一行 `pi2dsh:@kassing/pi-vision` 的
+上下文注入带着分析结果，然后你的纯文本模型照常回答图片内容。像素从没进过纯文本
+那条线。
+
+伴生路由是全自动的。想关掉、或者只给某些路由开，在引擎的插件配置里设
+`visionCompanions`（`$DSH_HOME/profiles/<你的 profile>/cordis.patch.yml`）：
+
+```yaml
+- id: pi2dsh
+  config:
+    visionCompanions: false
+```
+
+完整可跑版本（含纯色探针图）：[`examples/vision-bridge`](examples/vision-bridge/)。
+
+## 现在能装哪些插件
+
+Pi 目录里**月下载量前 50 的包**，全部在真实 DSH 运行时上验证过——先挂载，再真的
+调起来跑。状态截至 2026-08-14；逐包的机器可读证据在
+[`community/`](community/)。
+
+**50 个里 47 个实测可用 · 1 个没有可探测面 · 2 个待复跑。**
+
+| 能力 | 插件 |
 |---|---|
-| 工具 | 原生 DSH 工具；Pi 的 `tool_call` 原地改参对 Pi 自有工具生效（DSH 原生工具拒绝——DSH 有意先记日志后跑策略） |
-| 会话 | 消息从 DSH durable 日志投影；Pi 自定义 entry/label/name 持久化在 pi2dsh sidecar（DSH 目前没有第三方插件事件通道） |
-| Pi TUI | 纯逻辑 vendored 字节一致；组件类同签名 headless 构造；`ui.custom` 与 Pi 官方 rpc 模式一样返回 undefined |
-| Provider/OAuth | 交互式 OAuth 已可用：`/login <provider>` 跑包自己的流程，凭证按 Pi `auth.json` 持久化并自动刷新；模型传输仍由 DSH `llm` 原生持有 |
-| 模型运行时 | `modelRegistry` 把 DSH llm 实时目录投影为 Pi Model 对象（`llm/adapters-updated` 时刷新）；`ctx.model` 反映 agent 真实路由；`setModel`/`setThinkingLevel` 经 `agent/request` waterfall 真切换 loop；pi-ai `complete()`/`stream()` 经 `ctx.llm.stream()` 发起**真实**模型调用并双向转换消息（已对真实模型验证：`scripts/verify-model-bridge-e2e.mjs`） |
-| 会话控制 | **在 DSH 自己的官方面上真实执行**：`newSession` 真建带血统的 DSH 会话，`fork` 走 DSH 官方前缀 fork（落在完整 turn 边界上），`navigateTree` 在目标点 fork 并可附 vendored 分支摘要，`switchSession` 定位活会话。DSH 的树长在**会话之间**（fork 血统）而非单一日志内；界面当前显示哪个会话仍由宿主面选择 |
-| 压缩与摘要 | `ctx.compact()` 触发 DSH 官方手动压缩；Pi 的 `generateSummary`/`generateBranchSummary`/`findCutPoint` 已 vendored，模型调用走 DSH llm 桥 |
-| shutdown / reload | `shutdown` 被吸收（Pi 官方就把该行为定义为宿主提供；DSH 进程退出权在用户）；`reload` 真实重挂扩展入口——skills/prompts/themes 随 dsh 重启生效 |
-| 宿主专属能力 | `ModelRuntime` 与 `DefaultPackageManager` **设计上**不可用（模型配置与装包连同安全门归宿主）。import 它们在启动时即被标记提示；构造它们抛结构化错误，若发生在插件启动期则整个插件被标记不可用并给出卸载指引。每个能力缺口按插件只向你报告一次——绝不静默失败、绝不伪装成功。**已知因此不可用的插件：目前没有**（一旦发现会列名在此） |
-| Pi 会话记录赋值 | Pi 公开可写的 `state.messages` 在桥接子会话上可用：DSH 日志只能追加，所以赋值的记录随该子会话的下一次 prompt 带入，而不是改写历史 |
-| 终端装饰 | footer/statusline/快捷键注册成功但永不触发——与 Pi 自己的非 TUI 模式一致 |
+| **MCP** | `pi-mcp-adapter` · `pi-mcp-extension` |
+| **联网搜索与抓取** | `pi-web-access` · `pi-deepseek-search` · `pi-web-search` · `@ollama/pi-web-search` · `@juicesharp/rpiv-web-tools` |
+| **代码导航与编辑** | `pi-lens`（ast-grep）· `@narumitw/pi-lsp` · `pi-readseek` · `@ff-labs/pi-fff` · `pi-landstrip` · `pi-hashline-edit-pro`¹ |
+| **子代理与后台任务** | `@tintinweb/pi-subagents` · `@gotgenes/pi-subagents` · `pi-background-tasks`² · `@mjasnikovs/pi-task` |
+| **记忆** | `pi-hermes-memory` · `pi-goosedump` |
+| **计划与目标** | `@narumitw/pi-goal` · `pi-goal-list-loop-audit` · `@narumitw/pi-plan-mode` · `@juicesharp/rpiv-todo` |
+| **问你 / 审批** | `@juicesharp/rpiv-ask-user-question` · `pi-ask-user` · `@gotgenes/pi-permission-system` · `@juicesharp/rpiv-advisor` |
+| **侧边对话** | `pi-btw` · `@narumitw/pi-btw` |
+| **模型与 provider** | `pi-provider-litellm` · `pi-llama-cpp` · `pi-prompt-template-model` · `@vigolium/piolium` |
+| **图像** | `@kassing/pi-vision`（见上文）· `@amaster.ai/pi-image-gen` |
+| **外部集成** | `@llblab/pi-telegram` · `pi-cursor-sdk`² · `@howaboua/pi-codex-conversion` · `pi-agent-browser-native`² · `pi-harness-runtime` |
+| **提示词与工作流** | `pi-simplify` · `pi-fabric`² · `mitsupi` · `pi-cc-extensions` · `pi-rtk-optimizer` · `pi-interview`¹ |
+| **终端装饰** | `pi-powerline-footer` · `@narumitw/pi-statusline` · `pi-zentui` |
+| **语音** | `@juicesharp/rpiv-voice` |
+| **用量统计** | `@alexanderfortin/pi-deepseek-usage`³ |
 
-### 我们自己欠的一块
+¹ 能挂载，调用验证待复跑（装置侧的失败，不是包或桥的问题）。
+² 业务逻辑真跑到底了，然后拒绝了合成的探针参数——属于正常工作、参数校验正确。
+³ 纯事件钩子包：四个订阅全都挂上了，但每个处理器都要求有活的 DeepSeek 计费会话
+（它拉账单用量并渲染 footer），黑盒探针没有可安全断言的调用面。
 
-**插件自绘界面**。Pi 插件可以自带渲染器（`registerMessageRenderer` /
-`registerEntryRenderer`），也可以把自定义消息标 `display: true` 让它渲染成
-插件自己的卡片。目前 pi2dsh 接受这些注册但不调用，这类笔记在 Web 上显示为
-原生的 `Context injection · pi2dsh:<包名>` 行——内容用户和模型都能拿到，但
-没有插件自己的样式。DSH **是提供这套机制的**（包声明 `dsh.client` 导出
-`./client`，加上 `conversation.chat.node` 插槽注册），只是 pi2dsh 目前只做了
-Node 半边。客户端半边是明确的下一步。
+前 50 之外的包不是另一类情况——桥里没有任何逐包代码。哪个包撞上 ABI 缺口，补上
+那个缺口，撞同一处的包一起解锁。
 
-完整机器可读矩阵：`pi2dsh matrix --json`。十项能力逐项验收证据：[docs/acceptance.md](docs/acceptance.md)。114 项 Pi 暴露面 → DSH 语义完整判决（红 3 / 黄 21 / 绿约 90）：[docs/pi-abi-coverage.md](docs/pi-abi-coverage.md)。
+## 技术架构
+
+三层，谁也不跨谁：
+
+```
+┌─ Pi 插件 ───────────────────────────────────────────────────┐
+│ 原样的 npm 包。它看到的是一个完整的 Pi 宿主：三个 Pi 运行时  │
+│ 导入、registerX、ctx.*、33 个生命周期事件。它永远不知道      │
+│ DSH 的存在。                                                │
+└──────────────────────────┬──────────────────────────────────┘
+                           │  Pi 的公开 ABI
+┌──────────────────────────▼──────────────────────────────────┐
+│ pi2dsh——翻译官，也是唯一同时懂两边词汇的地方。目录投影、    │
+│ 事件桥、会话与子代理桥、凭证、vendored 的 Pi 逻辑。          │
+└──────────────────────────┬──────────────────────────────────┘
+                           │  一个普通 DSH 插件 + llm adapter
+┌──────────────────────────▼──────────────────────────────────┐
+│ DeepSeek Harness。它只看到一个普通插件，永远不知道 Pi 的存在。│
+└─────────────────────────────────────────────────────────────┘
+```
+
+保证它靠谱的几条标准：
+
+- **DSH 已经有的东西，绝不再造一遍。** 工具进 DSH 的工具注册表，模型进 DSH 的
+  llm 配置，MCP 交给 `dsh-mcp-client`，skills 交给 `dsh-skill-filesystem`，
+  提问交给 DSH 的 user questions。桥做的是配置翻译，不是另起一套运行时。
+- **你面前永远没有 Pi。** 你要配的、要读的、要敲的，全是 DSH 形状：DSH 设置、
+  DSH 命令、DSH 凭证。Pi 的词汇只活在插件自己的视野和桥的内部实现里。
+- **零逐包特判。** 核心里没有任何 `if (packageName === …)`。修一个 ABI 缺口，
+  撞上它的包一起解锁。
+- **绝不伪装成功。** 映射不了的能力会**如实告诉你**——同一个插件同一项能力只提示
+  一次，讲人话。如果某个插件在启动期就需要这样一项能力，它会被整包标成不可用并
+  给出卸载建议，而不是半死不活地跑着。
+- **验证过才算数。** 每项能力都有公开 API 契约测试，并且必须在真实 DSH loop 上
+  端到端跑通——CLI **和** Web 双端——才会发布。
+
+## Pi 的开放能力在 DSH 上怎么落
+
+Pi 包能碰到的每一个面，以及它落到 DSH 的什么位置。下面这些表是从桥在运行时真正
+查的那份规则生成的，所以不会和代码脱节。
+
+| 能力域 | Pi 面数 | 状态 |
+|---|---|---|
+| [工具](docs/capabilities/tools.md) | 12 | 3 语义一致 · 9 已映射并写明差异 |
+| [命令、flag、编辑器输入](docs/capabilities/commands.md) | 13 | 13 已映射并写明差异 |
+| [消息、上下文、agent 循环](docs/capabilities/conversation.md) | 20 | 7 语义一致 · 13 已映射并写明差异 |
+| [会话与侧边对话](docs/capabilities/sessions.md) | 24 | 4 语义一致 · 20 已映射并写明差异 |
+| [模型、provider、凭证](docs/capabilities/models.md) | 15 | 12 已映射并写明差异 · 3 不提供 |
+| [向用户提问与渲染](docs/capabilities/interaction.md) | 24 | 4 语义一致 · 20 已映射并写明差异 |
+| [项目环境与资源](docs/capabilities/environment.md) | 4 | 1 语义一致 · 1 已映射 · 2 不提供 |
+| **合计** | **112** | **19 语义一致 · 88 已映射并写明差异 · 5 不提供** |
+
+另外还有 Pi 三个运行时包（`pi-coding-agent`、`pi-tui`、`pi-ai`）的 **202 个
+导入符号**，由 vendored 或 headless shim 提供——所以插件自己钉的 Pi 版本永远不会
+被加载。
+
+从[能力索引](docs/capabilities/README.md)开始看。机器可读版：`pi2dsh matrix --json`。
+
+**用订阅登录**也能用：DSH 本身只提供静态 HTTP header，桥补上了 Pi 生态的交互式
+OAuth 层。任何声明了 `oauth` 块的 Pi provider 包都会得到一条可用的
+`/login <provider>`，跑的是这个包自己的协议代码——Pi 官方的四条流程（OpenAI
+Codex、Anthropic、GitHub Copilot、Kimi Code）内置。凭证按 Pi 的 `auth.json`
+语义持久化，并通过标准的 `dsh-credentials` provider 按请求解析，所以你的订阅能
+驱动 DSH 原生 llm 路径上的真实调用。细节见[模型](docs/capabilities/models.md)。
+
+**哪些是刻意不提供的**，以及为什么：运行时装包和独立模型运行时属于宿主及其安全
+门；provider 的 payload/header/response 拦截应该写成 DSH llm adapter；项目信任
+是宿主的决定。见[模型](docs/capabilities/models.md)与
+[项目环境](docs/capabilities/environment.md)。
+
+**我们自己欠的那一块**：插件自绘卡片。Pi 插件可以自带渲染器，目前这类注册我们接
+下来但不调用，所以这种笔记会显示成原生的上下文注入行——内容你和模型都拿得到，
+只是没有插件自己的样式。DSH 是提供这套机制的，我们的客户端半边还没做。
+
+## 示例
+
+每一项验证过的能力都配一个完整可跑的 example。example 里的每条命令都在真实 DSH
+loop 上实际跑过才会进来。
+
+| 示例 | 你能得到什么 |
+|---|---|
+| [`vision-bridge`](examples/vision-bridge/) | 纯文本模型回答图片问题——CLI 与 Web 双端，附探针图 |
+| [`side-conversation`](examples/side-conversation/) | `/btw <问题>` 在 DSH 原生子代理界面里开一条侧边线程，主会话保持干净 |
+| [`custom-gateways`](examples/custom-gateways/) | 按 DSH 官方方式接任何 OpenAI 兼容网关，每个 Pi 插件都能看到它 |
+
+## 其它工具
+
+除了引擎，CLI 还有几个辅助命令：
+
+```sh
+npx pi2dsh inspect <包名>@<版本>   # 升级前的兼容性报告
+npx pi2dsh matrix --json           # 完整能力矩阵
+npx pi2dsh mcp-config              # Pi 的 mcpServers 配置 → DSH 官方 MCP 条目
+```
 
 ## 开发与验证
 
 ```sh
-pnpm verify                                   # 类型检查 + 55 契约测试 + 打包检查
-pnpm audit:community                          # 前 50 静态筛查
-node scripts/blackbox-community.mjs community/blackbox-results.json --exercise
-#   前缀 DEEPSEEK_API_KEY=… PI2DSH_BLACKBOX_PI_BIN=$(command -v pi) 可开启
-#   带凭证探测与真子 pi 派发（key 仅从环境读）
-pnpm test:community                           # 深链路 + 官方插件管理器 + host e2e
-DEEPSEEK_API_KEY=… pnpm test:live             # 真实模型验收（key 仅从环境读）
+pnpm verify                 # 类型检查 + 契约测试 + 打包检查
+pnpm audit:community        # 前 50 静态筛查
+pnpm test:community         # 深度运行时 + 官方插件管理器 + e2e
+DEEPSEEK_API_KEY=… pnpm test:live    # 真实模型验收（key 只从环境读）
 ```
 
-## License
+逐项能力的验收证据：[docs/acceptance.md](docs/acceptance.md)。
+工作标准：[CLAUDE.md](CLAUDE.md) 与 [docs/STANDARDS.md](docs/STANDARDS.md)。
 
-MIT。Vendored 的 Pi 源码保留其上游 MIT 许可（`src/compat/vendor/PI-LICENSE`）；生成的 bundle 保留上游 license/notice 文件。
+## 许可
+
+MIT。vendored 的 Pi 源码保留其上游 MIT 许可
+（`src/compat/vendor/PI-LICENSE`）；生成的 bundle 保留拷贝过来的上游许可与声明
+文件。

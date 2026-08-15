@@ -2,224 +2,316 @@
 
 **English** | [中文](README.zh.md)
 
-**Bridging the Pi and DeepSeek Harness ecosystems.** pi2dsh is dedicated to connecting [Pi](https://pi.dev/)'s extension ecosystem with [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (DSH): one general **Pi Host ABI compatibility layer** that runs unmodified Pi extensions as native DSH plugins — not per-package patches.
+**Run the Pi ecosystem's plugins on DeepSeek Harness, unmodified.**
 
 ```sh
-# install the engine once, then install Pi packages straight from npm
-dsh plugin --profile headless add pi2dsh
-dsh plugin --profile headless add @kassing/pi-vision
-dsh plugin --profile headless add pi-vision-tool
+dsh plugin add pi2dsh          # once
+dsh plugin add <any-pi-plugin> # then any Pi plugin, straight from npm
 ```
 
-No conversion step, no generated bundles: the engine discovers every Pi
-package you added to the profile and mounts them all through one bridge
-instance. Mounting happens at startup — **restart `dsh` after adding or
-removing plugins**. Remove a plugin with `dsh plugin remove <pkg>` (remove
-plugins before removing the engine, or they sit unmounted); upgrade the
-engine with `dsh plugin add pi2dsh@latest` (your plugins are untouched),
-upgrade a plugin with `dsh plugin add <pkg>@latest` (the engine is
-untouched).
+## Why this exists
 
-If an add stops with `ERR_PNPM_IGNORED_BUILDS` (pnpm blocks dependency
-build scripts by default), set the listed packages to `true` under
-`allowBuilds` in the profile's `pnpm-workspace.yaml` (or run
-`pnpm approve-builds` there), then re-run the add.
+[DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) is built
+on ideas worth betting on — a durable, reconstructable session log, a clean
+service composition, an agent loop you can actually reason about. What it does
+not have yet is a large plugin ecosystem: it is early, and the plugins people
+want on day one — web search, memory, code navigation, subagents, vision — are
+mostly not written for it yet.
 
-If an add silently installs an OLD version right after a release: pnpm's
-supply-chain protection (`minimumReleaseAge`) skips versions published too
-recently. Pin the version explicitly — `dsh plugin add pi2dsh@<version>` —
-and pnpm records a one-package exemption in the profile's
-`pnpm-workspace.yaml`.
+[Pi](https://pi.dev/) has that ecosystem already, and it is mature: hundreds
+of published packages, many with real users.
 
-## Architecture
+pi2dsh is one compatibility layer that implements Pi's public extension ABI on
+top of DSH's native services, so a Pi package runs on DSH **as published** —
+no fork, no patch, no per-package adapter. You install a Pi plugin the same
+way you install anything else in DSH, and it works.
 
-The bridge implements Pi's public extension surface **once**, mapping every call onto DSH's native services. A package that sticks to Pi's public API runs verbatim; capabilities with no safe mapping fail explicitly instead of faking success.
+This is deliberately a bridge, not a destination. Every capability you reach
+through pi2dsh is a capability DSH's own ecosystem will eventually offer
+natively — and when a better native plugin shows up for something you use
+here, you should switch to it. That would be the bridge doing its job.
 
-```
-Pi package (unmodified npm dependency)
-  │  loaded verbatim: default-export factory, package.json pi.extensions
-  ▼
-┌─────────────────── Pi Host ABI (pi2dsh) ───────────────────┐
-│ registerTool / setActiveTools → DSH tools + per-agent restrict │
-│ 33 Pi lifecycle events        → DSH durable events & hook seams│
-│ exec                          → DSH subprocess (local / E2B)   │
-│ sendMessage / sendUserMessage → DSH inject / steer / followup  │
-│ ui.select/confirm/input       → DSH userQuestions (real waits) │
-│ session entries/labels/name   → durable sidecar + log projection│
-│ images                        → DSH attachments (refs, not b64)│
-│ pi-tui / pi-coding-agent / pi-ai imports → vendored/headless   │
-│   shims (width/keys/session math byte-identical to Pi, MIT)    │
-│ setModel / setThinkingLevel   → agent/request seam overrides   │
-└────────────────────────────────────────────────────────────────┘
-  ▼
-DeepSeek Harness native services (Cordis composition)
+## Install
+
+One engine, then whatever plugins you want:
+
+```sh
+dsh plugin --profile <your-profile> add pi2dsh
+dsh plugin --profile <your-profile> add @kassing/pi-vision
 ```
 
-Delivery modes:
+Then **restart `dsh`** — plugins mount at startup.
 
-| Mode | What it does |
+That is the whole model. There is no conversion step, no generated bundle, no
+build. The engine discovers the Pi packages in your profile (every one is
+something you explicitly added) and mounts them through a single bridge
+instance: one model directory, one login, one credential store, one upgrade
+unit.
+
+Day-to-day:
+
+| Task | Command |
 |---|---|
-| **Engine** (default) | `dsh plugin add pi2dsh` installs the bridge once as a DSH plugin. Every Pi package you then `dsh plugin add` is discovered from the profile's dependency manifest (each entry is an explicit add — never a node_modules scan) and mounted through ONE bridge instance: one model directory, one `/login`, one credential store, one upgrade unit |
-| **Host bundle** | One generated DSH bundle mounts a fixed list of Pi packages as npm dependencies — for pinned, reproducible compositions |
-| **Convert** | A reviewable per-package bundle: vendored source snapshot + machine-readable compatibility report, for supply-chain-sensitive or unpublished/local packages |
-| **MCP config translation** | Pi's six `mcpServers` layers → official `@deepseek-ai/dsh-mcp-client` patch entries. The Pi MCP adapter's code never runs; `$VAR` becomes `!!js process.env.VAR`, literal secrets are warned about |
+| Add a plugin | `dsh plugin add <pkg>` (then restart dsh) |
+| Remove a plugin | `dsh plugin remove <pkg>` — remove plugins before removing the engine |
+| Upgrade a plugin | `dsh plugin add <pkg>@latest` — the engine is untouched |
+| Upgrade the engine | `dsh plugin add pi2dsh@latest` — your plugins are untouched |
+| Check a plugin before upgrading | `npx pi2dsh inspect <pkg>@<version>` |
 
-Engine config (optional, in the profile's `cordis.patch.yml`): `packages:
-[a, b]` mounts exactly that list instead of discovering; `exclude: [c]`
-skips individual dependencies; `visionCompanions: false` turns off the
-automatic `<route>-vision` image-admission companions that every text-only
-model route gets by default (an explicit `{route: [modelIds]}` map narrows
-them instead).
+Two installer messages worth knowing:
 
-**Plugin upgrades and compatibility.** Installed plugin versions are locked
-by pnpm's lockfile — a plugin never upgrades behind your back; only an
-explicit `dsh plugin add <pkg>@latest` moves it. Before upgrading, run
-`pi2dsh inspect <pkg>@<version>` for the compatibility report. The bridge
-intercepts the Pi runtime imports (`pi-coding-agent`/`pi-tui`/`pi-ai` are
-served by its shims), so a plugin's own Pi dependency pins never load — the
-only drift that can bite is a plugin adopting a Pi host API the bridge does
-not cover yet, which the report shows and which fails loudly, package-
-isolated, at runtime.
-
-Three hard rules keep it general:
-
-1. The core contains **no `if (packageName === …)`** branching.
-2. Every capability has a **public-API contract test** (`pnpm test`, 55 tests); "some plugin loads" is never the success criterion.
-3. The top-50 corpus is verified **black-box only**: failures file public ABI gaps, and fixing one gap unlocks every package that hits it (e.g. one jiti subpath-alias fix unlocked 4 packages at once).
-
-## Progress: Pi catalog top 50 by monthly downloads
-
-Status as of 2026-08-14. Static analysis screens; the black-box run certifies. Full per-package machine-readable evidence in [community/](community/).
-
-| Tier | Count | Meaning |
-|---|---|---|
-| ✅ **Tested working** | **49 / 50** | Mounted in a real DSH runtime AND real execution verified: 42 returned success, 7 ran their business logic end-to-end and rejected the synthetic probe arguments (2 of the 49 verified through host mode). Real-service coverage along the way: a real LSP subprocess, real web search/fetch, PNG generation, a real MCP stdio server bridged end-to-end, real child-`pi` dispatch answered by a live model, real DeepSeek search on user credentials, and the official `dsh plugin` add/activate/remove flow |
-| 🟡 **Mounts, not fully verified** | **1 / 50** | `@alexanderfortin/pi-deepseek-usage` — a pure event-hook package: all four lifecycle subscriptions attach, but every handler is gated on an active DeepSeek model session (it fetches billing usage and renders a footer), so a black-box probe has no safely-assertable callable surface. A harness limit, not a package or bridge gap |
-| ❌ **Not yet supported** | **0 / 50** | The last four Pi-internal-runtime packages are bridged: vendored built-in tool constructors, provider factories, a real-semantics `ExtensionRunner` facade, and `createAgentSession` driving genuine DSH child agents |
-| **Total mountable today** | **50 / 50** | 48 through convert/host bundles directly; 2 snapshot-limited packages through host mode ([evidence](community/host-mode-results.json)) |
-
-The v6 harness also hardened the probe methodology itself: the bridge's own host-native surface (e.g. the built-in `/login` command) is measured by mounting a zero-contribution fixture extension and subtracted from every probe, so a grade reflects the package's own increment only; unsafe-name screening is word-level (`litellm_skill_list` is not a "kill" tool); and the fixture environment serves a real MCP stdio server, a LiteLLM-gateway-shaped skills API, image-model settings under Pi's config-dir contract, and — opt-in via `PI2DSH_BLACKBOX_PI_BIN` + `DEEPSEEK_API_KEY` — real child-`pi` dispatch answered by a live model.
-
-Additional verified layers: a **host bundle** mounting two unmodified packages passed the official plugin-manager flow end-to-end; a **real model run** (`deepseek-v4-flash`) called a migrated Pi tool with the durable session log asserted and zero credential persistence ([evidence](community/live-deepseek-results.json)).
-
-### How the last four internal-runtime packages were bridged
-
-Each landed as a reusable public-surface bridge, not a package patch: `pi-landstrip` and `pi-fabric` run on Pi's built-in tool constructors (bash/read/edit/write/grep/find/ls) vendored byte-identical with their pure-logic closure; `pi-provider-litellm` runs on the vendored pi-ai `createProvider` factory — providers key by `id` and the registry's `getProviderAuth` runs Pi's full credential chain (stored OAuth → stored key → the package's own env resolution), while model transports stay native to DSH llm; `pi-fabric` additionally hooks a real-semantics `ExtensionRunner` facade — patching `prototype.getAllRegisteredTools` genuinely filters the tool catalog, as under Pi; `@tintinweb/pi-subagents` runs on `createAgentSession` bridged to genuine DSH child agents through `ctx.agents` — the bridge owns no model loop, so compositions without one fail explicitly instead of simulating a subagent.
-
-### How the screener judges compatibility
-
-The screener models **load-time vs lazy reachability**: only an unresolvable dependency on the load-time static closure blocks a package — function-body dynamic imports, files reached only through dynamic import, and worker/data assets are lazy paths that behave identically under Pi and are graded as reviewable, never fatal. `bun:*` is treated like `node:*` (a host builtin of Pi's Bun-compiled distribution), and snapshots preserve the published file layout byte for byte. These rules are contract-tested; under them, packages that mix Bun-only branches, optional heavyweight dependencies, or bundler-generated worker paths — `pi-hermes-memory`, `@mjasnikovs/pi-task`, `pi-harness-runtime`, `mitsupi`, `pi-lens` — all mount and work as published, with no changes needed upstream.
-
-### Roadmap
-
-1. ✅ Done: the 9 "mounts, not fully verified" lifted — 8 grade tested-working (credentialed fixtures, a real MCP stdio server, a live-agent probe path for userQuestions, Pi-config-dir settings, real child-`pi` dispatch, and two registry-semantics fixes in the bridge: providers keyed by `id`, and `getProviderAuth` running Pi's full credential chain instead of OAuth only); the 1 remaining is a pure event-hook package graded honestly as having no probeable surface.
-2. ✅ Done: interactive OAuth host seam — Pi provider `oauth.login/refreshToken/getApiKey` flows run on DSH-native interaction, credentials persist with Pi's `auth.json` semantics with double-checked-lock refresh, and the four official Pi flows ship built in; verified end-to-end against a real ChatGPT Pro account (see "Interactive OAuth" above).
-3. ✅ Done: all four Pi-internal-runtime packages bridged (see above) — every top-50 package mounts.
-4. ✅ Done: the 2 snapshot-limited packages verified through host mode ([evidence](community/host-mode-results.json)).
-5. ✅ Done: load-time vs lazy reachability screening landed; the five packages it unblocked all mount, four tested-working (see above).
-
-## Quick start
+- **`ERR_PNPM_IGNORED_BUILDS`** — pnpm blocks dependency build scripts by
+  default. Run `pnpm approve-builds` inside
+  `$DSH_HOME/profiles/<your-profile>`, or set the listed packages to `true`
+  under `allowBuilds` in that profile's `pnpm-workspace.yaml`. Then re-run the
+  add. (This is your call to make, so the bridge does not work around it.)
+- **An add silently installs an older version** right after a release —
+  pnpm's `minimumReleaseAge` skips versions published very recently. Pin it:
+  `dsh plugin add pi2dsh@<version>`.
 
 Requires Node.js 22.19+ and DeepSeek Harness.
 
-```sh
-# Engine (default): install once, then add Pi packages directly
-dsh plugin --profile headless add pi2dsh
-dsh plugin --profile headless add @kassing/pi-vision
+## Walkthrough: give a text-only model eyes
 
-# Optional CLI (inspect / convert / host / mcp-config)
-npx pi2dsh inspect @narumitw/pi-lsp                 # compatibility report
-npx pi2dsh convert @narumitw/pi-lsp --out ./dsh-pi-lsp   # vendored snapshot
-npx pi2dsh host --packages 'pi-simplify' --out ./pi-host # pinned bundle
-npx pi2dsh mcp-config                               # Pi mcpServers → DSH patch
+The clearest example of what the bridge buys you. DeepSeek models are
+text-only, so DSH cannot send them an image. The Pi ecosystem has a plugin for
+exactly this — it hands the image to a vision model you choose and injects the
+analysis back into the conversation.
+
+### 1. Install the plugin
+
+```sh
+dsh plugin --profile <your-profile> add @kassing/pi-vision
 ```
 
-## Examples: copy-paste working capabilities
+### 2. Point it at a multimodal model
 
-**Every verified capability ships as a complete, runnable example under
-[`examples/`](examples/)** — clone the repo, follow one example's README from
-zero to seeing the feature run. Every command in an example has actually been
-executed against a real DSH loop (CLI and web) before landing here; nothing
-is aspirational.
+**This is the step to get right** — the plugin needs its own vision model, and
+it is a different model from the one you chat with. Any OpenAI-compatible
+vision endpoint works (OpenRouter, DashScope/Qwen-VL, a self-hosted vLLM, …).
+
+The plugin reads its configuration from environment variables — the standard
+way Pi plugins are configured, and a plain DSH-side action for you:
+
+```sh
+export VISION_BRIDGE_BASE_URL=https://openrouter.ai/api/v1
+export VISION_BRIDGE_MODEL=qwen/qwen2.5-vl-72b-instruct
+export VISION_BRIDGE_API_KEY=$OPENROUTER_API_KEY
+```
+
+That is enough to work. If you would also like that vision model to appear in
+DSH's own model picker (so you can chat with it directly), add it as a normal
+DSH route as well — the `llm-pi-ai:` section of `$DSH_HOME/settings.yaml`:
+
+```yaml
+llm-pi-ai:
+  providers:
+    openrouter:
+      baseUrl: https://openrouter.ai/api/v1
+      apiKeyEnv: OPENROUTER_API_KEY
+      models:
+        - id: qwen/qwen2.5-vl-72b-instruct
+```
+
+Both are ordinary DSH configuration. The bridge owns no model configuration of
+its own, and there is no Pi-format file for you to write.
+
+Avoid GPT-5/o-family models as the vision backend: that generation rejects the
+non-default `temperature` some vision plugins send.
+
+### 3. Ask about an image
+
+In the CLI, mention a path:
+
+```sh
+dsh --profile <your-profile> "What color fills $PWD/photo.png ? One word."
+```
+
+In the web app, **just paste the image** — even though your main model is
+text-only. DSH normally refuses image attachments for a text-only model, so
+the engine registers an *image-admission companion* route for every text-only
+route in your directory, named `<route>-vision`. Pick it in the model picker
+(it shows up as a "+ Vision Bridge" group), paste, and ask.
+
+What you will see: your image becomes guide text, a
+`pi2dsh:@kassing/pi-vision` context-injection row carries the analysis, and
+your text-only model answers about the picture. Pixels never reach the
+text-only wire.
+
+Companions are automatic. To turn them off, or narrow them to specific routes,
+set `visionCompanions` in the engine's plugin config
+(`$DSH_HOME/profiles/<your-profile>/cordis.patch.yml`):
+
+```yaml
+- id: pi2dsh
+  config:
+    visionCompanions: false
+```
+
+Full runnable version, with probe images: [`examples/vision-bridge`](examples/vision-bridge/).
+
+## What you can install today
+
+The Pi catalog's **top 50 packages by monthly downloads**, all verified on a
+real DSH runtime — mounted, then actually exercised. Status as of 2026-08-14;
+per-package machine-readable evidence in [`community/`](community/).
+
+**47 of 50 verified working · 1 with no probeable surface · 2 pending a re-run.**
+
+| Area | Packages |
+|---|---|
+| **MCP** | `pi-mcp-adapter` · `pi-mcp-extension` |
+| **Web search & fetch** | `pi-web-access` · `pi-deepseek-search` · `pi-web-search` · `@ollama/pi-web-search` · `@juicesharp/rpiv-web-tools` |
+| **Code navigation & editing** | `pi-lens` (ast-grep) · `@narumitw/pi-lsp` · `pi-readseek` · `@ff-labs/pi-fff` · `pi-landstrip` · `pi-hashline-edit-pro`¹ |
+| **Subagents & background work** | `@tintinweb/pi-subagents` · `@gotgenes/pi-subagents` · `pi-background-tasks`² · `@mjasnikovs/pi-task` |
+| **Memory** | `pi-hermes-memory` · `pi-goosedump` |
+| **Planning & goals** | `@narumitw/pi-goal` · `pi-goal-list-loop-audit` · `@narumitw/pi-plan-mode` · `@juicesharp/rpiv-todo` |
+| **Asking you / approvals** | `@juicesharp/rpiv-ask-user-question` · `pi-ask-user` · `@gotgenes/pi-permission-system` · `@juicesharp/rpiv-advisor` |
+| **Side conversations** | `pi-btw` · `@narumitw/pi-btw` |
+| **Models & providers** | `pi-provider-litellm` · `pi-llama-cpp` · `pi-prompt-template-model` · `@vigolium/piolium` |
+| **Images** | `@kassing/pi-vision` (see above) · `@amaster.ai/pi-image-gen` |
+| **External integrations** | `@llblab/pi-telegram` · `pi-cursor-sdk`² · `@howaboua/pi-codex-conversion` · `pi-agent-browser-native`² · `pi-harness-runtime` |
+| **Prompting & workflow** | `pi-simplify` · `pi-fabric`² · `mitsupi` · `pi-cc-extensions` · `pi-rtk-optimizer` · `pi-interview`¹ |
+| **Terminal decoration** | `pi-powerline-footer` · `@narumitw/pi-statusline` · `pi-zentui` |
+| **Voice** | `@juicesharp/rpiv-voice` |
+| **Usage reporting** | `@alexanderfortin/pi-deepseek-usage`³ |
+
+¹ Mounts; the exercise run is pending a re-run (a harness-side failure, not a
+package or bridge gap). ² Ran its own business logic end to end and rejected
+the synthetic probe arguments — working, correctly validating.
+³ A pure event-hook package: all subscriptions attach, but every handler is
+gated on a live DeepSeek billing session, so a black-box probe has nothing
+safely callable to assert.
+
+Packages outside the top 50 are not a separate case — the bridge has no
+per-package code. If one hits an ABI gap, fixing that gap unlocks every
+package that shares it.
+
+## How it works
+
+Three layers, and nothing crosses them:
+
+```
+┌─ Pi plugin ─────────────────────────────────────────────────┐
+│ unmodified npm package. It sees a complete Pi host: the     │
+│ three Pi runtime imports, registerX, ctx.*, 33 lifecycle    │
+│ events. It never learns DSH exists.                         │
+└──────────────────────────┬──────────────────────────────────┘
+                           │  Pi's public ABI
+┌──────────────────────────▼──────────────────────────────────┐
+│ pi2dsh — the translator, and the only place that knows both │
+│ vocabularies. Registry projection, event bridge, session &   │
+│ subagent bridge, credentials, vendored Pi logic.            │
+└──────────────────────────┬──────────────────────────────────┘
+                           │  ordinary DSH plugin + llm adapter
+┌──────────────────────────▼──────────────────────────────────┐
+│ DeepSeek Harness. Sees a normal plugin. Never learns Pi     │
+│ exists.                                                     │
+└─────────────────────────────────────────────────────────────┘
+```
+
+The rules that keep it honest:
+
+- **Never a second implementation of something DSH already has.** Tools go to
+  DSH's tool registry, models to DSH's llm configuration, MCP to
+  `dsh-mcp-client`, skills to `dsh-skill-filesystem`, questions to DSH's user
+  questions. The bridge translates configuration; it does not build a parallel
+  runtime.
+- **You never see Pi.** Everything you configure, read, or type is DSH-shaped:
+  DSH settings, DSH commands, DSH credentials. Pi vocabulary exists only
+  inside the plugin's view and the bridge's own internals.
+- **No per-package special cases.** The core contains no
+  `if (packageName === …)`. One ABI gap fixed unlocks every package that hits
+  it.
+- **Never fake success.** A capability with no safe mapping is reported —
+  once, per plugin, in plain language — instead of silently returning
+  something invented. If a plugin needs one during startup, it is marked
+  unusable with a removal hint rather than half-working.
+- **Verified, not asserted.** Every capability has a public-API contract test,
+  and ships only after running end to end on a real DSH loop — CLI *and* web.
+
+## Pi capabilities on DSH
+
+Every surface a Pi package can touch, and what it maps onto. These tables are
+generated from the rules the bridge consults at runtime, so they cannot drift
+from the code.
+
+| Area | Pi surfaces | Status |
+|---|---|---|
+| [Tools](docs/capabilities/tools.md) | 12 | 3 same semantics · 9 mapped, difference stated |
+| [Commands, flags, editor input](docs/capabilities/commands.md) | 13 | 13 mapped, difference stated |
+| [Messages, context, agent loop](docs/capabilities/conversation.md) | 20 | 7 same semantics · 13 mapped, difference stated |
+| [Sessions & side conversations](docs/capabilities/sessions.md) | 24 | 4 same semantics · 20 mapped, difference stated |
+| [Models, providers, credentials](docs/capabilities/models.md) | 15 | 12 mapped, difference stated · 3 not available |
+| [Asking the user, rendering](docs/capabilities/interaction.md) | 24 | 4 same semantics · 20 mapped, difference stated |
+| [Project environment & resources](docs/capabilities/environment.md) | 4 | 1 same semantics · 1 mapped · 2 not available |
+| **Total** | **112** | **19 same · 88 mapped with stated differences · 5 not available** |
+
+Plus **202 imported symbols** from Pi's three runtime packages
+(`pi-coding-agent`, `pi-tui`, `pi-ai`), served from vendored or headless
+shims — so a plugin's own Pi version pins never load.
+
+Start at the [capability index](docs/capabilities/README.md). Machine-readable:
+`pi2dsh matrix --json`.
+
+**Signing in with a subscription** works too: DSH ships static HTTP headers
+only, and the bridge adds the Pi ecosystem's interactive OAuth layer. Any Pi
+provider package that declares an `oauth` block gets a working
+`/login <provider>`, driven by the package's own protocol code — Pi's four
+official flows (OpenAI Codex, Anthropic, GitHub Copilot, Kimi Code) ship built
+in. Credentials persist with Pi's `auth.json` semantics and resolve per
+request through a standard `dsh-credentials` provider, so your subscription
+drives real calls on DSH's native llm path. Details in
+[models](docs/capabilities/models.md).
+
+**What is deliberately not available**, and why: runtime package installation
+and standalone model runtimes stay with the host and its security gates;
+provider payload/header/response interception belongs in a DSH llm adapter;
+project trust is a host decision. See
+[models](docs/capabilities/models.md) and
+[environment](docs/capabilities/environment.md).
+
+**The one gap we own:** plugin-drawn cards. Pi plugins can ship their own
+renderers; today those registrations are accepted but not invoked, so such a
+note appears as a native context-injection row — the content reaches you and
+the model, without the plugin's styling. DSH has the machinery for this; we
+have not built our client half yet.
+
+## Examples
+
+Every verified capability ships as a complete, runnable example. Every command
+in one has actually been executed against a real DSH loop before landing.
 
 | Example | What you get |
 |---|---|
-| [`examples/vision-bridge`](examples/vision-bridge/) | A text-only model answers questions about images: mention an image path, a configured vision model reads it, the analysis is injected into the conversation (works in CLI and the DSH web app; probe images included) |
-| [`examples/custom-gateways`](examples/custom-gateways/) | Add any OpenAI-compatible gateway the official DSH way (the `llm-pi-ai:` section of DSH settings) — it appears in the DSH model picker, works as the main model, and every Pi plugin sees it through the bridge's registry projection; the bridge owns zero model configuration |
+| [`vision-bridge`](examples/vision-bridge/) | A text-only model answers questions about images — CLI and web, probe images included |
+| [`side-conversation`](examples/side-conversation/) | `/btw <question>` runs a side thread in DSH's native subagent UI; your main conversation stays clean |
+| [`custom-gateways`](examples/custom-gateways/) | Add any OpenAI-compatible gateway the official DSH way, and every Pi plugin sees it |
 
-More verified capabilities (approval guardian, cross-session memory,
-interactive OAuth, MCP config conversion, host mode) get their examples as
-each one is re-verified end to end under the same bar.
+## Other tools
 
-## Interactive OAuth: sign in with your subscription
-
-DSH ships static HTTP headers only; pi2dsh adds the interactive OAuth layer from the Pi ecosystem. Any Pi provider package that registers an `oauth` block gets a working `/login <provider>` command on DSH, driven by the package's own protocol code. Pi's four official flows ship built in (vendored byte-identical): **OpenAI Codex (ChatGPT Plus/Pro)**, **Anthropic**, **GitHub Copilot**, **Kimi Code**.
+Beyond the engine, the CLI has a few helpers:
 
 ```sh
-# inside a DSH session with a pi2dsh host bundle mounted
-/login openai-codex     # prints the authorization URL, spins up the localhost callback
-# → approve in your browser; the credential lands in auth.json (0600)
+npx pi2dsh inspect <pkg>@<version>   # compatibility report before an upgrade
+npx pi2dsh matrix --json             # the full capability matrix
+npx pi2dsh mcp-config                # Pi mcpServers config → official DSH MCP entries
 ```
 
-What you get, end to end: PKCE + `localhost:1455` callback (device-code fallback for headless boxes), credentials persisted in Pi's `auth.json` format — so packages like `@narumitw/pi-accounts` manage the same file they already know — automatic refresh with Pi's double-checked-lock rotation (5-minute expiry window, refreshed token persisted before release), and `getProviderAuth`/`getApiKeyForProvider` on the extension registry returning live keys.
-
-**And the token drives real model calls through DSH's native LLM path.** `pi2dsh/credentials-oauth` is a standard `dsh-credentials` provider: any reference shaped `PI2DSH_OAUTH_<PROVIDER>` resolves per request from `auth.json` (running the refresh rotation on the way), everything else falls through to the environment. Point an official `@deepseek-ai/dsh-llm-pi-ai` route at it and `ctx.llm.stream()` runs on your subscription:
-
-```yaml
-- id: llm
-  name: '@deepseek-ai/dsh-llm-pi-ai'
-  config:
-    providers:
-      openai-codex:
-        apiKeyEnv: PI2DSH_OAUTH_OPENAI_CODEX
-        models:
-          - id: gpt-5.6-luna
-```
-
-Both layers are verified against a real ChatGPT Pro account: browser authorization → callback → token exchange → store → refreshable key (`scripts/verify-oauth-e2e.mjs`), then credentials provider → official pi-ai route → DSH-native `ctx.llm.stream()` → a real model reply on the subscription (`scripts/verify-oauth-llm-e2e.mjs`). On networks that need a proxy, both scripts honor `HTTPS_PROXY`.
-
-## Compatibility boundaries (explicit, never silent)
-
-| Area | Mapping |
-|---|---|
-| Tools | Native DSH tools; Pi's in-place `tool_call` argument mutation works for Pi-owned tools (DSH-native tools reject it — DSH logs arguments before policy) |
-| Sessions | Messages project from DSH's durable log; Pi custom entries/labels/names persist in a pi2dsh sidecar (DSH has no out-of-repo plugin-event channel yet) |
-| Pi TUI | Pure logic vendored byte-identical; components construct headlessly; `ui.custom` resolves `undefined` exactly like Pi's own rpc mode |
-| Providers/OAuth | Interactive OAuth is live: `/login <provider>` runs the package's own flow, credentials persist in Pi's `auth.json` with automatic refresh; model transports stay native to DSH `llm` |
-| Model runtime | `modelRegistry` projects the live DSH llm directory as Pi Model objects (refreshed on `llm/adapters-updated`); `ctx.model` reflects the agent's real route; `setModel`/`setThinkingLevel` switch the loop through the `agent/request` waterfall; pi-ai `complete()`/`stream()` run REAL calls through `ctx.llm.stream()` with two-way message conversion (verified against a live model: `scripts/verify-model-bridge-e2e.mjs`) |
-| Session control | REAL on DSH's own surfaces: `newSession` creates a DSH session with lineage, `fork` uses DSH's official prefix-fork (landing on completed-turn boundaries), `navigateTree` forks at the target with an optional vendored branch summary, `switchSession` targets live sessions. The DSH tree lives *between* sessions (fork lineage); which session the surface shows stays a host choice |
-| Compaction & summaries | `ctx.compact()` triggers DSH's official manual compaction; Pi's `generateSummary`/`generateBranchSummary`/`findCutPoint` are vendored with model calls on the DSH llm bridge |
-| shutdown / reload | `shutdown` is absorbed (Pi defines its behavior as host-provided; the user owns DSH process exit); `reload` really remounts extension entries — skills/prompts/themes reload with dsh itself |
-| Host-owned capabilities | `ModelRuntime` and `DefaultPackageManager` stay unavailable **by design** (the host owns model configuration and package install with its security gates). Importing them is flagged at startup; constructing them throws a structured error, and doing so during plugin startup marks the plugin unusable with a clear removal hint. Every capability gap is reported to you once per plugin — never a silent failure, never a fake success |
-| Pi transcript assignment | Pi's settable `state.messages` works on a bridged child session: DSH history is append-only, so an assigned transcript is carried into the child with its next prompt rather than rewriting history |
-
-### Known limitation we own
-
-**Plugin-drawn UI in the web app.** Pi plugins can ship their own renderers
-(`registerMessageRenderer` / `registerEntryRenderer`) and mark a custom message
-`display: true` to render it as their own card. Today pi2dsh accepts those
-registrations without invoking them, and such a note appears as a native
-`Context injection · pi2dsh:<package>` row — content reaches the user and the
-model, but without the plugin's styling. DSH does expose the machinery for
-this (a `dsh.client` package half plus the `conversation.chat.node` slot
-registry); pi2dsh ships only the Node half so far. Building the client half is
-a tracked next step.
-| Terminal decoration | footer/statusline/shortcuts register but never fire — matching Pi's own non-TUI modes |
-
-Full machine-readable matrix: `pi2dsh matrix --json`. Capability-by-capability acceptance evidence: [docs/acceptance.md](docs/acceptance.md). The complete 114-item Pi-surface → DSH-semantics verdict (3 red / 21 yellow / ~90 green): [docs/pi-abi-coverage.md](docs/pi-abi-coverage.md).
-
-## Development and verification
+## Development
 
 ```sh
-pnpm verify                                   # typecheck + 55 contract tests + packaging
-pnpm audit:community                          # static screening, top 50
-node scripts/blackbox-community.mjs community/blackbox-results.json --exercise
-#   add DEEPSEEK_API_KEY=… PI2DSH_BLACKBOX_PI_BIN=$(command -v pi) for the
-#   credentialed probes and real child-pi dispatch (keys from env only)
-pnpm test:community                           # deep runtime + official manager + host e2e
-DEEPSEEK_API_KEY=… pnpm test:live             # real-model acceptance (key from env only)
+pnpm verify                 # typecheck + contract tests + packaging
+pnpm audit:community        # static screening over the top-50 corpus
+pnpm test:community         # deep runtime + official plugin-manager + e2e
+DEEPSEEK_API_KEY=… pnpm test:live    # real-model acceptance (key from env only)
 ```
+
+Acceptance evidence per capability: [docs/acceptance.md](docs/acceptance.md).
+Working standards: [CLAUDE.md](CLAUDE.md) and [docs/STANDARDS.md](docs/STANDARDS.md).
 
 ## License
 
-MIT. Vendored Pi sources retain their upstream MIT license (`src/compat/vendor/PI-LICENSE`); generated bundles retain copied upstream license/notice files.
+MIT. Vendored Pi sources retain their upstream MIT license
+(`src/compat/vendor/PI-LICENSE`); generated bundles retain copied upstream
+license and notice files.

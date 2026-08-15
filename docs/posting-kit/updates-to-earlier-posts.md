@@ -12,7 +12,7 @@ npx pi2dsh@0.3.4 host --packages <pkg> --out <dir>   # ← no longer the way
 pnpm dsh plugin --profile <p> add file:<dir>
 ```
 
-**Current install (0.10.0):**
+**Current install (0.11.0):**
 
 ```sh
 dsh plugin --profile <p> add pi2dsh     # the engine, once
@@ -23,7 +23,7 @@ dsh plugin --profile <p> add <pkg>      # the Pi package, as published
 
 ## Shared paragraph (the base of every update)
 
-> **更新（pi2dsh 0.10.0）**：安装方式已经简化，之前这条回复里的 `npx pi2dsh host --packages …` 生成 bundle 的步骤不再需要了。现在装一次引擎、之后直接装 npm 上的 Pi 插件原包，全程只有 DSH 官方命令：
+> **更新（pi2dsh 0.11.0）**：安装方式已经简化，之前这条回复里的 `npx pi2dsh host --packages …` 生成 bundle 的步骤不再需要了。现在装一次引擎、之后直接装 npm 上的 Pi 插件原包，全程只有 DSH 官方命令：
 >
 > ```sh
 > dsh plugin --profile <你的profile> add pi2dsh
@@ -56,39 +56,36 @@ Base paragraph, then:
 
 This one is a progress post, so make the update a progress entry rather than a correction:
 
-> **进展更新（0.10.0）**：
+> **进展更新（0.11.0）**：
 > - 安装收敛成两条 DSH 官方命令（`add pi2dsh` 装引擎，之后 `add <Pi插件原包>`），不再需要生成 bundle 的中间步骤；
 > - 会话控制（新建 / fork / 树导航 / 切换）、`ctx.compact()`、插件热重挂改为走 DSH 官方接口真实执行，不再是"显式失败"；
 > - 能力缺口改为分级处置：能真做的做，Pi 协议自带拒绝通道的走协议，只有伪造返回值才会报结构化错误，并且按插件向用户提示一次；
-> - CLI 与 Web 双端端到端复验通过，92 项契约测试 + 裸环境从 npm 安装全流程验证。
+> - Pi 插件的侧边对话（`/btw` 一家）跑成了 DSH 真子会话，直接用 DSH 原生的子代理界面，主会话保持干净；
+> - CLI 与 Web 双端端到端复验通过，95 项契约测试 + 裸环境从 npm 安装全流程验证。
 > README：https://github.com/weijiafu14/pi2dsh
 
 ## #1120 — side conversations (pi-btw)
 
-**This one is a correction, not just an update.** Post it even if the others are skipped.
+**This one is a correction, not just an update.** Post it even if the others
+are skipped: the earlier reply said pi-btw "mounts and works", which was said
+too early — at the time `/btw` mounted but failed on execution.
 
-Verified on 2026-08-15 with pi2dsh 0.10.0 + pi-btw on a real DSH web session:
-the plugin mounts, all 8 commands appear in the DSH command palette
-(`/btw`, `/btw-tangent`, `/btw-inject`, …), but running `/btw <question>`
-fails with `Cannot set properties of undefined (setting 'messages')`. Root
-cause: pi-btw seeds its side thread by assigning to `session.agent.state.messages`
-— Pi's internal agent runtime state — which DSH has no equivalent for (DSH's
-history is an append-only durable log; seeding happens at session creation,
-not by assignment). The failure is loud and visible in the UI, and the main
-thread keeps working, but the feature itself does not work.
+Verified on 2026-08-16 with pi2dsh 0.11.0 + pi-btw on a real DSH web session:
+`/btw <question>` runs the side thread, the answer stays out of the main
+conversation, `/btw-inject` merges it on request, and `/btw --save` records the
+plugin's own note. Two ABI gaps had to be closed for this, both general rather
+than package-specific: Pi's public, settable `AgentState.messages` (pi-btw
+seeds its side thread by assigning a transcript), and an input descriptor on
+every bridged command (without it the web app parsed `/btw <question>` as chat
+instead of a command).
 
-> **更正（pi2dsh 0.10.0 实测）**：这条回复当时说 pi-btw "挂上去就能用"，说早了，这里更正。
+> **更新（pi2dsh 0.11.0 实测）**：这条回复当时说 pi-btw "挂上去就能用"，说早了——那会儿 `/btw` 能挂载但一执行就报错。现在这个能力真的通了，更正如下。
 >
-> 现在的实测结论：插件能装能挂载，8 个命令也都出现在 DSH 命令面板里，但真执行 `/btw <问题>` 会失败（`Cannot set properties of undefined (setting 'messages')`）。原因是 pi-btw 用 `session.agent.state.messages` 直接写 Pi 内部 agent 运行时状态来播种侧边会话，而 DSH 的历史是 append-only 的持久日志、播种发生在会话创建时，没有这个可写入口。
+> `/btw <问题>` 会开一条侧边线程：它在 DSH 上是一个**真的子会话**，出现在 DSH 原生的子代理下拉里，点开是独立视图、带自己的输入框、可以继续追问；**主会话里除了命令自己的一行状态什么都不会多出来**。想把结论并回主线时再敲 `/btw-inject`，`/btw --save <问题>` 则会把答案记成插件自己的笔记。CLI 和 Web 双端都实测过。
 >
-> 也就是说：**`/btw` 侧边对话目前在 DSH 上不可用**，报错是明确可见的（不会静默失败），主线程不受影响。这条已经写进 README 的已知限制清单。
+> 为此补了两个**通用** ABI 缺口（不是给某个包打补丁）：Pi 公开可写的 `AgentState.messages`（pi-btw 靠给它赋值来播种侧边线程），以及给每条桥接命令声明输入描述符（否则 Web 上 `/btw <问题>` 会被当成聊天消息发出去）。任何用同样方式开侧边会话的 Pi 插件都一起解锁了。
 >
-> 用 Pi 公共 API 的工具型 / 命令型 / provider 型插件不受影响，安装方式也已简化：
->
-> ```sh
-> dsh plugin --profile <你的profile> add pi2dsh
-> dsh plugin --profile <你的profile> add <Pi插件包名>
-> ```
+> 完整可跑示例：https://github.com/weijiafu14/pi2dsh/tree/main/examples/side-conversation
 
 ## #1398 — automatic approval (same as #421)
 

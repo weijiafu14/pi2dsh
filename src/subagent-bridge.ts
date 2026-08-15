@@ -27,6 +27,8 @@ export interface SubagentHost {
   deliver(agent: UnknownRecord, message: unknown, mode: 'inject' | 'steer' | 'followup'): void
   messageFromSessionEvent(event: UnknownRecord): UnknownRecord | undefined
   messageSource: string
+  /** The Pi package that asked for the child, used to label it in DSH's catalog. */
+  packageName?: string
 }
 
 export interface CreateAgentSessionOptions {
@@ -347,6 +349,19 @@ export class PiBridgedAgentSession {
   }
 }
 
+/**
+ * The name DSH's own child catalog shows for a side thread. Pi packages rarely
+ * label a child, so the package that started it is the honest fallback: with
+ * several Pi packages installed, their threads stay apart in one list.
+ * @param requested - a label the calling package supplied, if any.
+ * @param packageName - the Pi package the call came from.
+ */
+export function childLabel(requested: unknown, packageName: string | undefined): string {
+  if (typeof requested === 'string' && requested.trim().length > 0) return requested.trim().slice(0, 80)
+  const owner = packageName?.trim()
+  return owner === undefined || owner.length === 0 ? 'Pi side conversation' : `${owner} side conversation`
+}
+
 export async function createBridgedAgentSession(
   host: SubagentHost,
   options: CreateAgentSessionOptions,
@@ -433,5 +448,28 @@ export async function createBridgedAgentSession(
     ...(Array.isArray(options.tools) ? options.tools : []),
     ...(Array.isArray(options.customTools) ? options.customTools : []),
   ]
+  // DSH identifies session-backed children by ONE durable event appended
+  // inside the child's own log: `subagent/descriptor` (dsh-subagent). Without
+  // it the host's child catalog reports the session as a `diagnostic` row
+  // ("corrupt") instead of a child, so nothing can list or reopen it. The
+  // event type is DSH's own — this is the official identity channel, not a
+  // vocabulary of ours.
+  const childSession = (handle.agent as { session?: { append?(type: string, data: unknown): unknown } }).session
+  if (typeof childSession?.append === 'function') {
+    try {
+      childSession.append('subagent/descriptor', {
+        version: 2,
+        mode: 'continuable',
+        provider: 'pi2dsh',
+        label: childLabel(options.label, host.packageName),
+      })
+    } catch (error) {
+      // A host without the subagent vocabulary rejects the type; the child
+      // still runs, it just will not be enumerable. Never fatal, never silent.
+      host.cordis.logger?.warn?.(
+        `[pi2dsh] child session could not record its subagent identity: ${error instanceof Error ? error.message : String(error)}`,
+      )
+    }
+  }
   return { session: new PiBridgedAgentSession(host, handle, tools) }
 }

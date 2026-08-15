@@ -1,6 +1,6 @@
 {
   "name": "pi2dsh",
-  "version": "0.10.0",
+  "version": "0.11.0",
   "description": "Bridge the Pi and DeepSeek Harness ecosystems: a general Pi Host ABI that runs unmodified Pi extensions as native DSH plugins, plus per-package conversion and MCP config translation.",
   "type": "module",
   "bin": {
@@ -49,7 +49,9 @@
     "test:community": "pnpm build && node scripts/verify-community.mjs --generate community/runtime-results.json",
     "test:live": "pnpm build && node scripts/verify-live-deepseek.mjs community/live-deepseek-results.json",
     "check:pack": "pnpm build && publint && node scripts/check-pack.mjs",
-    "verify": "pnpm check && pnpm test:coverage && pnpm check:pack"
+    "verify": "pnpm check && pnpm test:coverage && pnpm check:docs && pnpm check:pack",
+    "docs:capabilities": "node scripts/generate-capability-docs.mjs",
+    "check:docs": "pnpm build && node scripts/generate-capability-docs.mjs --check"
   },
   "keywords": [
     "deepseek-harness",

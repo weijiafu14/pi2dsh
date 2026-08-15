@@ -2,7 +2,7 @@
 
 **Title**: Your Pi plugin now has a second host: pi2dsh runs Pi packages on DeepSeek Harness, unmodified
 
-**Attach**: `assets/03-vision-bridge-answer.png` (optional: `assets/01-vision-companion-model-picker.png`)
+**Attach**: `assets/03-vision-bridge-answer.png` (optional: `assets/01-vision-companion-model-picker.png`, `assets/04-side-conversation-child-view.png`)
 
 ---
 

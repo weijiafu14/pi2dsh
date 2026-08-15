@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
-import { createBridgedAgentSession, type SubagentHost } from '../src/subagent-bridge.js'
+import { childLabel, createBridgedAgentSession, type SubagentHost } from '../src/subagent-bridge.js'
 
 type UnknownRecord = Record<string, unknown>
 
@@ -233,5 +233,49 @@ describe('Pi createAgentSession bridged onto real DSH agents', () => {
     const deliveries: Array<{ mode: string, message: unknown }> = []
     await expect(createBridgedAgentSession(makeHost(ctx, deliveries), { systemPrompt: 'contract' }))
       .rejects.toThrowError(/no systemPrompt service/u)
+  })
+
+  // DSH recognises a session-backed child by ONE durable event inside the
+  // child's own log: `subagent/descriptor` (the dsh-subagent vocabulary).
+  // Without it the host's child catalog reports a `diagnostic` row ("corrupt")
+  // and the side thread cannot be listed or reopened from the conversation.
+  it("records the host's own subagent identity in the child log so DSH can list and reopen it", async () => {
+    const ctx = new Context()
+    await ctx.plugin(SessionStore)
+    const session = ctx.sessions.create(SessionId(`ident-${Date.now()}`), {
+      meta: { createdAt: Date.now(), cwd: process.cwd() },
+    })
+    const realGet = (ctx as unknown as { get(name: string): unknown }).get.bind(ctx)
+    ;(ctx as unknown as { get(name: string): unknown }).get = (name: string) =>
+      name === 'agents'
+        ? { async create() { return { agent: { id: session.id, session }, dispose: async () => {} } } }
+        : realGet(name)
+
+    const deliveries: Array<{ mode: string, message: unknown }> = []
+    const host = { ...makeHost(ctx, deliveries), packageName: 'pi-btw' }
+    await createBridgedAgentSession(host, {})
+
+    // `subagent/descriptor` belongs to @deepseek-ai/dsh-subagent, which widens
+    // the core SessionEventMap through `declare module` when it is part of the
+    // composition. This package does not depend on it, so the core union here
+    // does not carry the name and the read is widened deliberately — the event
+    // is the host's, not ours to declare.
+    const descriptor = session.events.find(event => (event.type as string) === 'subagent/descriptor')
+    expect(descriptor).toBeDefined()
+    expect((descriptor as unknown as { data: UnknownRecord }).data).toEqual({
+      version: 2,
+      mode: 'continuable',
+      provider: 'pi2dsh',
+      label: 'pi-btw side conversation',
+    })
+  })
+
+  it('labels a child by the package that started it, and honours an explicit label', () => {
+    expect(childLabel(undefined, 'pi-btw')).toBe('pi-btw side conversation')
+    expect(childLabel('   ', 'pi-btw')).toBe('pi-btw side conversation')
+    expect(childLabel('Reviewer', 'pi-btw')).toBe('Reviewer')
+    // No package context (a bare bridge host) still produces an honest name.
+    expect(childLabel(undefined, undefined)).toBe('Pi side conversation')
+    expect(childLabel('x'.repeat(200), undefined)).toHaveLength(80)
   })
 })

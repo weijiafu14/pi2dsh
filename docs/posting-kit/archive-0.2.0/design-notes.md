@@ -8,7 +8,7 @@
 - 静态扫描只做发现/报告，不做"兼容"判据
 
 ## 现状基线
-- pi2dsh@0.1.2，仓库 /Users/developer/projj/workspace/pi2dsh
+- pi2dsh@0.1.2，仓库 `<local-worktree>/pi2dsh`
 - 测试基线全绿：6 文件 29 测试（vitest），build ok
 - GitHub: github.com/weijiafu14/pi2dsh（README 称已开源）
 - 兄弟目录：../pi（Pi 官方源码）、../deepseek-harness（DSH 官方源码，有自己的 .claude/skills 贡献规范）
@@ -51,7 +51,7 @@
 2. compat shims 扩成完整 ABI：pi-tui/pi-coding-agent/pi-ai 全公共导出（对照 ../pi 源码）
 3. 黑盒验收改为：host 加载真包→注册面 snapshot→可用工具真执行→ABI 缺口自动归因（不再拿静态 audit 当结论）
 4. MCP：识别 pi-mcp-adapter 类配置（.pi/mcp.json?待确认）→转 DSH mcp-client 配置的独立工具（pi2dsh mcp-config）
-5. DeepSeek key 用环境变量（用户之前在 codex 会话给过 key sk-a66b…0b，视为已授权用于测试；不落盘）
+5. DeepSeek key 仅通过环境变量注入；任何值或片段都不写入仓库与测试产物
 
 ## 用户风格红线
 - 全中文汇报；每轮开头列(a)要求(b)证据对账

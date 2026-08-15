@@ -10,7 +10,7 @@ Method note: usage claims for the risky surfaces come from a source survey of th
 
 | # | Pi surface | Real usage in top 50 | Assessment |
 |---|---|---|---|
-| R1 | **Plugin-rendered UI**: visible `ui.setWidget`, visible `ui.custom`, editor components | background-task detail panes and similar | The DSH web client has no plugin rendering channel. This is the **Web Client Slot** gap — upstream RFC territory; no in-bridge workaround exists that isn't fake |
+| R1 | **Plugin-drawn cards**: visible `ui.setWidget`, visible `ui.custom`, editor components | background-task detail panes and similar | DSH does have a client-plugin mechanism (a package declares `dsh.client` and exports `./client`; the host serves it to the web app) plus a slot registry the app's own node renderers use. pi2dsh ships only the Node half today, so these registrations are accepted and not invoked, and such a note appears as a native context-injection row: content reaches user and model, without the plugin's styling. **Ours to build, not a DSH limitation** |
 | R2 | **Rewriting prior conversation messages** (one sub-use of `before_provider_request`: deleting/rewriting history in the outgoing payload) | **zero packages** — of the 6 packages touching this event, 2 are read-only observers and 4 decorate the *current* request's protocol shape; none touch history | Deliberately forbidden by DSH's log-reconstructability contract. Unhittable today; if a future package needs it, the assessment path is DSH's surface-replacing compaction bracket (`compaction/*`), which is open to any producer |
 | R3 | **Project-trust model** (`isProjectTrusted`, `project_trust`) | trusted-branch reads (e.g. project-level settings loading) | DSH has no project-trust concept. The bridge answers "untrusted" — the most conservative branch. Packages degrade safely (skip project-scoped config) instead of breaking |
 
@@ -46,4 +46,7 @@ Everything else, grouped: tool registration/unregistration and per-agent shadowi
 
 ## The principle
 
-A Pi package converts cleanly iff it does not require: (R1) plugin-rendered UI, (R2) history rewriting, (R3) a trusted-project branch. R1 waits on an upstream client slot; R2 has zero real-world usage in the corpus; R3 degrades conservatively instead of failing. Every other surface maps onto public DSH seams.
+A Pi package converts cleanly iff it does not require: (R1) plugin-drawn cards, (R2) history rewriting, (R3) a trusted-project branch. R1 is our own unbuilt client half; R2 has zero real-world usage in the corpus; R3 degrades conservatively instead of failing. Every other surface maps onto public DSH seams.
+
+Per-area tables, generated from the rules the bridge consults at runtime:
+[docs/capabilities/](capabilities/README.md).
