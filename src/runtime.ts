@@ -21,7 +21,11 @@ import type { GeneratedRuntimeManifest } from './types.js'
 import { CapabilityLedger, PiCapabilityError } from './capability.js'
 import { PiSessionBridge } from './session-bridge.js'
 import { ExtensionRunner, Theme, __setSubagentSessionFactory, generateBranchSummary, getAgentDir } from './compat/pi-coding-agent.js'
-import { createBridgedAgentSession } from './subagent-bridge.js'
+import { childLabel, createBridgedAgentSession, type SubagentHost } from './subagent-bridge.js'
+import { SidePanelRegistry, registerSidePanelRoute } from './side-panel.js'
+
+/** Fallback thread ids when a child session reports none. */
+let sidePanelSerial = 0
 import {
   FileCredentialStore,
   loginPiProvider,
@@ -1897,6 +1901,10 @@ interface SharedHostState {
   // a fresh loader, so edited plugin code takes effect. Host-managed resources
   // (skills, prompts) reload with dsh itself.
   packageRemounts?: Map<string, () => Promise<void>>
+  // The side-conversation panel is ONE surface per host, however many packages
+  // contribute threads to it — same rule as the provider directory.
+  sidePanel?: SidePanelRegistry
+  sidePanelRouted?: boolean
 }
 
 const SHARED_HOST_STATE = new WeakMap<object, SharedHostState>()
@@ -3136,7 +3144,32 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
   }
   // createAgentSession builds a real DSH child agent through ctx.agents; the
   // factory lives for exactly the runtime's lifetime.
-  __setSubagentSessionFactory(subagentOptions => createBridgedAgentSession({
+  // The panel's registry and its read route: host-level, mounted once.
+  const sidePanel = state.shared.sidePanel ??= new SidePanelRegistry()
+  if (state.shared.sidePanelRouted !== true) {
+    state.shared.sidePanelRouted = registerSidePanelRoute(ctx, sidePanel)
+  }
+  __setSubagentSessionFactory(async (subagentOptions) => {
+    const created = await createBridgedAgentSession(subagentHost(), subagentOptions)
+    // Track it against the session the panel floats over — the PARENT, not the
+    // child: the panel is a view of "what this conversation started".
+    const parent = agentSession(currentAgent(state))
+    const parentId = parent === undefined ? '' : String(parent.id ?? '')
+    if (parentId.length > 0) {
+      const dispose = sidePanel.track(parentId, {
+        id: String((created.session as unknown as { sessionId?: unknown }).sessionId ?? '')
+          || `pi2dsh-thread-${parentId}-${sidePanelSerial++}`,
+        label: childLabel(subagentOptions.label, state.packageName),
+        package: state.packageName,
+        session: created.session,
+      })
+      ctx.effect(() => dispose)
+    }
+    return created
+  })
+  // Extracted so the factory above can build one per call; the annotation
+  // carries the contract the object literal used to get from the call site.
+  const subagentHost = (): SubagentHost => ({
     cordis: ctx,
     cwd: () => cwdOf(currentAgent(state)),
     parentSessionId: () => {
@@ -3159,7 +3192,7 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
     messageFromSessionEvent: event => messageFromSessionEvent(ctx, event),
     messageSource: state.messageSource,
     packageName: state.packageName,
-  }, subagentOptions))
+  })
   ctx.effect(() => () => __setSubagentSessionFactory(undefined))
   await registerPromptCommands(ctx, state, rootDir, options.manifest)
   const onExtensionError = (failure: string): void =>

@@ -7,6 +7,12 @@ session, so it appears in DSH's own subagent list, opens in its own view with
 its own composer, and **the main conversation gains nothing but a status
 line**. Works in the DSH CLI and the DSH web app.
 
+In the web app the answer also comes back where you asked it: a **floating
+panel** over the conversation, showing that side thread and nothing else. Pi
+packages present a side conversation as an overlay, and DSH's browser shell has
+a seat for exactly that (`shell.overlay`), so pi2dsh ships its own browser half
+to draw it — the Pi plugin is unmodified and knows nothing about it.
+
 Everything below is copy-paste runnable and was verified end to end on a real
 DSH loop — CLI and web. The screenshots in
 [`../../docs/posting-kit/assets/`](../../docs/posting-kit/assets/) come from

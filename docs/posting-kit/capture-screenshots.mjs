@@ -45,26 +45,55 @@ await listed.waitFor({ state: 'hidden', timeout: 30_000 })
 
 // 1. The main conversation: the side question and its answer are absent, and
 //    the only trace is the command's own status line.
-const mainText = await page.locator('body').innerText()
+//
+//    The panel is part of the page and holds the answer on purpose, so it is
+//    subtracted first — the property under test is that the CONVERSATION stays
+//    clean, not that the answer is nowhere on screen.
+const panel = page.locator('[data-pi2dsh="side-panel"]')
+const panelText = async () => (await panel.count()) === 0 ? '' : await panel.innerText()
+const conversationText = async () => {
+  const whole = await page.locator('body').innerText()
+  const inPanel = await panelText()
+  return inPanel === '' ? whole : whole.split(inPanel).join('')
+}
+const mainText = await conversationText()
 if (SIDE_ANSWER.test(mainText)) throw new Error('capture: the side answer leaked into the main conversation')
 if (!mainText.includes('btw')) throw new Error('capture: the command status line is missing from the main thread')
 await shot('01-side-conversation-main-thread-clean')
 
-// 2. DSH's own subagent catalog, listing the side thread the Pi package started.
+// 1b. The panel: pi2dsh's own browser half, in the host's frame-wide overlay
+//     seat — the shape Pi packages present a side conversation in. The
+//     assertion is one only a working panel satisfies: the ANSWER inside the
+//     panel while the conversation beneath it still has none.
+await panel.waitFor({ timeout: 60_000 })
+await page.waitForFunction(
+  () => {
+    const node = document.querySelector('[data-pi2dsh="side-panel"]')
+    return node !== null && /herbert/iu.test(node.textContent ?? '')
+  },
+  undefined,
+  { timeout: 120_000 },
+)
+if (SIDE_ANSWER.test(await conversationText())) {
+  throw new Error('capture: the side answer reached the conversation, not only the panel')
+}
+await shot('02-side-conversation-panel')
+
+// 3. DSH's own subagent catalog, listing the side thread the Pi package started.
 await catalogButton.click()
 await listed.waitFor({ timeout: 30_000 })
-await shot('02-side-conversation-host-catalog')
+await shot('03-side-conversation-host-catalog')
 
-// 3. Merging back is the user's explicit action: `/btw-inject` is what puts
+// 4. Merging back is the user's explicit action: `/btw-inject` is what puts
 //    the side thread into the main conversation, and only then. Captured
 //    before opening the child, because the app keeps the open conversation in
 //    its own state rather than the URL — there is no "go back" to navigate.
 await page.keyboard.press('Escape')
 await send('/btw-inject')
 await page.getByText(SIDE_ANSWER).first().waitFor({ timeout: 120_000 })
-await shot('03-side-conversation-injected-on-request')
+await shot('04-side-conversation-injected-on-request')
 
-// 4. The side thread itself: its own view, its own composer, the answer inside it.
+// 5. The side thread itself: its own view, its own composer, the answer inside it.
 //
 //    Waiting for the side answer is NOT enough to prove the click navigated:
 //    step 3 just injected that same text into the MAIN thread, so the locator
@@ -86,7 +115,7 @@ for (;;) {
   }
   await page.waitForTimeout(250)
 }
-await shot('04-side-conversation-child-view')
+await shot('05-side-conversation-child-view')
 
 await browser.close()
 console.log(`done — ${outDir}`)

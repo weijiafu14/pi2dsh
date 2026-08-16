@@ -21,7 +21,7 @@ modes. Plugin-drawn cards are the one Pi UI surface pi2dsh does not draw yet.
 | [`confirm`](#confirm-ctxui) | `ctx.ui.*` | Same semantics | Mapped to one native DSH userQuestions Yes/No request. |
 | [`input`](#input-ctxui) | `ctx.ui.*` | Same semantics | Mapped to one native DSH userQuestions free-text request. |
 | [`editor`](#editor-ctxui) | `ctx.ui.*` | Mapped, difference stated | Mapped to one DSH userQuestions free-text request. The prefill is shown as context but is NOT editable text: the caller receives what the user typed fresh, not an edit of the prefill. |
-| [`custom`](#custom-ctxui) | `ctx.ui.*` | Mapped, difference stated | Resolves undefined, exactly like Pi's own rpc mode; guarded fallbacks keep working. |
+| [`custom`](#custom-ctxui) | `ctx.ui.*` | Mapped, difference stated | Resolves undefined, exactly like Pi's own rpc mode; guarded fallbacks keep working. A Pi component cannot be forwarded to a browser — but the SHAPE packages use this for (a focused side panel over the conversation) is drawn natively by the bridge's own browser half. |
 | [`setWorkingMessage`](#setworkingmessage-ctxui) | `ctx.ui.*` | Mapped, difference stated | Accepted as a no-op; DSH owns progress presentation. |
 | [`setWorkingVisible`](#setworkingvisible-ctxui) | `ctx.ui.*` | Mapped, difference stated | Accepted as a no-op; DSH owns progress presentation. |
 | [`setWorkingIndicator`](#setworkingindicator-ctxui) | `ctx.ui.*` | Mapped, difference stated | Accepted as a no-op; DSH owns progress presentation. |
@@ -70,13 +70,13 @@ Written to the DSH logger at the severity the caller passed, and returned as the
 
 `ctx.ui.*` · Mapped, difference stated
 
-Nothing is wired: DSH owns this part of the surface and draws it itself. The call is accepted and returns so a package that decorates a terminal keeps running.
+Not wired yet, and not because there is nowhere to put it: DSH's browser half has slot seats for frame-wide and in-conversation surfaces, and pi2dsh already ships a client half that takes one (the side-conversation panel). The call is accepted and returns so a package that decorates a terminal keeps running; when a real consumer appears, this lands on the same client half rather than staying a no-op.
 
 ### `setWidget` <a id="setwidget-ctxui"></a>
 
 `ctx.ui.*` · Mapped, difference stated
 
-Nothing is wired: DSH owns this part of the surface and draws it itself. The call is accepted and returns so a package that decorates a terminal keeps running.
+Not wired yet, and not because there is nowhere to put it: DSH's browser half has slot seats for frame-wide and in-conversation surfaces, and pi2dsh already ships a client half that takes one (the side-conversation panel). The call is accepted and returns so a package that decorates a terminal keeps running; when a real consumer appears, this lands on the same client half rather than staying a no-op.
 
 ### `select` <a id="select-ctxui"></a>
 
@@ -106,49 +106,49 @@ One native DSH UserQuestionService free-text request. DSH has no editable-prefil
 
 `ctx.ui.*` · Mapped, difference stated
 
-Resolves undefined, which is what Pi's own rpc mode does — a package's guarded fallback path is the intended one here.
+Two halves. The call itself resolves undefined, matching Pi's rpc mode, because a Pi TUI component has no meaning in a browser. Separately, pi2dsh ships a client half (`dsh.client` + `exports["./client"]`) that takes DSH's frame-wide `shell.overlay` seat and renders a side conversation as a floating panel, fed by this package's own route (`/pi2dsh/side-panel`). So the capability lands as a native DSH surface rather than as a relayed Pi component.
 
 ### `setWorkingMessage` <a id="setworkingmessage-ctxui"></a>
 
 `ctx.ui.*` · Mapped, difference stated
 
-Nothing is wired: DSH owns this part of the surface and draws it itself. The call is accepted and returns so a package that decorates a terminal keeps running.
+Not wired yet, and not because there is nowhere to put it: DSH's browser half has slot seats for frame-wide and in-conversation surfaces, and pi2dsh already ships a client half that takes one (the side-conversation panel). The call is accepted and returns so a package that decorates a terminal keeps running; when a real consumer appears, this lands on the same client half rather than staying a no-op.
 
 ### `setWorkingVisible` <a id="setworkingvisible-ctxui"></a>
 
 `ctx.ui.*` · Mapped, difference stated
 
-Nothing is wired: DSH owns this part of the surface and draws it itself. The call is accepted and returns so a package that decorates a terminal keeps running.
+Not wired yet, and not because there is nowhere to put it: DSH's browser half has slot seats for frame-wide and in-conversation surfaces, and pi2dsh already ships a client half that takes one (the side-conversation panel). The call is accepted and returns so a package that decorates a terminal keeps running; when a real consumer appears, this lands on the same client half rather than staying a no-op.
 
 ### `setWorkingIndicator` <a id="setworkingindicator-ctxui"></a>
 
 `ctx.ui.*` · Mapped, difference stated
 
-Nothing is wired: DSH owns this part of the surface and draws it itself. The call is accepted and returns so a package that decorates a terminal keeps running.
+Not wired yet, and not because there is nowhere to put it: DSH's browser half has slot seats for frame-wide and in-conversation surfaces, and pi2dsh already ships a client half that takes one (the side-conversation panel). The call is accepted and returns so a package that decorates a terminal keeps running; when a real consumer appears, this lands on the same client half rather than staying a no-op.
 
 ### `setHiddenThinkingLabel` <a id="sethiddenthinkinglabel-ctxui"></a>
 
 `ctx.ui.*` · Mapped, difference stated
 
-Nothing is wired: DSH owns this part of the surface and draws it itself. The call is accepted and returns so a package that decorates a terminal keeps running.
+Not wired yet, and not because there is nowhere to put it: DSH's browser half has slot seats for frame-wide and in-conversation surfaces, and pi2dsh already ships a client half that takes one (the side-conversation panel). The call is accepted and returns so a package that decorates a terminal keeps running; when a real consumer appears, this lands on the same client half rather than staying a no-op.
 
 ### `setFooter` <a id="setfooter-ctxui"></a>
 
 `ctx.ui.*` · Mapped, difference stated
 
-Nothing is wired: DSH owns this part of the surface and draws it itself. The call is accepted and returns so a package that decorates a terminal keeps running.
+Not wired yet, and not because there is nowhere to put it: DSH's browser half has slot seats for frame-wide and in-conversation surfaces, and pi2dsh already ships a client half that takes one (the side-conversation panel). The call is accepted and returns so a package that decorates a terminal keeps running; when a real consumer appears, this lands on the same client half rather than staying a no-op.
 
 ### `setHeader` <a id="setheader-ctxui"></a>
 
 `ctx.ui.*` · Mapped, difference stated
 
-Nothing is wired: DSH owns this part of the surface and draws it itself. The call is accepted and returns so a package that decorates a terminal keeps running.
+Not wired yet, and not because there is nowhere to put it: DSH's browser half has slot seats for frame-wide and in-conversation surfaces, and pi2dsh already ships a client half that takes one (the side-conversation panel). The call is accepted and returns so a package that decorates a terminal keeps running; when a real consumer appears, this lands on the same client half rather than staying a no-op.
 
 ### `setTitle` <a id="settitle-ctxui"></a>
 
 `ctx.ui.*` · Mapped, difference stated
 
-Nothing is wired: DSH owns this part of the surface and draws it itself. The call is accepted and returns so a package that decorates a terminal keeps running.
+Not wired yet, and not because there is nowhere to put it: DSH's browser half has slot seats for frame-wide and in-conversation surfaces, and pi2dsh already ships a client half that takes one (the side-conversation panel). The call is accepted and returns so a package that decorates a terminal keeps running; when a real consumer appears, this lands on the same client half rather than staying a no-op.
 
 ### `theme` <a id="theme-ctxui"></a>
 

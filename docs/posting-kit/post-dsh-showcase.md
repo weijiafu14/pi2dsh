@@ -3,7 +3,7 @@
 **Title**: Run Pi ecosystem plugins on DSH, unmodified — `dsh plugin add pi2dsh`, then add any Pi package
 
 **Attach**: `assets/01-vision-companion-model-picker.png`, `assets/02-image-accepted-by-text-only-model.png`, `assets/03-vision-bridge-answer.png`
-(optional second set, for the side-conversation section: `assets/01-side-conversation-main-thread-clean.png`, `assets/02-side-conversation-host-catalog.png`, `assets/04-side-conversation-child-view.png`)
+(optional second set, for the side-conversation section: `assets/01-side-conversation-main-thread-clean.png`, `assets/02-side-conversation-panel.png`, `assets/03-side-conversation-host-catalog.png`, `assets/05-side-conversation-child-view.png`)
 
 ---
 
@@ -67,9 +67,23 @@ Name three classic sorting algorithms, one line each.
 
 The answer (`Frank Herbert.`) lives in the side thread. Merging it back is
 your explicit action — `/btw-inject` — and only then does it enter the main
-conversation. Nothing of ours is drawing this: the child records DSH's own
-identity event (`subagent/descriptor`), and the host's native subagent UI does
-the rest.
+conversation. The child records DSH's own identity event
+(`subagent/descriptor`), so the host's native subagent UI lists, names, opens
+and continues it without anything of ours drawing that part.
+
+The web app also shows the exchange **where you asked it**, in a floating panel
+over the conversation. That half is ours, and it is worth saying how, because
+it is the part of DSH we had not used before: DSH's browser shell is a plugin
+surface of its own — a package declares `dsh.client`, exports a `./client`
+bundle, and takes a slot. `shell.overlay` is the host's documented seat for "a
+frame-wide surface of your own", so pi2dsh ships a browser half that renders
+the side thread there, fed by this package's own route. The Pi plugin is
+unmodified and knows nothing about any of it.
+
+Two host details cost us an afternoon and are easy to miss: the package must
+also export `./package.json` (the host resolves a client bundle's manifest by
+subpath, and the failure is swallowed into "this package has no browser half"),
+and the `./client` artifact is a closure-factory bundle, not plain ESM.
 
 Two general ABI gaps closed to make this work, neither package-specific: Pi's
 public, settable `AgentState.messages`, and an input descriptor on every

@@ -30,7 +30,11 @@
     "./credentials-oauth": {
       "types": "./dist/credentials-oauth.d.mts",
       "default": "./dist/credentials-oauth.mjs"
-    }
+    },
+    "./client": {
+      "default": "./dist/client.js"
+    },
+    "./package.json": "./package.json"
   },
   "files": [
     "dist",
@@ -161,6 +165,12 @@
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [
+        "slots"
+      ],
+      "platform": "web"
     }
   }
 }

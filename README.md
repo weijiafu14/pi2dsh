@@ -248,7 +248,7 @@ Three layers, and nothing crosses them:
                            │  Pi's public ABI
 ┌──────────────────────────▼──────────────────────────────────┐
 │ pi2dsh — the translator, and the only place that knows both │
-│ vocabularies. Registry projection, event bridge, session &   │
+│ vocabularies. Registry projection, event bridge, session &  │
 │ subagent bridge, credentials, vendored Pi logic.            │
 └──────────────────────────┬──────────────────────────────────┘
                            │  ordinary DSH plugin + llm adapter
@@ -257,6 +257,29 @@ Three layers, and nothing crosses them:
 │ exists.                                                     │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+DSH is two halves, and so is the bridge. The column above is the server; the
+browser shell has its own plugin surface, and a Pi capability that is a SHAPE
+rather than a behaviour lands there:
+
+```
+┌──────────── DSH server (cordis) ────────────┐  ┌──────── DSH browser shell ────────┐
+│ services · waterfalls · durable events      │  │ dsh.client + exports "./client"   │
+│                                             │  │ slot registry (ui-slots)          │
+│ pi2dsh engine                               │  │   shell.overlay  ← frame-wide     │
+│   tools · commands · models · sessions      │  │   conversation.* · details · …     │
+│   subagent bridge ─────────────┐            │  │                                   │
+│   side-panel registry          │            │  │ pi2dsh browser half               │
+│     GET /pi2dsh/side-panel ────┼── own route┼──┼─▶ side-conversation panel         │
+└────────────────────────────────┴────────────┘  └───────────────────────────────────┘
+```
+
+The panel's data rides **this package's own route**, not DSH's typed Remote
+system: that one is a first-party, code-generated contract, and an out-of-tree
+plugin talking to its own UI should carry its own channel. Two host rules make
+the browser half load at all — the package must export `./package.json` (the
+host resolves the manifest by subpath), and the `./client` bundle is a
+closure-factory artifact, not plain ESM.
 
 The rules that keep it honest:
 

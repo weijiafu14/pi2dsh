@@ -1,13 +1,14 @@
-# Posting kit — pi2dsh 0.11.0
+# Posting kit — pi2dsh 0.12.2
 
-Everything needed to announce pi2dsh 0.11.0 and bring earlier posts up to date.
+Everything needed to announce pi2dsh 0.12.2 and bring earlier posts up to date.
 Written for someone else to post: copy a file's body, attach the named
 screenshots, publish.
 
 **Status of the facts in here**: every number and claim was verified on
-2026-08-16 against pi2dsh 0.11.0 (published to npm) — `pnpm verify` green
-(95 contract tests), CLI and web end-to-end runs, and a bare-environment
-install from the public registry. The screenshots in `assets/` are from a
+2026-08-17 against pi2dsh 0.12.2 (published to npm) — `pnpm verify` green,
+CLI and web end-to-end runs on the published engine, and a bare-environment
+install from the public registry. The side-conversation screenshots come from
+the automated regression (`pnpm test:examples`), not a hand-driven session. The screenshots in `assets/` are from a
 clean DSH home with only the public DeepSeek routes configured; no internal
 gateways, hosts, or credentials appear in any of them.
 
@@ -32,9 +33,10 @@ gateways, hosts, or credentials appear in any of them.
 | `assets/02-image-accepted-by-text-only-model.png` | An image attachment accepted while a text-only model is selected |
 | `assets/03-vision-bridge-answer.png` | The result: the image block becomes guide text, a `pi2dsh:@kassing/pi-vision` context-injection row carries the analysis, and the text-only model answers `green` |
 | `assets/01-side-conversation-main-thread-clean.png` | A side question asked with `/btw`: the main conversation gains only a `btw · Completed` status line, and a `1 subagent` control appears in the header |
-| `assets/02-side-conversation-host-catalog.png` | DSH's own subagent list, with the `pi-btw side conversation` row (`continuable · not running`) |
-| `assets/03-side-conversation-injected-on-request.png` | After `/btw-inject`: the thread enters the main conversation — the user's explicit action, and only then |
-| `assets/04-side-conversation-child-view.png` | The side thread opened: its own breadcrumb, its own composer, the answer inside it |
+| `assets/02-side-conversation-panel.png` | The floating panel pi2dsh's own browser half draws in DSH's `shell.overlay` seat: the side question and its answer, while the conversation underneath still has neither |
+| `assets/03-side-conversation-host-catalog.png` | DSH's own subagent list, with the `pi-btw side conversation` row (`continuable · not running`) |
+| `assets/04-side-conversation-injected-on-request.png` | After `/btw-inject`: the thread enters the main conversation — the user's explicit action, and only then |
+| `assets/05-side-conversation-child-view.png` | The side thread opened as its own session: its own breadcrumb, its own composer, the answer inside it |
 | `assets/xiaohongshu-cover-v2.png` | 3:4 Xiaohongshu cover: give DeepSeek Harness visual capabilities through the Pi ecosystem |
 
 Reproduce the side-conversation set against a DSH web instance with the engine

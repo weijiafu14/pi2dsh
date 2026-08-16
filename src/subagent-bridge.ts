@@ -80,6 +80,11 @@ export class PiBridgedAgentSession {
   // Transcript assigned through Pi's public `state.messages` setter and not
   // yet carried into the child's durable log (see #state).
   #seed: UnknownRecord[] = []
+  // Entries that are CONTEXT rather than exchange: a package seeding the
+  // parent's transcript, and the host's own runtime-context snapshots. A reader
+  // showing the conversation to a person has to tell the two apart, and order
+  // cannot — a package may seed again later, and snapshots arrive mid-thread.
+  readonly #carried = new WeakSet<UnknownRecord>()
 
   readonly #host: SubagentHost
   readonly #handle: { agent: UnknownRecord, dispose(): Promise<void> }
@@ -174,7 +179,20 @@ export class PiBridgedAgentSession {
     const identity = (message: UnknownRecord): string => JSON.stringify([message.role, message.content])
     const known = new Set(this.messages.map(identity))
     this.#seed = next.filter(message => !known.has(identity(message)))
-    for (const message of this.#seed) this.messages.push(message)
+    for (const message of this.#seed) {
+      this.#carried.add(message)
+      this.messages.push(message)
+    }
+  }
+
+  /**
+   * Whether one transcript entry is carried context rather than part of the
+   * exchange in this child session.
+   * @param message - an entry of {@link messages}.
+   * @returns true for a seeded transcript entry or a host runtime snapshot.
+   */
+  isCarriedContext(message: UnknownRecord): boolean {
+    return this.#carried.has(message)
   }
 
   #project(event: UnknownRecord): void {
@@ -228,6 +246,14 @@ export class PiBridgedAgentSession {
     this.#messageProjection = this.#messageProjection.then(async () => {
       const message = await this.#host.messageFromSessionEvent(event)
       if (message === undefined) return
+      // The host injects its own runtime-context snapshots as user messages
+      // (source.form === 'snapshot'). They belong to the model's context, not
+      // to the conversation, so they are marked the same as a seeded
+      // transcript: still in `messages` (the model really saw them), skipped by
+      // anything showing the exchange to a person.
+      if (((event.data as UnknownRecord | undefined)?.source as UnknownRecord | undefined)?.form === 'snapshot') {
+        this.#carried.add(message)
+      }
       this.messages.push(message)
       emit({ type: 'message_start', message })
       emit({ type: 'message_end', message })
@@ -266,7 +292,7 @@ export class PiBridgedAgentSession {
       if (rendered.length > 0) {
         const seedBlocks = await this.#host.piContentToDsh([{
           type: 'text',
-          text: `<prior-conversation>\n${rendered.join('\n\n')}\n</prior-conversation>`,
+          text: `<${SEED_CARRIER_TAG}>\n${rendered.join('\n\n')}\n</${SEED_CARRIER_TAG}>`,
         }])
         this.#host.deliver(this.#handle.agent, createUserMessage({
           content: seedBlocks,
@@ -371,6 +397,16 @@ export class PiBridgedAgentSession {
  * @param requested - a label the calling package supplied, if any.
  * @param packageName - the Pi package the call came from.
  */
+/**
+ * Envelope the bridge wraps a seeded transcript in before handing it to the
+ * child as one durable message.
+ *
+ * Exported because it is a CONTRACT, not a formatting detail: a reader of the
+ * child session (the side panel) has to recognise the carrier to tell carried
+ * context apart from the exchange, and matching on a copied string would drift.
+ */
+export const SEED_CARRIER_TAG = 'prior-conversation'
+
 export function childLabel(requested: unknown, packageName: string | undefined): string {
   if (typeof requested === 'string' && requested.trim().length > 0) return requested.trim().slice(0, 80)
   const owner = packageName?.trim()
