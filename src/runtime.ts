@@ -22,7 +22,7 @@ import { CapabilityLedger, PiCapabilityError } from './capability.js'
 import { PiSessionBridge } from './session-bridge.js'
 import { ExtensionRunner, Theme, __setSubagentSessionFactory, generateBranchSummary, getAgentDir } from './compat/pi-coding-agent.js'
 import { childLabel, createBridgedAgentSession, type SubagentHost } from './subagent-bridge.js'
-import { SidePanelRegistry, registerSidePanelRoute } from './side-panel.js'
+import { BrowserSurfaces, registerBrowserSurfaceRoute, type SurfaceKey } from './browser-surfaces.js'
 
 /** Fallback thread ids when a child session reports none. */
 let sidePanelSerial = 0
@@ -458,6 +458,34 @@ function currentPiModel(state: RuntimeState, agent: UnknownRecord): UnknownRecor
   return known ?? { id, name: id, provider, api: 'faux', input: ['text'], reasoning: false }
 }
 
+/** The session id a presentation call belongs to, or '' outside a session. */
+function sessionIdOf(state: RuntimeState, agent: UnknownRecord | undefined): string {
+  const session = agentSession(agent ?? currentAgent(state))
+  return session === undefined ? '' : String(session.id ?? '')
+}
+
+/**
+ * Record one Pi presentation call against the session that made it.
+ * @param ctx - context, for the logger on an unmounted host.
+ * @param state - runtime state carrying the shared surface registry.
+ * @param agent - the agent whose context the call came through.
+ * @param key - which surface.
+ * @param value - a string or Pi component; undefined clears it.
+ */
+function putSurface(
+  ctx: Context,
+  state: RuntimeState,
+  agent: UnknownRecord | undefined,
+  key: SurfaceKey,
+  value: unknown,
+): void {
+  const surfaces = state.shared.browserSurfaces
+  if (surfaces === undefined) return
+  // The headless theme styles factory-built chrome with identity functions,
+  // which is exactly what a text projection needs.
+  surfaces.setSurface(sessionIdOf(state, agent), state.packageName, key, value, state.theme)
+}
+
 function thinkingLevelOf(state: RuntimeState, agent: UnknownRecord | undefined): string {
   if (agent !== undefined) {
     const scoped = state.thinkingLevels.get(agent)
@@ -577,16 +605,41 @@ function contextFor(
       question: String(title),
       ...(prefill === undefined ? {} : { detail: `Current text:\n${String(prefill)}` }),
     }),
-    setStatus: () => undefined,
-    setWidget: () => undefined,
+    // Pi's presentation calls, on DSH's browser surface. Each records what the
+    // package put on screen for THIS session; the bridge's own browser half
+    // draws it in the host's matching slot. Signatures are Pi's exact ones
+    // (types.ts): setStatus/setWidget are keyed, setFooter/setHeader take
+    // factories, setWorkingIndicator takes {frames}. In a composition with no
+    // web server (the CLI profile) the recording is simply never read — the
+    // same shape as Pi's own non-TUI modes, where these are accepted and
+    // nothing draws.
+    setStatus: (key: unknown, text: unknown) => {
+      const surfaces = state.shared.browserSurfaces
+      if (surfaces === undefined) return
+      surfaces.setStatus(sessionIdOf(state, agent), state.packageName, String(key), text)
+    },
+    setWidget: (key: unknown, content: unknown) => {
+      const surfaces = state.shared.browserSurfaces
+      if (surfaces === undefined) return
+      // Only string arrays reach a host — the server half owns that rule,
+      // mirroring Pi's rpc mode, which ignores widget factories the same way.
+      surfaces.setWidget(sessionIdOf(state, agent), state.packageName, String(key), content)
+    },
     onTerminalInput: () => () => undefined,
-    setWorkingMessage: () => undefined,
-    setWorkingVisible: () => undefined,
-    setWorkingIndicator: () => undefined,
-    setHiddenThinkingLabel: () => undefined,
-    setFooter: () => undefined,
-    setHeader: () => undefined,
-    setTitle: () => undefined,
+    setWorkingMessage: (message?: unknown) => putSurface(ctx, state, agent, 'workingMessage', message),
+    setWorkingVisible: (visible: unknown) => {
+      const surfaces = state.shared.browserSurfaces
+      if (surfaces === undefined) return
+      surfaces.setWorkingVisible(sessionIdOf(state, agent), state.packageName, visible !== false)
+    },
+    setWorkingIndicator: (options?: unknown) => putSurface(ctx, state, agent, 'workingIndicator', options),
+    setHiddenThinkingLabel: (label?: unknown) => putSurface(ctx, state, agent, 'hiddenThinkingLabel', label),
+    setFooter: (factory?: unknown) => putSurface(ctx, state, agent, 'footer', factory),
+    setHeader: (factory?: unknown) => putSurface(ctx, state, agent, 'header', factory),
+    // Pi's setTitle is transient window chrome. It deliberately does NOT rename
+    // the DSH session: a session title is durable, user-owned and shown in the
+    // session list, and quietly rewriting it would outlive the turn that asked.
+    setTitle: (title: unknown) => putSurface(ctx, state, agent, 'title', title),
     // Pi's own rpc mode resolves ui.custom to undefined; mirror that exactly.
     custom: async () => undefined,
     pasteToEditor(text: unknown) {
@@ -1643,8 +1696,13 @@ function subscribeInterceptors(ctx: Context, state: RuntimeState): void {
   // band — so a Pi tool's guidance lands exactly where DSH's does.
   const systemPrompt = optionalService<{ section(section: UnknownRecord): () => void }>(ctx, 'systemPrompt')
   if (systemPrompt !== undefined) {
+    // The section name carries the package: the guidance IS per-package (it
+    // describes that package's tools), and a shared constant made the second
+    // Pi package in a profile fail to mount entirely — DSH rejects a duplicate
+    // section name, and the whole mount unwound with it. Every package
+    // contributes its own section; DSH orders them within its own band.
     ctx.effect(() => systemPrompt.section({
-      name: 'pi2dsh:tool-guidance',
+      name: `pi2dsh:tool-guidance:${state.packageName ?? 'pi'}`,
       order: 150,
       text: () => piToolPromptContribution(ctx, state),
     }))
@@ -1903,8 +1961,8 @@ interface SharedHostState {
   packageRemounts?: Map<string, () => Promise<void>>
   // The side-conversation panel is ONE surface per host, however many packages
   // contribute threads to it — same rule as the provider directory.
-  sidePanel?: SidePanelRegistry
-  sidePanelRouted?: boolean
+  browserSurfaces?: BrowserSurfaces
+  browserSurfacesRouted?: boolean
 }
 
 const SHARED_HOST_STATE = new WeakMap<object, SharedHostState>()
@@ -3145,9 +3203,9 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
   // createAgentSession builds a real DSH child agent through ctx.agents; the
   // factory lives for exactly the runtime's lifetime.
   // The panel's registry and its read route: host-level, mounted once.
-  const sidePanel = state.shared.sidePanel ??= new SidePanelRegistry()
-  if (state.shared.sidePanelRouted !== true) {
-    state.shared.sidePanelRouted = registerSidePanelRoute(ctx, sidePanel)
+  const browserSurfaces = state.shared.browserSurfaces ??= new BrowserSurfaces()
+  if (state.shared.browserSurfacesRouted !== true) {
+    state.shared.browserSurfacesRouted = registerBrowserSurfaceRoute(ctx, browserSurfaces)
   }
   __setSubagentSessionFactory(async (subagentOptions) => {
     const created = await createBridgedAgentSession(subagentHost(), subagentOptions)
@@ -3156,7 +3214,7 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
     const parent = agentSession(currentAgent(state))
     const parentId = parent === undefined ? '' : String(parent.id ?? '')
     if (parentId.length > 0) {
-      const dispose = sidePanel.track(parentId, {
+      const dispose = browserSurfaces.track(parentId, {
         id: String((created.session as unknown as { sessionId?: unknown }).sessionId ?? '')
           || `pi2dsh-thread-${parentId}-${sidePanelSerial++}`,
         label: childLabel(subagentOptions.label, state.packageName),

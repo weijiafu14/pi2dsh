@@ -234,18 +234,20 @@ DSH 有两半，桥也有两半。上面那根柱子是服务端；浏览器壳�
 ┌──────────── DSH 服务端（cordis） ───────────┐  ┌──────── DSH 浏览器壳 ────────────┐
 │ 服务 · waterfall · durable 事件             │  │ dsh.client + exports "./client"   │
 │                                             │  │ slot 注册表（ui-slots）           │
-│ pi2dsh 引擎                                 │  │   shell.overlay  ← 跨框架浮层     │
-│   工具 · 命令 · 模型 · 会话                  │  │   conversation.* · details · …    │
-│   子代理桥 ───────────────────┐             │  │                                   │
-│   侧边浮层注册表               │             │  │ pi2dsh 浏览器半边                 │
-│     GET /pi2dsh/side-panel ───┼── 自有通路 ─┼──┼─▶ 侧边对话浮层                    │
+│ pi2dsh 引擎                                 │  │   shell.overlay  ← 浮层与 pill    │
+│   工具 · 命令 · 模型 · 会话                  │  │   header.utilities ← 头部文本     │
+│   子代理桥 ───────────────────┐             │  │   input.dock ← widget             │
+│   browser-state 注册表        │             │  │   composer.dock ← working/底部    │
+│     GET /pi2dsh/browser-state┼── 自有通路 ─┼──┼─▶ 四个座位，共用一个轮询           │
 └───────────────────────────────┴─────────────┘  └───────────────────────────────────┘
 ```
 
-浮层的数据走**本包自己的路由**，不走 DSH 的 typert Remote 体系——那是一等公民的
-代码生成契约，仓外插件跟自己的 UI 说话就该自带通道。另外两条宿主规则决定浏览器
-半边能不能被装载：包必须导出 `./package.json`（宿主按子路径解析清单），`./client`
-产物必须是闭包工厂格式而不是普通 ESM。
+浏览器半边用的数据走**本包自己的路由**，不走 DSH 的 typed Remote 体系——那是
+一等公民的代码生成契约，仓外插件跟自己的 UI 说话就该自带通道。一个会话一个
+payload，喂给所有座位：侧边对话浮层，以及 Pi 的呈现面（status、widget、header、
+footer、title、working/thinking 类），都画在宿主自己的 slot 座位里，而不是再造
+一套。另外两条宿主规则决定浏览器半边能不能被装载：包必须导出 `./package.json`
+（宿主按子路径解析清单），`./client` 产物必须是闭包工厂格式而不是普通 ESM。
 
 保证它靠谱的几条标准：
 
@@ -304,7 +306,8 @@ Codex、Anthropic、GitHub Copilot、Kimi Code）内置。凭证按 Pi 的 `auth
 
 **我们自己欠的那一块**：插件自绘卡片。Pi 插件可以自带渲染器，目前这类注册我们接
 下来但不调用，所以这种笔记会显示成原生的上下文注入行——内容你和模型都拿得到，
-只是没有插件自己的样式。DSH 是提供这套机制的，我们的客户端半边还没做。
+只是没有插件自己的样式。客户端半边已经在并占着四个座位（侧边对话浮层、头部、
+widget 区、working 区）——卡片渲染器正是它还没画的那部分。
 
 ## 示例
 
@@ -315,6 +318,7 @@ loop 上实际跑过才会进来。
 |---|---|
 | [`vision-bridge`](examples/vision-bridge/) | 纯文本模型回答图片问题——CLI 与 Web 双端，附探针图 |
 | [`side-conversation`](examples/side-conversation/) | `/btw <问题>` 在 DSH 原生子代理界面里开一条侧边线程，主会话保持干净 |
+| [`presentation-surfaces`](examples/presentation-surfaces/) | Pi 插件的 `setStatus` / `setWidget` / `setTitle` / working 类调用，画进 DSH 自己的 Web 座位 |
 | [`gateway-compat`](examples/gateway-compat/) | 私有 / 国内 / 代理网关拒收 `developer` 角色：为什么一开推理就 400，以及用 Pi provider 插件怎么绕过去（附假端点探针） |
 | [`custom-gateways`](examples/custom-gateways/) | 按 DSH 官方方式接任何 OpenAI 兼容网关，每个 Pi 插件都能看到它 |
 

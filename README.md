@@ -266,20 +266,24 @@ rather than a behaviour lands there:
 ┌──────────── DSH server (cordis) ────────────┐  ┌──────── DSH browser shell ────────┐
 │ services · waterfalls · durable events      │  │ dsh.client + exports "./client"   │
 │                                             │  │ slot registry (ui-slots)          │
-│ pi2dsh engine                               │  │   shell.overlay  ← frame-wide     │
-│   tools · commands · models · sessions      │  │   conversation.* · details · …     │
-│   subagent bridge ─────────────┐            │  │                                   │
-│   side-panel registry          │            │  │ pi2dsh browser half               │
-│     GET /pi2dsh/side-panel ────┼── own route┼──┼─▶ side-conversation panel         │
+│ pi2dsh engine                               │  │   shell.overlay  ← panel, pills   │
+│   tools · commands · models · sessions      │  │   session.header.utilities ← hdr  │
+│   subagent bridge ─────────────┐            │  │   input.dock ← widgets            │
+│   browser-state registry       │            │  │   composer.dock ← working/footer  │
+│     GET /pi2dsh/browser-state ─┼── own route┼──┼─▶ all four seats, one poller      │
 └────────────────────────────────┴────────────┘  └───────────────────────────────────┘
 ```
 
-The panel's data rides **this package's own route**, not DSH's typed Remote
-system: that one is a first-party, code-generated contract, and an out-of-tree
-plugin talking to its own UI should carry its own channel. Two host rules make
-the browser half load at all — the package must export `./package.json` (the
-host resolves the manifest by subpath), and the `./client` bundle is a
-closure-factory artifact, not plain ESM.
+The browser half's data rides **this package's own route**, not DSH's typed
+Remote system: that one is a first-party, code-generated contract, and an
+out-of-tree plugin talking to its own UI should carry its own channel. One
+payload per session serves every seat — the side-conversation panel, plus the
+Pi presentation surfaces (status, widget, header, footer, title and the
+working/thinking chrome), which are drawn in the host's own slot seats rather
+than re-implemented. Two host rules make the browser half load at all — the
+package must export `./package.json` (the host resolves the manifest by
+subpath), and the `./client` bundle is a closure-factory artifact, not plain
+ESM.
 
 The rules that keep it honest:
 
@@ -352,8 +356,9 @@ project trust is a host decision. See
 **The one gap we own:** plugin-drawn cards. Pi plugins can ship their own
 renderers; today those registrations are accepted but not invoked, so such a
 note appears as a native context-injection row — the content reaches you and
-the model, without the plugin's styling. DSH has the machinery for this; we
-have not built our client half yet.
+the model, without the plugin's styling. The client half exists and takes four
+seats (side-conversation panel, header, widget dock, working chrome) — the card
+renderers are what it does not draw yet.
 
 ## Examples
 
@@ -364,6 +369,7 @@ in one has actually been executed against a real DSH loop before landing.
 |---|---|
 | [`vision-bridge`](examples/vision-bridge/) | A text-only model answers questions about images — CLI and web, probe images included |
 | [`side-conversation`](examples/side-conversation/) | `/btw <question>` runs a side thread in DSH's native subagent UI; your main conversation stays clean |
+| [`presentation-surfaces`](examples/presentation-surfaces/) | A Pi plugin's `setStatus` / `setWidget` / `setTitle` / working chrome drawn in DSH's own web seats |
 | [`gateway-compat`](examples/gateway-compat/) | Private / domestic / proxy gateways that reject the `developer` role: why reasoning 400s, and how a Pi provider plugin gets past it (fake-endpoint probe included) |
 | [`custom-gateways`](examples/custom-gateways/) | Add any OpenAI-compatible gateway the official DSH way, and every Pi plugin sees it |
 

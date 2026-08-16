@@ -137,9 +137,14 @@ export async function applyPiHost(ctx: Context, config: PiHostConfig, anchor?: s
     }
   }
   for (const failure of errors) {
+    // Console AND logger, the same rule the engine states for its own mount
+    // line: a profile's logger level must never be able to hide which packages
+    // did not mount. It could, and it did — a package failed to mount and the
+    // only symptom was its absence from a list nobody was diffing.
     const log = (ctx as unknown as { logger?: { warn?(message: string): void } }).logger
-    const warn = log?.warn?.bind(log) ?? console.warn
-    warn(`[pi2dsh host] failed to mount ${failure.name}: ${failure.error}`)
+    const message = `[pi2dsh host] failed to mount ${failure.name}: ${failure.error}`
+    log?.warn?.(message)
+    console.warn(message)
   }
   if (errors.length > 0 && errors.length === normalizeSpecs(config).length) {
     throw new Error(`pi2dsh host mounted no packages; first failure: ${errors[0]!.name}: ${errors[0]!.error}`)
