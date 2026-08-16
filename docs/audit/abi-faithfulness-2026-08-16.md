@@ -369,29 +369,28 @@ threshold 和 overflow。manual 能可靠推出；自动一律报 threshold，`w
 
 ---
 
-## 六、需要拍板的设计决定
+## 六、原"需要拍板"——全部对齐，无一需要拍板
 
-1. **工具参数校验与强转（群 A）**。校验有接缝（`defineTool`），但 Pi 的**强转**（`Value.Convert`，`"3"`→`3`；`normalizeOptionalNulls` 丢掉可选属性上的显式 null）在 DSH 没有对应物，要么 vendor TypeBox 那段，要么接受"只校验不强转"（那会把今天靠强转勉强跑通的调用从"答错"变成"报错"）。**这是行为翻转，得先决定要不要**。
+复查结论：**没有一条是 DSH 做不到的**。当初把"改了会让已装插件的行为变化"当成了不做的理由 —— 那恰恰是这个项目要做的事本身。五条全部完成：
 
-2. **`setActiveTools` 的收敛策略（群 L）**。可以先按 `view(scope).restrictableNames` 求交再 restrict 来复刻 Pi 的"忽略未知"。但 DSH 的 `visible` 天然大于 `restrictable`（scope 自己注册的工具、非 native 模式下的 `run_code`），意味着"可见但不可限制"的工具无法被关掉——是照 Pi 静默忽略，还是保留 DSH 的响亮拒绝？两者都能自圆其说，但得写进台账。
+| 原编号 | 查证结论 | 落点 |
+|--------|----------|------|
+| 7 `sendMessage` 默认投递 | Pi 的无参调用返回时消息**已落盘**（`agent-session.ts` 的 else 分支：`appendCustomMessageEntry` + 立刻发 message_start/end）。DSH 的 `Session.append` 是公开方法、无调用方限制 —— 能做 | 无 turn 模式改为直接 append 到 durable log（带 `surfaceOp: 'append'`，与 agent loop 一致），随后发 message 事件。steer/followup 仍走 agent（它们本就要驱动 turn） |
+| 8 `newSession({setup})` / 替换会话的 send | `contextFor` **根本没有** `sendMessage` —— 包在 `withSession` 里调它要么炸，要么退回全局版**写进旧会话**。`sessions.create(id, options)` 明确支持 seed | `ReplacedSessionContext` 补上 Pi 的三个方法（sendMessage/sendUserMessage/appendEntry），全部写入替换会话；测试断言旧会话 `user/message` 数为 0 |
+| 3 `tool_call` 的 `terminate` | Pi 的规则是**整批**都被 block 且都要求 terminate 才停（`shouldTerminateToolBatch`）。DSH 的 `PreStepDecision` 有 `{kind:'reject'}` —— 就是"这一步不许发生" | 每个调用记票，下一个 step 边界数票；全票才 reject。测试覆盖"一个没投票就继续" |
+| 5 turn 粒度重映 | 实证：Pi 的 `turn_start`/`turn_end` 在内层循环**每次调模型**都发，`turnIndex` 在 `agent_start` 归零。Pi 的 "turn" = DSH 的 "step" | `turn/start`→`agent_start`（并归零计数）、`step/start`→`turn_start`、`step/end`→`turn_end`（带**该步**的 assistant message 和**该步**的 tool results）、`turn/end`→`agent_end`+`agent_settled` |
+| 6 `sessionManager` 换 surface | Pi 的 `buildContextEntries` 注释写明是 compaction-aware 的；`getEntries` 才是全量。DSH 有官方的 `foldSurface`（已发布、可 import） | `buildContextEntries` 按 `foldSurface().nodes` 过滤（entry id 就是 `dsh-<seq>`，天然对得上）；`getEntries` 保持全量。测试用**真** SessionStore + 真压缩事件序列 |
 
-3. **`tool_call` 的 `terminate`（群 L）**。不能逐条翻译：`PreToolDecision` 没有 terminate 通道，且 Pi 的规则是"整批都要求终止才终止"，而 pi2dsh 的 pre-execute 拦截器一次只看到一个执行、没有批视图。要做就得闩住状态、在下一个 `agent/pre-step` 以 `{kind:'reject'}` 兑现。
+### 端到端实证（同一个脚本，同一轮真 turn）
 
-4. **`before_agent_start` 覆写晚一步（群 D）**。结构性的：DSH 在 `agent.ts:230` 装配、`:234` 才发 pre-step，`PreStepDecision` 里没有 assembly 字段，`:242` 的 spread 也会覆盖掉。要么找别的挂点，要么接受延迟一步并**写进声明**。注意"每轮重复叠加"那半是独立的、便宜的（把 `:1405` 的清除挪到 assemble 读取之前）。
+turn 粒度这条不是靠推理，是真 CLI 打出来的：
 
-5. **turn 粒度重映（群 J）**。改成 `step/start`/`step/end` 是正确的，但会改变每一个既有 handler 的触发频率，且 `turnIndex` 需要自己维护一个每轮归零的计数器（DSH 的计数是会话级且跨 resume 恢复的）。属于 breaking change，需要版本策略。
+```
+agent_start → before_agent_start → turn_start:0 → tool_execution_end:pi_repeat
+            → turn_end:0 → turn_start:1 → turn_end:1 → agent_end
+```
 
-6. **`sessionManager` 换成 surface（群 I）**。改成压缩感知会改变每个插件看到的历史。同时得决定 `getEntries()` 是否也跟着变（Pi 的 `getEntries` 本来也返回全量，真正必须改的只有 `buildContextEntries`）。
-
-7. **`sendMessage` 默认投递（群 F）**。Pi 的无 options 调用是"返回时已 durable 落进对话"，DSH 的 `inject` 只保证进 inbox、要等 pre-step 认领才提升成 `user/message`，中途 cancel 会丢。要复刻 Pi 就得走 append/sidecar 那条路，不是换个 `Agent` 方法。
-
-8. **`newSession({setup})` 和替换会话的 `sendMessage`（群 I）**。两个都不能直接接现有函数：`setup` 收到的投影是只读的（14 个方法里没有 `appendMessage`），得走 `sessions.create(id,{seed})`；替换会话的 `send*` 若直接接 `sendPiMessage`，会打进**旧**会话（`Agent.followup` 只作用于活着的那个 agent），比不实现更糟。
-
-9. **headless 的 `hasUI`（群 C）**。DSH 没有公开的 provider 存在性探针（`provider` 字段是私有的）。诚实的做法是改 level/detail 并按 composition 调 `hasUI`/`mode`，或者去 DSH 提一个探针 API。
-
-10. **`maxTokens → defaultMaxTokens`（群 H）**。这个映射存在是有原因的：DSH 的 `listModels`/`resolveModelInfo` 会白名单剥掉 Pi 字段，`defaultMaxTokens` 是目前唯一能把 Pi 模型的 `maxTokens` 带过接缝再投影回去的通道。修它需要另开一条载运通道，不是删一行。
-
-11. **请求里的 image（群 H）**。DSH 官方 adapter 在拿不到 attachments 服务时是**响亮抛错**（`UNSUPPORTED_CONTENT`），不是静默丢。要不要照抄这个"失败要响"的姿态，还是解析成 base64，得选一个。
+一次带工具调用的提问 = 两次调模型 = 两对 `turn_start`/`turn_end`，索引 0/1，包在一对 `agent_start`/`agent_end` 里；工具结果只挂在**跑它的那一步**（turn 0 有 1 条，turn 1 有 0 条）。重映前这里只会响一次。
 
 ---
 

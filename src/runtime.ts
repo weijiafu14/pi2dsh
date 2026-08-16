@@ -128,6 +128,8 @@ interface RuntimeState {
    * boundary reads the verdict.
    */
   terminateBatch: WeakMap<object, { calls: number, terminating: number }>
+  /** Pi's turnIndex: reset when a DSH turn opens, incremented after each step. */
+  piTurnIndex: WeakMap<object, number>
   /** Messages DSH claimed for the step that is about to be assembled. */
   claimedForStep: WeakMap<object, UnknownRecord[]>
   /** The turn each agent's before_agent_start has already fired for. */
@@ -1301,11 +1303,46 @@ function subscribeLifecycle(ctx: Context, state: RuntimeState): void {
     const agent = [...state.activeAgents].find(candidate => candidate.session === session)
     const eventContext = contextFor(ctx, state, agent, undefined)
     const type = event.type
+    // Pi's vocabulary is one level finer than DSH's name for the same thing:
+    // Pi emits turn_start/turn_end around EVERY model call (its inner loop),
+    // and agent_start/agent_end around the whole prompt. DSH calls those a
+    // step and a turn. Mapping Pi's turn onto DSH's turn fired the per-call
+    // events once per prompt, so a package counting model calls, or reading
+    // one call's assistant message out of turn_end, saw the wrong thing.
     if (type === 'turn/start') {
-      const turn = Number((event.data as UnknownRecord).turn ?? 1)
+      // Pi resets turnIndex at agent_start, so the counter is per prompt.
+      if (session !== undefined) state.piTurnIndex.set(session as unknown as object, 0)
       void dispatch(state, 'agent_start', { type: 'agent_start' }, eventContext).catch(error => warn('agent_start', error))
-      void dispatch(state, 'turn_start', { type: 'turn_start', turnIndex: turn - 1, timestamp: event.time ?? Date.now() }, eventContext)
+    }
+    if (type === 'step/start') {
+      const index = state.piTurnIndex.get(session as unknown as object) ?? 0
+      void dispatch(state, 'turn_start', { type: 'turn_start', turnIndex: index, timestamp: event.time ?? Date.now() }, eventContext)
         .catch(error => warn('turn_start', error))
+    }
+    if (type === 'step/end') {
+      const data = event.data as UnknownRecord
+      const turn = Number(data.turn ?? 1)
+      const step = Number(data.step ?? 1)
+      const key = session as unknown as object
+      const index = state.piTurnIndex.get(key) ?? 0
+      state.piTurnIndex.set(key, index + 1)
+      state.projection = state.projection.then(async () => {
+        // This STEP's assistant message and this STEP's tool results — Pi's
+        // turn_end reports one model call, not a whole prompt.
+        const stepEvents = ((session.events ?? []) as UnknownRecord[]).filter(entry => {
+          const entryData = entry.data as UnknownRecord | undefined
+          return Number(entryData?.turn ?? -1) === turn && Number(entryData?.step ?? -1) === step
+        })
+        const toolResults = (await Promise.all(stepEvents
+          .filter(entry => entry.type === 'tool/result')
+          .map(entry => messageFromSessionEvent(ctx, entry))))
+          .filter((message): message is UnknownRecord => message !== undefined)
+        const assistant = stepEvents.findLast(entry => entry.type === 'assistant/message')
+        const message = assistant === undefined
+          ? { role: 'assistant', content: [] }
+          : await messageFromSessionEvent(ctx, assistant) ?? { role: 'assistant', content: [] }
+        await dispatch(state, 'turn_end', { type: 'turn_end', turnIndex: index, message, toolResults }, eventContext)
+      }).catch(error => warn('turn_end', error))
     }
     if (type === 'tool/call') {
       const data = event.data as UnknownRecord
@@ -1404,27 +1441,9 @@ function subscribeLifecycle(ctx: Context, state: RuntimeState): void {
       await dispatch(state, 'message_end', { type: 'message_end', message }, eventContext)
     }).catch(error => warn('message lifecycle', error))
     if (type === 'turn/end') {
-      const data = event.data as UnknownRecord
-      const turn = Number(data.turn ?? 1)
-      // Behind the message chain so the turn's own messages have been
-      // projected first, and so the projections below (which read the
-      // attachment service) are awaited rather than raced.
+      // Behind the shared stream so the prompt's own steps have announced
+      // themselves before it is declared finished.
       state.projection = state.projection.then(async () => {
-        // Pi's turn_end carries the turn's final assistant message and its
-        // tool results; both were hardcoded empty here, and the declaration
-        // said the tool results were mapped. They come from the turn's own
-        // durable events.
-        const turnEvents = ((session.events ?? []) as UnknownRecord[])
-          .filter(entry => Number((entry.data as UnknownRecord | undefined)?.turn ?? -1) === turn)
-        const toolResults = (await Promise.all(turnEvents
-          .filter(entry => entry.type === 'tool/result')
-          .map(entry => messageFromSessionEvent(ctx, entry))))
-          .filter((message): message is UnknownRecord => message !== undefined)
-        const lastAssistant = turnEvents.findLast(entry => entry.type === 'assistant/message')
-        const finalMessage = lastAssistant === undefined
-          ? { role: 'assistant', content: [] }
-          : await messageFromSessionEvent(ctx, lastAssistant) ?? { role: 'assistant', content: [] }
-        await dispatch(state, 'turn_end', { type: 'turn_end', turnIndex: turn - 1, message: finalMessage, toolResults }, eventContext)
         await dispatch(state, 'agent_end', { type: 'agent_end', messages: [] }, eventContext)
         await dispatch(state, 'agent_settled', { type: 'agent_settled' }, eventContext)
       }).catch(error => warn('turn end lifecycle', error))
@@ -3061,6 +3080,7 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
     turnSystemPromptOverrides: new WeakMap(),
     projection: Promise.resolve(),
     terminateBatch: new WeakMap(),
+    piTurnIndex: new WeakMap(),
     claimedForStep: new WeakMap(),
     promptedTurn: new WeakMap(),
     pendingInjections: new WeakMap(),

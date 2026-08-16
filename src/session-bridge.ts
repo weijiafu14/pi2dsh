@@ -12,7 +12,14 @@
 import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
+import { foldSurface } from '@deepseek-ai/dsh-session'
 import { getAgentDir } from './compat/vendor/pi-config-shim.js'
+
+/** The durable seq behind a projected entry id (`dsh-<seq>`), when it has one. */
+function entrySeq(id: string): number | undefined {
+  const match = /^dsh-(\d+)$/.exec(id)
+  return match === null ? undefined : Number(match[1])
+}
 
 type UnknownRecord = Record<string, unknown>
 
@@ -160,6 +167,21 @@ export class PiSessionBridge {
    * shape. DSH history is linear, so the projection is a single-branch tree:
    * every entry's parent is its predecessor.
    */
+  /**
+   * The seqs still on the model-visible surface, via DSH's own canonical fold.
+   * @param session - the session to project.
+   * @returns the visible seqs, or undefined when the fold cannot run (a
+   *   projection built from a partial event list, e.g. in a test double) — in
+   *   which case nothing is filtered out rather than everything.
+   */
+  visibleSeqs(session: DshSessionLike): Set<number> | undefined {
+    try {
+      return new Set(foldSurface(sessionEvents(session) as never).nodes)
+    } catch {
+      return undefined
+    }
+  }
+
   projectEntries(session: DshSessionLike): PiProjectedEntry[] {
     this.load(session.id)
     const merged: Array<{ time: number; entry: Omit<PiProjectedEntry, 'parentId'> }> = []
@@ -267,10 +289,29 @@ export class PiSessionBridge {
         const index = entries.findIndex(entry => entry.id === fromId)
         return index === -1 ? [] : entries.slice(0, index + 1)
       },
-      // Pi context rules: message/compaction/branch_summary/custom_message
-      // enter the LLM context; custom entries and labels are state-only.
-      buildContextEntries: () => entriesOf().filter(entry =>
-        entry.type === 'message' || entry.type === 'compaction' || entry.type === 'branch_summary' || entry.type === 'custom_message'),
+      // Pi's buildContextEntries is the COMPACTION-AWARE list — what actually
+      // goes to the model. Two rules, both of them Pi's:
+      //
+      //  - by type: message/compaction/branch_summary/custom_message enter the
+      //    context; custom entries and labels are state-only;
+      //  - by compaction: entries the latest compaction summarized are gone,
+      //    replaced by the summary. Returning them anyway (what this did) let
+      //    a package build context out of history the model can no longer see
+      //    — and the longer the session, the further apart the two drift.
+      //
+      // Which entries survive is not re-derived here: DSH's own `foldSurface`
+      // is the authority on the model-visible surface, and its node list is
+      // seqs, which is exactly what these entry ids are made of.
+      buildContextEntries: () => {
+        const visible = this.visibleSeqs(session)
+        return entriesOf().filter(entry => {
+          if (entry.type !== 'message' && entry.type !== 'compaction'
+            && entry.type !== 'branch_summary' && entry.type !== 'custom_message') return false
+          // A sidecar entry has no seq of its own and is never shadowed.
+          const seq = entrySeq(entry.id)
+          return seq === undefined || visible === undefined || visible.has(seq)
+        })
+      },
       getHeader: () => ({
         type: 'session',
         version: 3,

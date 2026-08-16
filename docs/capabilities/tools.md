@@ -20,7 +20,7 @@ path, and results land in the session log in DSH's own shapes.
 | `tool_execution_start` | `event` | Same semantics | Mapped from durable tool/call events. |
 | `tool_execution_end` | `event` | Same semantics | Mapped from finalized tools/result events. |
 | `tool_execution_update` | `event` | Mapped, difference stated | Fired from migrated Pi tools' own onUpdate callbacks; DSH-native tools expose no partial-result stream. |
-| `tool_call` | `event` | Mapped, difference stated | Blocking is supported, and in-place argument mutation reaches migrated Pi tools; mutating a DSH-native tool's arguments is rejected because DSH logs arguments before policy. |
+| `tool_call` | `event` | Mapped, difference stated | Blocking is supported, in-place argument mutation reaches migrated Pi tools, and `terminate` follows Pi's batch rule — the loop stops after a tool batch only when every call in it was blocked asking to stop. Mutating a DSH-native tool's arguments is rejected because DSH logs arguments before policy. |
 | `tool_result` | `event` | Mapped, difference stated | Text replacement and success-to-error blocking are supported; arbitrary details and error recovery are not. |
 | `user_bash` | `event` | Mapped, difference stated | Registration is accepted; Pi's ! command surface never occurs on DSH surfaces, so the handler never fires. Loading is unaffected. |
 

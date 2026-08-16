@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "generatedPackage": "dsh-pi-pi2dsh-e2e-step-seams",
   "dshCommit": "47f943859bef60e4160492346772ded9b24f765a",
-  "pi2dshCommit": "7efe0e2761628d5e73501662056c1382790e36dc",
+  "pi2dshCommit": "fb736ae359c2ff9dacb88a2b51e1bd653a1cba7b",
   "profile": "headless",
   "prompt": "Call the pi_repeat tool exactly once with word \"ok\" and times 7, then reply with the tool output verbatim.",
   "seams": {
@@ -19,16 +19,30 @@
       "marker": "PI2DSH-E2E-OVERRIDE-MARKER"
     },
     "handlerOrder": [
+      "agent_start",
       "before_agent_start",
+      "turn_start:0",
       "tool_execution_end:pi_repeat",
-      "turn_end"
+      "turn_end:0",
+      "turn_start:1",
+      "turn_end:1",
+      "agent_end"
     ],
-    "turnEnd": {
-      "toolResultCount": 1,
-      "toolResultRoles": [
-        "toolResult"
-      ],
-      "finalRole": "assistant"
-    }
+    "turns": [
+      {
+        "turnIndex": 0,
+        "toolResultCount": 1,
+        "toolResultRoles": [
+          "toolResult"
+        ],
+        "finalRole": "assistant"
+      },
+      {
+        "turnIndex": 1,
+        "toolResultCount": 0,
+        "toolResultRoles": [],
+        "finalRole": "assistant"
+      }
+    ]
   }
 }

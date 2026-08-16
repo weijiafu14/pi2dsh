@@ -251,7 +251,7 @@ export const CONTEXT_RULES: Readonly<Record<string, Rule>> = Object.freeze({
   getSystemPrompt: rule('full', 'Returns the system prompt currently assembled by the bridge.'),
   getSystemPromptOptions: rule('partial', 'Returns an empty Pi option projection in command contexts.'),
   waitForIdle: rule('partial', 'Mapped to the DSH agent idle boundary when available.'),
-  sessionManager: rule('partial', 'A real read-only projection: DSH durable messages plus pi2dsh sidecar entries, exposed through Pi\'s exact 14-method surface as a single-branch tree.'),
+  sessionManager: rule('partial', 'A real read-only projection: DSH durable messages plus pi2dsh sidecar entries, exposed through Pi\'s exact 14-method surface as a single-branch tree. buildContextEntries is compaction-aware — entries a compaction summarized away are gone, exactly as they are for the model — while getEntries stays the append-only log, which is the same split Pi makes.'),
   modelRegistry: rule('partial', 'A live registry over the ONE model directory — the DSH llm directory — projected exactly into Pi vocabulary; package-registered Pi-native routes keep api/baseUrl and the full Model shape through the round trip. Custom gateways are HOST configuration (the official llm-pi-ai adapter\'s settings), never a Pi-side file: Pi\'s ~/.pi/agent/models.json is deliberately NOT read — user-facing configuration is DSH-shaped only. getProviderAuth/getApiKeyAndHeaders run Pi\'s full credential chain for package-registered providers and the host\'s configurable-provider + credentials seams for DSH routes. Host configuration may declare "<route>-vision" image-admission companions: real DSH routes that admit images, replace image blocks with explicit path-carrying notices (materialized attachment files any path-taking tool can read), and forward text-only to the original route; Pi\'s ctx.model reports the original route for a companion selection.'),
   model: rule('partial', 'The agent\'s real provider/model route (a setModel() override wins), enriched from the projected catalog. When the selected route is an image-admission companion, ctx.model reports the ORIGINAL route with its true modalities — the generating model is the original text-only one, which is the truth extensions branching on input modalities (a vision bridge\'s activation check) need.'),
   scopedModels: rule('full', 'Empty, carrying Pi\'s own meaning for empty: no model scope is configured, so every available model is usable. DSH has no model-scope concept to narrow it.'),
@@ -260,7 +260,7 @@ export const CONTEXT_RULES: Readonly<Record<string, Rule>> = Object.freeze({
   abort: rule('partial', 'Mapped to agent.cancel({ kind: "hook" }) on the live DSH agent.'),
   shutdown: rule('partial', 'Pi defines shutdown behavior as host-provided (runner.ts bindExtensions); this host absorbs the request — the user owns DSH process exit — and informs the user once. The package keeps running.'),
   compact: rule('partial', 'Pi\'s fire-and-forget trigger, translated to DSH\'s official manual compaction (ctx.compaction.compactNow on the live agent). onComplete receives the real summary text and the shadowed-content token estimate as tokensBefore; firstKeptEntryId is empty because the DSH log has no Pi entry ids. Without a compaction service the gap flows through Pi\'s onError callback and the capability ledger.'),
-  newSession: rule('partial', 'Really creates a DSH session (ctx.sessions.create) with parent lineage; withSession runs against a projection context bound to it. DSH has no host-level "current session pointer" a plugin could move — which session the surface shows stays a host choice, announced once.'),
+  newSession: rule('partial', 'Really creates a DSH session (ctx.sessions.create) with parent lineage; withSession runs against a projection context bound to it, whose sendMessage/sendUserMessage/appendEntry write into THAT session rather than the one the call came from. DSH has no host-level "current session pointer" a plugin could move — which session the surface shows stays a host choice, announced once.'),
   fork: rule('partial', 'Really forks on DSH\'s official prefix-fork surface (ctx.sessions.fork with lineage metadata). Anchors are durable-log entries (projected ids "dsh-<seq>"); Pi\'s default position "before" is honored, and the boundary shrinks to the nearest completed-turn edge because DSH seeds must not split an open turn. Sidecar entries cannot anchor a fork.'),
   navigateTree: rule('partial', 'Expressed through DSH\'s session model: the DSH tree lives BETWEEN sessions (fork lineage), not inside one log, so navigation forks at the target boundary. summarize runs Pi\'s vendored branch summarizer over the abandoned durable slice (model call on the DSH llm bridge) and lands the summary as a branch_summary entry in the new session\'s projection; label lands as a label entry.'),
   switchSession: rule('partial', 'Targets a LIVE DSH session by id (or a Pi-style path whose basename is "<id>.jsonl"); withSession runs against its projection. Switching to persisted sessions is host-owned — resume them from the DSH surface first. Which session the surface shows stays a host choice.'),
@@ -347,7 +347,7 @@ export const API_RULES: Readonly<Record<string, Rule>> = Object.freeze({
   },
   sendMessage: {
     level: 'partial',
-    detail: 'Mapped to native DSH inject/steer/followup delivery with honest plugin provenance; Pi display/details metadata awaits the custom session-entry seam.',
+    detail: 'Durable by the time it returns, as in Pi: the no-turn call appends to the session log and announces its message events immediately, so the message IS in the conversation when the call resolves. Steering and follow-up drive a turn through the agent. Pi display/details metadata awaits the custom session-entry seam.',
   },
   sendUserMessage: {
     level: 'full',
@@ -418,7 +418,7 @@ export const EVENT_RULES: Readonly<Record<string, Rule>> = Object.freeze({
   session_info_changed: { level: 'partial', detail: 'Fired by setSessionName() and projected from DSH session/title events.' },
   agent_start: { level: 'full', detail: 'Mapped to the DSH turn/start boundary.' },
   agent_settled: { level: 'full', detail: 'Mapped to the DSH turn/end boundary.' },
-  turn_start: { level: 'full', detail: 'Mapped from durable turn/start events.' },
+  turn_start: { level: 'full', detail: 'Fires once per MODEL CALL, as in Pi — DSH calls that a step — with turnIndex counting from zero and resetting at each new prompt.' },
   tool_execution_start: { level: 'full', detail: 'Mapped from durable tool/call events.' },
   tool_execution_end: { level: 'full', detail: 'Mapped from finalized tools/result events.' },
   tool_execution_update: {
@@ -427,7 +427,7 @@ export const EVENT_RULES: Readonly<Record<string, Rule>> = Object.freeze({
   },
   tool_call: {
     level: 'partial',
-    detail: 'Blocking is supported, and in-place argument mutation reaches migrated Pi tools; mutating a DSH-native tool\'s arguments is rejected because DSH logs arguments before policy.',
+    detail: 'Blocking is supported, in-place argument mutation reaches migrated Pi tools, and `terminate` follows Pi\'s batch rule — the loop stops after a tool batch only when every call in it was blocked asking to stop. Mutating a DSH-native tool\'s arguments is rejected because DSH logs arguments before policy.',
   },
   tool_result: {
     level: 'partial',
@@ -442,8 +442,8 @@ export const EVENT_RULES: Readonly<Record<string, Rule>> = Object.freeze({
     detail: 'The lifecycle boundary is mapped, but the reconstructed Pi message history is intentionally minimal.',
   },
   turn_end: {
-    level: 'partial',
-    detail: 'The lifecycle boundary, the turn\'s own tool results, and its final assistant message are projected from the turn\'s durable events; Pi-specific provider metadata on that message is not reconstructed.',
+    level: 'full',
+    detail: 'Fires once per MODEL CALL, as in Pi — DSH calls that a step — carrying that call\'s own assistant message and its own tool results, with turnIndex counting model calls from zero and resetting each prompt.',
   },
   message_start: {
     level: 'partial',

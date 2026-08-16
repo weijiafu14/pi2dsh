@@ -6,7 +6,7 @@ and where the mapping differs. These tables are generated from the rules the
 bridge itself consults at runtime (`src/compatibility.ts`, also reported by
 `pi2dsh matrix --json`), so they cannot drift from the implementation.
 
-**112 Pi surfaces total** — 23 same semantics · 84 mapped, difference stated · 5 not available — plus **202 imported symbols** from the three Pi runtime
+**112 Pi surfaces total** — 24 same semantics · 83 mapped, difference stated · 5 not available — plus **202 imported symbols** from the three Pi runtime
 packages (`pi-coding-agent`, `pi-tui`, `pi-ai`), which the bridge serves
 from vendored or headless shims so a package's own Pi pins never load.
 
@@ -14,7 +14,7 @@ from vendored or headless shims so a package's own Pi pins never load.
 |---|---|---|
 | [Tools](tools.md) | 12 | 3 same semantics · 9 mapped, difference stated |
 | [Commands, flags and editor input](commands.md) | 13 | 13 mapped, difference stated |
-| [Messages, context and the agent loop](conversation.md) | 20 | 8 same semantics · 12 mapped, difference stated |
+| [Messages, context and the agent loop](conversation.md) | 20 | 9 same semantics · 11 mapped, difference stated |
 | [Sessions, branching and side conversations](sessions.md) | 24 | 6 same semantics · 18 mapped, difference stated |
 | [Models, providers and credentials](models.md) | 15 | 1 same semantics · 11 mapped, difference stated · 3 not available |
 | [Asking the user, and rendering](interaction.md) | 24 | 4 same semantics · 20 mapped, difference stated |

@@ -6,18 +6,18 @@ a step, and observing the loop. These map onto DSH's waterfalls and durable
 events. Nothing here fabricates a result — where DSH has no equivalent moment,
 the surface is registered and stated as never firing rather than faked.
 
-**20 Pi surfaces** — 8 same semantics · 12 mapped, difference stated.
+**20 Pi surfaces** — 9 same semantics · 11 mapped, difference stated.
 
 | Pi surface | Kind | Status | How it maps onto DSH |
 |---|---|---|---|
-| `sendMessage` | `pi.*` | Mapped, difference stated | Mapped to native DSH inject/steer/followup delivery with honest plugin provenance; Pi display/details metadata awaits the custom session-entry seam. |
+| `sendMessage` | `pi.*` | Mapped, difference stated | Durable by the time it returns, as in Pi: the no-turn call appends to the session log and announces its message events immediately, so the message IS in the conversation when the call resolves. Steering and follow-up drive a turn through the agent. Pi display/details metadata awaits the custom session-entry seam. |
 | `sendUserMessage` | `pi.*` | Same semantics | Mapped to native DSH steer/followup delivery with text and attachment-backed image content. |
 | `agent_start` | `event` | Same semantics | Mapped to the DSH turn/start boundary. |
 | `agent_settled` | `event` | Same semantics | Mapped to the DSH turn/end boundary. |
-| `turn_start` | `event` | Same semantics | Mapped from durable turn/start events. |
+| `turn_start` | `event` | Same semantics | Fires once per MODEL CALL, as in Pi — DSH calls that a step — with turnIndex counting from zero and resetting at each new prompt. |
 | `before_agent_start` | `event` | Same semantics | Fires once per user prompt, inside the assembly of the turn it belongs to, with the real prompt text and image attachments; returned custom messages enter that same turn beside the user message, and a returned systemPrompt overrides that turn's own assembly and resets at the next turn. |
 | `agent_end` | `event` | Mapped, difference stated | The lifecycle boundary is mapped, but the reconstructed Pi message history is intentionally minimal. |
-| `turn_end` | `event` | Mapped, difference stated | The lifecycle boundary, the turn's own tool results, and its final assistant message are projected from the turn's durable events; Pi-specific provider metadata on that message is not reconstructed. |
+| `turn_end` | `event` | Same semantics | Fires once per MODEL CALL, as in Pi — DSH calls that a step — carrying that call's own assistant message and its own tool results, with turnIndex counting model calls from zero and resetting each prompt. |
 | `message_start` | `event` | Mapped, difference stated | Durable user, assistant, and tool-result messages are mapped without Pi-specific provider metadata. |
 | `message_end` | `event` | Mapped, difference stated | Durable messages are observed, but message replacement is not supported. |
 | `message_update` | `event` | Mapped, difference stated | Projected from DSH assistant/chunk events with accumulated text; Pi's full AgentMessage accumulation state is approximated. |

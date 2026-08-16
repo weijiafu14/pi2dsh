@@ -98,13 +98,30 @@ export default function stepSeams(pi) {
     seen.order.push('tool_execution_end:' + event.toolName)
   })
 
+  pi.on('agent_start', async () => { seen.order.push('agent_start') })
+
+  pi.on('turn_start', async (event) => {
+    seen.order.push('turn_start:' + event.turnIndex)
+  })
+
+  pi.on('agent_end', async () => {
+    seen.order.push('agent_end')
+    if (process.env.PI2DSH_E2E_REPORT !== undefined) {
+      const { writeFileSync } = await import('node:fs')
+      writeFileSync(process.env.PI2DSH_E2E_REPORT, JSON.stringify(seen, null, 2))
+    }
+  })
+
   pi.on('turn_end', async (event) => {
-    seen.order.push('turn_end')
-    seen.turnEnd = {
+    seen.order.push('turn_end:' + event.turnIndex)
+    // Pi's turn_end reports ONE model call, so each step gets its own entry.
+    ;(seen.turns ??= []).push({
+      turnIndex: event.turnIndex,
       toolResultCount: (event.toolResults ?? []).length,
       toolResultRoles: (event.toolResults ?? []).map(result => result.role),
       finalRole: event.message?.role ?? null,
-    }
+    })
+    seen.turnEnd = seen.turns[seen.turns.length - 1]
     // Written where the harness can read it after the process exits.
     if (process.env.PI2DSH_E2E_REPORT !== undefined) {
       const { writeFileSync } = await import('node:fs')
@@ -209,18 +226,33 @@ try {
   assert(firstPrompt.includes(OVERRIDE_MARKER),
     'the first request of the turn did not carry the override, so it landed a turn late')
 
-  // ---- 3. execution end precedes the turn's end ----------------------------
+  // ---- 3. execution end precedes its step's end ----------------------------
   const endIndex = seen.order.indexOf('tool_execution_end:pi_repeat')
-  const turnEndIndex = seen.order.indexOf('turn_end')
+  const turnEndIndex = seen.order.findIndex(entry => entry.startsWith('turn_end:'))
   assert(endIndex >= 0, `tool_execution_end never fired; order was ${JSON.stringify(seen.order)}`)
   assert(turnEndIndex > endIndex,
     `turn_end (${turnEndIndex}) did not follow tool_execution_end (${endIndex}): ${JSON.stringify(seen.order)}`)
 
-  // ---- 4. turn_end carried the turn's real tool results --------------------
-  assert.equal(seen.turnEnd?.toolResultCount, 1,
-    `turn_end carried ${seen.turnEnd?.toolResultCount} tool results, expected 1`)
-  assert.deepEqual(seen.turnEnd?.toolResultRoles, ['toolResult'])
-  assert.equal(seen.turnEnd?.finalRole, 'assistant')
+  // ---- 4. Pi's turn granularity: ONE PER MODEL CALL ------------------------
+  // A prompt that calls a tool takes two model calls, so Pi fires turn_start
+  // and turn_end twice, indexed from zero, inside a single agent_start /
+  // agent_end pair. Mapping Pi's turn onto DSH's turn fired them once.
+  const starts = seen.order.filter(entry => entry.startsWith('turn_start:'))
+  const ends = seen.order.filter(entry => entry.startsWith('turn_end:'))
+  assert(starts.length >= 2,
+    `expected a turn_start per model call (at least 2 for a tool-calling prompt), saw ${JSON.stringify(starts)}`)
+  assert.equal(starts.length, ends.length, `turn_start/turn_end are unpaired: ${JSON.stringify(seen.order)}`)
+  assert.deepEqual(starts, starts.map((_, index) => `turn_start:${index}`),
+    `turnIndex does not count model calls from zero: ${JSON.stringify(starts)}`)
+  assert.equal(seen.order.filter(entry => entry === 'agent_start').length, 1)
+  assert.equal(seen.order.filter(entry => entry === 'agent_end').length, 1)
+
+  // The tool's result belongs to the step that ran it, not to every step.
+  const withResults = (seen.turns ?? []).filter(turn => turn.toolResultCount > 0)
+  assert.equal(withResults.length, 1,
+    `exactly one model call ran a tool, but ${withResults.length} turn_end events carried results`)
+  assert.deepEqual(withResults[0].toolResultRoles, ['toolResult'])
+  assert.equal(seen.turns.at(-1)?.finalRole, 'assistant')
 
   // The converted bundle really is the thing that ran.
   const listed = await runDsh(['plugin', '--profile', 'headless', 'list'])
@@ -247,7 +279,7 @@ try {
       },
       beforeAgentStartOverride: { appliedToOwnTurn: true, marker: OVERRIDE_MARKER },
       handlerOrder: seen.order,
-      turnEnd: seen.turnEnd,
+      turns: seen.turns,
     },
   }
   await mkdir(resolve(outputPath, '..'), { recursive: true })
@@ -258,6 +290,7 @@ try {
     + ` the tool received ${seen.toolArgs.times} (${seen.toolArgs.timesType}),`
     + ` keys ${JSON.stringify(seen.toolArgs.keys)}`)
   console.log(`[step-seams-e2e] handler order: ${seen.order.join(' → ')}`)
+  console.log(`[step-seams-e2e] per-model-call turn_end payloads: ${JSON.stringify(seen.turns)}`)
 } finally {
   await rm(scratch, { recursive: true, force: true })
 }

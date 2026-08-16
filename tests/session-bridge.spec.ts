@@ -2,7 +2,16 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { Context } from '@deepseek-ai/cordis'
+import { createUserMessage } from '@deepseek-ai/dsh-llm'
+import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
 import { PiSessionBridge } from '../src/session-bridge.js'
+
+type DshSession = {
+  id: unknown
+  events: unknown[]
+  append(type: string, data: unknown, meta?: unknown): { seq: number }
+}
 
 let scratch: string
 let previousAgentDir: string | undefined
@@ -22,6 +31,68 @@ afterEach(async () => {
 function dshSession(id: string, events: Array<Record<string, unknown>> = []): { id: string; events: Array<Record<string, unknown>> } {
   return { id, events }
 }
+
+describe("buildContextEntries is the model's view, not the whole log", () => {
+  it('drops the entries a real compaction summarized away', async () => {
+    // Pi's buildContextEntries is the compaction-aware list: the summary
+    // stands in for the entries it replaced. This bridge returned everything,
+    // so a package built context out of history the model can no longer see —
+    // and the longer the session runs, the further the two drift apart.
+    const ctx = new Context()
+    await ctx.plugin(SessionStore)
+    const sessions = (ctx as unknown as {
+      sessions: { create(id: unknown, options?: unknown): DshSession }
+    }).sessions
+    const session = sessions.create(SessionId('pi2dsh-compaction'), { meta: { cwd: scratch } })
+
+    const first = session.append('user/message',
+      createUserMessage({ content: [{ type: 'text', text: 'the old question' }], source: { kind: 'user' } }),
+      { surfaceOp: 'append' })
+    const second = session.append('user/message',
+      createUserMessage({ content: [{ type: 'text', text: 'the old follow-up' }], source: { kind: 'user' } }),
+      { surfaceOp: 'append' })
+    session.append('user/message',
+      createUserMessage({ content: [{ type: 'text', text: 'the live question' }], source: { kind: 'user' } }),
+      { surfaceOp: 'append' })
+
+    const bridge = new PiSessionBridge()
+    const manager = bridge.readonlySessionManager(session as never, scratch) as unknown as {
+      buildContextEntries(): unknown[]
+      getEntries(): unknown[]
+    }
+    expect(manager.buildContextEntries()).toHaveLength(3)
+
+    // A real compaction: summary event, then the replacement that shadows the
+    // range — the same shape DSH's own compaction engine appends.
+    const summary = [{ type: 'text' as const, text: 'summary of the old exchange' }]
+    const shadowedSeqs = [first.seq, second.seq]
+    const startEvent = session.append('compaction/start', { compactionId: 'c1', turn: 0 })
+    const summaryEvent = session.append('compaction/summary', {
+      compactionId: 'c1',
+      summary,
+      shadowedRange: { start: first.seq, end: second.seq },
+      shadowedSeqs,
+      shadowedTokenCount: 0,
+      provider: 'test',
+      model: 'test',
+    })
+    session.append('user/message', createUserMessage({ content: summary, source: { kind: 'user' } }), {
+      surfaceOp: { op: 'replace', start: first.seq, end: second.seq },
+      sourceEventSeqs: [startEvent.seq, summaryEvent.seq, ...shadowedSeqs],
+    })
+
+    const after = manager.buildContextEntries()
+    const texts = JSON.stringify(after)
+    expect(texts).not.toContain('the old question')
+    expect(texts).not.toContain('the old follow-up')
+    expect(texts).toContain('summary of the old exchange')
+    expect(texts).toContain('the live question')
+
+    // getEntries() is Pi's append-only log and still shows everything — the
+    // two methods differ on purpose.
+    expect(JSON.stringify(manager.getEntries())).toContain('the old question')
+  })
+})
 
 describe('Pi session semantics over a DSH durable session', () => {
   it('persists custom entries, labels, and names to the sidecar and survives a reload', () => {
