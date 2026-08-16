@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "generatedPackage": "dsh-pi-pi2dsh-e2e-step-seams",
   "dshCommit": "47f943859bef60e4160492346772ded9b24f765a",
-  "pi2dshCommit": "25819b33f28bb7dfcb6cb236d450d43720614922",
+  "pi2dshCommit": "7efe0e2761628d5e73501662056c1382790e36dc",
   "profile": "headless",
   "prompt": "Call the pi_repeat tool exactly once with word \"ok\" and times 7, then reply with the tool output verbatim.",
   "seams": {
