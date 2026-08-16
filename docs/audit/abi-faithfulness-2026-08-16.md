@@ -237,6 +237,18 @@
 | 8 | ✅ | `provider-adapter.ts` 转发 `options.sessionId` |
 | 15 | ✅ | `resizeImage` 改 Pi 真签名（Uint8Array→base64 + 四个尺寸字段），尺寸从文件头解析 |
 | 18 | ✅ | `'off'` 送成"字段缺席"；改走 `provider.streamSimple` |
+| 2 | ✅ | `previousModel` 改为写入前读，且产出真 Pi Model（`currentPiModel`） |
+| 3 | ✅ | 装配结果无条件记进 `currentSystemPrompt`，闸门只挡 dispatch |
+| 9 | ✅ | `hasPendingMessages` 接 `agent.inbox.hasPending` |
+| 10 | ✅ | `session_compact` 只认 `compaction/summary`；summary 渲染成字符串 |
+| 11 | ✅ | `reason` 由 `sourceCommandId` / `turn===null` 推导 |
+| 12 | ✅ | 会话名走 `ctx.sessionTitle.rename` / `.get`，sidecar 退居兜底 |
+| 13 | ✅ | `scopedModels` 返回 `[]`（DSH 无 scope 概念 = Pi 的"未配置"语义） |
+| 14 | ✅ | `notify` 接住第二参，warning/error 走 `logger.warn` |
+| 16 | ✅ | `dshToPiContent` 异步化，image 走 attachment 真读 |
+| 17 | ✅ | `promptSnippet`/`promptGuidelines` 汇成 DSH 注册段（order 150） |
+
+**18 条全部完成，`pnpm verify` 绿（126 用例）。**
 
 ### 查证中发现的、比条目本身更严重的两处
 
@@ -265,12 +277,38 @@ reasoning 模型都会列出 `'off'`（`EXTENDED_THINKING_LEVELS` 首项），�
 `reasoning?: ThinkingLevel` 并由各 API 模块翻译成自己的方言，`'off'` 用缺席表达 ——
 这正是 Pi 自己 `clampedReasoning === "off" ? undefined` 的写法。
 
+### 这一批里同样比条目更严重的几处
+
+**第 10 条会误报。** 原来 `compaction/end` 和 `compaction/summary` 都派发 `session_compact`：
+成功的压缩派发**两次**，失败的压缩（`compaction/end` 带 `error`）也派发一次 —— 等于告诉包
+"历史已压缩"而其实什么都没发生。同时 `summary` 在 Pi 的 `CompactionEntry` 里是 **string**，
+DSH 是 `ContentBlock[]`，而原代码尾部 `...(data as object)` 又把那个数组按同名盖了回去，
+所以包拿到的 `summary` 一直是数组不是字符串。
+
+**第 13 条方向反了。** Pi 的 `scopedModels` 注释写明"未配置 scope 时为空（所有模型都可用）"。
+原来返回整个 catalog，说的是"本会话被限制到每一个模型"，恰好是反义；形状也不对
+（Pi 要 `{model, thinkingLevel?}` 包装的 Pi Model）。DSH 没有 model-scope 概念（全仓零命中），
+所以 `[]` 才是准确答案，且语义与 Pi 完全一致。
+
+**第 16 条牵出投影的异步性。** DSH 的 `ImageBlock` 只带 attachment 引用，字节必须经
+attachment 服务异步读；原来的同步投影把图片投成一个光秃秃的 `{type:'image'}` —— 一个
+声称是图片、却不含图片的块，包无法与真块区分。这条正是我们已经对外宣传的图片能力所走的
+路径。修法是把 `dshToPiContent` 整体异步化；随之要求消息生命周期用一条顺序链保序，
+并且 `prompt()` 返回前排空该链 —— 否则子代理的 `turn_end` 会跑到它自己的
+`message_start` 前面（这一条是测试真跑出来的，不是推演）。
+
 ### 新记一条：真的映射不了
 
 Pi 在任何层都没有 stop sequence（`packages/ai/src/` 全仓零命中），而 DSH 的
 `GenerateOptions.stop` 是有的。请求带了 stop 却被静默丢弃会直接改变模型输出，所以按
 "映射不了要响亮"的标准，改成**每条路由 warn 一次**（不是每请求一次，也不是抛错终止
 请求）。这条要进 support matrix。
+
+第二条：Pi 的 `session_before_compact` / `session_compact` 有 `reason: manual | threshold |
+overflow`，但 DSH 的自动触发器（`'pressure' | 'context-overflow'`）**不写进durable log**
+（`compaction/start` 只有 `{compactionId, sourceCommandId?, turn}`），所以事后无法区分
+threshold 和 overflow。manual 能可靠推出；自动一律报 threshold，`willRetry` 恒 false。
+盯着 `overflow` 做事的包看不到它。已写进代码注释和这里，不假装能分。
 
 
 

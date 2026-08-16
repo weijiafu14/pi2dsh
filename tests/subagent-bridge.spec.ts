@@ -15,7 +15,7 @@ function makeHost(ctx: Context, deliveries: Array<{ mode: string, message: unkno
     deliver: (_agent, message, mode) => {
       deliveries.push({ mode, message })
     },
-    messageFromSessionEvent: event => {
+    messageFromSessionEvent: async event => {
       if (event.type === 'assistant/message') {
         return { role: 'assistant', content: [{ type: 'text', text: String((event.data as UnknownRecord).text ?? '') }] }
       }

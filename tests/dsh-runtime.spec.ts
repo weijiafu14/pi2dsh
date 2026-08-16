@@ -1,4 +1,4 @@
-import { copyFile, mkdir, mkdtemp, readFile, realpath, rm, symlink } from 'node:fs/promises'
+import { copyFile, mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -356,6 +356,114 @@ describe('generated plugin in the real DSH runtime', () => {
 // silently polices another session's calls, and its handlers see an end for a
 // start they never saw. The bridge's three tool subscriptions all gate on this
 // predicate.
+describe('DSH content projected into the Pi blocks packages read', () => {
+  const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII='
+
+  it('resolves an image attachment into the inline block Pi defines', async () => {
+    // DSH keeps image bytes in the attachment service and the block carries
+    // only a reference; Pi's block carries the bytes inline. The projection
+    // used to emit a bare `{type:'image'}` — a block that announces an image
+    // and contains none, which a package cannot tell from a real one.
+    const read: unknown[] = []
+    const ctx = {
+      get: (name: string) => name !== 'attachments' ? undefined : {
+        readImage: async (ref: unknown) => {
+          read.push(ref)
+          return { data: Buffer.from(PNG, 'base64') }
+        },
+      },
+    } as never
+    const attachment = { attachmentId: 'att-1', mediaType: 'image/png', bytes: 70, width: 1, height: 1 }
+    const projected = await runtimeInternals.dshToPiContent(ctx, [
+      { type: 'text', text: 'look' },
+      { type: 'image', attachment },
+    ] as never)
+    expect(read).toEqual([attachment])
+    expect(projected).toEqual([
+      { type: 'text', text: 'look' },
+      { type: 'image', data: PNG, mimeType: 'image/png' },
+    ])
+  })
+
+  it('drops an unreadable image rather than emitting an empty one', async () => {
+    const ctx = {
+      get: (name: string) => name !== 'attachments' ? undefined : {
+        readImage: async () => { throw new Error('attachment evicted') },
+      },
+    } as never
+    const projected = await runtimeInternals.dshToPiContent(ctx, [
+      { type: 'image', attachment: { attachmentId: 'gone', mediaType: 'image/png' } },
+      { type: 'text', text: 'still here' },
+    ] as never)
+    expect(projected).toEqual([{ type: 'text', text: 'still here' }])
+  })
+
+  it('derives the compaction trigger DSH records, and says manual only when it is', () => {
+    // A manual compaction runs with no open turn, or cites the command that
+    // drove it. DSH does not persist which automatic trigger fired, so an
+    // automatic one reports threshold — stated in the projection, not guessed.
+    expect(runtimeInternals.compactionReason({ turn: null })).toBe('manual')
+    expect(runtimeInternals.compactionReason({ turn: 3, sourceCommandId: 'cmd-1' })).toBe('manual')
+    expect(runtimeInternals.compactionReason({ turn: 3 })).toBe('threshold')
+  })
+})
+
+describe("a Pi tool's own system-prompt contributions", () => {
+  it('renders promptSnippet and promptGuidelines into the assembled DSH prompt', async () => {
+    // Pi puts `promptSnippet` in the prompt's "Available tools" list — a tool
+    // that supplies none is OMITTED from that list — and `promptGuidelines`
+    // in its Guidelines bullets, while the tool is active. Both were dropped
+    // on registration, so a migrated tool documented nothing to the model.
+    const scratch = await mkdtemp(join(tmpdir(), 'pi2dsh-prompt-section-'))
+    cleanup.push(scratch)
+    await mkdir(join(scratch, 'pkg'), { recursive: true })
+    await writeFile(join(scratch, 'pkg', 'extension.js'), [
+      'export default function (pi) {',
+      '  pi.registerTool({',
+      "    name: 'pi_documented',",
+      "    description: 'A tool that documents itself.',",
+      "    promptSnippet: 'pi_documented: run the documented thing',",
+      "    promptGuidelines: ['Prefer pi_documented over bash for the documented thing', '  '],",
+      "    parameters: { type: 'object', properties: {} },",
+      "    execute: async () => ({ content: [{ type: 'text', text: 'ok' }] }),",
+      '  })',
+      '}',
+    ].join('\n'), 'utf8')
+
+    const ctx = new Context()
+    await ctx.plugin(SessionStore)
+    await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false, persona: 'Base DSH prompt.' })
+    await ctx.plugin(ToolRuntime)
+    await ctx.plugin(CommandRuntime)
+    await ctx.plugin(SkillRegistry)
+    await ctx.plugin(AgentRegistry)
+    await ctx.plugin({
+      name: 'pi2dsh:prompt-section-test',
+      inject: ['tools', 'systemPrompt', 'commands', 'skills'],
+      async apply(inner: Context) {
+        await applyPiPackage(inner, {
+          rootUrl: pathToFileURL(`${join(scratch, 'pkg')}/`),
+          manifest: {
+            schemaVersion: 1,
+            package: { name: '@pi2dsh-fixtures/documented', version: '0.0.0' },
+            extensions: ['extension.js'],
+            skillDirs: [],
+            prompts: [],
+          } as never,
+        })
+      },
+    } as Plugin.Object)
+
+    const rendered = renderPrompt(await ctx.systemPrompt.assemble())
+    expect(rendered).toContain('Available tools:\n- pi_documented: run the documented thing')
+    expect(rendered).toContain('Guidelines:\n- Prefer pi_documented over bash for the documented thing')
+    // A blank bullet is not a bullet.
+    expect(rendered).not.toContain('- \n')
+    // DSH owns ordering: the persona still leads.
+    expect(rendered.indexOf('Base DSH prompt.')).toBeLessThan(rendered.indexOf('Available tools:'))
+  })
+})
+
 describe('child-agent origin detection (the guard on the tool subscriptions)', () => {
   it('recognises a child session through both header shapes, and passes real ones through', () => {
     const { isSubagentOrigin } = runtimeInternals as unknown as {

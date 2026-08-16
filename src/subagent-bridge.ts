@@ -25,7 +25,7 @@ export interface SubagentHost {
   parentDelegationDepth(): number
   piContentToDsh(content: unknown): Promise<ContentBlock[]>
   deliver(agent: UnknownRecord, message: unknown, mode: 'inject' | 'steer' | 'followup'): void
-  messageFromSessionEvent(event: UnknownRecord): UnknownRecord | undefined
+  messageFromSessionEvent(event: UnknownRecord): Promise<UnknownRecord | undefined>
   messageSource: string
   /** The Pi package that asked for the child, used to label it in DSH's catalog. */
   packageName?: string
@@ -94,6 +94,8 @@ export class PiBridgedAgentSession {
   #pendingToolCalls = new Set<string>()
   #sessionName = ''
   #turns = 0
+  /** Keeps message projections (which await attachment reads) in log order. */
+  #messageProjection: Promise<unknown> = Promise.resolve()
   #aborted = false
 
   constructor(
@@ -221,17 +223,25 @@ export class PiBridgedAgentSession {
         assistantMessageEvent: { type: 'text_delta', delta, ...chunk },
       })
     }
-    const message = this.#host.messageFromSessionEvent(event)
-    if (message !== undefined) {
+    // Projecting content now awaits the attachment service, so the chain keeps
+    // this child's messages in the order its log produced them.
+    this.#messageProjection = this.#messageProjection.then(async () => {
+      const message = await this.#host.messageFromSessionEvent(event)
+      if (message === undefined) return
       this.messages.push(message)
       emit({ type: 'message_start', message })
       emit({ type: 'message_end', message })
-    }
+    })
     if (type === 'turn/end') {
       this.#turns += 1
       this.#streaming = false
       this.#pendingToolCalls.clear()
-      emit({ type: 'turn_end', turnIndex: Number((event.data as UnknownRecord).turn ?? 1) - 1, message: { role: 'assistant', content: [] }, toolResults: [] })
+      // Behind the same chain as the message projections, so a turn never ends
+      // before the messages it produced have been delivered — Pi's contract is
+      // that a completed prompt has already emitted its message events.
+      this.#messageProjection = this.#messageProjection.then(() => {
+        emit({ type: 'turn_end', turnIndex: Number((event.data as UnknownRecord).turn ?? 1) - 1, message: { role: 'assistant', content: [] }, toolResults: [] })
+      })
     }
   }
 
@@ -283,6 +293,11 @@ export class PiBridgedAgentSession {
       source: { kind: 'plugin', plugin: this.#host.messageSource },
     }), 'followup')
     await completed
+    // The turn's own event resolves `completed`, but message projection awaits
+    // the attachment service, so draining that chain here is what makes
+    // "prompt() resolved" mean "every message event for this turn has been
+    // delivered" — the order a Pi caller reading `session.messages` expects.
+    await this.#messageProjection
   }
 
   steer(text: string): void {

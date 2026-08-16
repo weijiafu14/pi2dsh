@@ -46,6 +46,10 @@ interface PiTool {
   label?: string
   description: string
   parameters: unknown
+  /** Pi: one line for the system prompt's "Available tools" list. */
+  promptSnippet?: string
+  /** Pi: guideline bullets that apply while this tool is active. */
+  promptGuidelines?: string[]
   executionMode?: 'parallel' | 'sequential'
   prepareArguments?: (args: unknown) => unknown
   execute(
@@ -511,11 +515,16 @@ function contextFor(
   const notices: string[] = []
   const userQuestions = optionalService(ctx, 'userQuestions')
   const ui = {
-    notify(message: unknown) {
+    // Pi: `notify(message, type?: 'info' | 'warning' | 'error')`. The severity
+    // is the whole point of the second argument — dropping it filed a
+    // package's error notification at info, where an operator scanning for
+    // problems never sees it.
+    notify(message: unknown, type?: unknown) {
       const text = String(message)
       notices.push(text)
       state.notifications.push(text)
-      logger(ctx).info(`[pi2dsh] ${text}`)
+      const level = type === 'warning' || type === 'error' ? 'warn' : 'info'
+      logger(ctx)[level](`[pi2dsh] ${text}`)
     },
     select: (title: unknown, options: unknown[]) => askOne(ctx, agent, signal, {
       id: 'pi2dsh-select',
@@ -791,7 +800,13 @@ function contextFor(
     // agent's own provider/model route (Agent.options), enriched from the
     // catalog when the entry is known there.
     model: agent === undefined ? undefined : currentPiModel(state, agent),
-    scopedModels: catalog?.all() ?? [],
+    // Pi: "Models scoped to this session … Empty when no scoping is configured
+    // (all available models are usable)." DSH has no model-scope concept, so
+    // empty is the accurate answer and carries exactly Pi's meaning. Handing
+    // back the whole catalog said the opposite — that the session is RESTRICTED
+    // to every model — and in the wrong shape besides (Pi wants
+    // `{model, thinkingLevel?}` wrappers around Pi Models, not DSH entries).
+    scopedModels: [],
     thinkingLevel: thinkingLevelOf(state, agent),
     isIdle: () => command,
     isProjectTrusted: () => false,
@@ -801,7 +816,11 @@ function contextFor(
       if (typeof target?.cancel !== 'function') unsupported('ctx.abort without a live DSH agent')
       target.cancel({ kind: 'hook', reason: 'pi2dsh: aborted by migrated Pi extension' })
     },
-    hasPendingMessages: () => false,
+    // Pi: "Whether there are queued messages waiting" — steering plus follow-up.
+    // DSH keeps exactly that on the agent's durable inbox (next-step plus
+    // next-turn); a hardcoded false told every package the queue is always
+    // empty, so anything that waits for the queue to drain never waited.
+    hasPendingMessages: () => (agent as { inbox?: { hasPending?: unknown } } | undefined)?.inbox?.hasPending === true,
     // Pi defines shutdown() as "request a graceful shutdown; the actual
     // behavior is provided by the host" (runner.ts bindExtensions). This
     // host's behavior: on DSH the user owns process exit, so the request is
@@ -1092,24 +1111,85 @@ async function dispatch(
   return results
 }
 
-function dshToPiContent(content: readonly ContentBlock[]): Array<UnknownRecord> {
-  return content.map(block => {
-    if (block.type === 'text') return { type: 'text', text: block.text }
-    if (block.type === 'reasoning') return { type: 'thinking', thinking: block.text }
-    if (block.type === 'tool-call') return { type: 'toolCall', id: block.id, name: block.name, arguments: block.arguments }
-    return { type: block.type }
-  })
+/**
+ * What triggered a compaction, in Pi's vocabulary.
+ *
+ * DSH's durable lifecycle events say two things about the trigger: a manual
+ * compaction runs with no open turn (`turn: null`), and one a command drove
+ * cites that command. Both are Pi's "manual".
+ *
+ * The limit, stated rather than papered over: DSH's automatic trigger is
+ * `'pressure' | 'context-overflow'` at the call site but is NOT written to the
+ * log, so Pi's `threshold` and `overflow` cannot be told apart after the fact.
+ * Automatic compactions report `threshold`, the far more common of the two —
+ * and `willRetry` stays false for the same reason. A package keying behavior
+ * on `overflow` specifically will not see it.
+ * @param data - the `compaction/start` or `compaction/summary` event data.
+ */
+function compactionReason(data: UnknownRecord): 'manual' | 'threshold' | 'overflow' {
+  if (data.sourceCommandId !== undefined) return 'manual'
+  return data.turn === null ? 'manual' : 'threshold'
 }
 
-function messageFromSessionEvent(event: UnknownRecord): UnknownRecord | undefined {
+/**
+ * DSH content → the Pi content blocks packages read.
+ *
+ * Asynchronous because Pi's image block carries the bytes inline while DSH's
+ * carries only an attachment reference, and the bytes come from the attachment
+ * service. The sync version this replaced projected an image as a bare
+ * `{type:'image'}` — a block that announces an image and contains none, which
+ * is the exact shape a package cannot tell from a real one.
+ * @param ctx - context used to reach the attachment service.
+ * @param content - the DSH blocks to project.
+ */
+async function dshToPiContent(ctx: Context, content: readonly ContentBlock[]): Promise<Array<UnknownRecord>> {
+  const out: UnknownRecord[] = []
+  for (const block of content) {
+    if (block.type === 'text') out.push({ type: 'text', text: block.text })
+    else if (block.type === 'reasoning') out.push({ type: 'thinking', thinking: block.text })
+    else if (block.type === 'tool-call') out.push({ type: 'toolCall', id: block.id, name: block.name, arguments: block.arguments })
+    else if (block.type === 'image') {
+      const image = await piImageBlock(ctx, (block as unknown as UnknownRecord).attachment)
+      // An unreadable attachment contributes nothing rather than an empty
+      // image: Pi passes what exists.
+      if (image !== undefined) out.push(image)
+    }
+    else out.push({ type: block.type })
+  }
+  return out
+}
+
+/**
+ * One DSH image attachment as Pi's inline image block.
+ * @param ctx - context used to reach the attachment service.
+ * @param attachment - the durable reference on an image block.
+ * @returns the Pi block, or undefined when the bytes cannot be read.
+ */
+async function piImageBlock(ctx: Context, attachment: unknown): Promise<UnknownRecord | undefined> {
+  if (attachment === undefined || attachment === null) return undefined
+  const attachments = optionalService<{ readImage(ref: unknown): Promise<{ data: ArrayBufferLike }> }>(ctx, 'attachments')
+  if (attachments === undefined) return undefined
+  try {
+    const stored = await attachments.readImage(attachment)
+    return {
+      type: 'image',
+      data: Buffer.from(stored.data).toString('base64'),
+      mimeType: String((attachment as UnknownRecord).mediaType ?? 'image/png'),
+    }
+  } catch {
+    return undefined
+  }
+}
+
+async function messageFromSessionEvent(ctx: Context, event: UnknownRecord): Promise<UnknownRecord | undefined> {
   const type = event.type
   const data = event.data
   if (typeof data !== 'object' || data === null) return undefined
   const record = data as UnknownRecord
-  if (type === 'user/message') return { role: 'user', content: dshToPiContent((record.content ?? []) as ContentBlock[]) }
+  if (type === 'user/message') return { role: 'user', content: await dshToPiContent(ctx, (record.content ?? []) as ContentBlock[]) }
   if (type === 'assistant/message') {
     const message = record.message as UnknownRecord | undefined
-    return { role: 'assistant', content: dshToPiContent((message?.content ?? []) as ContentBlock[]) }
+    return { role: 'assistant', content: await dshToPiContent(ctx, (message?.content ?? []) as ContentBlock[]) }
   }
   if (type === 'tool/result') {
     const message = record.message as UnknownRecord | undefined
@@ -1118,7 +1198,7 @@ function messageFromSessionEvent(event: UnknownRecord): UnknownRecord | undefine
     return {
       role: 'toolResult',
       toolCallId: tool?.toolCallId,
-      content: dshToPiContent((tool?.content ?? []) as ContentBlock[]),
+      content: await dshToPiContent(ctx, (tool?.content ?? []) as ContentBlock[]),
       isError: tool?.isError === true,
     }
   }
@@ -1130,6 +1210,11 @@ function sourceReason(value: unknown): string {
 }
 
 function subscribeLifecycle(ctx: Context, state: RuntimeState): void {
+  // Projecting a message now awaits the attachment service (Pi's image blocks
+  // carry bytes inline), and this subscriber is synchronous. Chaining keeps
+  // successive message_start/message_end pairs in durable-log order instead of
+  // letting a message with an image lose its place to the one after it.
+  let messageProjection: Promise<unknown> = Promise.resolve()
   const cordis = ctx as unknown as {
     on(name: string, callback: (...args: any[]) => unknown, options?: unknown): () => void
     effect(callback: () => unknown, label?: string): unknown
@@ -1227,22 +1312,36 @@ function subscribeLifecycle(ctx: Context, state: RuntimeState): void {
         type: 'session_before_compact',
         preparation: { ...(event.data as UnknownRecord) },
         branchEntries: [],
-        reason: 'threshold',
+        reason: compactionReason(event.data as UnknownRecord),
         willRetry: false,
       }, eventContext).catch(error => warn('session_before_compact', error))
     }
-    if (type === 'compaction/end' || type === 'compaction/summary') {
+    // `compaction/summary` and ONLY it. `compaction/end` closes the bracket
+    // whether the compaction succeeded or failed (it carries `error` when it
+    // did not), so firing on both dispatched twice for every success and once,
+    // falsely, for every failure — telling packages the history was compacted
+    // when nothing had been.
+    if (type === 'compaction/summary') {
       const data = event.data as UnknownRecord
+      const shadowed = data.shadowedRange as { start?: unknown, end?: unknown } | undefined
+      const usage = data.usage as UnknownRecord | undefined
       void dispatch(state, 'session_compact', {
         type: 'session_compact',
         compactionEntry: {
           type: 'compaction',
           id: `dsh-${String(event.seq ?? '')}`,
-          summary: typeof data.summary === 'string' ? data.summary : '',
-          ...(data as object),
+          // Pi's CompactionEntry.summary is a STRING. DSH's is a ContentBlock
+          // array, and the old spread of the raw event data over this object
+          // put that array back under the same name — so every package doing
+          // string work on the summary got an array instead.
+          summary: textBlocks(data.summary).map(block => block.text).join('\n'),
+          firstKeptEntryId: typeof shadowed?.end === 'number' ? `dsh-${shadowed.end + 1}` : '',
+          tokensBefore: Number(data.shadowedTokenCount ?? 0),
+          ...(usage === undefined ? {} : { usage }),
+          fromHook: false,
         },
         fromExtension: false,
-        reason: 'threshold',
+        reason: compactionReason(data),
         willRetry: false,
       }, eventContext).catch(error => warn('session_compact', error))
     }
@@ -1262,12 +1361,12 @@ function subscribeLifecycle(ctx: Context, state: RuntimeState): void {
         state.lastLoggedModels.set(agent, String(model))
       }
     }
-    const message = messageFromSessionEvent(event)
-    if (message !== undefined) {
-      void dispatch(state, 'message_start', { type: 'message_start', message }, eventContext)
-        .then(() => dispatch(state, 'message_end', { type: 'message_end', message }, eventContext))
-        .catch(error => warn('message lifecycle', error))
-    }
+    messageProjection = messageProjection.then(async () => {
+      const message = await messageFromSessionEvent(ctx, event)
+      if (message === undefined) return
+      await dispatch(state, 'message_start', { type: 'message_start', message }, eventContext)
+      await dispatch(state, 'message_end', { type: 'message_end', message }, eventContext)
+    }).catch(error => warn('message lifecycle', error))
     if (type === 'turn/end') {
       const data = event.data as UnknownRecord
       const turnIndex = Number(data.turn ?? 1) - 1
@@ -1304,13 +1403,13 @@ function subscribeLifecycle(ctx: Context, state: RuntimeState): void {
     // handlers would receive an end without ever having seen the start.
     if (isSubagentOrigin(exec.agent as unknown as UnknownRecord | undefined)) return
     const agent = exec.agent as unknown as UnknownRecord | undefined
-    void dispatch(state, 'tool_execution_end', {
+    void (async () => dispatch(state, 'tool_execution_end', {
       type: 'tool_execution_end',
       toolCallId: exec.callId,
       toolName: exec.name,
-      result: { content: dshToPiContent(result.content), details: result.meta ?? null },
+      result: { content: await dshToPiContent(ctx, result.content), details: result.meta ?? null },
       isError: result.isError,
-    }, contextFor(ctx, state, agent, exec.signal)).catch(error => warn('tool_execution_end', error))
+    }, contextFor(ctx, state, agent, exec.signal)))().catch(error => warn('tool_execution_end', error))
   })
 
   cordis.effect(() => async () => {
@@ -1374,7 +1473,7 @@ function subscribeInterceptors(ctx: Context, state: RuntimeState): void {
       toolName: exec.name,
       toolCallId: exec.callId,
       input: cloneJson(exec.arguments),
-      content: dshToPiContent(result.content),
+      content: await dshToPiContent(ctx, result.content),
       details: result.meta ?? null,
       isError: result.isError,
       usage: undefined,
@@ -1389,7 +1488,7 @@ function subscribeInterceptors(ctx: Context, state: RuntimeState): void {
     if (event.isError === false && result.isError) {
       logger(ctx).warn('[pi2dsh] a Pi tool_result hook attempted to recover a DSH error; error recovery was ignored')
     }
-    if (!jsonEqual(event.content, dshToPiContent(result.content))) return { kind: 'accept', content }
+    if (!jsonEqual(event.content, await dshToPiContent(ctx, result.content))) return { kind: 'accept', content }
     return downstream
   })
 
@@ -1461,9 +1560,31 @@ function subscribeInterceptors(ctx: Context, state: RuntimeState): void {
     return { ...decision, messages: transformed }
   })
 
+  // Pi tools contribute two things to the system prompt: a one-line
+  // `promptSnippet` for the "Available tools" list (without which Pi omits the
+  // tool from that list entirely) and `promptGuidelines` bullets that apply
+  // only while the tool is active. Both were being dropped on registration, so
+  // a migrated tool that documents itself through them documented nothing.
+  //
+  // They belong in a registered SECTION, not in this bridge's waterfall
+  // rewrite: DSH orders sections itself, and 100-199 is its own tool-guidance
+  // band — so a Pi tool's guidance lands exactly where DSH's does.
+  const systemPrompt = optionalService<{ section(section: UnknownRecord): () => void }>(ctx, 'systemPrompt')
+  if (systemPrompt !== undefined) {
+    ctx.effect(() => systemPrompt.section({
+      name: 'pi2dsh:tool-guidance',
+      order: 150,
+      text: () => piToolPromptContribution(ctx, state),
+    }))
+  }
+
   cordis.on('system-prompt/assemble', async (assembly: UnknownRecord, assembleContext: UnknownRecord, next: () => Promise<UnknownRecord>) => {
     const downstream = await next()
-    if ((state.handlers.get('before_agent_start')?.length ?? 0) === 0) return downstream
+    // Recorded on EVERY assembly, before any gate: this is the value
+    // `ctx.getSystemPrompt()` reports and the one the before_agent_start event
+    // carries. Deciding whether to record it by whether some package happens
+    // to subscribe to before_agent_start left a package that only READS the
+    // prompt reading an empty string for the life of the session.
     const original = renderPrompt(downstream as never)
     state.currentSystemPrompt = original
     const agent = (assembleContext.agent ?? assembleContext.scope) as UnknownRecord | undefined
@@ -1478,6 +1599,7 @@ function subscribeInterceptors(ctx: Context, state: RuntimeState): void {
     // No live agent (diagnostics, compositions without the agent loop): keep
     // the assembly-time dispatch so systemPrompt-replacement packages still
     // run; Pi's prompt/images/custom-message surfaces need a real turn.
+    if ((state.handlers.get('before_agent_start')?.length ?? 0) === 0) return downstream
     const event: UnknownRecord = {
       type: 'before_agent_start', prompt: '', systemPrompt: original, systemPromptOptions: {},
     }
@@ -1497,9 +1619,9 @@ function subscribeInterceptors(ctx: Context, state: RuntimeState): void {
 // Project one not-yet-entered DSH message as the Pi message shape context
 // handlers expect: a piCustomType source marker restores Pi's role:"custom"
 // identity, everything else is a user message.
-function piShapeOfPending(message: UnknownRecord): UnknownRecord {
+async function piShapeOfPending(ctx: Context, message: UnknownRecord): Promise<UnknownRecord> {
   const source = message.source as UnknownRecord | undefined
-  const content = dshToPiContent((message.content ?? []) as ContentBlock[])
+  const content = await dshToPiContent(ctx, (message.content ?? []) as ContentBlock[])
   return typeof source?.piCustomType === 'string'
     ? { role: 'custom', customType: source.piCustomType, content }
     : { role: 'user', content }
@@ -1520,7 +1642,7 @@ async function applyPiContextTransform(
   const session = agentSession(agent)
   const history: UnknownRecord[] = []
   for (const event of ((session?.events ?? []) as UnknownRecord[])) {
-    const projected = messageFromSessionEvent(event)
+    const projected = await messageFromSessionEvent(ctx, event)
     if (projected === undefined) continue
     if (event.type === 'user/message') {
       const customType = ((event.data as UnknownRecord | undefined)?.source as UnknownRecord | undefined)?.piCustomType
@@ -1531,7 +1653,7 @@ async function applyPiContextTransform(
     }
     history.push(projected)
   }
-  const projectedPending = pending.map(piShapeOfPending)
+  const projectedPending = await Promise.all(pending.map(message => piShapeOfPending(ctx, message)))
   const event: UnknownRecord = { type: 'context', messages: [...history, ...projectedPending] }
   const results = await dispatch(state, 'context', event, contextFor(ctx, state, agent, signal))
   let current = event.messages as UnknownRecord[]
@@ -1935,6 +2057,37 @@ function toolRuntime(ctx: Context, agent?: UnknownRecord): {
   return scoped?.tools ?? (ctx as unknown as { tools: ReturnType<typeof toolRuntime> }).tools
 }
 
+/**
+ * The system-prompt text a package's ACTIVE tools contribute.
+ *
+ * Pi renders `promptSnippet` into its "Available tools" list and
+ * `promptGuidelines` into its "Guidelines" bullets. DSH assembles its prompt
+ * from ordered sections, so both arrive as one section in DSH's tool-guidance
+ * band, headed the way Pi heads them.
+ * @param ctx - context used to read which tools are active.
+ * @param state - runtime state holding the registered Pi tools.
+ * @returns the section text, empty when no active Pi tool contributes any.
+ */
+function piToolPromptContribution(ctx: Context, state: RuntimeState): string {
+  const active = new Set(getActiveTools(ctx, state))
+  const snippets: string[] = []
+  const guidelines: string[] = []
+  for (const [name, tool] of state.tools) {
+    if (!active.has(name)) continue
+    const snippet = tool.promptSnippet
+    if (typeof snippet === 'string' && snippet.trim().length > 0) snippets.push(`- ${snippet.trim()}`)
+    const bullets = tool.promptGuidelines
+    if (!Array.isArray(bullets)) continue
+    for (const bullet of bullets) {
+      if (typeof bullet === 'string' && bullet.trim().length > 0) guidelines.push(`- ${bullet.trim()}`)
+    }
+  }
+  const parts: string[] = []
+  if (snippets.length > 0) parts.push(`Available tools:\n${snippets.join('\n')}`)
+  if (guidelines.length > 0) parts.push(`Guidelines:\n${guidelines.join('\n')}`)
+  return parts.join('\n\n')
+}
+
 function getActiveTools(ctx: Context, state: RuntimeState): string[] {
   const agent = currentAgent(state)
   return toolRuntime(ctx, agent).schemas(agent).map(tool => tool.name)
@@ -2127,6 +2280,35 @@ function registerCommand(ctx: Context, state: RuntimeState, command: PiCommand):
   logger(ctx).warn(`[pi2dsh] command /${command.name} was not registered: ${lastError instanceof Error ? lastError.message : String(lastError)}`)
 }
 
+/**
+ * DSH's own session title service, when the profile mounts it.
+ *
+ * Pi's "session name" and DSH's "session title" are the same fact under two
+ * names, and DSH's is the one every DSH surface displays. This bridge used to
+ * keep the name only in its own sidecar, so a package could rename the session
+ * and nothing the user looks at ever changed — while `getSessionName()` read
+ * back a name DSH had never adopted, and DSH's own generated titles were
+ * invisible to packages entirely.
+ */
+interface DshSessionTitleService {
+  get(session: unknown): { title?: unknown } | undefined
+  rename(session: unknown, title: string): unknown
+}
+
+/**
+ * The session's current name: DSH's title when a title service is mounted,
+ * this bridge's sidecar otherwise (and as the fallback for a session named
+ * before the service was there).
+ * @param ctx - the cordis context to resolve the optional service from.
+ * @param state - runtime state holding the sidecar.
+ * @param session - the live DSH session.
+ */
+function sessionNameOf(ctx: Context, state: RuntimeState, session: { id: string }): string | undefined {
+  const titles = optionalService<DshSessionTitleService>(ctx, 'sessionTitle')
+  const title = titles?.get(session)?.title
+  return typeof title === 'string' && title.length > 0 ? title : state.bridge.getName(session.id)
+}
+
 function requireSession(state: RuntimeState, operation: string): { id: string; events: unknown } {
   const agent = currentAgent(state)
   const session = agentSession(agent)
@@ -2268,17 +2450,23 @@ function createPiApi(ctx: Context, state: RuntimeState): UnknownRecord {
     },
     setSessionName(name: string) {
       const session = requireSession(state, 'setSessionName')
-      state.bridge.setName(session.id, String(name))
+      const titles = optionalService<DshSessionTitleService>(ctx, 'sessionTitle')
+      // DSH's title is durable, pins against automatic regeneration, and is
+      // what its surfaces show — so it is where the name goes. The sidecar
+      // stays the fallback for a composition that mounts no title service.
+      // A blank name is the one case that stays local: DSH refuses a title
+      // with no visible characters, while Pi accepts one.
+      if (titles !== undefined && String(name).trim().length > 0) titles.rename(session, String(name))
+      else state.bridge.setName(session.id, String(name))
       void dispatch(state, 'session_info_changed', {
         type: 'session_info_changed',
-        name: state.bridge.getName(session.id),
+        name: sessionNameOf(ctx, state, session),
       }, contextFor(ctx, state, currentAgent(state), undefined))
         .catch(error => logger(ctx).warn(`[pi2dsh] session_info_changed handler failed: ${String(error)}`))
     },
     getSessionName() {
-      const agent = currentAgent(state)
-      const session = agentSession(agent)
-      return session === undefined ? undefined : state.bridge.getName(session.id)
+      const session = agentSession(currentAgent(state))
+      return session === undefined ? undefined : sessionNameOf(ctx, state, session)
     },
     setLabel(entryId: string, label: string | undefined) {
       const session = requireSession(state, 'setLabel')
@@ -2324,10 +2512,15 @@ function createPiApi(ctx: Context, state: RuntimeState): UnknownRecord {
         ...(typeof model?.id === 'string' ? { model: model.id } : {}),
       }
       if (override.model === undefined) return false
+      // Read before the write: this used to read the map back AFTER setting it,
+      // so `previousModel` was the model just selected and every handler saw
+      // "changed from X to X". It also has to be a Pi Model — the map holds a
+      // DSH-shaped `{provider, model}` route, which is not what Pi hands a
+      // model_select handler.
+      const previousModel = currentPiModel(state, agent)
       state.modelOverrides.set(agent, override)
-      const previous = state.modelOverrides.get(agent)
       void dispatch(state, 'model_select', {
-        type: 'model_select', model, previousModel: previous, source: 'set',
+        type: 'model_select', model, previousModel, source: 'set',
       }, contextFor(ctx, state, agent, undefined))
         .catch(error => logger(ctx).warn(`[pi2dsh] model_select handler failed: ${String(error)}`))
       return true
@@ -2641,7 +2834,7 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
     },
     piContentToDsh: content => piToDshContent(ctx, content),
     deliver: (agent, message, mode) => deliverAgentMessage(agent as DshAgent, message, mode),
-    messageFromSessionEvent,
+    messageFromSessionEvent: event => messageFromSessionEvent(ctx, event),
     messageSource: state.messageSource,
     packageName: state.packageName,
   }, subagentOptions))
@@ -2695,6 +2888,8 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
 }
 
 export const runtimeInternals = {
+  compactionReason,
+  dshToPiContent,
   expandPrompt,
   isSubagentOrigin,
   normalizeToolResult,
