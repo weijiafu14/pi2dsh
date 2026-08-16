@@ -1,7 +1,8 @@
 import { execFile as execFileCallback } from 'node:child_process'
-import { chmod, mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
+import { chmod, mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { builtinModules } from 'node:module'
 import { promisify } from 'node:util'
 import { fileURLToPath } from 'node:url'
 import { afterEach, describe, expect, it } from 'vitest'
@@ -40,6 +41,70 @@ async function runDsh(home: string, args: string[]): Promise<{ stdout: string; s
     maxBuffer: 8 * 1024 * 1024,
   })
 }
+
+describe('the embedded runtime declares every package it imports', () => {
+  it('derives the bundle dependencies from the emitted modules, not a hand-kept list', async () => {
+    // The list used to be written out by hand beside the bundler output, and
+    // it drifted the moment a dependency was added to pi2dsh without being
+    // copied there — five were missing, so a converted bundle installed
+    // cleanly and then failed to start with ERR_MODULE_NOT_FOUND in every
+    // clean profile. Reading the imports back off the emitted modules is what
+    // makes that impossible; this test is the guard on that property.
+    const scratch = await mkdtemp(join(tmpdir(), 'pi2dsh-bundle-deps-'))
+    cleanup.push(scratch)
+    const source = join(scratch, 'pkg')
+    const bundle = join(scratch, 'bundle')
+    await mkdir(source, { recursive: true })
+    await writeFile(join(source, 'package.json'), JSON.stringify({
+      name: '@pi2dsh-fixtures/deps', version: '0.0.0', type: 'module', pi: { extensions: ['e.js'] },
+    }))
+    await writeFile(join(source, 'e.js'), 'export default function (pi) {}\n')
+    const pkg = await resolvePiPackage(source)
+    try {
+      await generateBundle(pkg, { outDir: bundle })
+    } finally {
+      await pkg.dispose()
+    }
+
+    const generated = JSON.parse(await readFile(join(bundle, 'package.json'), 'utf8')) as {
+      dependencies?: Record<string, string>
+      peerDependencies?: Record<string, string>
+    }
+    const declared = new Set([
+      ...Object.keys(generated.dependencies ?? {}),
+      ...Object.keys(generated.peerDependencies ?? {}),
+    ])
+
+    // Every bare import in the emitted runtime must be declared or supplied by
+    // the host (a @deepseek-ai/* package comes from the profile's bundles).
+    const imported = new Set<string>()
+    const walk = async (directory: string): Promise<void> => {
+      for (const entry of await readdir(directory, { withFileTypes: true })) {
+        const path = join(directory, entry.name)
+        if (entry.isDirectory()) { await walk(path); continue }
+        if (!entry.name.endsWith('.mjs')) continue
+        const text = await readFile(path, 'utf8')
+        for (const match of text.matchAll(/(?:^|[^.\w$])(?:from|import)\s*\(?\s*["']([^"'\n]+)["']/g)) {
+          const specifier = match[1] ?? ''
+          if (specifier.startsWith('.') || specifier.startsWith('/') || specifier.startsWith('node:')) continue
+          if (builtinModules.includes(specifier)) continue
+          if (!/^(?:@[a-z0-9-~][a-z0-9-._~]*\/)?[a-z0-9-~][a-z0-9-._~]*(?:\/[^\s"']*)?$/.test(specifier)) continue
+          const parts = specifier.split('/')
+          imported.add(specifier.startsWith('@') ? parts.slice(0, 2).join('/') : parts[0]!)
+        }
+      }
+    }
+    await walk(join(bundle, 'runtime'))
+
+    const undeclared = [...imported]
+      .filter(name => !declared.has(name))
+      .filter(name => !name.startsWith('@deepseek-ai/'))
+      .filter(name => !name.startsWith('@earendil-works/') && !name.startsWith('@mariozechner/'))
+    expect(undeclared).toEqual([])
+    // The specific one that broke every bundle, named so a regression is legible.
+    expect(declared.has('proper-lockfile')).toBe(true)
+  })
+})
 
 describe('generated bundle through the official DSH plugin manager', () => {
   it('installs, activates, resolves its runtime, dumps into the profile tree, and removes cleanly', async () => {

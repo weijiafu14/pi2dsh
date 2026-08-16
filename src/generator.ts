@@ -1,4 +1,5 @@
 import { cp, lstat, mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises'
+import { builtinModules } from 'node:module'
 import { basename, dirname, extname, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parse as parseYaml } from 'yaml'
@@ -181,6 +182,7 @@ function generatedPackageJson(
   runtimeSpec: string | undefined,
   runtimePackages: ReadonlySet<string>,
   hasSkills: boolean,
+  embeddedRuntimeDeps: EmbeddedRuntimeDeps,
 ): Record<string, unknown> {
   const declaredDependencies = {
     ...stringRecord(pkg.packageJson.dependencies),
@@ -203,13 +205,9 @@ function generatedPackageJson(
   const dependencies = {
     ...Object.fromEntries(Object.entries(declaredRuntime).filter(([name]) => !SHIMMED_PI_HOST_PACKAGES.has(name))),
     ...Object.fromEntries(externalRuntimePackages.sort().map(name => [name, declaredDependencies[name]])),
-    // The embedded runtime's own runtime dependencies (vendored Pi width math
-    // uses get-east-asian-width; the pi-tui shim re-exports marked; typebox is
-    // the host-provided schema library Pi's loader gives every extension;
-    // vendored Pi bash tooling spawns through cross-spawn exactly as Pi does).
-    ...(runtimeSpec === undefined
-      ? { jiti: '^2.7.0', 'get-east-asian-width': '^1.6.0', marked: '^16.4.1', typebox: '^1.0.4', 'cross-spawn': '^7.0.6', diff: '^9.0.0' }
-      : {}),
+    // The embedded runtime's own dependencies, read back off the modules that
+    // were just emitted into the bundle rather than listed by hand here.
+    ...embeddedRuntimeDeps.dependencies,
     // The bridge's own openai-completions client (openai SDK) backs the
     // single model directory's most common wire protocol; the rarer apis
     // lazily use a real pi-ai when a mounted package's dependency tree
@@ -246,6 +244,7 @@ function generatedPackageJson(
           peerDependencies: {
             '@deepseek-ai/dsh-llm': '^0.1.0-rc.6',
             '@deepseek-ai/dsh-system-prompt': '^0.1.0-rc.6',
+            ...embeddedRuntimeDeps.peerDependencies,
           },
         }
       : {}),
@@ -292,7 +291,7 @@ async function firstExisting(paths: string[]): Promise<string> {
   throw new Error(`cannot locate pi2dsh runtime artifact; tried: ${paths.join(', ')}`)
 }
 
-async function copyEmbeddedRuntime(outDir: string): Promise<void> {
+async function copyEmbeddedRuntime(outDir: string): Promise<EmbeddedRuntimeDeps> {
   const moduleDir = dirname(fileURLToPath(import.meta.url))
   const runtimeSource = await firstExisting([
     join(moduleDir, 'runtime.mjs'),
@@ -321,6 +320,82 @@ async function copyEmbeddedRuntime(outDir: string): Promise<void> {
   await cp(join(targetRoot, 'runtime.mjs'), join(targetRoot, 'pi2dsh-runtime.mjs'))
   const license = await firstExisting([join(moduleDir, '../LICENSE'), join(moduleDir, '../../LICENSE')])
   await cp(license, join(outDir, 'PI2DSH-LICENSE'))
+  const manifest = await firstExisting([join(moduleDir, '../package.json'), join(moduleDir, '../../package.json')])
+  const own = JSON.parse(await readFile(manifest, 'utf8')) as { dependencies?: unknown, peerDependencies?: unknown }
+  return embeddedRuntimeDependencies(targetRoot, stringRecord(own.dependencies), stringRecord(own.peerDependencies))
+}
+
+/**
+ * The npm packages the EMBEDDED runtime imports, read from the emitted files.
+ *
+ * This used to be a hand-kept list beside the bundler output, and it drifted
+ * the moment a dependency was added to this package without being copied
+ * there too — producing a bundle that installs cleanly and then fails to load
+ * with ERR_MODULE_NOT_FOUND on the first start, in every clean profile.
+ * Reading the imports back off the emitted modules cannot drift.
+ * @param runtimeDir - the bundle's `runtime/` directory, already populated.
+ * @param declared - this package's own dependency versions.
+ * @returns name → version range for every bare import the runtime makes.
+ */
+async function embeddedRuntimeDependencies(
+  runtimeDir: string,
+  declared: Record<string, string>,
+  declaredPeers: Record<string, string>,
+): Promise<EmbeddedRuntimeDeps> {
+  const found = new Set<string>()
+  const walk = async (directory: string): Promise<void> => {
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      const path = join(directory, entry.name)
+      if (entry.isDirectory()) { await walk(path); continue }
+      if (!entry.name.endsWith('.mjs')) continue
+      const source = await readFile(path, 'utf8')
+      // ESM specifier positions only: `from "x"`, `import "x"`, `import("x")`.
+      // The leading class rejects `Array.from("…")` and similar member calls,
+      // and the name check below rejects anything that is not a package
+      // specifier — a bare regex over the text matches string literals too.
+      for (const match of source.matchAll(/(?:^|[^.\w$])(?:from|import)\s*\(?\s*["']([^"'\n]+)["']/g)) {
+        const specifier = match[1] ?? ''
+        // Relative and builtin specifiers need no declaration.
+        if (specifier.startsWith('.') || specifier.startsWith('/') || specifier.startsWith('node:')) continue
+        // Builtins are legal without the `node:` prefix, and several vendored
+        // Pi modules spell them that way.
+        if (builtinModules.includes(specifier)) continue
+        if (!/^(?:@[a-z0-9-~][a-z0-9-._~]*\/)?[a-z0-9-~][a-z0-9-._~]*(?:\/[^\s"']*)?$/.test(specifier)) continue
+        const parts = specifier.split('/')
+        found.add(specifier.startsWith('@') ? parts.slice(0, 2).join('/') : parts[0] ?? '')
+      }
+    }
+  }
+  await walk(runtimeDir)
+  const dependencies: Record<string, string> = {}
+  const peerDependencies: Record<string, string> = {}
+  for (const name of [...found].sort()) {
+    // Carried where this package carries it: a peer stays a peer, so the host
+    // keeps providing it rather than every bundle installing its own copy.
+    const version = declared[name]
+    const peer = declaredPeers[name]
+    if (version !== undefined) dependencies[name] = version
+    else if (peer !== undefined) peerDependencies[name] = peer
+    // Host infrastructure: the DSH profile's own bundles supply these, and a
+    // bundle installing its own copy would shadow the host's services.
+    else if (name.startsWith('@deepseek-ai/')) continue
+    else if (!SHIMMED_PI_HOST_PACKAGES.has(name)) {
+      // A package the runtime imports but this package does not declare is a
+      // packaging bug here, not something to paper over in every bundle.
+      throw new Error(
+        `pi2dsh: the embedded runtime imports ${JSON.stringify(name)}, which pi2dsh declares neither as a`
+        + ' dependency nor as a peer dependency — every generated bundle would fail to load with'
+        + ' ERR_MODULE_NOT_FOUND; declare it in pi2dsh\'s package.json',
+      )
+    }
+  }
+  return { dependencies, peerDependencies }
+}
+
+/** What the embedded runtime needs, split the way this package declares it. */
+interface EmbeddedRuntimeDeps {
+  dependencies: Record<string, string>
+  peerDependencies: Record<string, string>
 }
 
 function patchSource(generatedName: string, slug: string): string {
@@ -367,7 +442,9 @@ export async function generateBundle(
     report,
   }
   const runtimeSpec = options.runtimeSpec
-  if (runtimeSpec === undefined) await copyEmbeddedRuntime(outDir)
+  const embeddedRuntimeDeps = runtimeSpec === undefined
+    ? await copyEmbeddedRuntime(outDir)
+    : { dependencies: {}, peerDependencies: {} }
   const optionalSkillDeps = [...extensionSnapshot.skillScriptPackages]
     .filter(name => !SHIMMED_PI_HOST_PACKAGES.has(name) && !(name in stringRecord(pkg.packageJson.dependencies)))
   if (optionalSkillDeps.length > 0) {
@@ -375,7 +452,7 @@ export async function generateBundle(
   }
 
   await Promise.all([
-    writeFile(join(outDir, 'package.json'), `${JSON.stringify(generatedPackageJson(pkg, packageName, runtimeSpec, extensionSnapshot.runtimePackages, skillDirs.length > 0), null, 2)}\n`),
+    writeFile(join(outDir, 'package.json'), `${JSON.stringify(generatedPackageJson(pkg, packageName, runtimeSpec, extensionSnapshot.runtimePackages, skillDirs.length > 0, embeddedRuntimeDeps), null, 2)}\n`),
     writeFile(join(outDir, 'pi2dsh.manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`),
     writeFile(join(outDir, 'pi2dsh.report.json'), `${JSON.stringify(report, null, 2)}\n`),
     writeFile(join(outDir, 'index.js'), pluginSource(manifest, runtimeSpec === undefined ? './runtime/pi2dsh-runtime.mjs' : 'pi2dsh/runtime')),

@@ -314,6 +314,29 @@ threshold 和 overflow。manual 能可靠推出；自动一律报 threshold，`w
 
 ---
 
+## 四点四、真 DSH loop 端到端（标准④的那一半）
+
+契约测试和 `pnpm verify` 只证到"单元对"。按标准④，这批改动必须在**真 dsh CLI + 真模型**上跑出来才算完成。脚本：`scripts/verify-step-seams-e2e.mjs`，证据：`community/step-seams-e2e.json`。
+
+跑法是真链路：临时 HOME → 真 Pi 包写到磁盘 → 真 generator 转换 → `dsh plugin add` 装进 headless profile → `dsh --profile headless "<prompt>"` 打一轮真 turn（DeepSeek）→ 从 durable session log 和包自己记录的 handler 观测里断言。
+
+一轮跑通四个接缝：
+
+- **参数门**：工具的 `prepareArguments` 把 `times` 变成字符串、并给可选属性塞显式 null（这样不依赖模型怎么拼参数，强转必然被触发）→ 工具实际收到 `7`（number），`note` 已被剔除，keys 只剩 `["times","word"]`
+- **before_agent_start**：返回的 systemPrompt 出现在**该轮第一个** `request/header` 里（marker 命中）—— 覆写落在自己那一轮，不是下一轮
+- **顺序**：`before_agent_start → tool_execution_end:pi_repeat → turn_end`
+- **turn_end**：`toolResultCount=1`、`toolResultRoles=['toolResult']`、`finalRole='assistant'`，不再是写死的空数组
+
+凭据只从环境变量进，写任何产物前先断言它没出现在 stdout/stderr/session log/证据文件里。
+
+### 这一跑抓出的发布级 bug
+
+第一次跑直接起不来：`Cannot find package 'proper-lockfile'`。根因是 **generator 里那份内嵌 runtime 的依赖清单是手写的**（`generator.ts`），pi2dsh 自己加依赖时没同步过去 —— 漏了 **5 个**（`proper-lockfile`/`ignore`/`pacote`/`tinyglobby`/`yaml`）。也就是说**每一个转换出来的 bundle 装进干净 profile 后都会加载失败**，而单测和本地开发环境都看不见（本地有 hoisting）。
+
+修法不是补那 5 个，是**取消手写**：从刚写进 bundle 的 `runtime/*.mjs` 里把 bare import 读回来，按 pi2dsh 自己的声明分流到 dependencies / peerDependencies，`@deepseek-ai/*` 归宿主 profile 提供；遇到既非依赖也非 peer 的包**直接 throw**（宁可转换失败，也不产出装不起来的 bundle）。契约测试盯住这条性质。
+
+---
+
 ## 四点五、台账已对齐（第四节的落实）
 
 第四节点名的四处，加上今天修完后不再成立的六处，一并改了声明并重新生成 `docs/capabilities/`：
