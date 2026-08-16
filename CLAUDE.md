@@ -112,6 +112,21 @@ pi2dsh：通用 Pi Host ABI 兼容层，让 Pi 生态插件原样跑在 DeepSeek
 - 跨目录通道透传字段用白名单，禁止裸展开：DSH 对 reasoning/context 等
   名字有自己的语义（事故：Pi 的 reasoning:false 撞 DSH 的
   reasoning.efforts.length）。
+- **判"DSH 做不到"之前必须倒推，不许正推就收工**（事故：同一个问题三次给出
+  三种结论，被斥"一会一个变"）。正推＝从我们现在用的那个 API 出发，撞到第一个
+  死胡同就宣布不可能；倒推＝**从用户可见的结果出发，问这个结果的数据是从哪来
+  的**，一路查到源头——数据总得从某处来，所以倒推挡不住。三次实证：
+  ① `before_agent_start` 覆写晚一步，正推看 `agent/pre-step`（我们在用的）→
+  "结构性不可能"；倒推问"提示词是谁装配的"→ `system-prompt/assemble` 是
+  **async waterfall、装配时跑、返回值权威**，当轮就能改。
+  ② `setActiveTools` 关不掉工具，正推看 `tools.restrict()`（名字最像的）→
+  "DSH 的 scope 模型不给"；倒推问"模型看到的工具列表从哪来"→ `assembly.tools`，
+  同一个 waterfall 里直接改。
+  ③ `hasUI` 没有探针是真的，但 `registerProvider` 的 `DUPLICATE_PROVIDER`
+  是文档化行为，探一次即可拿到真值。
+  判据：**说"不能"之前，必须能说出"这个结果的数据流我追到了哪一步、断在哪个
+  具体符号上"**；说不出来就是没查完。而且结论只认实跑，读类型不算数——上面三条
+  都是在真 DSH 服务上跑出来才写进这里的。
 - **能力缺口分级处置（禁止无脑报错）**。判定顺序（事故：ctx 七件全部
   裸 throw 炸 turn，被斥"影响未知、没人知道插件还能不能用"；返工后逐条
   查证，发现大半根本不该报错）：
