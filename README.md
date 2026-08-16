@@ -284,20 +284,27 @@ Every surface a Pi package can touch, and what it maps onto. These tables are
 generated from the rules the bridge consults at runtime, so they cannot drift
 from the code.
 
+<!-- capability-table:start -->
 | Area | Pi surfaces | Status |
 |---|---|---|
 | [Tools](docs/capabilities/tools.md) | 12 | 3 same semantics · 9 mapped, difference stated |
 | [Commands, flags, editor input](docs/capabilities/commands.md) | 13 | 13 mapped, difference stated |
-| [Messages, context, agent loop](docs/capabilities/conversation.md) | 20 | 7 same semantics · 13 mapped, difference stated |
-| [Sessions & side conversations](docs/capabilities/sessions.md) | 24 | 4 same semantics · 20 mapped, difference stated |
-| [Models, providers, credentials](docs/capabilities/models.md) | 15 | 12 mapped, difference stated · 3 not available |
+| [Messages, context, agent loop](docs/capabilities/conversation.md) | 20 | 9 same semantics · 11 mapped, difference stated |
+| [Sessions & side conversations](docs/capabilities/sessions.md) | 24 | 6 same semantics · 18 mapped, difference stated |
+| [Models, providers, credentials](docs/capabilities/models.md) | 15 | 1 same semantics · 11 mapped, difference stated · 3 not available |
 | [Asking the user, rendering](docs/capabilities/interaction.md) | 24 | 4 same semantics · 20 mapped, difference stated |
-| [Project environment & resources](docs/capabilities/environment.md) | 4 | 1 same semantics · 1 mapped · 2 not available |
-| **Total** | **112** | **19 same · 88 mapped with stated differences · 5 not available** |
+| [Project environment & resources](docs/capabilities/environment.md) | 4 | 1 same semantics · 1 mapped, difference stated · 2 not available |
+| **Total** | **112** | **24 same semantics · 83 mapped, difference stated · 5 not available** |
+<!-- capability-table:end -->
 
 Plus **202 imported symbols** from Pi's three runtime packages
 (`pi-coding-agent`, `pi-tui`, `pi-ai`), served from vendored or headless
-shims — so a plugin's own Pi version pins never load.
+shims — so a plugin's own Pi version pins never load. They are listed in
+[Imported Pi runtime symbols](docs/capabilities/imports.md).
+
+Each area page states two things for every surface: what it does on DSH, and
+**how it is built** — the DSH seam, service or waterfall the mapping runs on,
+so a claim here can be checked against the harness instead of trusted.
 
 Start at the [capability index](docs/capabilities/README.md). Machine-readable:
 `pi2dsh matrix --json`.

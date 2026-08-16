@@ -1,6 +1,6 @@
 {
   "name": "pi2dsh",
-  "version": "0.12.1",
+  "version": "0.12.2",
   "description": "Bridge the Pi and DeepSeek Harness ecosystems: a general Pi Host ABI that runs unmodified Pi extensions as native DSH plugins, plus per-package conversion and MCP config translation.",
   "type": "module",
   "bin": {
@@ -49,11 +49,12 @@
     "test": "pnpm build && vitest run",
     "test:community": "pnpm build && node scripts/verify-community.mjs --generate community/runtime-results.json",
     "test:coverage": "pnpm build && vitest run --coverage",
-    "test:dsh": "pnpm build && vitest run tests/dsh-runtime.spec.ts tests/generated-bundle.spec.ts",
+    "test:dsh": "pnpm build && vitest run tests/dsh-runtime.spec.ts",
     "test:examples": "pnpm build && node scripts/verify-examples-e2e.mjs",
     "test:live": "pnpm build && node scripts/verify-live-deepseek.mjs community/live-deepseek-results.json",
     "test:seams": "pnpm build && node scripts/verify-step-seams-e2e.mjs",
-    "verify": "pnpm check && pnpm test:coverage && pnpm check:docs && pnpm check:pack"
+    "verify": "pnpm check && pnpm test:coverage && pnpm check:docs && pnpm check:pack",
+    "verify:release": "pnpm verify && PI2DSH_ENGINE_SPEC=pi2dsh@$(node -p \"require('./package.json').version\") node scripts/verify-examples-e2e.mjs && node scripts/verify-step-seams-e2e.mjs"
   },
   "keywords": [
     "deepseek-harness",

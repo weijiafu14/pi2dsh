@@ -9,32 +9,182 @@ modes. Plugin-drawn cards are the one Pi UI surface pi2dsh does not draw yet.
 
 **24 Pi surfaces** — 4 same semantics · 20 mapped, difference stated.
 
-| Pi surface | Kind | Status | How it maps onto DSH |
+| Pi surface | Kind | Status | What it does on DSH |
 |---|---|---|---|
-| `registerMessageRenderer` | `pi.*` | Mapped, difference stated | Registration is accepted; DSH owns presentation, so the renderer is never invoked — matching Pi's non-TUI surfaces. |
-| `registerEntryRenderer` | `pi.*` | Mapped, difference stated | Registration is accepted; DSH owns presentation, so the renderer is never invoked — matching Pi's non-TUI surfaces. |
-| `registerMarkdownTransformer` | `pi.*` | Mapped, difference stated | Registration is accepted; DSH owns presentation, so the transformer is never invoked — matching Pi's non-TUI surfaces. |
-| `notify` | `ctx.ui.*` | Same semantics | Captured as a command result when applicable and emitted through DSH logging at the severity the caller passed (warning and error log as warnings). |
-| `setStatus` | `ctx.ui.*` | Mapped, difference stated | Accepted as a no-op because DSH owns status presentation. |
-| `setWidget` | `ctx.ui.*` | Mapped, difference stated | Accepted as a no-op because Pi terminal widgets cannot render in DSH. |
-| `select` | `ctx.ui.*` | Same semantics | Mapped to one native DSH userQuestions single-select request. |
-| `confirm` | `ctx.ui.*` | Same semantics | Mapped to one native DSH userQuestions Yes/No request. |
-| `input` | `ctx.ui.*` | Same semantics | Mapped to one native DSH userQuestions free-text request. |
-| `editor` | `ctx.ui.*` | Mapped, difference stated | Mapped to one DSH userQuestions free-text request. The prefill is shown as context but is NOT editable text: the caller receives what the user typed fresh, not an edit of the prefill. |
-| `custom` | `ctx.ui.*` | Mapped, difference stated | Resolves undefined, exactly like Pi's own rpc mode; guarded fallbacks keep working. |
-| `setWorkingMessage` | `ctx.ui.*` | Mapped, difference stated | Accepted as a no-op; DSH owns progress presentation. |
-| `setWorkingVisible` | `ctx.ui.*` | Mapped, difference stated | Accepted as a no-op; DSH owns progress presentation. |
-| `setWorkingIndicator` | `ctx.ui.*` | Mapped, difference stated | Accepted as a no-op; DSH owns progress presentation. |
-| `setHiddenThinkingLabel` | `ctx.ui.*` | Mapped, difference stated | Accepted as a no-op; DSH owns thinking presentation. |
-| `setFooter` | `ctx.ui.*` | Mapped, difference stated | Accepted as a no-op; DSH owns footer presentation. |
-| `setHeader` | `ctx.ui.*` | Mapped, difference stated | Accepted as a no-op; DSH owns header presentation. |
-| `setTitle` | `ctx.ui.*` | Mapped, difference stated | Accepted as a no-op; DSH owns window titles. |
-| `theme` | `ctx.ui.*` | Mapped, difference stated | A headless theme whose styling calls return unstyled text. |
-| `getAllThemes` | `ctx.ui.*` | Mapped, difference stated | Lists the single headless theme. |
-| `getTheme` | `ctx.ui.*` | Mapped, difference stated | Resolves only the headless theme. |
-| `setTheme` | `ctx.ui.*` | Mapped, difference stated | Accepts the headless theme; other names report an explicit error result. |
-| `getToolsExpanded` | `ctx.ui.*` | Mapped, difference stated | A bridge-local presentation flag. |
-| `setToolsExpanded` | `ctx.ui.*` | Mapped, difference stated | A bridge-local presentation flag. |
+| [`registerMessageRenderer`](#registermessagerenderer-pi) | `pi.*` | Mapped, difference stated | Registration is accepted; DSH owns presentation, so the renderer is never invoked — matching Pi's non-TUI surfaces. |
+| [`registerEntryRenderer`](#registerentryrenderer-pi) | `pi.*` | Mapped, difference stated | Registration is accepted; DSH owns presentation, so the renderer is never invoked — matching Pi's non-TUI surfaces. |
+| [`registerMarkdownTransformer`](#registermarkdowntransformer-pi) | `pi.*` | Mapped, difference stated | Registration is accepted; DSH owns presentation, so the transformer is never invoked — matching Pi's non-TUI surfaces. |
+| [`notify`](#notify-ctxui) | `ctx.ui.*` | Same semantics | Captured as a command result when applicable and emitted through DSH logging at the severity the caller passed (warning and error log as warnings). |
+| [`setStatus`](#setstatus-ctxui) | `ctx.ui.*` | Mapped, difference stated | Accepted as a no-op because DSH owns status presentation. |
+| [`setWidget`](#setwidget-ctxui) | `ctx.ui.*` | Mapped, difference stated | Accepted as a no-op because Pi terminal widgets cannot render in DSH. |
+| [`select`](#select-ctxui) | `ctx.ui.*` | Same semantics | Mapped to one native DSH userQuestions single-select request. |
+| [`confirm`](#confirm-ctxui) | `ctx.ui.*` | Same semantics | Mapped to one native DSH userQuestions Yes/No request. |
+| [`input`](#input-ctxui) | `ctx.ui.*` | Same semantics | Mapped to one native DSH userQuestions free-text request. |
+| [`editor`](#editor-ctxui) | `ctx.ui.*` | Mapped, difference stated | Mapped to one DSH userQuestions free-text request. The prefill is shown as context but is NOT editable text: the caller receives what the user typed fresh, not an edit of the prefill. |
+| [`custom`](#custom-ctxui) | `ctx.ui.*` | Mapped, difference stated | Resolves undefined, exactly like Pi's own rpc mode; guarded fallbacks keep working. |
+| [`setWorkingMessage`](#setworkingmessage-ctxui) | `ctx.ui.*` | Mapped, difference stated | Accepted as a no-op; DSH owns progress presentation. |
+| [`setWorkingVisible`](#setworkingvisible-ctxui) | `ctx.ui.*` | Mapped, difference stated | Accepted as a no-op; DSH owns progress presentation. |
+| [`setWorkingIndicator`](#setworkingindicator-ctxui) | `ctx.ui.*` | Mapped, difference stated | Accepted as a no-op; DSH owns progress presentation. |
+| [`setHiddenThinkingLabel`](#sethiddenthinkinglabel-ctxui) | `ctx.ui.*` | Mapped, difference stated | Accepted as a no-op; DSH owns thinking presentation. |
+| [`setFooter`](#setfooter-ctxui) | `ctx.ui.*` | Mapped, difference stated | Accepted as a no-op; DSH owns footer presentation. |
+| [`setHeader`](#setheader-ctxui) | `ctx.ui.*` | Mapped, difference stated | Accepted as a no-op; DSH owns header presentation. |
+| [`setTitle`](#settitle-ctxui) | `ctx.ui.*` | Mapped, difference stated | Accepted as a no-op; DSH owns window titles. |
+| [`theme`](#theme-ctxui) | `ctx.ui.*` | Mapped, difference stated | A headless theme whose styling calls return unstyled text. |
+| [`getAllThemes`](#getallthemes-ctxui) | `ctx.ui.*` | Mapped, difference stated | Lists the single headless theme. |
+| [`getTheme`](#gettheme-ctxui) | `ctx.ui.*` | Mapped, difference stated | Resolves only the headless theme. |
+| [`setTheme`](#settheme-ctxui) | `ctx.ui.*` | Mapped, difference stated | Accepts the headless theme; other names report an explicit error result. |
+| [`getToolsExpanded`](#gettoolsexpanded-ctxui) | `ctx.ui.*` | Mapped, difference stated | A bridge-local presentation flag. |
+| [`setToolsExpanded`](#settoolsexpanded-ctxui) | `ctx.ui.*` | Mapped, difference stated | A bridge-local presentation flag. |
+
+## How each one is built
+
+Every surface below names the DSH mechanism that carries it — the seam, service
+or waterfall — so the mapping can be checked against the harness rather than
+taken on trust.
+
+### `registerMessageRenderer` <a id="registermessagerenderer-pi"></a>
+
+`pi.*` · Mapped, difference stated
+
+Kept in bridge state and readable back; no DSH surface consumes it.
+
+### `registerEntryRenderer` <a id="registerentryrenderer-pi"></a>
+
+`pi.*` · Mapped, difference stated
+
+Kept in bridge state and readable back; no DSH surface consumes it.
+
+### `registerMarkdownTransformer` <a id="registermarkdowntransformer-pi"></a>
+
+`pi.*` · Mapped, difference stated
+
+Kept in bridge state and readable back; no DSH surface consumes it.
+
+### `notify` <a id="notify-ctxui"></a>
+
+`ctx.ui.*` · Same semantics
+
+Written to the DSH logger at the severity the caller passed, and returned as the command result when the call happens inside one.
+
+### `setStatus` <a id="setstatus-ctxui"></a>
+
+`ctx.ui.*` · Mapped, difference stated
+
+Nothing is wired: DSH owns this part of the surface and draws it itself. The call is accepted and returns so a package that decorates a terminal keeps running.
+
+### `setWidget` <a id="setwidget-ctxui"></a>
+
+`ctx.ui.*` · Mapped, difference stated
+
+Nothing is wired: DSH owns this part of the surface and draws it itself. The call is accepted and returns so a package that decorates a terminal keeps running.
+
+### `select` <a id="select-ctxui"></a>
+
+`ctx.ui.*` · Same semantics
+
+One native DSH UserQuestionService request carrying Pi's options as the choices. The turn really blocks until a human answers.
+
+### `confirm` <a id="confirm-ctxui"></a>
+
+`ctx.ui.*` · Same semantics
+
+One native DSH UserQuestionService request with two choices.
+
+### `input` <a id="input-ctxui"></a>
+
+`ctx.ui.*` · Same semantics
+
+One native DSH UserQuestionService free-text request.
+
+### `editor` <a id="editor-ctxui"></a>
+
+`ctx.ui.*` · Mapped, difference stated
+
+One native DSH UserQuestionService free-text request. DSH has no editable-prefill question type, so the prefill is shown in the question body and the answer comes back as fresh text.
+
+### `custom` <a id="custom-ctxui"></a>
+
+`ctx.ui.*` · Mapped, difference stated
+
+Resolves undefined, which is what Pi's own rpc mode does — a package's guarded fallback path is the intended one here.
+
+### `setWorkingMessage` <a id="setworkingmessage-ctxui"></a>
+
+`ctx.ui.*` · Mapped, difference stated
+
+Nothing is wired: DSH owns this part of the surface and draws it itself. The call is accepted and returns so a package that decorates a terminal keeps running.
+
+### `setWorkingVisible` <a id="setworkingvisible-ctxui"></a>
+
+`ctx.ui.*` · Mapped, difference stated
+
+Nothing is wired: DSH owns this part of the surface and draws it itself. The call is accepted and returns so a package that decorates a terminal keeps running.
+
+### `setWorkingIndicator` <a id="setworkingindicator-ctxui"></a>
+
+`ctx.ui.*` · Mapped, difference stated
+
+Nothing is wired: DSH owns this part of the surface and draws it itself. The call is accepted and returns so a package that decorates a terminal keeps running.
+
+### `setHiddenThinkingLabel` <a id="sethiddenthinkinglabel-ctxui"></a>
+
+`ctx.ui.*` · Mapped, difference stated
+
+Nothing is wired: DSH owns this part of the surface and draws it itself. The call is accepted and returns so a package that decorates a terminal keeps running.
+
+### `setFooter` <a id="setfooter-ctxui"></a>
+
+`ctx.ui.*` · Mapped, difference stated
+
+Nothing is wired: DSH owns this part of the surface and draws it itself. The call is accepted and returns so a package that decorates a terminal keeps running.
+
+### `setHeader` <a id="setheader-ctxui"></a>
+
+`ctx.ui.*` · Mapped, difference stated
+
+Nothing is wired: DSH owns this part of the surface and draws it itself. The call is accepted and returns so a package that decorates a terminal keeps running.
+
+### `setTitle` <a id="settitle-ctxui"></a>
+
+`ctx.ui.*` · Mapped, difference stated
+
+Nothing is wired: DSH owns this part of the surface and draws it itself. The call is accepted and returns so a package that decorates a terminal keeps running.
+
+### `theme` <a id="theme-ctxui"></a>
+
+`ctx.ui.*` · Mapped, difference stated
+
+A single headless Theme object whose styling functions return their input unchanged; DSH does the rendering.
+
+### `getAllThemes` <a id="getallthemes-ctxui"></a>
+
+`ctx.ui.*` · Mapped, difference stated
+
+Lists the one headless theme the bridge owns.
+
+### `getTheme` <a id="gettheme-ctxui"></a>
+
+`ctx.ui.*` · Mapped, difference stated
+
+Resolves the one headless theme by name.
+
+### `setTheme` <a id="settheme-ctxui"></a>
+
+`ctx.ui.*` · Mapped, difference stated
+
+Accepts the headless theme and returns Pi's explicit error result for any other name, rather than pretending a switch happened.
+
+### `getToolsExpanded` <a id="gettoolsexpanded-ctxui"></a>
+
+`ctx.ui.*` · Mapped, difference stated
+
+A bridge-local flag; nothing renders from it.
+
+### `setToolsExpanded` <a id="settoolsexpanded-ctxui"></a>
+
+`ctx.ui.*` · Mapped, difference stated
+
+A bridge-local flag; nothing renders from it.
 
 ---
 

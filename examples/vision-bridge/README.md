@@ -19,8 +19,7 @@ dsh plugin --profile web add @kassing/pi-vision
 ```
 
 That's the whole install: the pi2dsh engine mounts every Pi package you
-add to the profile — no conversion step, no generated bundles. (The
-`npx pi2dsh convert` flow still exists for unpublished/local packages.)
+add to the profile — no conversion step, no generated bundles.
 
 If an add stops with `ERR_PNPM_IGNORED_BUILDS` (pnpm blocks dependency
 build scripts by default): run `pnpm approve-builds` inside

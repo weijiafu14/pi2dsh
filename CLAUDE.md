@@ -250,6 +250,56 @@ Model 是一个对象且 getAll 同步，插件读 `model.contextWindow` 拿到 
 模型会早压缩一个数量级。catalog 里那个 resolve() 早写好了，但生产链路一次没接，
 只有测试在调）。三条都是单测和本机开发看不见的。
 
+### 五点二、发版后必须跑完整回归（铁律，用户明令）
+
+**每个版本发出去之后，立刻跑一次完整端到端回归——一条命令、全部场景、CLI 与
+Web 双端、并行跑完。**不许挑着跑，不许"这次先跑这两个"，不许发完就散。
+
+```bash
+pnpm verify:release   # verify + 全部 examples（装 npm 上刚发的那版）+ step-seams 真机
+```
+
+- 引擎必须从 **npm 装刚发的那版**（`PI2DSH_ENGINE_SPEC=pi2dsh`），不是本地
+  `file:`——裸环终验和回归是同一件事，别分两次做。
+- 场景**并行**跑（各自独立临时 DSH_HOME + 各自端口）。串行是几分钟 npm 安装和
+  浏览器启动一个接一个排队，慢到人就开始"这次先跳过"，标准就是这么烂掉的。
+- **没跑的必须 skipped 并写原因**，缺任何一个场景的结果算 failed，不算通过。
+- 事故（2026-08-16，用户当场抓）：发完 0.12.2 我只补了单个场景就去写文档，被斥
+  "左手干右手丢"。
+
+**回归必须能说出自己测的是哪个 build。**
+
+- 事故（同日）：`dsh plugin add pi2dsh` 在全新 DSH_HOME 里装到的是 **0.10.0**，
+  不是刚发的 0.12.2——pnpm 用了过期的 registry metadata 缓存（registry 的 latest
+  确实是 0.12.2，profile 里却记成 `^0.10.0`）。于是回归"发现"了两个 bug：btw 命令
+  带参数不被认领、宿主配的 contextWindow 读不到——**两个都是几周前的旧代码**，
+  在当前源码里根本不存在。我差点照着这两个假象去改产品代码。
+- 落地：`verify:release` 用 package.json 里的版本号**钉死** `pi2dsh@<version>`；
+  脚本装完**回读** `profiles/<p>/node_modules/pi2dsh/package.json` 的版本，和请求的
+  不一致就 fail，并把版本写进 `community/examples-e2e.json` 的每条结果里。
+- 判据：**任何一次回归的产物都要能回答"这证明了哪个版本"**，答不上来=证据无效。
+
+**断言必须能证伪——不能被"另一条路凑出的正确答案"骗过。**
+
+- 事故：`examples/vision-bridge` 的断言是"输出里有 green 就算过"。而 README 第 2
+  步（配 `VISION_BRIDGE_*` 指向真视觉端点）我两条 E2E 都没配 → `read_image` 返回
+  `isError: true "cannot read"` → 主模型自己 glob 找图、用 python zlib 解 PNG 像素
+  算出 RGB(0,160,0) → 答 "green" → **两端全绿，视觉链路一次都没工作过**。web 那条
+  更离谱：我加了个"页面里要出现 vision"当第二道，而页面上写的正是 "the vision
+  bridge failed because no vision model was configured"，两个关键词全中。
+- 判据：**问自己"这个断言在功能坏掉的时候会不会照样过"**。会 → 换一个只有功能
+  真工作才成立的信号（这里是那个读图工具自己的 result `isError === false`）。
+- 推论：**页面文字不能当断言**（失败提示里往往含成功关键词），要断言就读会话
+  日志里那条工具结果。
+- 同类事故：`04-side-conversation-child-view.png` 号称是子会话独立视图，实际是
+  主线程滚动截图——点击目标选的是 `getByText(/side conversation/)` 命中的内层
+  `<span>`（不响应点击），而等待条件 `SIDE_ANSWER` 在刚注入过的主线程里同样成立，
+  于是点没点进去都算过。正解：点 `role="treeitem"` 那一行，并要求**主线程那道题
+  必须从画面上消失**（这个条件只有真进了子视图才成立）。UI 截图的判据必须是
+  "只有到了目标页才成立的东西"，不能是"目标页和当前页都有的东西"。
+- 推论：example README 里写的前置配置（第 N 步）**没配就不许跑**——跑一个没配置
+  的插件，测的是别的东西。缺配置=skipped+原因，绝不是 passed。
+
 ## 六、工作流程红线
 
 - 全中文沟通；每轮汇报开头列 (a) 要求对账 (b) 本轮证据。

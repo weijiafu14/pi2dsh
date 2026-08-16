@@ -19,6 +19,9 @@
 //                    the browser the way the README does; the capture script
 //                    asserts the property the example claims — the side
 //                    answer never lands in the main conversation.
+//   vision-bridge-web  the same vision example again, but through `dsh web` in a
+//                    real browser: headless proves the bridge, this proves the
+//                    surface, and the bar for done is both.
 //
 // Usage: node scripts/verify-examples-e2e.mjs [outfile]
 //        DEEPSEEK_API_KEY=… to include the live half; without it that half
@@ -42,6 +45,38 @@ const dshRoot = process.env.PI2DSH_DSH_ROOT === undefined
 const dshBin = join(dshRoot, 'apps/cli/src/bin.ts')
 const outputPath = resolve(process.argv[2] ?? 'community/examples-e2e.json')
 const apiKey = process.env.DEEPSEEK_API_KEY
+// Which pi2dsh a run installs. The default is this working tree, because that
+// is what you want while developing. Point it at a published spec
+// (`PI2DSH_ENGINE_SPEC=pi2dsh@0.12.2`) for the bare-environment check after a
+// release: same fresh DSH_HOME, same README commands, but the engine comes off
+// the registry — which is the only way to catch what the tarball left out.
+const engineSpec = process.env.PI2DSH_ENGINE_SPEC ?? `file:${projectRoot}`
+// Where the browser scenarios put their screenshots. They default into the
+// run's scratch directory and are thrown away with it, because a regression run
+// should not rewrite repository assets. Point this at docs/posting-kit/assets
+// when you actually want to refresh the published pictures.
+const shotDir = process.env.PI2DSH_SHOT_DIR === undefined ? undefined : resolve(process.env.PI2DSH_SHOT_DIR)
+
+/**
+ * Read back which engine actually got installed, and refuse a mismatch.
+ *
+ * `dsh plugin add pi2dsh` resolves through pnpm, which can serve a stale
+ * registry metadata cache: a run asking for the published engine quietly got
+ * 0.10.0 and then "failed" for two unrelated-looking reasons that were both
+ * just old code. A regression that cannot say which build it exercised proves
+ * nothing, so the version is asserted here and written into the evidence.
+ * @param home - the DSH home the scenario installed into.
+ * @param profile - which profile received the engine.
+ */
+async function installedEngineVersion(home, profile) {
+  const manifest = join(home, 'profiles', profile, 'node_modules/pi2dsh/package.json')
+  const { version } = JSON.parse(await readFile(manifest, 'utf8'))
+  const wanted = /@(\d[^@]*)$/u.exec(engineSpec)?.[1]
+  assert(wanted === undefined || wanted === version,
+    `asked for pi2dsh@${wanted} but the profile installed ${version}`
+    + ' — pnpm served stale registry metadata; clear it or pin the version')
+  return version
+}
 
 async function filesBelow(directory) {
   const output = []
@@ -108,6 +143,47 @@ async function useDefaultModel(home, provider, model) {
 
 const results = {}
 
+// The vision example's README has a step 2 — point the plugin at a real vision
+// endpoint — and a run that skips it is not running the example. Without it the
+// turn still ANSWERS (the main model globs the disk and decodes the PNG with
+// python), so a check that only looks for the colour word passes while the
+// bridge is broken. That happened: both vision passes were green for months of
+// this session against `read_image` returning "Error: cannot read".
+const visionEnv = {
+  VISION_BRIDGE_BASE_URL: process.env.VISION_BRIDGE_BASE_URL,
+  VISION_BRIDGE_MODEL: process.env.VISION_BRIDGE_MODEL,
+  VISION_BRIDGE_API_KEY: process.env.VISION_BRIDGE_API_KEY,
+}
+const visionMissing = Object.entries(visionEnv).filter(([, value]) => (value ?? '').length === 0).map(([name]) => name)
+
+/** Session records from the one session log a scenario's home produced. */
+async function sessionRecords(home) {
+  const files = (await filesBelow(join(home, 'sessions'))).filter(path => path.endsWith('/session.jsonl'))
+  assert.equal(files.length, 1, `expected one session log, found ${files.length}`)
+  return (await readFile(files[0], 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line))
+}
+
+/**
+ * Assert the image was read through the vision path, not reconstructed.
+ *
+ * The discriminator is the image-reading tool's own result: a bridge that
+ * worked returns content, a bridge that did not returns an error the model
+ * then routes around. Only the first proves anything about this example.
+ */
+function assertVisionReallyRead(records, transcript) {
+  const reads = records.filter(record => record.type === 'tool/call' && /image/iu.test(String(record.data?.name ?? '')))
+  assert(reads.length > 0, `no image-reading tool ran at all:\n${transcript.slice(-1500)}`)
+  const failed = []
+  for (const call of reads) {
+    const result = records.find(record => record.type === 'tool/result'
+      && (record.data?.message?.content ?? []).some(block => block.toolCallId === call.data.callId))
+    const block = (result?.data?.message?.content ?? []).find(item => item.toolCallId === call.data.callId)
+    if (block?.isError === true) failed.push(`${call.data.name}: ${JSON.stringify(block.content).slice(0, 200)}`)
+  }
+  assert.equal(failed.length, 0,
+    `the image-reading tool failed, so any correct answer came from somewhere else:\n  ${failed.join('\n  ')}`)
+}
+
 // ---------------------------------------------------------------------------
 // examples/gateway-compat — offline, and the example's whole point is the wire
 // ---------------------------------------------------------------------------
@@ -159,7 +235,7 @@ async function runGatewayCompat() {
 
     const { home, runDsh } = await makeHome(scratch, { PROBE_BASE_URL: `http://127.0.0.1:${port}/v1` })
     // Exactly what the README tells the reader to install.
-    await runDsh(['plugin', '--profile', 'headless', 'add', `file:${projectRoot}`])
+    await runDsh(['plugin', '--profile', 'headless', 'add', engineSpec])
     await runDsh(['plugin', '--profile', 'headless', 'add',
       `file:${join(projectRoot, 'examples/gateway-compat/probe/pi-probe-provider')}`])
     await useJsonlSessions(home, 'headless')
@@ -192,6 +268,7 @@ async function runGatewayCompat() {
       `the turn did not complete through the declared route:\n${run.stdout}\n${run.stderr}`)
 
     results.gatewayCompat = {
+      engine: await installedEngineVersion(home, 'headless'),
       status: 'passed',
       requests: completions.length,
       roles: first.roles,
@@ -215,10 +292,14 @@ async function runVisionBridge() {
     results.visionBridge = { status: 'skipped', reason: 'DEEPSEEK_API_KEY not set' }
     return
   }
+  if (visionMissing.length > 0) {
+    results.visionBridge = { status: 'skipped', reason: `no vision endpoint configured (${visionMissing.join(', ')})` }
+    return
+  }
   const scratch = await mkdtemp(join(tmpdir(), 'pi2dsh-ex-vision-'))
   try {
-    const { home, runDsh } = await makeHome(scratch)
-    const installed = await runDsh(['plugin', '--profile', 'headless', 'add', `file:${projectRoot}`])
+    const { home, runDsh } = await makeHome(scratch, visionEnv)
+    const installed = await runDsh(['plugin', '--profile', 'headless', 'add', engineSpec])
     const installedVision = await runDsh(['plugin', '--profile', 'headless', 'add', '@kassing/pi-vision'])
     await useJsonlSessions(home, 'headless')
 
@@ -228,8 +309,8 @@ async function runVisionBridge() {
     const run = await runDsh(['--profile', 'headless',
       `What solid color fills the image at ${image} ? Answer with just the color name.`])
 
+    const records = await sessionRecords(home)
     const sessionFiles = (await filesBelow(join(home, 'sessions'))).filter(path => path.endsWith('/session.jsonl'))
-    assert.equal(sessionFiles.length, 1, `expected one session log, found ${sessionFiles.length}`)
     const rawLog = await readFile(sessionFiles[0], 'utf8')
     const captured = `${installed.stdout}${installed.stderr}${installedVision.stdout}${installedVision.stderr}${run.stdout}${run.stderr}${rawLog}`
     assert(!captured.includes(apiKey), 'credential appeared in captured test artifacts')
@@ -237,7 +318,10 @@ async function runVisionBridge() {
     const answer = `${run.stdout}\n${rawLog}`.toLowerCase()
     assert(answer.includes('green'),
       `the vision bridge did not identify the image; model said: ${run.stdout.slice(0, 400)}`)
-    results.visionBridge = { status: 'passed', image: 'solid-green.png', answeredGreen: true }
+    // The colour word alone is not evidence: without a vision endpoint the main
+    // model finds it by decoding the PNG in bash. Require the read itself.
+    assertVisionReallyRead(records, `${run.stdout}\n${rawLog}`)
+    results.visionBridge = { status: 'passed', engine: await installedEngineVersion(home, 'headless'), image: 'solid-green.png', answeredGreen: true, readThroughVision: true }
   } finally {
     await rm(scratch, { recursive: true, force: true })
   }
@@ -258,7 +342,7 @@ async function runSideConversation() {
   let web
   try {
     const { home, env, runDsh } = await makeHome(scratch)
-    await runDsh(['plugin', '--profile', 'web', 'add', `file:${projectRoot}`])
+    await runDsh(['plugin', '--profile', 'web', 'add', engineSpec])
     await runDsh(['plugin', '--profile', 'web', 'add', 'pi-btw'])
     await useJsonlSessions(home, 'web')
 
@@ -281,7 +365,7 @@ async function runSideConversation() {
 
     // The capture script IS the assertion: it drives a main-thread question
     // and then `/btw`, and fails if the side answer reaches the main thread.
-    const shots = join(scratch, 'shots')
+    const shots = shotDir ?? join(scratch, 'shots')
     await execFile('node', [join(projectRoot, 'docs/posting-kit/capture-screenshots.mjs'), shots, '--url', url], {
       cwd: projectRoot,
       env: { ...env, PLAYWRIGHT_FROM: playwrightFrom },
@@ -290,7 +374,72 @@ async function runSideConversation() {
     }).catch(error => { console.log(String(error.stdout ?? '')); throw error })
     const captured = await readdir(shots)
     assert(captured.length > 0, 'the capture run produced no screenshots')
-    results.sideConversation = { status: 'passed', screenshots: captured.sort() }
+    results.sideConversation = { status: 'passed', engine: await installedEngineVersion(home, 'web'), screenshots: captured.sort() }
+  } finally {
+    web?.kill('SIGTERM')
+    await rm(scratch, { recursive: true, force: true })
+  }
+}
+
+// ---------------------------------------------------------------------------
+// examples/vision-bridge, on the WEB surface
+// ---------------------------------------------------------------------------
+// The headless pass above proves the bridge; this one proves the surface. Our
+// own completion bar is CLI *and* web, and "works headless, breaks in the
+// browser" is a failure mode this project has actually shipped before.
+async function runVisionBridgeWeb() {
+  if (apiKey === undefined || apiKey.length === 0) {
+    results.visionBridgeWeb = { status: 'skipped', reason: 'DEEPSEEK_API_KEY not set' }
+    return
+  }
+  if (visionMissing.length > 0) {
+    results.visionBridgeWeb = { status: 'skipped', reason: `no vision endpoint configured (${visionMissing.join(', ')})` }
+    return
+  }
+  const playwrightFrom = process.env.PLAYWRIGHT_FROM ?? join(dshRoot, 'apps/web')
+  const scratch = await mkdtemp(join(tmpdir(), 'pi2dsh-ex-vision-web-'))
+  let web
+  try {
+    const { home, env, runDsh } = await makeHome(scratch, visionEnv)
+    await runDsh(['plugin', '--profile', 'web', 'add', engineSpec])
+    await runDsh(['plugin', '--profile', 'web', 'add', '@kassing/pi-vision'])
+    await useJsonlSessions(home, 'web')
+
+    const port = Number(process.env.VISION_PORT ?? 5188)
+    web = spawn('node', ['--import', 'tsx/esm', dshBin, '--profile', 'web', '--port', String(port)], {
+      cwd: dshRoot, env, stdio: ['ignore', 'pipe', 'pipe'],
+    })
+    let webLog = ''
+    web.stdout.on('data', chunk => { webLog += String(chunk) })
+    web.stderr.on('data', chunk => { webLog += String(chunk) })
+    const url = `http://127.0.0.1:${port}`
+    const deadline = Date.now() + 60_000
+    for (;;) {
+      if (web.exitCode !== null) throw new Error(`dsh web exited on startup:\n${webLog}`)
+      const up = await fetch(url).then(() => true).catch(() => false)
+      if (up) break
+      if (Date.now() > deadline) throw new Error(`dsh web never came up:\n${webLog}`)
+      await new Promise(done => setTimeout(done, 500))
+    }
+
+    const image = join(projectRoot, 'examples/vision-bridge/test-images/solid-green.png')
+    await stat(image)
+    const shots = shotDir ?? join(scratch, 'shots')
+    await execFile('node', [
+      join(projectRoot, 'docs/posting-kit/capture-vision.mjs'), shots, '--url', url, '--image', image,
+    ], {
+      cwd: projectRoot,
+      env: { ...env, PLAYWRIGHT_FROM: playwrightFrom },
+      timeout: 300_000,
+      maxBuffer: 16 * 1024 * 1024,
+    }).catch(error => { console.log(String(error.stdout ?? '')); throw error })
+    const captured = await readdir(shots)
+    assert(captured.length > 0, 'the vision web run produced no screenshot')
+    // Read the session log rather than the screen: a page that says "the vision
+    // bridge failed" still contains the words "vision" and "green", which is
+    // exactly how a DOM-text assertion passed on a broken run.
+    assertVisionReallyRead(await sessionRecords(home), webLog)
+    results.visionBridgeWeb = { status: 'passed', engine: await installedEngineVersion(home, 'web'), screenshots: captured.sort(), readThroughVision: true }
   } finally {
     web?.kill('SIGTERM')
     await rm(scratch, { recursive: true, force: true })
@@ -334,7 +483,7 @@ async function runCustomGateways() {
     ].join('\n'))
 
     const { home, runDsh } = await makeHome(scratch)
-    await runDsh(['plugin', '--profile', 'headless', 'add', `file:${projectRoot}`])
+    await runDsh(['plugin', '--profile', 'headless', 'add', engineSpec])
     await runDsh(['plugin', '--profile', 'headless', 'add', `file:${source}`])
     await useJsonlSessions(home, 'headless')
     // The README's own settings shape, pointed at the local endpoint.
@@ -393,7 +542,7 @@ async function runCustomGateways() {
     // The Pi-shaped fields survive the round trip, which is the example's point.
     assert.equal(entry.id, 'deepseek-chat')
     assert.equal(entry.contextWindow, 131072)
-    results.customGateways = { status: 'passed', seenByPackage: entry }
+    results.customGateways = { status: 'passed', engine: await installedEngineVersion(home, 'headless'), seenByPackage: entry }
   } finally {
     await rm(scratch, { recursive: true, force: true })
   }
@@ -402,26 +551,43 @@ async function runCustomGateways() {
 // ONLY=<name> runs a single example, for iterating on one without paying for
 // the npm installs and browser runs of the others.
 const only = process.env.ONLY
-const failures = []
-for (const [name, run] of [
-  ['gateway-compat', runGatewayCompat],
-  ['vision-bridge', runVisionBridge],
-  ['side-conversation', runSideConversation],
-  ['custom-gateways', runCustomGateways],
-]) {
-  if (only !== undefined && only !== name) continue
-  try {
-    await run()
-    const status = results[Object.keys(results).at(-1)]?.status ?? 'passed'
-    console.log(`[examples-e2e] ${name}: ${status}`)
-  } catch (error) {
-    failures.push(`${name}: ${error instanceof Error ? error.message : String(error)}`)
-    console.error(`[examples-e2e] ${name}: FAILED — ${error instanceof Error ? error.message : String(error)}`)
-  }
+const SCENARIOS = [
+  ['gateway-compat', runGatewayCompat, 'gatewayCompat'],
+  ['vision-bridge', runVisionBridge, 'visionBridge'],
+  ['side-conversation', runSideConversation, 'sideConversation'],
+  ['vision-bridge-web', runVisionBridgeWeb, 'visionBridgeWeb'],
+  ['custom-gateways', runCustomGateways, 'customGateways'],
+]
+const selected = SCENARIOS.filter(([name]) => only === undefined || only === name)
+if (selected.length === 0) {
+  throw new Error(`ONLY=${only} matches no scenario (known: ${SCENARIOS.map(([name]) => name).join(', ')})`)
 }
 
-// side-conversation and custom-gateways drive the web surface, so they are not
-// asserted here. Naming them keeps this file honest about its own coverage.
+// Run them together. Each scenario owns a throwaway DSH_HOME and its own port,
+// so nothing is shared but wall-clock — and serially this is minutes of npm
+// installs and browser boots repeated one after another, which is how a full
+// regression turns into a thing people skip.
+const failures = []
+await Promise.all(selected.map(async ([name, run, key]) => {
+  try {
+    await run()
+    console.log(`[examples-e2e] ${name}: ${results[key]?.status ?? 'passed'}${
+      results[key]?.reason === undefined ? '' : ` — ${results[key].reason}`}`)
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    results[key] = { status: 'failed', error: message }
+    failures.push(`${name}: ${message}`)
+    console.error(`[examples-e2e] ${name}: FAILED — ${message}`)
+  }
+}))
+
+// A scenario that never reported is a hole in the run, not a pass.
+for (const [name, , key] of selected) {
+  if (results[key] === undefined) {
+    results[key] = { status: 'failed', error: 'the scenario reported no result' }
+    failures.push(`${name}: the scenario reported no result`)
+  }
+}
 
 
 await mkdir(resolve(outputPath, '..'), { recursive: true })

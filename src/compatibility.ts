@@ -3,9 +3,25 @@ import type { CompatibilityLevel } from './types.js'
 interface Rule {
   level: CompatibilityLevel
   detail: string
+  /** How the mapping is built — the DSH seam or service that carries it. */
+  design?: string
+}
+
+/**
+ * A Pi extension surface. `design` is REQUIRED here and optional on Rule: an
+ * imported symbol is served by a shim family the docs describe once, but every
+ * surface a package can call has to name the DSH mechanism behind it, or the
+ * documentation degrades into a list of verdicts nobody can act on. Adding a
+ * surface without one is a type error, which is the point.
+ */
+interface SurfaceRule extends Rule {
+  design: string
 }
 
 const rule = (level: CompatibilityLevel, detail: string): Rule => ({ level, detail })
+
+const surface = (level: CompatibilityLevel, detail: string, design: string): SurfaceRule =>
+  ({ level, detail, design })
 
 export const PI_CODING_AGENT_PACKAGES = Object.freeze([
   '@earendil-works/pi-coding-agent',
@@ -239,265 +255,311 @@ export const HOST_IMPORT_RULES: Readonly<Record<string, Readonly<Record<string, 
   }),
 })
 
-export const CONTEXT_RULES: Readonly<Record<string, Rule>> = Object.freeze({
-  cwd: rule('full', 'Mapped to the active DSH agent session working directory.'),
-  signal: rule('full', 'Mapped to the active DSH cancellation signal when one is available.'),
-  hasUI: rule('full', 'Reports whether a human can actually answer: false when no questions service is mounted, false when the service is mounted with no provider registered (the headless posture), and false inside a child agent, which DSH refuses to let ask.'),
-  mode: rule('partial', 'Reports rpc mode so Pi extensions can choose their documented headless fallback.'),
-  isIdle: rule('partial', 'Command contexts report idle; tool/lifecycle contexts conservatively report non-idle.'),
-  isProjectTrusted: rule('partial', 'Fails closed as untrusted because DSH does not expose Pi project-trust state.'),
-  hasPendingMessages: rule('full', 'Reads the DSH agent inbox — next-step plus next-turn input — which is exactly Pi\'s steering plus follow-up queue.'),
-  getContextUsage: rule('partial', 'Returns no Pi token-usage projection.'),
-  getSystemPrompt: rule('full', 'Returns the system prompt currently assembled by the bridge.'),
-  getSystemPromptOptions: rule('partial', 'Returns an empty Pi option projection in command contexts.'),
-  waitForIdle: rule('partial', 'Mapped to the DSH agent idle boundary when available.'),
-  sessionManager: rule('partial', 'A real read-only projection: DSH durable messages plus pi2dsh sidecar entries, exposed through Pi\'s exact 14-method surface as a single-branch tree. buildContextEntries is compaction-aware — entries a compaction summarized away are gone, exactly as they are for the model — while getEntries stays the append-only log, which is the same split Pi makes.'),
-  modelRegistry: rule('partial', 'A live registry over the ONE model directory — the DSH llm directory — projected exactly into Pi vocabulary; package-registered Pi-native routes keep api/baseUrl and the full Model shape through the round trip. DSH describes one model across two seams (a listing for directory membership, an exact per-route resolve for capacity) while Pi puts everything on one Model object read synchronously, so the projection joins them when the directory is read: entries carry contextWindow, maxTokens and reasoning, and a settings change re-reads them rather than serving the retired numbers. Custom gateways are HOST configuration (the official llm-pi-ai adapter\'s settings), never a Pi-side file: Pi\'s ~/.pi/agent/models.json is deliberately NOT read — user-facing configuration is DSH-shaped only. getProviderAuth/getApiKeyAndHeaders run Pi\'s full credential chain for package-registered providers and the host\'s configurable-provider + credentials seams for DSH routes. Host configuration may declare "<route>-vision" image-admission companions: real DSH routes that admit images, replace image blocks with explicit path-carrying notices (materialized attachment files any path-taking tool can read), and forward text-only to the original route; Pi\'s ctx.model reports the original route for a companion selection.'),
-  model: rule('partial', 'The agent\'s real provider/model route (a setModel() override wins), enriched from the projected catalog. When the selected route is an image-admission companion, ctx.model reports the ORIGINAL route with its true modalities — the generating model is the original text-only one, which is the truth extensions branching on input modalities (a vision bridge\'s activation check) need.'),
-  scopedModels: rule('full', 'Empty, carrying Pi\'s own meaning for empty: no model scope is configured, so every available model is usable. DSH has no model-scope concept to narrow it.'),
-  hasConfiguredAuth: rule('partial', 'Configuration check on the projected registry: true when the model\'s provider has a live route or package registration (not a key-liveness probe).'),
-  thinkingLevel: rule('partial', 'Reflects the level recorded by setThinkingLevel(); applied as reasoningEffort on the next request.'),
-  abort: rule('partial', 'Mapped to agent.cancel({ kind: "hook" }) on the live DSH agent.'),
-  shutdown: rule('partial', 'Pi defines shutdown behavior as host-provided (runner.ts bindExtensions); this host absorbs the request — the user owns DSH process exit — and informs the user once. The package keeps running.'),
-  compact: rule('partial', 'Pi\'s fire-and-forget trigger, translated to DSH\'s official manual compaction (ctx.compaction.compactNow on the live agent). onComplete receives the real summary text and the shadowed-content token estimate as tokensBefore; firstKeptEntryId is empty because the DSH log has no Pi entry ids. Without a compaction service the gap flows through Pi\'s onError callback and the capability ledger.'),
-  newSession: rule('partial', 'Really creates a DSH session (ctx.sessions.create) with parent lineage; withSession runs against a projection context bound to it, whose sendMessage/sendUserMessage/appendEntry write into THAT session rather than the one the call came from. DSH has no host-level "current session pointer" a plugin could move — which session the surface shows stays a host choice, announced once.'),
-  fork: rule('partial', 'Really forks on DSH\'s official prefix-fork surface (ctx.sessions.fork with lineage metadata). Anchors are durable-log entries (projected ids "dsh-<seq>"); Pi\'s default position "before" is honored, and the boundary shrinks to the nearest completed-turn edge because DSH seeds must not split an open turn. Sidecar entries cannot anchor a fork.'),
-  navigateTree: rule('partial', 'Expressed through DSH\'s session model: the DSH tree lives BETWEEN sessions (fork lineage), not inside one log, so navigation forks at the target boundary. summarize runs Pi\'s vendored branch summarizer over the abandoned durable slice (model call on the DSH llm bridge) and lands the summary as a branch_summary entry in the new session\'s projection; label lands as a label entry.'),
-  switchSession: rule('partial', 'Targets a LIVE DSH session by id (or a Pi-style path whose basename is "<id>.jsonl"); withSession runs against its projection. Switching to persisted sessions is host-owned — resume them from the DSH surface first. Which session the surface shows stays a host choice.'),
-  reload: rule('partial', 'Really remounts every mounted package\'s extension entries through a fresh loader (registrations replaced via the same-name path, event handlers reset), so edited plugin code takes effect. Skills, prompts, and themes are host-managed and reload with dsh itself.'),
+export const CONTEXT_RULES: Readonly<Record<string, SurfaceRule>> = Object.freeze({
+  cwd: surface('full', 'Mapped to the active DSH agent session working directory.', 'Read off the live DSH agent\'s session; the bridge keeps no working directory of its own.'),
+  signal: surface('full', 'Mapped to the active DSH cancellation signal when one is available.', 'The DSH cancellation signal belonging to the moment the context was built — a tool context carries its execution signal, a lifecycle context the agent\'s.'),
+  hasUI: surface('full', 'Reports whether a human can actually answer: false when no questions service is mounted, false when the service is mounted with no provider registered (the headless posture), and false inside a child agent, which DSH refuses to let ask.', 'Probed rather than guessed. The bridge registers a throwaway provider on DSH\'s UserQuestionService and reads the documented DUPLICATE_PROVIDER rejection as "a real provider is already there", then disposes it. Inside a child agent the answer is false without probing, because DSH refuses to let child agents ask.'),
+  mode: surface('partial', 'Reports rpc mode so Pi extensions can choose their documented headless fallback.', 'A constant. The bridge is an rpc host, and this is the value Pi packages branch on to take their own documented headless path.'),
+  isIdle: surface('partial', 'Command contexts report idle; tool/lifecycle contexts conservatively report non-idle.', 'Derived from which context the call arrived through: a command context is outside a step, a tool or lifecycle context is inside one.'),
+  isProjectTrusted: surface('partial', 'Fails closed as untrusted because DSH does not expose Pi project-trust state.', 'No DSH seam carries Pi\'s project-trust state, so the bridge returns the safe constant instead of inventing one. Pi\'s own ProjectTrustStore is vendored and available to packages that manage their own.'),
+  hasPendingMessages: surface('full', 'Reads the DSH agent inbox — next-step plus next-turn input — which is exactly Pi\'s steering plus follow-up queue.', 'Reads the DSH agent inbox — next-step plus next-turn queues — which is the same queue sendMessage/sendUserMessage write into.'),
+  getContextUsage: surface('partial', 'Returns no Pi token-usage projection.', 'Not synthesized. DSH accounts tokens in its own token-meter service, and a guessed Pi projection would be read as measurement.'),
+  getSystemPrompt: surface('full', 'Returns the system prompt currently assembled by the bridge.', 'Returns the string the bridge recorded during system-prompt/assemble for the current turn. It is recorded on every assembly, before any gate, so a package that only reads the prompt still sees it.'),
+  getSystemPromptOptions: surface('partial', 'Returns an empty Pi option projection in command contexts.', 'Pi\'s option object describes Pi\'s own prompt builder, which never runs here; the projection stays empty rather than reconstructed from DSH\'s sections.'),
+  waitForIdle: surface('partial', 'Mapped to the DSH agent idle boundary when available.', 'Awaits the DSH agent\'s own idle boundary when the agent exposes one.'),
+  sessionManager: surface('partial', 'A real read-only projection: DSH durable messages plus pi2dsh sidecar entries, exposed through Pi\'s exact 14-method surface as a single-branch tree. buildContextEntries is compaction-aware — entries a compaction summarized away are gone, exactly as they are for the model — while getEntries stays the append-only log, which is the same split Pi makes.', 'A read-only projection folded from two ordered sources — DSH\'s durable session log and the pi2dsh sidecar — into the single chain Pi\'s 14-method surface walks. Compaction awareness comes from the same fold: entries a compaction summarized away are dropped from the context view and kept in the log view.'),
+  modelRegistry: surface('partial', 'A live registry over the ONE model directory — the DSH llm directory — projected exactly into Pi vocabulary; package-registered Pi-native routes keep api/baseUrl and the full Model shape through the round trip. DSH describes one model across two seams (a listing for directory membership, an exact per-route resolve for capacity) while Pi puts everything on one Model object read synchronously, so the projection joins them when the directory is read: entries carry contextWindow, maxTokens and reasoning, and a settings change re-reads them rather than serving the retired numbers. Custom gateways are HOST configuration (the official llm-pi-ai adapter\'s settings), never a Pi-side file: Pi\'s ~/.pi/agent/models.json is deliberately NOT read — user-facing configuration is DSH-shaped only. getProviderAuth/getApiKeyAndHeaders run Pi\'s full credential chain for package-registered providers and the host\'s configurable-provider + credentials seams for DSH routes. Host configuration may declare "<route>-vision" image-admission companions: real DSH routes that admit images, replace image blocks with explicit path-carrying notices (materialized attachment files any path-taking tool can read), and forward text-only to the original route; Pi\'s ctx.model reports the original route for a companion selection.', 'A ModelCatalog over llm.listProviders() x listModels(), joined per route with llm.resolveModelInfo() for capacity, refreshed on the llm/adapters-updated notification and cached so reads stay synchronous — Pi\'s getAll() is not async. Package-registered routes have their exact Pi Model restored from the registration on the way out.'),
+  model: surface('partial', 'The agent\'s real provider/model route (a setModel() override wins), enriched from the projected catalog. When the selected route is an image-admission companion, ctx.model reports the ORIGINAL route with its true modalities — the generating model is the original text-only one, which is the truth extensions branching on input modalities (a vision bridge\'s activation check) need.', 'Reads the live agent\'s own options.provider/model (a setModel override wins) and enriches it through the same catalog projection, so a package reads one Model shape everywhere.'),
+  scopedModels: surface('full', 'Empty, carrying Pi\'s own meaning for empty: no model scope is configured, so every available model is usable. DSH has no model-scope concept to narrow it.', 'Nothing to compute. DSH has no model-scope concept, and Pi\'s empty array already carries exactly that meaning.'),
+  hasConfiguredAuth: surface('partial', 'Configuration check on the projected registry: true when the model\'s provider has a live route or package registration (not a key-liveness probe).', 'Answered from configuration alone — the package-provider map plus the live catalog — and never opens a connection, which is also what Pi\'s own check does.'),
+  thinkingLevel: surface('partial', 'Reflects the level recorded by setThinkingLevel(); applied as reasoningEffort on the next request.', 'Bridge state written by setThinkingLevel, applied to the request on the agent/request waterfall.'),
+  abort: surface('partial', 'Mapped to agent.cancel({ kind: "hook" }) on the live DSH agent.', 'Calls agent.cancel({ kind: \'hook\' }) on the live DSH agent.'),
+  shutdown: surface('partial', 'Pi defines shutdown behavior as host-provided (runner.ts bindExtensions); this host absorbs the request — the user owns DSH process exit — and informs the user once. The package keeps running.', 'Pi defines shutdown as host-provided, so this host absorbs it: the request is recorded in the capability ledger and surfaced to the user once. Nothing calls process.exit — the DSH process belongs to the user.'),
+  compact: surface('partial', 'Pi\'s fire-and-forget trigger, translated to DSH\'s official manual compaction (ctx.compaction.compactNow on the live agent). onComplete receives the real summary text and the shadowed-content token estimate as tokensBefore; firstKeptEntryId is empty because the DSH log has no Pi entry ids. Without a compaction service the gap flows through Pi\'s onError callback and the capability ledger.', 'Calls DSH\'s official compaction.compactNow on the live agent and adapts the outcome onto Pi\'s onComplete/onError callbacks. With no compaction service mounted the gap flows through onError rather than an exception.'),
+  newSession: surface('partial', 'Really creates a DSH session (ctx.sessions.create) with parent lineage; withSession runs against a projection context bound to it, whose sendMessage/sendUserMessage/appendEntry write into THAT session rather than the one the call came from. DSH has no host-level "current session pointer" a plugin could move — which session the surface shows stays a host choice, announced once.', 'ctx.sessions.create with parent lineage, then a projection context bound to the new session so everything inside withSession (sendMessage, appendEntry, ...) writes into THAT session.'),
+  fork: surface('partial', 'Really forks on DSH\'s official prefix-fork surface (ctx.sessions.fork with lineage metadata). Anchors are durable-log entries (projected ids "dsh-<seq>"); Pi\'s default position "before" is honored, and the boundary shrinks to the nearest completed-turn edge because DSH seeds must not split an open turn. Sidecar entries cannot anchor a fork.', 'ctx.sessions.fork at a durable sequence number decoded from the projected entry id (dsh-<seq>), snapped to the nearest completed-turn edge because a DSH seed must not split an open turn.'),
+  navigateTree: surface('partial', 'Expressed through DSH\'s session model: the DSH tree lives BETWEEN sessions (fork lineage), not inside one log, so navigation forks at the target boundary. summarize runs Pi\'s vendored branch summarizer over the abandoned durable slice (model call on the DSH llm bridge) and lands the summary as a branch_summary entry in the new session\'s projection; label lands as a label entry.', 'A fork at the target boundary, plus — when the caller asks for one — Pi\'s vendored branch summarizer run over the abandoned slice with the DSH llm bridge filling Pi\'s own streamFn injection point.'),
+  switchSession: surface('partial', 'Targets a LIVE DSH session by id (or a Pi-style path whose basename is "<id>.jsonl"); withSession runs against its projection. Switching to persisted sessions is host-owned — resume them from the DSH surface first. Which session the surface shows stays a host choice.', 'Resolves the id (or the basename of a Pi-style <id>.jsonl path) against live DSH sessions and binds a projection context to it.'),
+  reload: surface('partial', 'Really remounts every mounted package\'s extension entries through a fresh loader (registrations replaced via the same-name path, event handlers reset), so edited plugin code takes effect. Skills, prompts, and themes are host-managed and reload with dsh itself.', 'Remounts every mounted package\'s extension entries through a fresh jiti loader: registrations are replaced through the same-name path and handler lists reset, so edited plugin code takes effect without restarting DSH.'),
 })
 
-export const UI_CONTEXT_RULES: Readonly<Record<string, Rule>> = Object.freeze({
-  notify: rule('full', 'Captured as a command result when applicable and emitted through DSH logging at the severity the caller passed (warning and error log as warnings).'),
-  setStatus: rule('partial', 'Accepted as a no-op because DSH owns status presentation.'),
-  setWidget: rule('partial', 'Accepted as a no-op because Pi terminal widgets cannot render in DSH.'),
-  select: rule('full', 'Mapped to one native DSH userQuestions single-select request.'),
-  confirm: rule('full', 'Mapped to one native DSH userQuestions Yes/No request.'),
-  input: rule('full', 'Mapped to one native DSH userQuestions free-text request.'),
-  editor: rule('partial', 'Mapped to one DSH userQuestions free-text request. The prefill is shown as context but is NOT editable text: the caller receives what the user typed fresh, not an edit of the prefill.'),
-  custom: rule('partial', 'Resolves undefined, exactly like Pi\'s own rpc mode; guarded fallbacks keep working.'),
-  onTerminalInput: rule('partial', 'Raw terminal input is absent; feature-detected listeners remain disabled.'),
-  setWorkingMessage: rule('partial', 'Accepted as a no-op; DSH owns progress presentation.'),
-  setWorkingVisible: rule('partial', 'Accepted as a no-op; DSH owns progress presentation.'),
-  setWorkingIndicator: rule('partial', 'Accepted as a no-op; DSH owns progress presentation.'),
-  setHiddenThinkingLabel: rule('partial', 'Accepted as a no-op; DSH owns thinking presentation.'),
-  setFooter: rule('partial', 'Accepted as a no-op; DSH owns footer presentation.'),
-  setHeader: rule('partial', 'Accepted as a no-op; DSH owns header presentation.'),
-  setTitle: rule('partial', 'Accepted as a no-op; DSH owns window titles.'),
-  pasteToEditor: rule('partial', 'Appends to a per-agent editor buffer readable through getEditorText().'),
-  setEditorText: rule('partial', 'Stored in a per-agent editor buffer readable through getEditorText().'),
-  getEditorText: rule('partial', 'Reads the per-agent editor buffer maintained by the bridge.'),
-  addAutocompleteProvider: rule('partial', 'Registration is recorded; no DSH surface requests suggestions.'),
-  setEditorComponent: rule('partial', 'Registration is recorded; no DSH surface mounts a Pi editor component.'),
-  getEditorComponent: rule('partial', 'Returns the recorded factory.'),
-  theme: rule('partial', 'A headless theme whose styling calls return unstyled text.'),
-  getAllThemes: rule('partial', 'Lists the single headless theme.'),
-  getTheme: rule('partial', 'Resolves only the headless theme.'),
-  setTheme: rule('partial', 'Accepts the headless theme; other names report an explicit error result.'),
-  getToolsExpanded: rule('partial', 'A bridge-local presentation flag.'),
-  setToolsExpanded: rule('partial', 'A bridge-local presentation flag.'),
+export const UI_CONTEXT_RULES: Readonly<Record<string, SurfaceRule>> = Object.freeze({
+  notify: surface('full', 'Captured as a command result when applicable and emitted through DSH logging at the severity the caller passed (warning and error log as warnings).', 'Written to the DSH logger at the severity the caller passed, and returned as the command result when the call happens inside one.'),
+  setStatus: surface('partial', 'Accepted as a no-op because DSH owns status presentation.', 'Nothing is wired: DSH owns this part of the surface and draws it itself. The call is accepted and returns so a package that decorates a terminal keeps running.'),
+  setWidget: surface('partial', 'Accepted as a no-op because Pi terminal widgets cannot render in DSH.', 'Nothing is wired: DSH owns this part of the surface and draws it itself. The call is accepted and returns so a package that decorates a terminal keeps running.'),
+  select: surface('full', 'Mapped to one native DSH userQuestions single-select request.', 'One native DSH UserQuestionService request carrying Pi\'s options as the choices. The turn really blocks until a human answers.'),
+  confirm: surface('full', 'Mapped to one native DSH userQuestions Yes/No request.', 'One native DSH UserQuestionService request with two choices.'),
+  input: surface('full', 'Mapped to one native DSH userQuestions free-text request.', 'One native DSH UserQuestionService free-text request.'),
+  editor: surface('partial', 'Mapped to one DSH userQuestions free-text request. The prefill is shown as context but is NOT editable text: the caller receives what the user typed fresh, not an edit of the prefill.', 'One native DSH UserQuestionService free-text request. DSH has no editable-prefill question type, so the prefill is shown in the question body and the answer comes back as fresh text.'),
+  custom: surface('partial', 'Resolves undefined, exactly like Pi\'s own rpc mode; guarded fallbacks keep working.', 'Resolves undefined, which is what Pi\'s own rpc mode does — a package\'s guarded fallback path is the intended one here.'),
+  onTerminalInput: surface('partial', 'Raw terminal input is absent; feature-detected listeners remain disabled.', 'Recorded; no DSH surface produces raw terminal input, and feature-detecting packages keep the listener disabled.'),
+  setWorkingMessage: surface('partial', 'Accepted as a no-op; DSH owns progress presentation.', 'Nothing is wired: DSH owns this part of the surface and draws it itself. The call is accepted and returns so a package that decorates a terminal keeps running.'),
+  setWorkingVisible: surface('partial', 'Accepted as a no-op; DSH owns progress presentation.', 'Nothing is wired: DSH owns this part of the surface and draws it itself. The call is accepted and returns so a package that decorates a terminal keeps running.'),
+  setWorkingIndicator: surface('partial', 'Accepted as a no-op; DSH owns progress presentation.', 'Nothing is wired: DSH owns this part of the surface and draws it itself. The call is accepted and returns so a package that decorates a terminal keeps running.'),
+  setHiddenThinkingLabel: surface('partial', 'Accepted as a no-op; DSH owns thinking presentation.', 'Nothing is wired: DSH owns this part of the surface and draws it itself. The call is accepted and returns so a package that decorates a terminal keeps running.'),
+  setFooter: surface('partial', 'Accepted as a no-op; DSH owns footer presentation.', 'Nothing is wired: DSH owns this part of the surface and draws it itself. The call is accepted and returns so a package that decorates a terminal keeps running.'),
+  setHeader: surface('partial', 'Accepted as a no-op; DSH owns header presentation.', 'Nothing is wired: DSH owns this part of the surface and draws it itself. The call is accepted and returns so a package that decorates a terminal keeps running.'),
+  setTitle: surface('partial', 'Accepted as a no-op; DSH owns window titles.', 'Nothing is wired: DSH owns this part of the surface and draws it itself. The call is accepted and returns so a package that decorates a terminal keeps running.'),
+  pasteToEditor: surface('partial', 'Appends to a per-agent editor buffer readable through getEditorText().', 'A per-agent text buffer inside the bridge; the three editor calls only talk to each other.'),
+  setEditorText: surface('partial', 'Stored in a per-agent editor buffer readable through getEditorText().', 'A per-agent text buffer inside the bridge; the three editor calls only talk to each other.'),
+  getEditorText: surface('partial', 'Reads the per-agent editor buffer maintained by the bridge.', 'Reads the per-agent buffer the other two editor calls write.'),
+  addAutocompleteProvider: surface('partial', 'Registration is recorded; no DSH surface requests suggestions.', 'Kept in bridge state and readable back; no DSH surface consumes it.'),
+  setEditorComponent: surface('partial', 'Registration is recorded; no DSH surface mounts a Pi editor component.', 'Kept in bridge state and readable back; no DSH surface consumes it.'),
+  getEditorComponent: surface('partial', 'Returns the recorded factory.', 'Returns the factory setEditorComponent recorded.'),
+  theme: surface('partial', 'A headless theme whose styling calls return unstyled text.', 'A single headless Theme object whose styling functions return their input unchanged; DSH does the rendering.'),
+  getAllThemes: surface('partial', 'Lists the single headless theme.', 'Lists the one headless theme the bridge owns.'),
+  getTheme: surface('partial', 'Resolves only the headless theme.', 'Resolves the one headless theme by name.'),
+  setTheme: surface('partial', 'Accepts the headless theme; other names report an explicit error result.', 'Accepts the headless theme and returns Pi\'s explicit error result for any other name, rather than pretending a switch happened.'),
+  getToolsExpanded: surface('partial', 'A bridge-local presentation flag.', 'A bridge-local flag; nothing renders from it.'),
+  setToolsExpanded: surface('partial', 'A bridge-local presentation flag.', 'A bridge-local flag; nothing renders from it.'),
 })
 
-export const API_RULES: Readonly<Record<string, Rule>> = Object.freeze({
+export const API_RULES: Readonly<Record<string, SurfaceRule>> = Object.freeze({
   registerTool: {
     level: 'partial',
     detail: 'Registered as a native DSH tool. Text and image results use native DSH content/attachments; unsupported JSON Schema constraints and Pi-only error details are explicitly degraded.',
+    design: 'Registered on DSH\'s own tool registry, so the model sees it in the same catalog and the loop runs it through the same permission and sandbox path. Arguments go through Pi\'s vendored validateToolArguments inside DSH\'s prepareArguments hook, which is what gives a Pi tool the coercions ("7" to 7) Pi\'s own gate would have made before its handler ran.',
   },
   unregisterTool: {
     level: 'full',
     detail: 'Disposes the exact native DSH tool registration and removes it from the migrated package registry.',
+    design: 'Disposes the exact registration handle kept when the tool was registered, and drops it from the package\'s own registry.',
   },
   registerCommand: {
     level: 'partial',
     detail: 'Registered in ctx.commands with Pi\'s never-throw collision semantics: a package re-registering its own name replaces it, and cross-source collisions mount under Pi\'s numbered scheme (/name-2 — the earlier registration keeps the bare name, where Pi renumbers both). ui.notify becomes the result, while interactive Pi TUI methods fail explicitly in headless DSH.',
+    design: 'Registered on ctx.commands with an input descriptor. The descriptor is what makes /name <arguments> parse as a command in the web app instead of being sent as chat, so it is not optional detail.',
   },
   registerShortcut: {
     level: 'partial',
     detail: 'Registration is recorded and introspectable; DSH surfaces feed no terminal key input, so handlers never fire — the same as Pi\'s non-TUI modes.',
+    design: 'Recorded in bridge state; no DSH surface feeds terminal key events, exactly as in Pi\'s own non-TUI modes.',
   },
   registerFlag: {
     level: 'partial',
     detail: 'The declared default is available through getFlag; Pi process flags cannot be added to the DSH launcher.',
+    design: 'The declared default goes into a bridge map. DSH\'s launcher exposes no seam for adding process flags, so the flag exists for the package\'s own reads only.',
   },
   getFlag: {
     level: 'partial',
     detail: 'Returns the migrated flag default because DSH cannot register the original Pi CLI flag.',
+    design: 'Reads the bridge map registerFlag wrote.',
   },
   registerProvider: {
     level: 'partial',
     detail: 'Two outcomes, by whether the provider carries its own transport. '
       + 'WITH a transport (pi-ai createProvider and friends): it becomes a real DSH llm route through llm.registerAdapter, and from then on the package\'s own HTTP client carries the turn — its API key or OAuth token is resolved by Pi\'s credential chain and persisted in the bridge\'s auth.json, not by DSH credentials. '
       + 'WITHOUT one (catalog-only): the declaration is recorded and introspectable, no bridge transport is synthesized, and model calls stay on native DSH llm adapters and credentials.',
+    design: 'Two mechanisms behind one call. A provider carrying its own transport becomes a real DSH route through llm.registerAdapter, and the package\'s own HTTP client then carries the turn with its key resolved by Pi\'s credential chain into the bridge\'s auth.json. A catalog-only declaration registers no transport at all: those models are served by the host\'s adapters and DSH credentials, and the declaration only contributes directory entries.',
   },
   unregisterProvider: {
     level: 'partial',
     detail: 'Removes the recorded provider declaration.',
+    design: 'Disposes the route registration when one was made and drops the recorded declaration.',
   },
   registerMessageRenderer: {
     level: 'partial',
     detail: 'Registration is accepted; DSH owns presentation, so the renderer is never invoked — matching Pi\'s non-TUI surfaces.',
+    design: 'Kept in bridge state and readable back; no DSH surface consumes it.',
   },
   registerEntryRenderer: {
     level: 'partial',
     detail: 'Registration is accepted; DSH owns presentation, so the renderer is never invoked — matching Pi\'s non-TUI surfaces.',
+    design: 'Kept in bridge state and readable back; no DSH surface consumes it.',
   },
   registerMarkdownTransformer: {
     level: 'partial',
     detail: 'Registration is accepted; DSH owns presentation, so the transformer is never invoked — matching Pi\'s non-TUI surfaces.',
+    design: 'Kept in bridge state and readable back; no DSH surface consumes it.',
   },
   sendMessage: {
     level: 'partial',
     detail: 'Durable by the time it returns, as in Pi: the no-turn call appends to the session log and announces its message events immediately, so the message IS in the conversation when the call resolves. Steering and follow-up drive a turn through the agent. Pi display/details metadata awaits the custom session-entry seam.',
+    design: 'Two paths under one name. The no-turn call appends through Session.append(type, data, { surfaceOp: \'append\' }) — the public marker DSH requires for surface-eligible types — so the message is durable and visible by the time the call resolves, then announces its own message_start/message_end. Steering and follow-up go through the DSH agent inbox instead, which is what actually drives a turn.',
   },
   sendUserMessage: {
     level: 'full',
     detail: 'Mapped to native DSH steer/followup delivery with text and attachment-backed image content.',
+    design: 'The DSH agent inbox (steer or follow-up by option), with image content materialized as DSH attachments first.',
   },
   appendEntry: {
     level: 'partial',
     detail: 'Persisted in a pi2dsh sidecar next to the DSH session and replayed on session start; DSH\'s main log stays untouched because it has no out-of-repo plugin-event channel yet.',
+    design: 'A pi2dsh sidecar file beside the DSH session, replayed at session start. DSH\'s own log has no channel for event types declared outside the harness, and writing unknown types into it corrupts the session for every other reader.',
   },
   setSessionName: {
     level: 'full',
     detail: 'Renames the DSH session through ctx.sessionTitle, so every DSH surface shows it and the title is pinned against automatic regeneration, and announces it through session_info_changed. A composition that mounts no title service falls back to the pi2dsh sidecar, as does a blank name (DSH requires visible characters in a title; Pi does not).',
+    design: 'ctx.sessionTitle.rename, which is also what pins the title against DSH\'s automatic regeneration, followed by a session_info_changed dispatch. A composition with no title service — or a blank name, which DSH refuses and Pi allows — falls back to the sidecar.',
   },
   getSessionName: {
     level: 'full',
     detail: 'Reads DSH\'s own session title, so it agrees with what DSH displays and sees titles DSH generated itself; falls back to the sidecar when no title service is mounted.',
+    design: 'ctx.sessionTitle.get, so the answer agrees with what DSH displays and includes titles DSH generated itself; sidecar fallback when no title service is mounted.',
   },
   setLabel: {
     level: 'partial',
     detail: 'Persisted in the pi2dsh sidecar and reflected by the sessionManager projection.',
+    design: 'Stored in the pi2dsh sidecar and read back through the sessionManager projection.',
   },
   exec: {
     level: 'partial',
     detail: 'Mapped to ctx.subprocess, so the selected local/E2B provider owns execution, isolation, cancellation, and tree cleanup; output is bounded to 64 MiB per stream.',
+    design: 'Handed to ctx.subprocess, so the selected local or E2B provider owns execution, isolation, cancellation and process-tree cleanup — the bridge never spawns a child itself.',
   },
   getActiveTools: {
     level: 'partial',
     detail: 'Returns every tool visible in the current DSH agent scope, including native and migrated tools; scope-local tools follow DSH composition rules.',
+    design: 'Lists the DSH tool scope the current context belongs to, native and migrated tools alike.',
   },
   getAllTools: {
     level: 'partial',
     detail: 'Returns metadata for all tools visible in the current DSH scope, without Pi-specific prompt guidelines unavailable from DSH schemas.',
+    design: 'Reads schemas from the same DSH tool scope; Pi\'s prompt-guideline fields have no DSH source and are left out rather than invented.',
   },
   setActiveTools: {
     level: 'partial',
     detail: 'Mapped to the active DSH agent scope through tools.restrict, per-agent and without mutating other agents. Names DSH does not know are skipped exactly as Pi skips them. A tool DSH does not permit restricting (a scope\'s own registration, or a reserved transport name) cannot be deactivated at all and is reported once rather than silently left running.',
+    design: 'DSH\'s scoped tools.restrict, narrowed first. Pi silently skips names its registry does not know, while DSH fails the whole restrict call on a name it cannot restrict — so the list is filtered against what the scope reports as restrictable before it is applied, and a visible-but-unrestrictable tool is reported once instead of being silently left running. Called before an agent exists, the intent is remembered and applied when one starts.',
   },
   getCommands: {
     level: 'partial',
     detail: 'Returns commands registered by this migrated Pi package, not every command visible in the DSH scope.',
+    design: 'Reads the bridge\'s own command map, which holds this package\'s registrations rather than the whole DSH scope.',
   },
   setModel: {
     level: 'partial',
     detail: 'Recorded as a per-agent override applied through the agent/request waterfall on the next model call; DSH remains authoritative for provider routing.',
+    design: 'Recorded as a per-agent override and applied on the agent/request waterfall, so the next model call carries it while DSH stays authoritative for routing.',
   },
   getThinkingLevel: {
     level: 'partial',
     detail: 'Returns the level recorded by setThinkingLevel (default off).',
+    design: 'Reads the per-agent level the bridge recorded.',
   },
   setThinkingLevel: {
     level: 'partial',
     detail: 'Recorded per agent and applied as reasoningEffort through the agent/request waterfall; DSH validates the effort id at the request boundary.',
+    design: 'Recorded per agent and applied as reasoningEffort on the agent/request waterfall; DSH validates the effort id at the request boundary.',
   },
   events: {
     level: 'full',
     detail: 'Package-local Pi extension event-bus emit/on semantics are preserved for migrated extensions in the same bundle.',
+    design: 'A package-local emitter inside the bridge, so extensions bundled together talk to each other exactly as they do under Pi.',
   },
 })
 
-const OBSERVED_NEVER_FIRES = (moment: string): Rule => ({
+const OBSERVED_NEVER_FIRES = (moment: string): SurfaceRule => ({
   level: 'partial',
   detail: `Registration is accepted; ${moment} never occurs on DSH surfaces, so the handler never fires. Loading is unaffected.`,
+  design: `The handler goes into the bridge's handler map like any other, and nothing dispatches it: no DSH seam produces ${moment}. Registration is kept rather than refused so a package that subscribes at load time still loads.`,
 })
 
-export const EVENT_RULES: Readonly<Record<string, Rule>> = Object.freeze({
-  session_start: { level: 'full', detail: 'Mapped to agent/session-start.' },
-  session_shutdown: { level: 'full', detail: 'Mapped to agent disposal and plugin teardown with duplicate suppression.' },
-  session_info_changed: { level: 'partial', detail: 'Fired by setSessionName() and projected from DSH session/title events.' },
-  agent_start: { level: 'full', detail: 'Mapped to the DSH turn/start boundary.' },
-  agent_settled: { level: 'full', detail: 'Mapped to the DSH turn/end boundary.' },
-  turn_start: { level: 'full', detail: 'Fires once per MODEL CALL, as in Pi — DSH calls that a step — with turnIndex counting from zero and resetting at each new prompt.' },
-  tool_execution_start: { level: 'full', detail: 'Mapped from durable tool/call events.' },
-  tool_execution_end: { level: 'full', detail: 'Mapped from finalized tools/result events.' },
+export const EVENT_RULES: Readonly<Record<string, SurfaceRule>> = Object.freeze({
+  session_start: { level: 'full', detail: 'Mapped to agent/session-start.', design: 'Dispatched from the cordis agent/session-start notification.' },
+  session_shutdown: { level: 'full', detail: 'Mapped to agent disposal and plugin teardown with duplicate suppression.', design: 'Dispatched from agent/disposed and from plugin teardown, with duplicate suppression so a package that sees both gets one event.' },
+  session_info_changed: { level: 'partial', detail: 'Fired by setSessionName() and projected from DSH session/title events.', design: 'Two sources, one event: the bridge\'s own setSessionName, and DSH\'s durable session title event projected into Pi\'s shape.' },
+  agent_start: { level: 'full', detail: 'Mapped to the DSH turn/start boundary.', design: 'The DSH turn/start boundary from the durable session/event stream. DSH\'s turn is the whole prompt, which is what Pi calls an agent run.' },
+  agent_settled: { level: 'full', detail: 'Mapped to the DSH turn/end boundary.', design: 'The DSH turn/end boundary.' },
+  turn_start: { level: 'full', detail: 'Fires once per MODEL CALL, as in Pi — DSH calls that a step — with turnIndex counting from zero and resetting at each new prompt.', design: 'The DSH step/start boundary — one step is one model call, which is what Pi calls a turn. The index resets when a new prompt is claimed off the inbox, matching Pi\'s reset at agent_start.' },
+  tool_execution_start: { level: 'full', detail: 'Mapped from durable tool/call events.', design: 'Projected from the durable tool/call event, so a handler sees exactly what was written to the session log.' },
+  tool_execution_end: { level: 'full', detail: 'Mapped from finalized tools/result events.', design: 'Dispatched on DSH\'s tools/post-execute waterfall and awaited there. Riding the durable result emit instead let the handler land after turn_end, which is the opposite of Pi\'s order; the waterfall is the moment that is guaranteed to run before the caller sees the result.' },
   tool_execution_update: {
     level: 'partial',
     detail: 'Fired from migrated Pi tools\' own onUpdate callbacks; DSH-native tools expose no partial-result stream.',
+    design: 'Fed by migrated Pi tools\' own onUpdate callbacks. DSH-native tools expose no partial-result stream, so nothing is synthesized for them.',
   },
   tool_call: {
     level: 'partial',
     detail: 'Blocking is supported, in-place argument mutation reaches migrated Pi tools, and `terminate` follows Pi\'s batch rule — the loop stops after a tool batch only when every call in it was blocked asking to stop. Mutating a DSH-native tool\'s arguments is rejected because DSH logs arguments before policy.',
+    design: 'DSH\'s tools/pre-execute waterfall, whose decision type carries exactly the two outcomes Pi needs (proceed, deny with a reason). Pi\'s in-place argument mutation is applied to migrated Pi tools; for a DSH-native tool it is refused, because DSH logs arguments before policy runs and the log would then disagree with what executed. Pi\'s batch rule for terminate is reimplemented verbatim: the loop stops only when every finalized call in the batch asked to stop.',
   },
   tool_result: {
     level: 'partial',
     detail: 'Text replacement and success-to-error blocking are supported; arbitrary details and error recovery are not.',
+    design: 'The same tools/post-execute waterfall, which is where a result can still be rewritten before the caller reads it.',
   },
   before_agent_start: {
     level: 'full',
     detail: 'Fires once per user prompt, inside the assembly of the turn it belongs to, with the real prompt text and image attachments; returned custom messages enter that same turn beside the user message, and a returned systemPrompt overrides that turn\'s own assembly and resets at the next turn.',
+    design: 'DSH\'s system-prompt/assemble waterfall — an async waterfall that runs while the prompt is being assembled and whose return value is authoritative. That is why a returned systemPrompt reaches the very turn the handler fired for; the later agent/pre-step waterfall would have been one turn too late. Firing is gated on the inbox claim so it happens once per user prompt, and returned custom messages are held and injected into that same step.',
   },
   agent_end: {
     level: 'partial',
     detail: 'The lifecycle boundary is mapped, but the reconstructed Pi message history is intentionally minimal.',
+    design: 'The DSH turn/end boundary. Pi\'s message history on this event is reconstructed minimally rather than replayed, because the durable log is the honest source and packages that need it read the projection.',
   },
   turn_end: {
     level: 'full',
     detail: 'Fires once per MODEL CALL, as in Pi — DSH calls that a step — carrying that call\'s own assistant message and its own tool results, with turnIndex counting model calls from zero and resetting each prompt.',
+    design: 'The DSH step/end boundary, carrying that model call\'s own assistant message and the tool results belonging to it.',
   },
   message_start: {
     level: 'partial',
     detail: 'Durable user, assistant, and tool-result messages are mapped without Pi-specific provider metadata.',
+    design: 'Projected from durable message events in the session/event stream.',
   },
   message_end: {
     level: 'partial',
     detail: 'Durable messages are observed, but message replacement is not supported.',
+    design: 'Projected from the same durable message events; DSH\'s log is append-only, so Pi\'s message replacement has nowhere to land.',
   },
   message_update: {
     level: 'partial',
     detail: 'Projected from DSH assistant/chunk events with accumulated text; Pi\'s full AgentMessage accumulation state is approximated.',
+    design: 'Projected from DSH assistant/chunk events with text accumulated by the bridge. Pi\'s full AgentMessage accumulation state is approximated, not reconstructed.',
   },
   session_before_compact: {
     level: 'partial',
     detail: 'Projected from DSH compaction/start as a notification; cancel/replace cannot reach DSH\'s compactor.',
+    design: 'Projected from DSH\'s compaction/start as a notification. It is an emit, not a waterfall, so a cancel or a replacement has no channel to reach DSH\'s compactor and is not pretended.',
   },
   session_compact: {
     level: 'partial',
     detail: 'Fires once per SUCCESSFUL compaction, from DSH\'s summary event, with the summary rendered to the string Pi\'s CompactionEntry declares. A manual compaction is identified as manual; DSH does not record which automatic trigger fired, so automatic ones report "threshold" and willRetry is always false.',
+    design: 'Projected from DSH\'s compaction summary event, rendered to the exact string Pi\'s CompactionEntry declares. Manual compactions are identifiable; DSH does not record which automatic trigger fired, so automatic ones report Pi\'s threshold reason.',
   },
   model_select: {
     level: 'partial',
     detail: 'Fired by setModel() and projected from request/header model changes in the durable log.',
+    design: 'Fired by the bridge\'s own setModel, and projected from model changes in the durable request/header record — which is the call configuration DSH logs, not the HTTP body.',
   },
   thinking_level_select: {
     level: 'partial',
     detail: 'Fired by setThinkingLevel(); DSH-side reasoning changes surface through request/header projection.',
+    design: 'Fired by the bridge\'s own setThinkingLevel; host-side reasoning changes arrive through the same request/header projection.',
   },
   context: {
     level: 'partial',
     detail: 'Fires before each step with the full message projection; the transform applies to the step\'s not-yet-entered messages (the slice packages rewrite), while already-entered history stays read-only under DSH\'s append-only log.',
+    design: 'DSH\'s agent/pre-step waterfall, whose decision type distinguishes entering a step from rejecting it. The transform applies to the messages that have not entered the step yet — the slice Pi packages actually rewrite — while entered history stays read-only under DSH\'s append-only log.',
   },
   before_provider_request: {
     level: 'unsupported',
     detail: 'Provider payload mutation belongs in a native DSH LLM adapter; the handler is accepted but never fires.',
+    design: 'Deliberately not wired. The request body is built inside a DSH llm adapter, and a package that needs to shape it should be one (or register its own provider, which this bridge does support). Faking the moment on the bridge side would let a handler edit a body that is not the one sent.',
   },
   before_provider_headers: {
     level: 'unsupported',
     detail: 'Provider header mutation belongs in a native DSH LLM adapter; the handler is accepted but never fires.',
+    design: 'Deliberately not wired, for the same reason as before_provider_request: headers belong to the adapter that owns the transport.',
   },
   after_provider_response: {
     level: 'unsupported',
     detail: 'Provider response interception belongs in a native DSH LLM adapter; the handler is accepted but never fires.',
+    design: 'Deliberately not wired: the response is consumed inside the adapter, and interception there is an adapter concern.',
   },
   user_bash: OBSERVED_NEVER_FIRES('Pi\'s ! command surface'),
   input: OBSERVED_NEVER_FIRES('raw Pi terminal input'),
   project_trust: {
     level: 'unsupported',
     detail: 'Project trust must remain owned by the DSH host; the handler is accepted but never consulted.',
+    design: 'Accepted and never consulted. Trust is a host decision in DSH, and letting a package answer it would move the decision to the code being trusted.',
   },
   resources_discover: {
     level: 'unsupported',
     detail: 'Dynamic resource discovery must be converted into DSH providers; the handler is accepted but never fires.',
+    design: 'Accepted and never fired. Dynamic resource discovery in DSH is a provider registration, which is a different (and official) seam.',
   },
   session_before_switch: OBSERVED_NEVER_FIRES('Pi session switching'),
   session_before_fork: OBSERVED_NEVER_FIRES('Pi tree forking'),

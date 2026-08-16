@@ -1,9 +1,18 @@
 {
   "schemaVersion": 1,
-  "pi2dshCommit": "2dd0015688d0807c543f8c666534e192d26ac92a",
+  "pi2dshCommit": "ed3295c7011aefd6fe3ad4e4da952c66664ba2b5",
   "dshCommit": "47f943859bef60e4160492346772ded9b24f765a",
   "results": {
+    "visionBridge": {
+      "status": "skipped",
+      "reason": "no vision endpoint configured (VISION_BRIDGE_BASE_URL, VISION_BRIDGE_MODEL, VISION_BRIDGE_API_KEY)"
+    },
+    "visionBridgeWeb": {
+      "status": "skipped",
+      "reason": "no vision endpoint configured (VISION_BRIDGE_BASE_URL, VISION_BRIDGE_MODEL, VISION_BRIDGE_API_KEY)"
+    },
     "gatewayCompat": {
+      "engine": "0.12.2",
       "status": "passed",
       "requests": 2,
       "roles": [
@@ -32,28 +41,31 @@
         "user: <system-reminder> A skill is a reusable set of task-specific"
       ]
     },
-    "visionBridge": {
-      "status": "passed",
-      "image": "solid-green.png",
-      "answeredGreen": true
-    },
-    "sideConversation": {
-      "status": "passed",
-      "screenshots": [
-        "01-side-conversation-main-thread-clean.png",
-        "02-side-conversation-host-catalog.png",
-        "03-side-conversation-injected-on-request.png",
-        "04-side-conversation-child-view.png"
-      ]
-    },
     "customGateways": {
       "status": "passed",
+      "engine": "0.12.2",
       "seenByPackage": {
         "provider": "my-gateway",
         "id": "deepseek-chat",
         "api": "faux",
         "contextWindow": 131072
       }
+    },
+    "sideConversation": {
+      "status": "passed",
+      "engine": "0.12.2",
+      "screenshots": [
+        "01-side-conversation-main-thread-clean.png",
+        "01-vision-companion-model-picker.png",
+        "02-image-accepted-by-text-only-model.png",
+        "02-side-conversation-host-catalog.png",
+        "03-side-conversation-injected-on-request.png",
+        "03-vision-bridge-answer.png",
+        "04-side-conversation-child-view.png",
+        "05-vision-bridge-web.png",
+        "xiaohongshu-cover-v2.png",
+        "xiaohongshu-cover.png"
+      ]
     }
   }
 }

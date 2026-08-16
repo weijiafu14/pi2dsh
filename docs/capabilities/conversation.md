@@ -8,28 +8,154 @@ the surface is registered and stated as never firing rather than faked.
 
 **20 Pi surfaces** — 9 same semantics · 11 mapped, difference stated.
 
-| Pi surface | Kind | Status | How it maps onto DSH |
+| Pi surface | Kind | Status | What it does on DSH |
 |---|---|---|---|
-| `sendMessage` | `pi.*` | Mapped, difference stated | Durable by the time it returns, as in Pi: the no-turn call appends to the session log and announces its message events immediately, so the message IS in the conversation when the call resolves. Steering and follow-up drive a turn through the agent. Pi display/details metadata awaits the custom session-entry seam. |
-| `sendUserMessage` | `pi.*` | Same semantics | Mapped to native DSH steer/followup delivery with text and attachment-backed image content. |
-| `agent_start` | `event` | Same semantics | Mapped to the DSH turn/start boundary. |
-| `agent_settled` | `event` | Same semantics | Mapped to the DSH turn/end boundary. |
-| `turn_start` | `event` | Same semantics | Fires once per MODEL CALL, as in Pi — DSH calls that a step — with turnIndex counting from zero and resetting at each new prompt. |
-| `before_agent_start` | `event` | Same semantics | Fires once per user prompt, inside the assembly of the turn it belongs to, with the real prompt text and image attachments; returned custom messages enter that same turn beside the user message, and a returned systemPrompt overrides that turn's own assembly and resets at the next turn. |
-| `agent_end` | `event` | Mapped, difference stated | The lifecycle boundary is mapped, but the reconstructed Pi message history is intentionally minimal. |
-| `turn_end` | `event` | Same semantics | Fires once per MODEL CALL, as in Pi — DSH calls that a step — carrying that call's own assistant message and its own tool results, with turnIndex counting model calls from zero and resetting each prompt. |
-| `message_start` | `event` | Mapped, difference stated | Durable user, assistant, and tool-result messages are mapped without Pi-specific provider metadata. |
-| `message_end` | `event` | Mapped, difference stated | Durable messages are observed, but message replacement is not supported. |
-| `message_update` | `event` | Mapped, difference stated | Projected from DSH assistant/chunk events with accumulated text; Pi's full AgentMessage accumulation state is approximated. |
-| `context` | `event` | Mapped, difference stated | Fires before each step with the full message projection; the transform applies to the step's not-yet-entered messages (the slice packages rewrite), while already-entered history stays read-only under DSH's append-only log. |
-| `signal` | `ctx.*` | Same semantics | Mapped to the active DSH cancellation signal when one is available. |
-| `isIdle` | `ctx.*` | Mapped, difference stated | Command contexts report idle; tool/lifecycle contexts conservatively report non-idle. |
-| `hasPendingMessages` | `ctx.*` | Same semantics | Reads the DSH agent inbox — next-step plus next-turn input — which is exactly Pi's steering plus follow-up queue. |
-| `getContextUsage` | `ctx.*` | Mapped, difference stated | Returns no Pi token-usage projection. |
-| `getSystemPrompt` | `ctx.*` | Same semantics | Returns the system prompt currently assembled by the bridge. |
-| `getSystemPromptOptions` | `ctx.*` | Mapped, difference stated | Returns an empty Pi option projection in command contexts. |
-| `waitForIdle` | `ctx.*` | Mapped, difference stated | Mapped to the DSH agent idle boundary when available. |
-| `abort` | `ctx.*` | Mapped, difference stated | Mapped to agent.cancel({ kind: "hook" }) on the live DSH agent. |
+| [`sendMessage`](#sendmessage-pi) | `pi.*` | Mapped, difference stated | Durable by the time it returns, as in Pi: the no-turn call appends to the session log and announces its message events immediately, so the message IS in the conversation when the call resolves. Steering and follow-up drive a turn through the agent. Pi display/details metadata awaits the custom session-entry seam. |
+| [`sendUserMessage`](#sendusermessage-pi) | `pi.*` | Same semantics | Mapped to native DSH steer/followup delivery with text and attachment-backed image content. |
+| [`agent_start`](#agent_start-event) | `event` | Same semantics | Mapped to the DSH turn/start boundary. |
+| [`agent_settled`](#agent_settled-event) | `event` | Same semantics | Mapped to the DSH turn/end boundary. |
+| [`turn_start`](#turn_start-event) | `event` | Same semantics | Fires once per MODEL CALL, as in Pi — DSH calls that a step — with turnIndex counting from zero and resetting at each new prompt. |
+| [`before_agent_start`](#before_agent_start-event) | `event` | Same semantics | Fires once per user prompt, inside the assembly of the turn it belongs to, with the real prompt text and image attachments; returned custom messages enter that same turn beside the user message, and a returned systemPrompt overrides that turn's own assembly and resets at the next turn. |
+| [`agent_end`](#agent_end-event) | `event` | Mapped, difference stated | The lifecycle boundary is mapped, but the reconstructed Pi message history is intentionally minimal. |
+| [`turn_end`](#turn_end-event) | `event` | Same semantics | Fires once per MODEL CALL, as in Pi — DSH calls that a step — carrying that call's own assistant message and its own tool results, with turnIndex counting model calls from zero and resetting each prompt. |
+| [`message_start`](#message_start-event) | `event` | Mapped, difference stated | Durable user, assistant, and tool-result messages are mapped without Pi-specific provider metadata. |
+| [`message_end`](#message_end-event) | `event` | Mapped, difference stated | Durable messages are observed, but message replacement is not supported. |
+| [`message_update`](#message_update-event) | `event` | Mapped, difference stated | Projected from DSH assistant/chunk events with accumulated text; Pi's full AgentMessage accumulation state is approximated. |
+| [`context`](#context-event) | `event` | Mapped, difference stated | Fires before each step with the full message projection; the transform applies to the step's not-yet-entered messages (the slice packages rewrite), while already-entered history stays read-only under DSH's append-only log. |
+| [`signal`](#signal-ctx) | `ctx.*` | Same semantics | Mapped to the active DSH cancellation signal when one is available. |
+| [`isIdle`](#isidle-ctx) | `ctx.*` | Mapped, difference stated | Command contexts report idle; tool/lifecycle contexts conservatively report non-idle. |
+| [`hasPendingMessages`](#haspendingmessages-ctx) | `ctx.*` | Same semantics | Reads the DSH agent inbox — next-step plus next-turn input — which is exactly Pi's steering plus follow-up queue. |
+| [`getContextUsage`](#getcontextusage-ctx) | `ctx.*` | Mapped, difference stated | Returns no Pi token-usage projection. |
+| [`getSystemPrompt`](#getsystemprompt-ctx) | `ctx.*` | Same semantics | Returns the system prompt currently assembled by the bridge. |
+| [`getSystemPromptOptions`](#getsystempromptoptions-ctx) | `ctx.*` | Mapped, difference stated | Returns an empty Pi option projection in command contexts. |
+| [`waitForIdle`](#waitforidle-ctx) | `ctx.*` | Mapped, difference stated | Mapped to the DSH agent idle boundary when available. |
+| [`abort`](#abort-ctx) | `ctx.*` | Mapped, difference stated | Mapped to agent.cancel({ kind: "hook" }) on the live DSH agent. |
+
+## How each one is built
+
+Every surface below names the DSH mechanism that carries it — the seam, service
+or waterfall — so the mapping can be checked against the harness rather than
+taken on trust.
+
+### `sendMessage` <a id="sendmessage-pi"></a>
+
+`pi.*` · Mapped, difference stated
+
+Two paths under one name. The no-turn call appends through Session.append(type, data, { surfaceOp: 'append' }) — the public marker DSH requires for surface-eligible types — so the message is durable and visible by the time the call resolves, then announces its own message_start/message_end. Steering and follow-up go through the DSH agent inbox instead, which is what actually drives a turn.
+
+### `sendUserMessage` <a id="sendusermessage-pi"></a>
+
+`pi.*` · Same semantics
+
+The DSH agent inbox (steer or follow-up by option), with image content materialized as DSH attachments first.
+
+### `agent_start` <a id="agent_start-event"></a>
+
+`event` · Same semantics
+
+The DSH turn/start boundary from the durable session/event stream. DSH's turn is the whole prompt, which is what Pi calls an agent run.
+
+### `agent_settled` <a id="agent_settled-event"></a>
+
+`event` · Same semantics
+
+The DSH turn/end boundary.
+
+### `turn_start` <a id="turn_start-event"></a>
+
+`event` · Same semantics
+
+The DSH step/start boundary — one step is one model call, which is what Pi calls a turn. The index resets when a new prompt is claimed off the inbox, matching Pi's reset at agent_start.
+
+### `before_agent_start` <a id="before_agent_start-event"></a>
+
+`event` · Same semantics
+
+DSH's system-prompt/assemble waterfall — an async waterfall that runs while the prompt is being assembled and whose return value is authoritative. That is why a returned systemPrompt reaches the very turn the handler fired for; the later agent/pre-step waterfall would have been one turn too late. Firing is gated on the inbox claim so it happens once per user prompt, and returned custom messages are held and injected into that same step.
+
+### `agent_end` <a id="agent_end-event"></a>
+
+`event` · Mapped, difference stated
+
+The DSH turn/end boundary. Pi's message history on this event is reconstructed minimally rather than replayed, because the durable log is the honest source and packages that need it read the projection.
+
+### `turn_end` <a id="turn_end-event"></a>
+
+`event` · Same semantics
+
+The DSH step/end boundary, carrying that model call's own assistant message and the tool results belonging to it.
+
+### `message_start` <a id="message_start-event"></a>
+
+`event` · Mapped, difference stated
+
+Projected from durable message events in the session/event stream.
+
+### `message_end` <a id="message_end-event"></a>
+
+`event` · Mapped, difference stated
+
+Projected from the same durable message events; DSH's log is append-only, so Pi's message replacement has nowhere to land.
+
+### `message_update` <a id="message_update-event"></a>
+
+`event` · Mapped, difference stated
+
+Projected from DSH assistant/chunk events with text accumulated by the bridge. Pi's full AgentMessage accumulation state is approximated, not reconstructed.
+
+### `context` <a id="context-event"></a>
+
+`event` · Mapped, difference stated
+
+DSH's agent/pre-step waterfall, whose decision type distinguishes entering a step from rejecting it. The transform applies to the messages that have not entered the step yet — the slice Pi packages actually rewrite — while entered history stays read-only under DSH's append-only log.
+
+### `signal` <a id="signal-ctx"></a>
+
+`ctx.*` · Same semantics
+
+The DSH cancellation signal belonging to the moment the context was built — a tool context carries its execution signal, a lifecycle context the agent's.
+
+### `isIdle` <a id="isidle-ctx"></a>
+
+`ctx.*` · Mapped, difference stated
+
+Derived from which context the call arrived through: a command context is outside a step, a tool or lifecycle context is inside one.
+
+### `hasPendingMessages` <a id="haspendingmessages-ctx"></a>
+
+`ctx.*` · Same semantics
+
+Reads the DSH agent inbox — next-step plus next-turn queues — which is the same queue sendMessage/sendUserMessage write into.
+
+### `getContextUsage` <a id="getcontextusage-ctx"></a>
+
+`ctx.*` · Mapped, difference stated
+
+Not synthesized. DSH accounts tokens in its own token-meter service, and a guessed Pi projection would be read as measurement.
+
+### `getSystemPrompt` <a id="getsystemprompt-ctx"></a>
+
+`ctx.*` · Same semantics
+
+Returns the string the bridge recorded during system-prompt/assemble for the current turn. It is recorded on every assembly, before any gate, so a package that only reads the prompt still sees it.
+
+### `getSystemPromptOptions` <a id="getsystempromptoptions-ctx"></a>
+
+`ctx.*` · Mapped, difference stated
+
+Pi's option object describes Pi's own prompt builder, which never runs here; the projection stays empty rather than reconstructed from DSH's sections.
+
+### `waitForIdle` <a id="waitforidle-ctx"></a>
+
+`ctx.*` · Mapped, difference stated
+
+Awaits the DSH agent's own idle boundary when the agent exposes one.
+
+### `abort` <a id="abort-ctx"></a>
+
+`ctx.*` · Mapped, difference stated
+
+Calls agent.cancel({ kind: 'hook' }) on the live DSH agent.
 
 ---
 

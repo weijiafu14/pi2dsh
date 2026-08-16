@@ -8,7 +8,11 @@ bridge itself consults at runtime (`src/compatibility.ts`, also reported by
 
 **112 Pi surfaces total** — 24 same semantics · 83 mapped, difference stated · 5 not available — plus **202 imported symbols** from the three Pi runtime
 packages (`pi-coding-agent`, `pi-tui`, `pi-ai`), which the bridge serves
-from vendored or headless shims so a package's own Pi pins never load.
+from vendored or headless shims so a package's own Pi pins never load — listed
+in [Imported Pi runtime symbols](imports.md).
+
+Each area page carries two things per surface: what it does on DSH, and **how
+it is built** — the DSH seam, service or waterfall behind it.
 
 | Area | Surfaces | Status |
 |---|---|---|

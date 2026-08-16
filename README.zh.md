@@ -247,20 +247,26 @@ Pi 目录里**月下载量前 50 的包**，每个都在真实 DSH 运行时里�
 Pi 包能碰到的每一个面，以及它落到 DSH 的什么位置。下面这些表是从桥在运行时真正
 查的那份规则生成的，所以不会和代码脱节。
 
+<!-- capability-table:start -->
 | 能力域 | Pi 面数 | 状态 |
 |---|---|---|
 | [工具](docs/capabilities/tools.md) | 12 | 3 语义一致 · 9 已映射并写明差异 |
 | [命令、flag、编辑器输入](docs/capabilities/commands.md) | 13 | 13 已映射并写明差异 |
-| [消息、上下文、agent 循环](docs/capabilities/conversation.md) | 20 | 7 语义一致 · 13 已映射并写明差异 |
-| [会话与侧边对话](docs/capabilities/sessions.md) | 24 | 4 语义一致 · 20 已映射并写明差异 |
-| [模型、provider、凭证](docs/capabilities/models.md) | 15 | 12 已映射并写明差异 · 3 不提供 |
+| [消息、上下文、agent 循环](docs/capabilities/conversation.md) | 20 | 9 语义一致 · 11 已映射并写明差异 |
+| [会话与侧边对话](docs/capabilities/sessions.md) | 24 | 6 语义一致 · 18 已映射并写明差异 |
+| [模型、provider、凭证](docs/capabilities/models.md) | 15 | 1 语义一致 · 11 已映射并写明差异 · 3 不提供 |
 | [向用户提问与渲染](docs/capabilities/interaction.md) | 24 | 4 语义一致 · 20 已映射并写明差异 |
-| [项目环境与资源](docs/capabilities/environment.md) | 4 | 1 语义一致 · 1 已映射 · 2 不提供 |
-| **合计** | **112** | **19 语义一致 · 88 已映射并写明差异 · 5 不提供** |
+| [项目环境与资源](docs/capabilities/environment.md) | 4 | 1 语义一致 · 1 已映射并写明差异 · 2 不提供 |
+| **合计** | **112** | **24 语义一致 · 83 已映射并写明差异 · 5 不提供** |
+<!-- capability-table:end -->
 
 另外还有 Pi 三个运行时包（`pi-coding-agent`、`pi-tui`、`pi-ai`）的 **202 个
 导入符号**，由 vendored 或 headless shim 提供——所以插件自己钉的 Pi 版本永远不会
-被加载。
+被加载，清单见[导入的 Pi 运行时符号](docs/capabilities/imports.md)。
+
+每个能力域页面对每一个面都写两件事：它在 DSH 上做什么，以及**它是怎么实现的**
+——这条映射落在哪个 DSH seam、服务或 waterfall 上，好让读者能对着 harness 核实，
+而不是只能选择相信。
 
 从[能力索引](docs/capabilities/README.md)开始看。机器可读版：`pi2dsh matrix --json`。
 

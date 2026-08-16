@@ -4,10 +4,10 @@
 契约测试跑法：`pnpm test`。真实场景证据由 `pnpm audit:community`（静态筛查）、
 `node scripts/blackbox-community.mjs [--exercise]`（黑盒加载认证；`--exercise`
 进一步用 schema 派生参数真实调用每个包的代表性工具/命令并分级）、`pnpm test:community`
-（4 包深链路 + host bundle + 官方插件管理器）、`DEEPSEEK_API_KEY=… pnpm test:live`
-（真实模型）生成，产物在 `community/*.json`。host bundle 端到端已通过：单一 bundle
-装两个原样 Pi 包，官方 `dsh plugin` add/activate/remove 全流程 + 挂载出真工具
-（runtime-results.json 的 hostBundle 段）。
+（4 包深链路 + 官方插件管理器）、`DEEPSEEK_API_KEY=… pnpm test:live`
+（真实模型）生成，产物在 `community/*.json`。安装形态只有一种：`dsh plugin add
+pi2dsh` 装引擎，再 `dsh plugin add <Pi 包>` 直装原包——转换/host bundle 那条路
+已整体删除（见 docs/STANDARDS.md）。
 
 | # | 能力 | 实现 | 契约测试 | 真实场景证据 |
 |---|---|---|---|---|

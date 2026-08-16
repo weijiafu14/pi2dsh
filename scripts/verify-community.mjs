@@ -19,8 +19,10 @@ import { applyPiHost, resolvePiPackage } from '../dist/index.mjs'
 
 const execFile = promisify(execFileCallback)
 const projectRoot = resolve(new URL('..', import.meta.url).pathname)
-const bundleArgument = process.argv[2]
-const generateBundles = bundleArgument === undefined || bundleArgument === '--generate'
+const stageArgument = process.argv[2]
+// `--stage` copies each package into scratch and installs its deps there; a
+// path instead reuses an already-staged tree. Nothing is converted either way.
+const stagePackages = stageArgument === undefined || stageArgument === '--stage' || stageArgument === '--generate'
 const outputPath = process.argv[3] === undefined ? undefined : resolve(process.argv[3])
 
 const candidates = [
@@ -31,16 +33,16 @@ const candidates = [
 ]
 
 const scratch = await mkdtemp(join(tmpdir(), 'pi2dsh-community-runtime-'))
-const bundleRoot = generateBundles ? join(scratch, 'bundles') : resolve(bundleArgument)
+const stageRoot = stagePackages ? join(scratch, 'staged') : resolve(stageArgument)
 const configDir = join(scratch, 'pi-agent')
 const workspace = join(scratch, 'workspace')
 await mkdir(configDir, { recursive: true })
 await mkdir(workspace, { recursive: true })
 
-if (generateBundles) {
+if (stagePackages) {
   for (const candidate of candidates) {
     const pkg = await resolvePiPackage(candidate.specifier)
-    const outDir = join(bundleRoot, candidate.directory)
+    const outDir = join(stageRoot, candidate.directory)
     // Staged where it is installed and mounted by the engine — the reader's
     // path. Nothing converts the package.
     try {
@@ -162,7 +164,7 @@ process.env.SEARXNG_URL = baseUrl
 const delay = ms => new Promise(resolveDelay => setTimeout(resolveDelay, ms))
 
 async function loadHarness(candidate) {
-  const bundle = join(bundleRoot, candidate.directory)
+  const bundle = join(stageRoot, candidate.directory)
   const packageJson = JSON.parse(await readFile(join(bundle, 'package.json'), 'utf8'))
   assert.equal(packageJson.name, candidate.package)
   const manifest = { package: { name: packageJson.name, version: packageJson.version } }
@@ -299,7 +301,7 @@ try {
   }
   const managerResults = []
   for (const candidate of candidates) {
-    const bundle = join(bundleRoot, candidate.directory)
+    const bundle = join(stageRoot, candidate.directory)
     const packageJson = JSON.parse(await readFile(join(bundle, 'package.json'), 'utf8'))
     await runDsh(['plugin', '--profile', 'headless', 'add', `file:${bundle}`])
     const dump = await runDsh(['--profile', 'headless', '--dump-config'])

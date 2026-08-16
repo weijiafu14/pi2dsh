@@ -9,21 +9,105 @@ being sent as chat. Pi's never-throw collision behaviour is preserved.
 
 **13 Pi surfaces** — 13 mapped, difference stated.
 
-| Pi surface | Kind | Status | How it maps onto DSH |
+| Pi surface | Kind | Status | What it does on DSH |
 |---|---|---|---|
-| `registerCommand` | `pi.*` | Mapped, difference stated | Registered in ctx.commands with Pi's never-throw collision semantics: a package re-registering its own name replaces it, and cross-source collisions mount under Pi's numbered scheme (/name-2 — the earlier registration keeps the bare name, where Pi renumbers both). ui.notify becomes the result, while interactive Pi TUI methods fail explicitly in headless DSH. |
-| `registerShortcut` | `pi.*` | Mapped, difference stated | Registration is recorded and introspectable; DSH surfaces feed no terminal key input, so handlers never fire — the same as Pi's non-TUI modes. |
-| `registerFlag` | `pi.*` | Mapped, difference stated | The declared default is available through getFlag; Pi process flags cannot be added to the DSH launcher. |
-| `getFlag` | `pi.*` | Mapped, difference stated | Returns the migrated flag default because DSH cannot register the original Pi CLI flag. |
-| `getCommands` | `pi.*` | Mapped, difference stated | Returns commands registered by this migrated Pi package, not every command visible in the DSH scope. |
-| `input` | `event` | Mapped, difference stated | Registration is accepted; raw Pi terminal input never occurs on DSH surfaces, so the handler never fires. Loading is unaffected. |
-| `onTerminalInput` | `ctx.ui.*` | Mapped, difference stated | Raw terminal input is absent; feature-detected listeners remain disabled. |
-| `pasteToEditor` | `ctx.ui.*` | Mapped, difference stated | Appends to a per-agent editor buffer readable through getEditorText(). |
-| `setEditorText` | `ctx.ui.*` | Mapped, difference stated | Stored in a per-agent editor buffer readable through getEditorText(). |
-| `getEditorText` | `ctx.ui.*` | Mapped, difference stated | Reads the per-agent editor buffer maintained by the bridge. |
-| `addAutocompleteProvider` | `ctx.ui.*` | Mapped, difference stated | Registration is recorded; no DSH surface requests suggestions. |
-| `setEditorComponent` | `ctx.ui.*` | Mapped, difference stated | Registration is recorded; no DSH surface mounts a Pi editor component. |
-| `getEditorComponent` | `ctx.ui.*` | Mapped, difference stated | Returns the recorded factory. |
+| [`registerCommand`](#registercommand-pi) | `pi.*` | Mapped, difference stated | Registered in ctx.commands with Pi's never-throw collision semantics: a package re-registering its own name replaces it, and cross-source collisions mount under Pi's numbered scheme (/name-2 — the earlier registration keeps the bare name, where Pi renumbers both). ui.notify becomes the result, while interactive Pi TUI methods fail explicitly in headless DSH. |
+| [`registerShortcut`](#registershortcut-pi) | `pi.*` | Mapped, difference stated | Registration is recorded and introspectable; DSH surfaces feed no terminal key input, so handlers never fire — the same as Pi's non-TUI modes. |
+| [`registerFlag`](#registerflag-pi) | `pi.*` | Mapped, difference stated | The declared default is available through getFlag; Pi process flags cannot be added to the DSH launcher. |
+| [`getFlag`](#getflag-pi) | `pi.*` | Mapped, difference stated | Returns the migrated flag default because DSH cannot register the original Pi CLI flag. |
+| [`getCommands`](#getcommands-pi) | `pi.*` | Mapped, difference stated | Returns commands registered by this migrated Pi package, not every command visible in the DSH scope. |
+| [`input`](#input-event) | `event` | Mapped, difference stated | Registration is accepted; raw Pi terminal input never occurs on DSH surfaces, so the handler never fires. Loading is unaffected. |
+| [`onTerminalInput`](#onterminalinput-ctxui) | `ctx.ui.*` | Mapped, difference stated | Raw terminal input is absent; feature-detected listeners remain disabled. |
+| [`pasteToEditor`](#pastetoeditor-ctxui) | `ctx.ui.*` | Mapped, difference stated | Appends to a per-agent editor buffer readable through getEditorText(). |
+| [`setEditorText`](#seteditortext-ctxui) | `ctx.ui.*` | Mapped, difference stated | Stored in a per-agent editor buffer readable through getEditorText(). |
+| [`getEditorText`](#geteditortext-ctxui) | `ctx.ui.*` | Mapped, difference stated | Reads the per-agent editor buffer maintained by the bridge. |
+| [`addAutocompleteProvider`](#addautocompleteprovider-ctxui) | `ctx.ui.*` | Mapped, difference stated | Registration is recorded; no DSH surface requests suggestions. |
+| [`setEditorComponent`](#seteditorcomponent-ctxui) | `ctx.ui.*` | Mapped, difference stated | Registration is recorded; no DSH surface mounts a Pi editor component. |
+| [`getEditorComponent`](#geteditorcomponent-ctxui) | `ctx.ui.*` | Mapped, difference stated | Returns the recorded factory. |
+
+## How each one is built
+
+Every surface below names the DSH mechanism that carries it — the seam, service
+or waterfall — so the mapping can be checked against the harness rather than
+taken on trust.
+
+### `registerCommand` <a id="registercommand-pi"></a>
+
+`pi.*` · Mapped, difference stated
+
+Registered on ctx.commands with an input descriptor. The descriptor is what makes /name <arguments> parse as a command in the web app instead of being sent as chat, so it is not optional detail.
+
+### `registerShortcut` <a id="registershortcut-pi"></a>
+
+`pi.*` · Mapped, difference stated
+
+Recorded in bridge state; no DSH surface feeds terminal key events, exactly as in Pi's own non-TUI modes.
+
+### `registerFlag` <a id="registerflag-pi"></a>
+
+`pi.*` · Mapped, difference stated
+
+The declared default goes into a bridge map. DSH's launcher exposes no seam for adding process flags, so the flag exists for the package's own reads only.
+
+### `getFlag` <a id="getflag-pi"></a>
+
+`pi.*` · Mapped, difference stated
+
+Reads the bridge map registerFlag wrote.
+
+### `getCommands` <a id="getcommands-pi"></a>
+
+`pi.*` · Mapped, difference stated
+
+Reads the bridge's own command map, which holds this package's registrations rather than the whole DSH scope.
+
+### `input` <a id="input-event"></a>
+
+`event` · Mapped, difference stated
+
+The handler goes into the bridge's handler map like any other, and nothing dispatches it: no DSH seam produces raw Pi terminal input. Registration is kept rather than refused so a package that subscribes at load time still loads.
+
+### `onTerminalInput` <a id="onterminalinput-ctxui"></a>
+
+`ctx.ui.*` · Mapped, difference stated
+
+Recorded; no DSH surface produces raw terminal input, and feature-detecting packages keep the listener disabled.
+
+### `pasteToEditor` <a id="pastetoeditor-ctxui"></a>
+
+`ctx.ui.*` · Mapped, difference stated
+
+A per-agent text buffer inside the bridge; the three editor calls only talk to each other.
+
+### `setEditorText` <a id="seteditortext-ctxui"></a>
+
+`ctx.ui.*` · Mapped, difference stated
+
+A per-agent text buffer inside the bridge; the three editor calls only talk to each other.
+
+### `getEditorText` <a id="geteditortext-ctxui"></a>
+
+`ctx.ui.*` · Mapped, difference stated
+
+Reads the per-agent buffer the other two editor calls write.
+
+### `addAutocompleteProvider` <a id="addautocompleteprovider-ctxui"></a>
+
+`ctx.ui.*` · Mapped, difference stated
+
+Kept in bridge state and readable back; no DSH surface consumes it.
+
+### `setEditorComponent` <a id="seteditorcomponent-ctxui"></a>
+
+`ctx.ui.*` · Mapped, difference stated
+
+Kept in bridge state and readable back; no DSH surface consumes it.
+
+### `getEditorComponent` <a id="geteditorcomponent-ctxui"></a>
+
+`ctx.ui.*` · Mapped, difference stated
+
+Returns the factory setEditorComponent recorded.
 
 ---
 

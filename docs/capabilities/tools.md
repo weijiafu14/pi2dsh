@@ -9,20 +9,98 @@ path, and results land in the session log in DSH's own shapes.
 
 **12 Pi surfaces** — 3 same semantics · 9 mapped, difference stated.
 
-| Pi surface | Kind | Status | How it maps onto DSH |
+| Pi surface | Kind | Status | What it does on DSH |
 |---|---|---|---|
-| `registerTool` | `pi.*` | Mapped, difference stated | Registered as a native DSH tool. Text and image results use native DSH content/attachments; unsupported JSON Schema constraints and Pi-only error details are explicitly degraded. |
-| `unregisterTool` | `pi.*` | Same semantics | Disposes the exact native DSH tool registration and removes it from the migrated package registry. |
-| `exec` | `pi.*` | Mapped, difference stated | Mapped to ctx.subprocess, so the selected local/E2B provider owns execution, isolation, cancellation, and tree cleanup; output is bounded to 64 MiB per stream. |
-| `getActiveTools` | `pi.*` | Mapped, difference stated | Returns every tool visible in the current DSH agent scope, including native and migrated tools; scope-local tools follow DSH composition rules. |
-| `getAllTools` | `pi.*` | Mapped, difference stated | Returns metadata for all tools visible in the current DSH scope, without Pi-specific prompt guidelines unavailable from DSH schemas. |
-| `setActiveTools` | `pi.*` | Mapped, difference stated | Mapped to the active DSH agent scope through tools.restrict, per-agent and without mutating other agents. Names DSH does not know are skipped exactly as Pi skips them. A tool DSH does not permit restricting (a scope's own registration, or a reserved transport name) cannot be deactivated at all and is reported once rather than silently left running. |
-| `tool_execution_start` | `event` | Same semantics | Mapped from durable tool/call events. |
-| `tool_execution_end` | `event` | Same semantics | Mapped from finalized tools/result events. |
-| `tool_execution_update` | `event` | Mapped, difference stated | Fired from migrated Pi tools' own onUpdate callbacks; DSH-native tools expose no partial-result stream. |
-| `tool_call` | `event` | Mapped, difference stated | Blocking is supported, in-place argument mutation reaches migrated Pi tools, and `terminate` follows Pi's batch rule — the loop stops after a tool batch only when every call in it was blocked asking to stop. Mutating a DSH-native tool's arguments is rejected because DSH logs arguments before policy. |
-| `tool_result` | `event` | Mapped, difference stated | Text replacement and success-to-error blocking are supported; arbitrary details and error recovery are not. |
-| `user_bash` | `event` | Mapped, difference stated | Registration is accepted; Pi's ! command surface never occurs on DSH surfaces, so the handler never fires. Loading is unaffected. |
+| [`registerTool`](#registertool-pi) | `pi.*` | Mapped, difference stated | Registered as a native DSH tool. Text and image results use native DSH content/attachments; unsupported JSON Schema constraints and Pi-only error details are explicitly degraded. |
+| [`unregisterTool`](#unregistertool-pi) | `pi.*` | Same semantics | Disposes the exact native DSH tool registration and removes it from the migrated package registry. |
+| [`exec`](#exec-pi) | `pi.*` | Mapped, difference stated | Mapped to ctx.subprocess, so the selected local/E2B provider owns execution, isolation, cancellation, and tree cleanup; output is bounded to 64 MiB per stream. |
+| [`getActiveTools`](#getactivetools-pi) | `pi.*` | Mapped, difference stated | Returns every tool visible in the current DSH agent scope, including native and migrated tools; scope-local tools follow DSH composition rules. |
+| [`getAllTools`](#getalltools-pi) | `pi.*` | Mapped, difference stated | Returns metadata for all tools visible in the current DSH scope, without Pi-specific prompt guidelines unavailable from DSH schemas. |
+| [`setActiveTools`](#setactivetools-pi) | `pi.*` | Mapped, difference stated | Mapped to the active DSH agent scope through tools.restrict, per-agent and without mutating other agents. Names DSH does not know are skipped exactly as Pi skips them. A tool DSH does not permit restricting (a scope's own registration, or a reserved transport name) cannot be deactivated at all and is reported once rather than silently left running. |
+| [`tool_execution_start`](#tool_execution_start-event) | `event` | Same semantics | Mapped from durable tool/call events. |
+| [`tool_execution_end`](#tool_execution_end-event) | `event` | Same semantics | Mapped from finalized tools/result events. |
+| [`tool_execution_update`](#tool_execution_update-event) | `event` | Mapped, difference stated | Fired from migrated Pi tools' own onUpdate callbacks; DSH-native tools expose no partial-result stream. |
+| [`tool_call`](#tool_call-event) | `event` | Mapped, difference stated | Blocking is supported, in-place argument mutation reaches migrated Pi tools, and `terminate` follows Pi's batch rule — the loop stops after a tool batch only when every call in it was blocked asking to stop. Mutating a DSH-native tool's arguments is rejected because DSH logs arguments before policy. |
+| [`tool_result`](#tool_result-event) | `event` | Mapped, difference stated | Text replacement and success-to-error blocking are supported; arbitrary details and error recovery are not. |
+| [`user_bash`](#user_bash-event) | `event` | Mapped, difference stated | Registration is accepted; Pi's ! command surface never occurs on DSH surfaces, so the handler never fires. Loading is unaffected. |
+
+## How each one is built
+
+Every surface below names the DSH mechanism that carries it — the seam, service
+or waterfall — so the mapping can be checked against the harness rather than
+taken on trust.
+
+### `registerTool` <a id="registertool-pi"></a>
+
+`pi.*` · Mapped, difference stated
+
+Registered on DSH's own tool registry, so the model sees it in the same catalog and the loop runs it through the same permission and sandbox path. Arguments go through Pi's vendored validateToolArguments inside DSH's prepareArguments hook, which is what gives a Pi tool the coercions ("7" to 7) Pi's own gate would have made before its handler ran.
+
+### `unregisterTool` <a id="unregistertool-pi"></a>
+
+`pi.*` · Same semantics
+
+Disposes the exact registration handle kept when the tool was registered, and drops it from the package's own registry.
+
+### `exec` <a id="exec-pi"></a>
+
+`pi.*` · Mapped, difference stated
+
+Handed to ctx.subprocess, so the selected local or E2B provider owns execution, isolation, cancellation and process-tree cleanup — the bridge never spawns a child itself.
+
+### `getActiveTools` <a id="getactivetools-pi"></a>
+
+`pi.*` · Mapped, difference stated
+
+Lists the DSH tool scope the current context belongs to, native and migrated tools alike.
+
+### `getAllTools` <a id="getalltools-pi"></a>
+
+`pi.*` · Mapped, difference stated
+
+Reads schemas from the same DSH tool scope; Pi's prompt-guideline fields have no DSH source and are left out rather than invented.
+
+### `setActiveTools` <a id="setactivetools-pi"></a>
+
+`pi.*` · Mapped, difference stated
+
+DSH's scoped tools.restrict, narrowed first. Pi silently skips names its registry does not know, while DSH fails the whole restrict call on a name it cannot restrict — so the list is filtered against what the scope reports as restrictable before it is applied, and a visible-but-unrestrictable tool is reported once instead of being silently left running. Called before an agent exists, the intent is remembered and applied when one starts.
+
+### `tool_execution_start` <a id="tool_execution_start-event"></a>
+
+`event` · Same semantics
+
+Projected from the durable tool/call event, so a handler sees exactly what was written to the session log.
+
+### `tool_execution_end` <a id="tool_execution_end-event"></a>
+
+`event` · Same semantics
+
+Dispatched on DSH's tools/post-execute waterfall and awaited there. Riding the durable result emit instead let the handler land after turn_end, which is the opposite of Pi's order; the waterfall is the moment that is guaranteed to run before the caller sees the result.
+
+### `tool_execution_update` <a id="tool_execution_update-event"></a>
+
+`event` · Mapped, difference stated
+
+Fed by migrated Pi tools' own onUpdate callbacks. DSH-native tools expose no partial-result stream, so nothing is synthesized for them.
+
+### `tool_call` <a id="tool_call-event"></a>
+
+`event` · Mapped, difference stated
+
+DSH's tools/pre-execute waterfall, whose decision type carries exactly the two outcomes Pi needs (proceed, deny with a reason). Pi's in-place argument mutation is applied to migrated Pi tools; for a DSH-native tool it is refused, because DSH logs arguments before policy runs and the log would then disagree with what executed. Pi's batch rule for terminate is reimplemented verbatim: the loop stops only when every finalized call in the batch asked to stop.
+
+### `tool_result` <a id="tool_result-event"></a>
+
+`event` · Mapped, difference stated
+
+The same tools/post-execute waterfall, which is where a result can still be rewritten before the caller reads it.
+
+### `user_bash` <a id="user_bash-event"></a>
+
+`event` · Mapped, difference stated
+
+The handler goes into the bridge's handler map like any other, and nothing dispatches it: no DSH seam produces Pi's ! command surface. Registration is kept rather than refused so a package that subscribes at load time still loads.
 
 ---
 
