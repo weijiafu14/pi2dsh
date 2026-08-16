@@ -16,7 +16,7 @@ import { pathToFileURL } from 'node:url'
 import { afterEach, describe, expect, it } from 'vitest'
 import { Context, type Plugin } from '@deepseek-ai/cordis'
 import AgentRegistry, { agentEvents } from '@deepseek-ai/dsh-agent'
-import { createUserMessage } from '@deepseek-ai/dsh-llm'
+import { CallId, createUserMessage } from '@deepseek-ai/dsh-llm'
 import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
 import SystemPrompt, { renderPrompt } from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
@@ -58,6 +58,15 @@ const PROBE_EXTENSION = [
   "      }),",
   "    }",
   "  })",
+  // Two tools, and a tool_call hook that blocks one asking to terminate and
+  // the other without: Pi stops only when the WHOLE batch asked for it.
+  "  pi.registerTool({ name: 'icb_terminating', description: 'blocked, asks to stop', parameters: { type: 'object', properties: {} }, execute: async () => ({ content: [] }) })",
+  "  pi.registerTool({ name: 'icb_plain', description: 'blocked, no opinion', parameters: { type: 'object', properties: {} }, execute: async () => ({ content: [] }) })",
+  "  pi.on('tool_call', async (event: any) => {",
+  "    if (event.toolName === 'icb_terminating') return { block: true, reason: 'stop here', terminate: true }",
+  "    if (event.toolName === 'icb_plain') return { block: true, reason: 'just blocked' }",
+  "    return undefined",
+  "  })",
   "  pi.registerCommand('icb-dup', { description: 'first', handler: async () => { record.command = 'first' } })",
   "  pi.registerCommand('icb-dup', { description: 'second', handler: async () => { record.command = 'second' } })",
   "}",
@@ -97,6 +106,7 @@ async function mountedContext() {
     agents: { register(agent: Record<string, unknown>): () => void }
     commands: { execute(agent: never, input: string, signal: AbortSignal): Promise<{ result: { kind: string } } | undefined> }
     systemPrompt: { assemble(input?: Record<string, unknown>): Promise<Record<string, unknown>> }
+    tools: { execute(input: Record<string, unknown>): Promise<{ isError: boolean }> }
   }
   const session = typedCtx.sessions.create(SessionId('pi2dsh-icb'), {
     meta: { createdAt: Date.now(), cwd: bundle },
@@ -173,6 +183,36 @@ describe('input/context bridge in the real DSH runtime', () => {
     // base prompt and the override applied to the following turn instead.
     const { assembly } = await driveStep(ctx, typedCtx as never, agent, [hello])
     expect(renderPrompt(assembly as never)).toContain('OVERRIDDEN BY TEST')
+  })
+
+  it("honours Pi's batch rule for terminate: all blocked-and-terminating, or the turn continues", async () => {
+    const { ctx, typedCtx, agent } = await mountedContext()
+    const events = agentEvents(ctx, agent as never) as unknown as {
+      emit(name: string, payload: Record<string, unknown>): void
+      waterfall(name: string, payload: Record<string, unknown>, terminal: () => Promise<unknown>): Promise<{ kind: string }>
+    }
+    const signal = new AbortController().signal
+    const step = async (): Promise<{ kind: string }> => events.waterfall(
+      'agent/pre-step',
+      { turn: 1, step: 2, signal },
+      async () => ({ kind: 'enter', messages: [] }),
+    )
+    const call = async (name: string): Promise<unknown> => typedCtx.tools.execute({
+      signal, callId: CallId(`terminate-${name}`), name, arguments: {}, agent: agent as never,
+    })
+
+    // One call, blocked with terminate → the whole batch asked to stop.
+    await call('icb_terminating')
+    expect((await step()).kind).toBe('reject')
+
+    // A batch where one call did NOT ask to terminate keeps the turn going —
+    // this is the half a per-call translation gets wrong.
+    await call('icb_terminating')
+    await call('icb_plain')
+    expect((await step()).kind).toBe('enter')
+
+    // And a batch with no Pi opinion at all is untouched.
+    expect((await step()).kind).toBe('enter')
   })
 
   it("keeps Pi's same-name registerCommand replacement: the second handler wins without aborting the package", async () => {

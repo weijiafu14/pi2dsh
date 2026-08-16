@@ -117,9 +117,17 @@ const SESSION_PROBE = `
         const out: any = {}
         let replacedId: string | undefined
         out.newSession = await ctx.newSession({
-          withSession: async (replaced: any) => { replacedId = replaced.sessionManager.getSessionId?.() ?? 'no-id' },
+          withSession: async (replaced: any) => {
+            replacedId = replaced.sessionManager.getSessionId?.() ?? 'no-id'
+            // Pi's ReplacedSessionContext sends into the REPLACEMENT session.
+            // Routing this through the live agent (which still belongs to the
+            // turn that called newSession) wrote it into the OLD one.
+            out.replacedHasSend = typeof replaced.sendMessage === 'function'
+            await replaced.sendMessage({ customType: 'seed', content: 'seeded into the replacement', display: false })
+          },
         })
         out.replacedSeen = replacedId !== undefined
+        out.replacedSessionId = replacedId
         out.fork = await ctx.fork('dsh-0')
         out.navigateTree = await ctx.navigateTree('dsh-0')
         out.shutdownThrew = false
@@ -179,6 +187,21 @@ describe('session control on a real DSH composition', () => {
     const parsed = JSON.parse(resultText(outcome)) as Record<string, unknown>
     expect(parsed.newSession).toEqual({ cancelled: false })
     expect(parsed.replacedSeen).toBe(true)
+    expect(parsed.replacedHasSend).toBe(true)
+
+    // The seeded message is in the REPLACEMENT session's durable log, and the
+    // session the command ran in is untouched. This is the whole point: the
+    // live agent still belongs to the calling turn, so routing through it put
+    // the message in the wrong conversation — worse than not implementing it.
+    type LoggedSession = { id: unknown, events: Array<{ type: string, data: unknown }> }
+    const sessionsWithLogs = typed.sessions!.list() as unknown as LoggedSession[]
+    const replacement = sessionsWithLogs.find(session => String(session.id) === String(parsed.replacedSessionId))
+    expect(replacement).toBeDefined()
+    const seeded = replacement!.events.filter(event => event.type === 'user/message')
+    expect(seeded).toHaveLength(1)
+    expect(JSON.stringify(seeded[0]!.data)).toContain('seeded into the replacement')
+    const origin = sessionsWithLogs.find(session => String(session.id) === 'pi2dsh-capability-probe')
+    expect(origin!.events.filter(event => event.type === 'user/message')).toHaveLength(0)
     expect(parsed.fork).toEqual({ cancelled: false })
     expect(parsed.navigateTree).toEqual({ cancelled: false })
     expect(parsed.shutdownThrew).toBe(false)

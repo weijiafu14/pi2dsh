@@ -267,11 +267,22 @@ describe('generated plugin in the real DSH runtime', () => {
       arguments: {},
       agent: agent as never,
     })
+    if (messageProbe.isError) throw new Error(`message probe failed: ${JSON.stringify(messageProbe.content)}`)
     expect(messageProbe.isError).toBe(false)
-    expect(injected).toHaveLength(1)
+    // Pi's no-turn sendMessage is durable BY THE TIME IT RETURNS — the message
+    // is in the conversation, not queued for a step that may never come. So
+    // the proof is the session log, not the agent's inbox: routing inject
+    // through the inbox meant a turn cancelled in between dropped a message
+    // the package had already been told was delivered.
+    const injectedEvents = session.events.filter(event =>
+      event.type === 'user/message'
+      && (event.data.source as { plugin?: string } | undefined)?.plugin === 'pi2dsh:@pi2dsh-fixtures/complete')
+    expect(injectedEvents).toHaveLength(1)
+    expect(injected).toHaveLength(0)
+    // Steering and follow-up DO trigger a turn, so they stay on the agent.
     expect(steered).toHaveLength(1)
     expect(followedUp).toHaveLength(1)
-    for (const delivered of [...injected, ...steered, ...followedUp]) {
+    for (const delivered of [...steered, ...followedUp]) {
       expect(delivered).toMatchObject({ source: { kind: 'plugin', plugin: 'pi2dsh:@pi2dsh-fixtures/complete' } })
     }
 
@@ -337,8 +348,12 @@ describe('generated plugin in the real DSH runtime', () => {
       tool_result: 11,
       agent_start: 1,
       turn_start: 1,
-      message_start: 1,
-      message_end: 1,
+      // Two, not one: the durably-appended sendMessage is a real user/message
+      // in the log, and Pi announces exactly that pair right after appending
+      // it. Under the old inbox routing it produced no message at all until
+      // some later step claimed it.
+      message_start: 2,
+      message_end: 2,
       tool_execution_start: 1,
       tool_execution_end: 11,
       turn_end: 1,

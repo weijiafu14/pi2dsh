@@ -121,6 +121,13 @@ interface RuntimeState {
    * announced after the turn that produced it has already ended.
    */
   projection: Promise<unknown>
+  /**
+   * Pi's `terminate` hint, accumulated across the current tool batch. Pi stops
+   * the loop only when EVERY finalized call in the batch asked for it, and a
+   * single call cannot know that — so the calls record here and the next step
+   * boundary reads the verdict.
+   */
+  terminateBatch: WeakMap<object, { calls: number, terminating: number }>
   /** Messages DSH claimed for the step that is about to be assembled. */
   claimedForStep: WeakMap<object, UnknownRecord[]>
   /** The turn each agent's before_agent_start has already fired for. */
@@ -802,7 +809,22 @@ function contextFor(
   const contextCwd = typeof (sessionOverride?.header as UnknownRecord | undefined)?.cwd === 'string'
     ? (sessionOverride!.header as { cwd: string }).cwd
     : cwdOf(agent)
+  // Pi's ReplacedSessionContext adds these three on top of the command
+  // context, and they belong to the REPLACEMENT session. Routing them through
+  // the live agent (which still belongs to the turn that started the
+  // operation) wrote into the old session — worse than not implementing them.
+  const replacedSessionActions: UnknownRecord = sessionOverride === undefined ? {} : {
+    sendMessage: (message: UnknownRecord, options: UnknownRecord = {}) => sendPiMessage(
+      ctx, state, message.content, deliveryMode(options), sessionOverride,
+      typeof message.customType === 'string' ? message.customType : undefined,
+    ),
+    sendUserMessage: (content: unknown) => sendPiMessage(ctx, state, content, 'followup', sessionOverride),
+    appendEntry: (customType: string, data?: unknown) => {
+      state.bridge.appendCustomEntry(String(sessionOverride.id ?? ''), customType, data)
+    },
+  }
   const base: UnknownRecord = {
+    ...replacedSessionActions,
     ui,
     mode: 'rpc',
     // A getter, not a value: this context is rebuilt for every dispatched
@@ -1464,10 +1486,26 @@ function subscribeInterceptors(ctx: Context, state: RuntimeState): void {
         return { kind: 'deny', reason: `pi2dsh: a Pi tool_call hook mutated arguments of native DSH tool ${JSON.stringify(exec.name)}; DSH logs arguments before policy, so this mutation cannot be honored` }
       }
     }
+    // Pi's `terminate` is a batch verdict, not a per-call one: the loop stops
+    // after a tool batch only when EVERY finalized call in it was blocked with
+    // terminate. One call cannot see the batch, so each records its vote and
+    // the next step boundary counts them.
+    const agent = exec.agent as unknown as object | undefined
+    const tally = agent === undefined
+      ? undefined
+      : state.terminateBatch.get(agent) ?? { calls: 0, terminating: 0 }
+    if (tally !== undefined && agent !== undefined) {
+      tally.calls += 1
+      state.terminateBatch.set(agent, tally)
+    }
     for (const result of results) {
-      if (typeof result === 'object' && result !== null && (result as UnknownRecord).block === true) {
-        return { kind: 'deny', reason: String((result as UnknownRecord).reason ?? 'blocked by migrated Pi tool_call hook') }
-      }
+      if (typeof result !== 'object' || result === null) continue
+      const record = result as UnknownRecord
+      if (record.block !== true) continue
+      // Only a BLOCKED call's terminate counts — Pi documents it as a hint
+      // "when this call is blocked", and an executed call never carries one.
+      if (record.terminate === true && tally !== undefined) tally.terminating += 1
+      return { kind: 'deny', reason: String(record.reason ?? 'blocked by migrated Pi tool_call hook') }
     }
     return next()
   })
@@ -1534,10 +1572,24 @@ function subscribeInterceptors(ctx: Context, state: RuntimeState): void {
   })
 
   cordis.on('agent/pre-step', async (payload: UnknownRecord, next: () => Promise<UnknownRecord>) => {
+    const agent = payload.agent as UnknownRecord
+    if (isSubagentOrigin(agent)) return next()
+    // The step boundary IS the end of the previous tool batch, so this is
+    // where Pi's batch verdict is read: stop only when every call in that
+    // batch was blocked asking to terminate. Rejecting the proposed step is
+    // exactly Pi's "stop after the current tool batch" — the results already
+    // entered the conversation; the agent simply does not take another step.
+    const tally = state.terminateBatch.get(agent as unknown as object)
+    state.terminateBatch.delete(agent as unknown as object)
+    if (tally !== undefined && tally.calls > 0 && tally.calls === tally.terminating) {
+      logger(ctx).info(
+        `[pi2dsh] a Pi tool_call hook terminated the turn: all ${tally.calls} call(s) in the batch were blocked`
+        + ' with terminate',
+      )
+      return { kind: 'reject' }
+    }
     const decision = await next() as UnknownRecord & { kind?: string, messages?: UnknownRecord[] }
     if (decision.kind !== 'enter') return decision
-    const agent = payload.agent as UnknownRecord
-    if (isSubagentOrigin(agent)) return decision
     const signal = payload.signal as AbortSignal | undefined
     const messages = decision.messages ?? []
     // The custom messages a before_agent_start handler returned during this
@@ -2253,18 +2305,91 @@ function deliverAgentMessage(agent: DshAgent, message: unknown, mode: 'inject' |
   deliver.call(agent, message)
 }
 
+/**
+ * Pi's `sendMessage` / `sendUserMessage`, on DSH.
+ *
+ * Two things this has to get right that a plain `deliverAgentMessage` does not:
+ *
+ *  - **Durability.** Pi's no-turn `sendMessage` appends to the session and
+ *    emits its message events before it returns: on return the message IS in
+ *    the conversation. DSH's inject only queues it in the agent's inbox, where
+ *    it becomes a `user/message` when the next step claims it — so a turn
+ *    cancelled in between dropped it, and a package that had already reported
+ *    success was wrong. The no-turn mode now appends to the durable log
+ *    itself, which is what Pi's contract promises.
+ *  - **Which session.** Inside a `withSession` callback the context is bound to
+ *    the REPLACEMENT session, but the live agent is still the one that started
+ *    the operation — so routing through the agent wrote into the OLD session.
+ *    An override session is written to directly.
+ * @param ctx - context used for content conversion.
+ * @param state - runtime state (message source, active agent).
+ * @param content - the Pi content to deliver.
+ * @param mode - inject (no turn), steer, or followup.
+ * @param sessionOverride - the replacement session, inside a withSession callback.
+ * @param customType - Pi's role:"custom" marker, when the caller sent one.
+ */
 async function sendPiMessage(
   ctx: Context,
   state: RuntimeState,
   content: unknown,
   mode: 'inject' | 'steer' | 'followup',
+  sessionOverride?: UnknownRecord,
+  customType?: string,
 ): Promise<void> {
-  const agent = requireAgent(state, mode === 'inject' ? 'sendMessage' : 'sendUserMessage')
   const blocks = await piToDshContent(ctx, typeof content === 'string' ? [{ type: 'text', text: content }] : content)
-  deliverAgentMessage(agent, createUserMessage({
+  const message = createUserMessage({
     content: blocks,
-    source: { kind: 'plugin', plugin: state.messageSource },
-  }), mode)
+    source: {
+      kind: 'plugin', plugin: state.messageSource,
+      ...(customType === undefined ? {} : { piCustomType: customType }),
+    },
+  })
+  // A replacement session has no live agent of its own; the durable log IS the
+  // conversation, so every mode writes there.
+  if (sessionOverride !== undefined) {
+    appendUserMessage(sessionOverride, message as unknown as UnknownRecord)
+    return
+  }
+  if (mode === 'inject') {
+    const session = agentSession(currentAgent(state))
+    if (session === undefined) {
+      throw new Error('pi2dsh: sendMessage requires one active DSH agent with a durable session')
+    }
+    appendUserMessage(session as unknown as UnknownRecord, message as unknown as UnknownRecord)
+    return
+  }
+  const agent = requireAgent(state, 'sendUserMessage')
+  deliverAgentMessage(agent, message, mode)
+}
+
+/**
+ * Pi's delivery options → this bridge's mode. No options at all means "into
+ * the conversation, no turn", which is Pi's own default.
+ * @param options - the caller's delivery options.
+ */
+function deliveryMode(options: UnknownRecord): 'inject' | 'steer' | 'followup' {
+  if (options.deliverAs === 'steer') return 'steer'
+  if (options.deliverAs === 'followUp' || options.deliverAs === 'nextTurn' || options.triggerTurn === true) {
+    return 'followup'
+  }
+  return 'inject'
+}
+
+/**
+ * Append one plugin-sourced user message to a session's durable log, which is
+ * what makes it part of the conversation before the call returns.
+ * @param session - the live DSH session to append to.
+ * @param message - the message, already in DSH shape.
+ */
+function appendUserMessage(session: UnknownRecord, message: UnknownRecord): void {
+  const append = session.append
+  if (typeof append !== 'function') {
+    throw new Error('pi2dsh: this session cannot be appended to, so the message could not be delivered durably')
+  }
+  // `user/message` is surface-eligible, so DSH requires the marker that says
+  // where it lands on the model-visible surface — the same `append` the agent
+  // loop uses when it enters a claimed prompt.
+  append.call(session, 'user/message', message, { surfaceOp: 'append' })
 }
 
 function combineExecSignal(options: PiExecOptions): {
@@ -2609,12 +2734,8 @@ function createPiApi(ctx: Context, state: RuntimeState): UnknownRecord {
     },
     sendMessage(message: UnknownRecord, options: UnknownRecord = {}) {
       requireAgent(state, 'sendMessage')
-      const mode = options.deliverAs === 'steer'
-        ? 'steer'
-        : options.deliverAs === 'followUp' || options.deliverAs === 'nextTurn' || options.triggerTurn === true
-          ? 'followup'
-          : 'inject'
-      return sendPiMessage(ctx, state, message.content, mode)
+      return sendPiMessage(ctx, state, message.content, deliveryMode(options), undefined,
+        typeof message.customType === 'string' ? message.customType : undefined)
     },
     sendUserMessage(content: unknown, options: UnknownRecord = {}) {
       requireAgent(state, 'sendUserMessage')
@@ -2939,6 +3060,7 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
     thinkingLevels: new WeakMap(),
     turnSystemPromptOverrides: new WeakMap(),
     projection: Promise.resolve(),
+    terminateBatch: new WeakMap(),
     claimedForStep: new WeakMap(),
     promptedTurn: new WeakMap(),
     pendingInjections: new WeakMap(),
