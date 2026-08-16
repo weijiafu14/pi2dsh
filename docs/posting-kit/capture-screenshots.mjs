@@ -90,7 +90,24 @@ async function send(text) {
   // Typing into a composer that was still settling silently drops the first
   // characters, which only shows up as a subtly wrong screenshot. Check.
   const typed = await composer.inputValue().catch(() => text)
-  if (typed !== text) throw new Error(`capture: composer holds "${typed}", expected "${text}"`)
+  if (typed !== text) {
+    // Say WHAT was in the way. An empty composer after focusing means
+    // something is still covering it — a first-run dialog on a fresh
+    // DSH_HOME, most often — and the bare mismatch names none of that.
+    const state = await page.evaluate(() => ({
+      active: document.activeElement?.tagName ?? null,
+      dialogs: [...document.querySelectorAll('[role="dialog"], [class*="_mask_"], [class*="modal"]')]
+        .map(node => (node.textContent ?? '').replace(/\s+/gu, ' ').trim().slice(0, 120))
+        .filter(Boolean),
+      buttons: [...document.querySelectorAll('button')]
+        .map(node => (node.textContent ?? '').replace(/\s+/gu, ' ').trim())
+        .filter(Boolean).slice(0, 20),
+    })).catch(() => undefined)
+    throw new Error(
+      `capture: composer holds "${typed}", expected "${text}"`
+      + `\n  page state: ${JSON.stringify(state)}`,
+    )
+  }
   await page.getByRole('button', { name: UI.send }).click()
   // Settled means both kinds of work are done: a model turn (which offers to
   // stop while streaming) and a slash command (which shows a running status
@@ -130,6 +147,31 @@ if (noticeShown) {
     { timeout: 20_000 },
   )
 }
+// A DSH home that has never been opened also has no WORKSPACE, and until one
+// exists the composer accepts nothing — it takes keystrokes and stays empty,
+// which used to surface only as a blank composer with no explanation. The
+// picker itself is an OS-native directory dialog a browser cannot drive, so
+// adopt a directory through the host's own workspace.create RPC, which is
+// exactly what the picker calls.
+const workspacePath = process.env.CAPTURE_WORKSPACE ?? process.cwd()
+const adopted = await page.evaluate(async path => {
+  const response = await fetch('/api/workspace.create', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      type: 'request',
+      rpcId: 'capture-workspace',
+      method: 'workspace.create',
+      payload: { path },
+    }),
+  })
+  return { status: response.status, body: (await response.text()).slice(0, 300) }
+}, workspacePath).catch(error => ({ status: 0, body: String(error) }))
+if (adopted.status !== 200) {
+  console.log(`capture: workspace.create answered ${adopted.status} — ${adopted.body}`)
+}
+await page.reload({ waitUntil: 'domcontentloaded' })
+
 await page.getByRole('button', { name: UI.newSession }).first().click({ timeout: 60_000 })
 await send(MAIN_QUESTION)
 await send(SIDE_QUESTION)

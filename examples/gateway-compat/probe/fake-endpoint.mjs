@@ -41,6 +41,15 @@ createServer((req, res) => {
       // supportsStore and friends: present only when the compat allows them.
       store: parsed.store ?? null,
       hasImagePart: hasImagePart(messages),
+      // First 60 chars of each message, so an unexpected extra message is
+      // identifiable rather than just a count.
+      previews: messages?.map(message => {
+        const content = message.content
+        const text = typeof content === 'string'
+          ? content
+          : (Array.isArray(content) ? content : []).map(part => part?.text ?? `[${part?.type}]`).join(' ')
+        return `${message.role}: ${String(text).slice(0, 60).replace(/\s+/gu, ' ')}`
+      }) ?? null,
       // Everything else, so an unexpected field is visible rather than lost.
       bodyKeys: Object.keys(parsed).sort(),
     })}\n`)

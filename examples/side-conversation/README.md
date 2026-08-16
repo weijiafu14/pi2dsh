@@ -36,6 +36,11 @@ Start a session and ask something normal:
 dsh --profile web
 ```
 
+On a DSH home you have never opened, pick a workspace first — the button is
+in the top bar. Until one exists the composer takes keystrokes and stays
+empty, with nothing on screen saying why. (Found by the example regression
+run, which starts from a genuinely fresh home every time.)
+
 ```text
 Name three classic sorting algorithms, one line each.
 ```

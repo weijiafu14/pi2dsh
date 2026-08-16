@@ -206,9 +206,29 @@ ERR_PNPM_IGNORED_BUILDS）。example 里每条命令必须实际跑过；对外�
 （双语）的 Examples 章节同步更新。
 
 已有：examples/vision-bridge（视觉委托）、examples/custom-gateways
-（DSH settings 网关配置）。存量已验证能力（guardian 审批、跨会话记忆、
-OAuth /login、MCP 配置转换、host 模式）的 example 待补——补前必须按
-上述判据重新端到端验证，禁止凭记忆写。
+（DSH settings 网关配置）、examples/gateway-compat（provider compat 三坑）、
+examples/side-conversation（/btw 侧边会话）。存量已验证能力（guardian 审批、
+跨会话记忆、OAuth /login、MCP 配置转换、host 模式）的 example 待补——补前
+必须按上述判据重新端到端验证，禁止凭记忆写。
+
+### 五点一、examples 必须能自动回归（新增铁律）
+
+**改了行为面就必须跑 `pnpm test:examples`**（`scripts/verify-examples-e2e.mjs`）。
+每个 example 都在对读者作承诺，承诺就得能被机器复核 —— 只有契约测试绿不算数，
+那批测试用的是我们自己的 fixture，不是 example 里写给用户的那条路。
+
+回归怎么算数：
+- 用**全新的临时 DSH_HOME**，不许复用本机已配好的实例 —— 否则测的是"我的机器"
+  而不是用户的干净安装；
+- 装的是 README 里**原话让用户装的东西**（真 npm 包、真 `dsh plugin add`）；
+- 断言 example **自己宣称的那个性质**（gateway-compat 断三个 compat 字段真上线、
+  side-conversation 断侧边答案不进主会话、custom-gateways 断宿主配的路由能被
+  Pi 包的 modelRegistry 看见）；
+- 跑不了的要**报 skipped 并写原因**，绝不能算 passed。
+
+已由这条抓出的真问题：转换出的 bundle 少声明 5 个依赖（干净 profile 全部起不来）、
+side-conversation 的 README 没写全新安装要先选工作区（输入框静默吞字符，页面上
+没有任何提示）。两条都是单测和本机开发看不见的。
 
 ## 六、工作流程红线
 

@@ -39,19 +39,21 @@
     "LICENSE"
   ],
   "scripts": {
+    "audit:community": "pnpm build && node scripts/audit-community.mjs",
     "build": "tsdown",
-    "prepare": "tsdown",
     "check": "tsc --noEmit",
+    "check:docs": "pnpm build && node scripts/generate-capability-docs.mjs --check",
+    "check:pack": "pnpm build && publint && node scripts/check-pack.mjs",
+    "docs:capabilities": "node scripts/generate-capability-docs.mjs",
+    "prepare": "tsdown",
     "test": "pnpm build && vitest run",
+    "test:community": "pnpm build && node scripts/verify-community.mjs --generate community/runtime-results.json",
     "test:coverage": "pnpm build && vitest run --coverage",
     "test:dsh": "pnpm build && vitest run tests/dsh-runtime.spec.ts tests/generated-bundle.spec.ts",
-    "audit:community": "pnpm build && node scripts/audit-community.mjs",
-    "test:community": "pnpm build && node scripts/verify-community.mjs --generate community/runtime-results.json",
+    "test:examples": "pnpm build && node scripts/verify-examples-e2e.mjs",
     "test:live": "pnpm build && node scripts/verify-live-deepseek.mjs community/live-deepseek-results.json",
-    "check:pack": "pnpm build && publint && node scripts/check-pack.mjs",
-    "verify": "pnpm check && pnpm test:coverage && pnpm check:docs && pnpm check:pack",
-    "docs:capabilities": "node scripts/generate-capability-docs.mjs",
-    "check:docs": "pnpm build && node scripts/generate-capability-docs.mjs --check"
+    "test:seams": "pnpm build && node scripts/verify-step-seams-e2e.mjs",
+    "verify": "pnpm check && pnpm test:coverage && pnpm check:docs && pnpm check:pack"
   },
   "keywords": [
     "deepseek-harness",
