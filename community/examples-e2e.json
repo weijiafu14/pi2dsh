@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pi2dshCommit": "7420aac0f6b5513e056c44c099527ddee0d705f0",
+  "pi2dshCommit": "87435f718fed3056a060a322cf6fbae7f80b8927",
   "dshCommit": "47f943859bef60e4160492346772ded9b24f765a",
   "results": {
     "visionBridge": {
@@ -63,6 +63,8 @@
         "03-vision-bridge-answer.png",
         "04-side-conversation-injected-on-request.png",
         "05-side-conversation-child-view.png",
+        "06-pi-surfaces-on-dsh.png",
+        "xiaohongshu-cover-btw-v1.png",
         "xiaohongshu-cover-v2.png",
         "xiaohongshu-cover.png"
       ]

@@ -359,13 +359,13 @@ export const API_RULES: Readonly<Record<string, SurfaceRule>> = Object.freeze({
   },
   registerMessageRenderer: {
     level: 'partial',
-    detail: 'Registration is accepted; DSH owns presentation, so the renderer is never invoked — matching Pi\'s non-TUI surfaces.',
-    design: 'Kept in bridge state and readable back; no DSH surface consumes it.',
+    detail: 'The renderer really runs: a custom message the package sent is drawn by the package\'s own code and shown in the DSH web conversation. What reaches the browser is the component\'s rendered text, not a mounted Pi component.',
+    design: 'A custom message is a durable DSH log entry carrying Pi\'s role:"custom" marker (source.piCustomType), so the projection reads it back from the session through ctx.sessions.get(id) rather than from a cache — the renderer keeps working after a restart. The returned component is projected through its own render(width), and the text takes a seat in the conversation flow.',
   },
   registerEntryRenderer: {
     level: 'partial',
-    detail: 'Registration is accepted; DSH owns presentation, so the renderer is never invoked — matching Pi\'s non-TUI surfaces.',
-    design: 'Kept in bridge state and readable back; no DSH surface consumes it.',
+    detail: 'The renderer really runs: entries the package appended are drawn by the package\'s own code and shown in the DSH web conversation. What reaches the browser is the component\'s rendered text, not a mounted Pi component.',
+    design: 'Custom entries live in the pi2dsh sidecar (DSH\'s durable log has no channel for event types declared outside the harness, so the host\'s own conversation view can never show them). The registered EntryRenderer runs per entry, its component is projected through render(width), and the text is seated in the conversation flow. A renderer that throws contributes nothing and leaves every other package\'s entries — and the request — intact.',
   },
   registerMarkdownTransformer: {
     level: 'partial',

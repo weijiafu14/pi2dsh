@@ -11,8 +11,8 @@ modes. Plugin-drawn cards are the one Pi UI surface pi2dsh does not draw yet.
 
 | Pi surface | Kind | Status | What it does on DSH |
 |---|---|---|---|
-| [`registerMessageRenderer`](#registermessagerenderer-pi) | `pi.*` | Mapped, difference stated | Registration is accepted; DSH owns presentation, so the renderer is never invoked — matching Pi's non-TUI surfaces. |
-| [`registerEntryRenderer`](#registerentryrenderer-pi) | `pi.*` | Mapped, difference stated | Registration is accepted; DSH owns presentation, so the renderer is never invoked — matching Pi's non-TUI surfaces. |
+| [`registerMessageRenderer`](#registermessagerenderer-pi) | `pi.*` | Mapped, difference stated | The renderer really runs: a custom message the package sent is drawn by the package's own code and shown in the DSH web conversation. What reaches the browser is the component's rendered text, not a mounted Pi component. |
+| [`registerEntryRenderer`](#registerentryrenderer-pi) | `pi.*` | Mapped, difference stated | The renderer really runs: entries the package appended are drawn by the package's own code and shown in the DSH web conversation. What reaches the browser is the component's rendered text, not a mounted Pi component. |
 | [`registerMarkdownTransformer`](#registermarkdowntransformer-pi) | `pi.*` | Mapped, difference stated | Registration is accepted; DSH owns presentation, so the transformer is never invoked — matching Pi's non-TUI surfaces. |
 | [`notify`](#notify-ctxui) | `ctx.ui.*` | Same semantics | Captured as a command result when applicable and emitted through DSH logging at the severity the caller passed (warning and error log as warnings). |
 | [`setStatus`](#setstatus-ctxui) | `ctx.ui.*` | Mapped, difference stated | Pi's keyed status entries render as pills in the bridge's own browser half (Pi's status bar is a terminal-footer surface; DSH's equivalent is the frame-wide pill stack). setStatus(key, undefined) removes exactly one entry, Pi's clear shape. |
@@ -46,13 +46,13 @@ taken on trust.
 
 `pi.*` · Mapped, difference stated
 
-Kept in bridge state and readable back; no DSH surface consumes it.
+A custom message is a durable DSH log entry carrying Pi's role:"custom" marker (source.piCustomType), so the projection reads it back from the session through ctx.sessions.get(id) rather than from a cache — the renderer keeps working after a restart. The returned component is projected through its own render(width), and the text takes a seat in the conversation flow.
 
 ### `registerEntryRenderer` <a id="registerentryrenderer-pi"></a>
 
 `pi.*` · Mapped, difference stated
 
-Kept in bridge state and readable back; no DSH surface consumes it.
+Custom entries live in the pi2dsh sidecar (DSH's durable log has no channel for event types declared outside the harness, so the host's own conversation view can never show them). The registered EntryRenderer runs per entry, its component is projected through render(width), and the text is seated in the conversation flow. A renderer that throws contributes nothing and leaves every other package's entries — and the request — intact.
 
 ### `registerMarkdownTransformer` <a id="registermarkdowntransformer-pi"></a>
 
