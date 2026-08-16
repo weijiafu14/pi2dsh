@@ -9,6 +9,8 @@ import { ModelCatalog, llmOf, piRequestToDshMessages, streamViaDshLlm } from '..
 
 class FixtureAdapter extends LlmAdapter {
   lastOptions: Record<string, unknown> | undefined
+  /** Capacity is host configuration, so a fixture can change it mid-life. */
+  contextWindow = 64000
 
   override providerInfo(provider: string) {
     return { id: provider, name: `Fixture ${provider}` }
@@ -24,7 +26,7 @@ class FixtureAdapter extends LlmAdapter {
   override async resolveModel(provider: string, model: string) {
     return {
       provider, id: model, name: `Fixture ${model}`,
-      context: { contextWindow: 64000 },
+      context: { contextWindow: this.contextWindow },
       defaultMaxTokens: 4096,
       reasoning: { efforts: [{ id: 'high', name: 'High' }] },
     } as never
@@ -61,11 +63,30 @@ describe('model runtime bridge', () => {
     const all = catalog.all()
     expect(all.map(model => `${model.provider}/${model.id}`)).toEqual(['fixture/fx-mini', 'fixture/fx-vision'])
     expect(all[1]).toMatchObject({ name: 'Fixture Vision', api: 'faux', input: ['text', 'image'] })
+    // DSH keeps directory membership and per-route capacity on two seams; Pi
+    // reads ONE Model and its getAll is synchronous, so the join has to have
+    // happened by now. A package that sizes its own context off contextWindow
+    // gets the host's real number rather than a built-in guess.
+    expect(all[0]).toMatchObject({ contextWindow: 64000, maxTokens: 4096, reasoning: true })
 
     const resolved = await catalog.resolve('fixture', 'fx-mini')
     expect(resolved).toMatchObject({ contextWindow: 64000, maxTokens: 4096, reasoning: true })
-    // resolve() caches; find() serves the enriched entry afterwards.
     expect(catalog.find('fixture', 'fx-mini')).toMatchObject({ contextWindow: 64000 })
+  })
+
+  it('re-reads route capacity on refresh instead of serving the old configuration', async () => {
+    const { ctx, adapter } = await llmContext()
+    const catalog = new ModelCatalog(llmOf(ctx))
+    await catalog.refresh()
+    expect(catalog.find('fixture', 'fx-mini')).toMatchObject({ contextWindow: 64000 })
+
+    // Capacity is settings, and settings change under a running harness —
+    // `llm/adapters-updated` is exactly that event. A per-route cache that
+    // outlived the listing would hand packages the retired window forever.
+    adapter.contextWindow = 32000
+    await catalog.refresh()
+    expect(catalog.find('fixture', 'fx-mini')).toMatchObject({ contextWindow: 32000 })
+    expect(catalog.all()[0]).toMatchObject({ contextWindow: 32000 })
   })
 
   it('runs a designated-model pi-ai call on ctx.llm.stream with faithful two-way conversion', async () => {

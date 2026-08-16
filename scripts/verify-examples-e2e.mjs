@@ -324,7 +324,7 @@ async function runCustomGateways() {
       "    description: 'Report the models this package can see.',",
       "    parameters: { type: 'object', properties: {} },",
       '    execute: async (_id, _args, _signal, _update, ctx) => {',
-      '      const models = ctx.modelRegistry.getModels()',
+      '      const models = ctx.modelRegistry.getAll()',
       "      return { content: [{ type: 'text', text: JSON.stringify(models.map(m => ({",
       '        provider: m.provider, id: m.id, api: m.api, contextWindow: m.contextWindow,',
       '      }))) }] }',
@@ -364,13 +364,32 @@ async function runCustomGateways() {
     const sessionFiles = (await filesBelow(join(home, 'sessions'))).filter(path => path.endsWith('/session.jsonl'))
     assert.equal(sessionFiles.length, 1, `expected one session log, found ${sessionFiles.length}`)
     const records = (await readFile(sessionFiles[0], 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line))
+    // Read the probe's own result block rather than fishing a JSON substring
+    // out of the serialized event: the catalog is long enough that a
+    // non-greedy match truncates it and fails on parse, which says nothing
+    // about the thing under test.
+    // A tool/result block carries the call id, not the tool name, so the call
+    // is what names it: pair them.
+    const call = records.find(record => record.type === 'tool/call' && record.data?.name === 'pi_registry_probe')
+    assert(call !== undefined, `the probe tool never ran:\n${run.stdout}\n${run.stderr}`)
     const result = records.find(record => record.type === 'tool/result'
-      && JSON.stringify(record.data).includes('my-gateway'))
+      && (record.data?.message?.content ?? []).some(block => block.toolCallId === call.data.callId))
     assert(result !== undefined,
-      `the host-configured route never reached the package's modelRegistry:\n${run.stdout}\n${run.stderr}`)
-    const seen = JSON.parse(JSON.stringify(result.data).match(/\[\{[^\]]*\}\]/)?.[0] ?? '[]')
+      `the probe ran but logged no result:\n${run.stdout}\n${run.stderr}`)
+    const text = (result.data.message.content ?? [])
+      .flatMap(block => Array.isArray(block.content) ? block.content : [])
+      .filter(part => part.type === 'text')
+      .map(part => part.text)
+      .join('')
+    let seen
+    try {
+      seen = JSON.parse(text)
+    } catch (error) {
+      throw new Error(`the probe's output was not the model list it reports: ${text.slice(0, 300)}`)
+    }
     const entry = (Array.isArray(seen) ? seen : []).find(model => model.provider === 'my-gateway')
-    assert(entry !== undefined, `modelRegistry saw ${JSON.stringify(seen)}`)
+    assert(entry !== undefined,
+      `the host-configured route never reached the package's modelRegistry; it saw ${JSON.stringify(seen)}`)
     // The Pi-shaped fields survive the round trip, which is the example's point.
     assert.equal(entry.id, 'deepseek-chat')
     assert.equal(entry.contextWindow, 131072)

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pi2dshCommit": "e2d040a385184191a4b78f62f1cf1f313a89d8b8",
+  "pi2dshCommit": "2dd0015688d0807c543f8c666534e192d26ac92a",
   "dshCommit": "47f943859bef60e4160492346772ded9b24f765a",
   "results": {
     "gatewayCompat": {
@@ -31,6 +31,29 @@
         "user: Current runtime context. This snapshot supersedes earlier ru",
         "user: <system-reminder> A skill is a reusable set of task-specific"
       ]
+    },
+    "visionBridge": {
+      "status": "passed",
+      "image": "solid-green.png",
+      "answeredGreen": true
+    },
+    "sideConversation": {
+      "status": "passed",
+      "screenshots": [
+        "01-side-conversation-main-thread-clean.png",
+        "02-side-conversation-host-catalog.png",
+        "03-side-conversation-injected-on-request.png",
+        "04-side-conversation-child-view.png"
+      ]
+    },
+    "customGateways": {
+      "status": "passed",
+      "seenByPackage": {
+        "provider": "my-gateway",
+        "id": "deepseek-chat",
+        "api": "faux",
+        "contextWindow": 131072
+      }
     }
   }
 }

@@ -243,7 +243,12 @@ examples/side-conversation（/btw 侧边会话）。存量已验证能力（guar
 
 已由这条抓出的真问题：转换出的 bundle 少声明 5 个依赖（干净 profile 全部起不来）、
 side-conversation 的 README 没写全新安装要先选工作区（输入框静默吞字符，页面上
-没有任何提示）。两条都是单测和本机开发看不见的。
+没有任何提示）、**宿主配的 contextWindow 到不了插件**（DSH 把"目录成员"和"每条
+路由的容量"拆成 listModels / resolveModelInfo 两个 seam，我们只投影了前者；Pi 的
+Model 是一个对象且 getAll 同步，插件读 `model.contextWindow` 拿到 undefined 就按
+内置默认猜——Pi 自家 compaction 就是 `model.contextWindow || 128000`，对 1M 窗口的
+模型会早压缩一个数量级。catalog 里那个 resolve() 早写好了，但生产链路一次没接，
+只有测试在调）。三条都是单测和本机开发看不见的。
 
 ## 六、工作流程红线
 
