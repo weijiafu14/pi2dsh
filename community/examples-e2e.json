@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pi2dshCommit": "8cfbac965871d7bb21fca9bfd89d2277e7998695",
+  "pi2dshCommit": "e2d040a385184191a4b78f62f1cf1f313a89d8b8",
   "dshCommit": "47f943859bef60e4160492346772ded9b24f765a",
   "results": {
     "gatewayCompat": {
@@ -26,16 +26,11 @@
       ],
       "previews": [
         "system: You are an AI agent powered by DeepSeek Harness. You are a ",
-        "user: say ok",
+        "user: Reply with exactly: gateway-compat-ok",
         "user: <system-reminder> The following workspace instructions may b",
         "user: Current runtime context. This snapshot supersedes earlier ru",
         "user: <system-reminder> A skill is a reusable set of task-specific"
       ]
-    },
-    "visionBridge": {
-      "status": "passed",
-      "image": "solid-green.png",
-      "answeredGreen": true
     }
   }
 }

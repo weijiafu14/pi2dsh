@@ -102,21 +102,26 @@ once, not just one vendor's.
 
 ## Verify it yourself, without a real gateway
 
-`probe/` contains a fake OpenAI-compatible endpoint that records what it is
-sent, plus a minimal Pi provider standing in for a private gateway: it
+`probe/` contains a recording proxy and a minimal Pi provider. The provider
 declares `supportsDeveloperRole: false`, `maxTokensField:
 'max_completion_tokens'`, `supportsStore: false`, a `thinkingLevelMap` that
 removes `minimal` and adds `xhigh`, and `input: ['text','image']` — none of
 which DSH settings can carry.
 
+The proxy is **not** a stand-in endpoint: it forwards every request to the
+real upstream and streams the real response back. It only writes down what
+was sent, because that is the only way to see whether a compat declaration
+actually reached the wire. Point it at your own gateway to check yours.
+
 ```sh
-node examples/gateway-compat/probe/fake-endpoint.mjs      # terminal 1
+PROXY_UPSTREAM=https://api.deepseek.com \
+  node examples/gateway-compat/probe/recording-proxy.mjs   # terminal 1
 dsh plugin --profile web add file:examples/gateway-compat/probe/pi-probe-provider
-# point agent-default-model at provider `probe`, model `probe-model`, then:
-dsh --profile web --port 5184                             # terminal 2
+# point agent-default-model at provider `probe`, then:
+dsh --profile web --port 5184                              # terminal 2
 ```
 
-Send any message and read what the endpoint recorded:
+Send any message — the model really answers — and read what was recorded:
 
 ```json
 {"roles":["system","user",…],

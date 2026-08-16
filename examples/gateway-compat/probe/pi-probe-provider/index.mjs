@@ -8,6 +8,9 @@
 //   supportsStore: false          → gateways that reject `store`
 //   thinkingLevelMap              → a model whose levels differ from default
 //   input: ['text','image']       → a custom provider offering vision
+//
+// PROBE_BASE_URL points at the recording proxy, which forwards to a REAL
+// upstream — nothing here is mocked; the proxy only writes down what was sent.
 import { createProvider } from '@earendil-works/pi-ai'
 import { openAICompletionsApi } from '@earendil-works/pi-ai/compat'
 
@@ -21,11 +24,16 @@ export default function (pi) {
     auth: {
       apiKey: {
         name: 'Probe API key',
-        resolve: async () => ({ auth: { apiKey: 'probe-key' } }),
+        // The real upstream credential, from the environment — the proxy
+        // forwards it untouched and never stores it. Point PROBE_API_KEY_ENV
+        // at whatever variable holds your gateway's key.
+        resolve: async () => ({
+          auth: { apiKey: process.env[process.env.PROBE_API_KEY_ENV ?? 'DEEPSEEK_API_KEY'] ?? '' },
+        }),
       },
     },
     models: [{
-      id: 'probe-model',
+      id: process.env.PROBE_MODEL ?? 'deepseek-chat',
       name: 'Probe Model',
       provider: 'probe',
       api: 'openai-completions',

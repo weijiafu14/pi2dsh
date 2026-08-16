@@ -126,18 +126,21 @@ async function send(text) {
 
 // The app keeps a live connection open, so `networkidle` never arrives; the
 // composer appearing is the real "ready".
-await page.goto(baseUrl, { waitUntil: 'domcontentloaded' })
-// A DSH home that has never been opened greets you with a testing notice whose
-// backdrop swallows clicks. Dismiss it if present — a fresh home is exactly
-// the situation this script has to survive.
-const notice = page.getByRole('button', { name: UI.dismissNotice })
-// Wait for it rather than probing: `isVisible()` answers immediately, and
-// right after load the notice has not rendered yet — which reads as "no
-// notice" and leaves its backdrop to swallow the next click.
-const noticeShown = await notice.waitFor({ state: 'visible', timeout: 15_000 })
-  .then(() => true)
-  .catch(() => false)
-if (noticeShown) {
+/**
+ * Dismiss the testing notice, whose backdrop swallows clicks.
+ *
+ * Called after EVERY navigation, not once: the notice comes back on reload,
+ * and a second copy of it over the composer is invisible in a screenshot —
+ * it just makes typing land nowhere, which reads as "the app ignored us".
+ * @param page - the page to clear.
+ */
+async function dismissNotice(page) {
+  const notice = page.getByRole('button', { name: UI.dismissNotice })
+  // Wait for it rather than probing: `isVisible()` answers immediately, and
+  // right after load the notice has not rendered yet — which reads as "no
+  // notice" and leaves its backdrop to swallow the next click.
+  const shown = await notice.waitFor({ state: 'visible', timeout: 15_000 }).then(() => true).catch(() => false)
+  if (!shown) return
   await notice.click()
   // Wait for the BACKDROP to go, not the button: the button hides first while
   // the mask lingers through its animation and keeps swallowing clicks.
@@ -147,6 +150,9 @@ if (noticeShown) {
     { timeout: 20_000 },
   )
 }
+
+await page.goto(baseUrl, { waitUntil: 'domcontentloaded' })
+await dismissNotice(page)
 // A DSH home that has never been opened also has no WORKSPACE, and until one
 // exists the composer accepts nothing — it takes keystrokes and stays empty,
 // which used to surface only as a blank composer with no explanation. The
@@ -159,7 +165,7 @@ const adopted = await page.evaluate(async path => {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
-      type: 'request',
+      type: 'client-request',
       rpcId: 'capture-workspace',
       method: 'workspace.create',
       payload: { path },
@@ -167,10 +173,11 @@ const adopted = await page.evaluate(async path => {
   })
   return { status: response.status, body: (await response.text()).slice(0, 300) }
 }, workspacePath).catch(error => ({ status: 0, body: String(error) }))
-if (adopted.status !== 200) {
-  console.log(`capture: workspace.create answered ${adopted.status} — ${adopted.body}`)
-}
+// Always logged: this transport answers 200 for refusals too, wrapping the
+// error in the response body, so the status alone says nothing.
+console.log(`capture: workspace.create → ${adopted.status} ${adopted.body}`)
 await page.reload({ waitUntil: 'domcontentloaded' })
+await dismissNotice(page)
 
 await page.getByRole('button', { name: UI.newSession }).first().click({ timeout: 60_000 })
 await send(MAIN_QUESTION)

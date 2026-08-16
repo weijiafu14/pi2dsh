@@ -6,9 +6,12 @@
 // and commands their READMEs tell a user to install — so a behaviour change
 // that breaks an example fails here rather than in someone's terminal.
 //
-//   gateway-compat   fully offline: the example's own fake endpoint plus its
-//                    own Pi provider. Inspects the actual wire body, which is
-//                    what that example is about.
+//   gateway-compat   the example's own Pi provider against a REAL upstream,
+//                    through the example's recording proxy — which forwards
+//                    every request and streams the real response back. The
+//                    proxy is not a stand-in endpoint; it only writes down
+//                    what was sent, which is the only way to check that a
+//                    compat declaration reached the wire. Nothing is mocked.
 //   vision-bridge    the real @kassing/pi-vision from npm against a live
 //                    model and the example's own test image (needs
 //                    DEEPSEEK_API_KEY and network).
@@ -109,39 +112,48 @@ const results = {}
 // examples/gateway-compat — offline, and the example's whole point is the wire
 // ---------------------------------------------------------------------------
 async function runGatewayCompat() {
+  if (apiKey === undefined || apiKey.length === 0) {
+    results.gatewayCompat = { status: 'skipped', reason: 'DEEPSEEK_API_KEY not set' }
+    return
+  }
   const scratch = await mkdtemp(join(tmpdir(), 'pi2dsh-ex-gateway-'))
   const recordPath = join(scratch, 'requests.jsonl')
   let endpoint
   try {
     await stat(dshBin)
-    // The example's own fake endpoint. The port must be free: a leftover
-    // listener from an earlier run answers identically while logging
-    // somewhere else, which reads as "the gateway was never called" — the
-    // exact false failure this check exists to prevent.
+    // The example's recording proxy, in front of the REAL upstream. The port
+    // must be free: a leftover listener from an earlier run would answer this
+    // one while logging somewhere else, which reads as "the gateway was never
+    // called" — the exact false failure this check exists to prevent.
     const port = Number(process.env.PROBE_PORT ?? 4599)
     const alreadyUp = await fetch(`http://127.0.0.1:${port}/v1/models`).then(() => true).catch(() => false)
     if (alreadyUp) {
       throw new Error(
-        `port ${port} is already serving — a leftover fake endpoint would answer this run and log elsewhere.`
-        + ' Stop it (pkill -f fake-endpoint.mjs) or set PROBE_PORT.',
+        `port ${port} is already serving — a leftover proxy would answer this run and log elsewhere.`
+        + ' Stop it (pkill -f recording-proxy.mjs) or set PROBE_PORT.',
       )
     }
-    endpoint = spawn('node', [join(projectRoot, 'examples/gateway-compat/probe/fake-endpoint.mjs')], {
+    endpoint = spawn('node', [join(projectRoot, 'examples/gateway-compat/probe/recording-proxy.mjs')], {
       cwd: projectRoot,
-      env: { ...process.env, PROBE_PORT: String(port), PROBE_LOG: recordPath },
+      env: {
+        ...process.env,
+        PROXY_PORT: String(port),
+        PROXY_LOG: recordPath,
+        PROXY_UPSTREAM: process.env.PROXY_UPSTREAM ?? 'https://api.deepseek.com',
+      },
       stdio: ['ignore', 'pipe', 'pipe'],
     })
     let endpointLog = ''
     endpoint.stdout.on('data', chunk => { endpointLog += String(chunk) })
     endpoint.stderr.on('data', chunk => { endpointLog += String(chunk) })
-    endpoint.on('exit', code => { endpointLog += `\nfake endpoint exited with ${code}` })
-    // Wait for OUR endpoint to accept connections rather than sleeping a guess.
+    endpoint.on('exit', code => { endpointLog += `\nrecording proxy exited with ${code}` })
+    // Wait for OUR proxy to accept connections rather than sleeping a guess.
     const deadline = Date.now() + 20_000
     for (;;) {
-      if (endpoint.exitCode !== null) throw new Error(`fake endpoint died on startup:\n${endpointLog}`)
+      if (endpoint.exitCode !== null) throw new Error(`recording proxy died on startup:\n${endpointLog}`)
       const up = await fetch(`http://127.0.0.1:${port}/v1/models`).then(() => true).catch(() => false)
       if (up) break
-      if (Date.now() > deadline) throw new Error(`fake endpoint never came up:\n${endpointLog}`)
+      if (Date.now() > deadline) throw new Error(`recording proxy never came up:\n${endpointLog}`)
       await new Promise(done => setTimeout(done, 200))
     }
 
@@ -151,9 +163,9 @@ async function runGatewayCompat() {
     await runDsh(['plugin', '--profile', 'headless', 'add',
       `file:${join(projectRoot, 'examples/gateway-compat/probe/pi-probe-provider')}`])
     await useJsonlSessions(home, 'headless')
-    await useDefaultModel(home, 'probe', 'probe-model')
+    await useDefaultModel(home, 'probe', 'deepseek-chat')
 
-    const run = await runDsh(['--profile', 'headless', 'say ok'])
+    const run = await runDsh(['--profile', 'headless', 'Reply with exactly: gateway-compat-ok'])
     const recorded = (await readFile(recordPath, 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line))
     // Completion requests only: the readiness probe above is a /models GET and
     // the endpoint logs every request it sees.
@@ -174,6 +186,10 @@ async function runGatewayCompat() {
     // thinking ON — the inversion the provider path was fixed for.
     assert.equal(first.reasoningEffort, null,
       `an unselected reasoning effort reached the wire as ${JSON.stringify(first.reasoningEffort)}`)
+    // And the real model really answered through the compat-declared route —
+    // recording the request proves nothing if the turn never completed.
+    assert.match(`${run.stdout}`, /gateway-compat-ok/iu,
+      `the turn did not complete through the declared route:\n${run.stdout}\n${run.stderr}`)
 
     results.gatewayCompat = {
       status: 'passed',
@@ -271,7 +287,7 @@ async function runSideConversation() {
       env: { ...env, PLAYWRIGHT_FROM: playwrightFrom },
       timeout: 300_000,
       maxBuffer: 16 * 1024 * 1024,
-    })
+    }).catch(error => { console.log(String(error.stdout ?? '')); throw error })
     const captured = await readdir(shots)
     assert(captured.length > 0, 'the capture run produced no screenshots')
     results.sideConversation = { status: 'passed', screenshots: captured.sort() }
@@ -285,29 +301,16 @@ async function runSideConversation() {
 // examples/custom-gateways — a HOST-configured route, seen from the Pi side
 // ---------------------------------------------------------------------------
 async function runCustomGateways() {
+  if (apiKey === undefined || apiKey.length === 0) {
+    results.customGateways = { status: 'skipped', reason: 'DEEPSEEK_API_KEY not set' }
+    return
+  }
   const scratch = await mkdtemp(join(tmpdir(), 'pi2dsh-ex-custom-'))
-  let endpoint
   try {
     // The example's claim is that ONE DSH settings entry produces one model
     // directory both worlds read. gateway-compat proves the direction where a
     // Pi package registers the route; this proves the other one — the host
     // configures it and a Pi package's modelRegistry sees the same entry.
-    const port = Number(process.env.CUSTOM_PORT ?? 4601)
-    const alreadyUp = await fetch(`http://127.0.0.1:${port}/v1/models`).then(() => true).catch(() => false)
-    if (alreadyUp) throw new Error(`port ${port} is already serving; set CUSTOM_PORT`)
-    endpoint = spawn('node', [join(projectRoot, 'examples/gateway-compat/probe/fake-endpoint.mjs')], {
-      cwd: projectRoot,
-      env: { ...process.env, PROBE_PORT: String(port), PROBE_LOG: join(scratch, 'requests.jsonl') },
-      stdio: ['ignore', 'ignore', 'ignore'],
-    })
-    const deadline = Date.now() + 20_000
-    for (;;) {
-      if (endpoint.exitCode !== null) throw new Error('fake endpoint died on startup')
-      if (await fetch(`http://127.0.0.1:${port}/v1/models`).then(() => true).catch(() => false)) break
-      if (Date.now() > deadline) throw new Error('fake endpoint never came up')
-      await new Promise(done => setTimeout(done, 200))
-    }
-
     // A Pi package that reports what its modelRegistry can see.
     const source = join(scratch, 'pi-registry-probe')
     await mkdir(source, { recursive: true })
@@ -330,7 +333,7 @@ async function runCustomGateways() {
       '}',
     ].join('\n'))
 
-    const { home, runDsh } = await makeHome(scratch, { EXAMPLE_GATEWAY_KEY: 'not-a-real-key' })
+    const { home, runDsh } = await makeHome(scratch)
     await runDsh(['plugin', '--profile', 'headless', 'add', `file:${projectRoot}`])
     await runDsh(['plugin', '--profile', 'headless', 'add', `file:${source}`])
     await useJsonlSessions(home, 'headless')
@@ -341,18 +344,21 @@ async function runCustomGateways() {
       '    my-gateway:',
       '      displayName: My Gateway',
       '      api: openai-completions',
-      `      baseURL: http://127.0.0.1:${port}/v1`,
-      '      apiKeyEnv: EXAMPLE_GATEWAY_KEY',
+      '      baseURL: https://api.deepseek.com/v1',
+      '      apiKeyEnv: DEEPSEEK_API_KEY',
       '      models:',
-      '        - id: gateway-model',
+      '        - id: deepseek-chat',
       '          name: Gateway Model',
       '          contextWindow: 131072',
       '',
-      'agent-default-model:',
-      '  provider: my-gateway',
-      '  model: gateway-model',
-      '',
     ].join('\n'))
+    // No agent-default-model here on purpose. The turn runs on the profile's
+    // own default route (a real model, from DEEPSEEK_API_KEY in the
+    // environment), because the probe tool has to actually be CALLED for its
+    // answer to exist — and the fake endpoint standing in for the gateway
+    // answers a fixed line and can emit no tool call at all. What the example
+    // claims is narrower and is what this checks: a route only DSH settings
+    // declare is visible to a mounted Pi package's modelRegistry.
 
     const run = await runDsh(['--profile', 'headless', 'call the pi_registry_probe tool once and repeat its output'])
     const sessionFiles = (await filesBelow(join(home, 'sessions'))).filter(path => path.endsWith('/session.jsonl'))
@@ -366,15 +372,17 @@ async function runCustomGateways() {
     const entry = (Array.isArray(seen) ? seen : []).find(model => model.provider === 'my-gateway')
     assert(entry !== undefined, `modelRegistry saw ${JSON.stringify(seen)}`)
     // The Pi-shaped fields survive the round trip, which is the example's point.
-    assert.equal(entry.id, 'gateway-model')
+    assert.equal(entry.id, 'deepseek-chat')
     assert.equal(entry.contextWindow, 131072)
     results.customGateways = { status: 'passed', seenByPackage: entry }
   } finally {
-    endpoint?.kill('SIGTERM')
     await rm(scratch, { recursive: true, force: true })
   }
 }
 
+// ONLY=<name> runs a single example, for iterating on one without paying for
+// the npm installs and browser runs of the others.
+const only = process.env.ONLY
 const failures = []
 for (const [name, run] of [
   ['gateway-compat', runGatewayCompat],
@@ -382,6 +390,7 @@ for (const [name, run] of [
   ['side-conversation', runSideConversation],
   ['custom-gateways', runCustomGateways],
 ]) {
+  if (only !== undefined && only !== name) continue
   try {
     await run()
     const status = results[Object.keys(results).at(-1)]?.status ?? 'passed'
