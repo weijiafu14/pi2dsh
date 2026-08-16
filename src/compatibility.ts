@@ -325,7 +325,9 @@ export const API_RULES: Readonly<Record<string, Rule>> = Object.freeze({
   },
   registerProvider: {
     level: 'partial',
-    detail: 'The provider declaration is recorded and introspectable; model calls stay on native DSH llm adapters and credentials, which own transports and secrets.',
+    detail: 'Two outcomes, by whether the provider carries its own transport. '
+      + 'WITH a transport (pi-ai createProvider and friends): it becomes a real DSH llm route through llm.registerAdapter, and from then on the package\'s own HTTP client carries the turn — its API key or OAuth token is resolved by Pi\'s credential chain and persisted in the bridge\'s auth.json, not by DSH credentials. '
+      + 'WITHOUT one (catalog-only): the declaration is recorded and introspectable, no bridge transport is synthesized, and model calls stay on native DSH llm adapters and credentials.',
   },
   unregisterProvider: {
     level: 'partial',

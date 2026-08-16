@@ -11,6 +11,7 @@
 //   3. Host-owned capabilities (package install, standalone model stacks) —
 //      importable so packages load, but constructing them throws a structured
 //      PiCapabilityError naming the DSH-owned replacement, never a silent fake.
+import { readImageDimensions } from './vendor/pi-image-dimensions.js'
 import { PiCapabilityError } from '../capability.js'
 
 export {
@@ -383,52 +384,84 @@ export async function copyToClipboard(text: string): Promise<boolean> {
 }
 
 export interface ImageResizeOptions {
+  /** Pi's default: 2000. */
   maxWidth?: number
+  /** Pi's default: 2000. */
   maxHeight?: number
-  [key: string]: unknown
+  /** Pi's default: 4.5MB of base64 payload. */
+  maxBytes?: number
+  /** Pi's default: 80. */
+  jpegQuality?: number
 }
 
+/** Pi's exact result shape: base64 payload plus both the original and final size. */
 export interface ResizedImage {
   data: string
   mimeType: string
-  width?: number
-  height?: number
-  [key: string]: unknown
+  originalWidth: number
+  originalHeight: number
+  width: number
+  height: number
+  wasResized: boolean
 }
 
-// Headless degradation: images pass through un-resized. Pi resizes only to
-// save tokens, so returning the original preserves correctness.
+/** Pi's defaults, so a caller passing nothing gets Pi's limits. */
+const DEFAULT_MAX_BYTES = 4.5 * 1024 * 1024
+
+/**
+ * Encode an image for inline use, reporting its true dimensions.
+ *
+ * Pi resizes here, using a worker and an image codec. This bridge has no
+ * codec, so it does not resize — but it must not lie about the rest: the
+ * payload really is base64 (packages feed this straight to a model), the
+ * dimensions are read from the file header, and `wasResized` is honestly
+ * false. When the image exceeds the caller's byte budget it cannot be made to
+ * fit, so this returns `null` — Pi's own "cannot produce a usable image"
+ * answer — rather than handing back something over the limit.
+ * @param inputBytes - the complete image file.
+ * @param mimeType - the declared image type.
+ * @param options - Pi's resize budget; only `maxBytes` can be honoured here.
+ */
 export async function resizeImage(
-  data: string,
+  inputBytes: Uint8Array,
   mimeType: string,
-  _options: ImageResizeOptions = {},
-): Promise<ResizedImage> {
-  return { data, mimeType }
+  options: ImageResizeOptions = {},
+): Promise<ResizedImage | null> {
+  const type = mimeType.split(';')[0]?.trim().toLowerCase() ?? ''
+  if (!INLINE_IMAGE_MIME_TYPES.has(type)) return null
+  const data = Buffer.from(inputBytes).toString('base64')
+  if (data.length > (options.maxBytes ?? DEFAULT_MAX_BYTES)) return null
+  const size = readImageDimensions(inputBytes, type)
+  if (size === undefined) return null
+  return {
+    data,
+    mimeType: type,
+    originalWidth: size.width,
+    originalHeight: size.height,
+    width: size.width,
+    height: size.height,
+    wasResized: false,
+  }
 }
 
-export async function convertToPng(data: string, mimeType: string): Promise<ResizedImage> {
-  if (mimeType === 'image/png') return { data, mimeType }
-  return unsupportedRuntime('convertToPng() for non-PNG input')
+/**
+ * Pi's PNG conversion. Already-PNG input passes through; anything else needs
+ * an image codec this bridge does not carry, so it answers `null` — the same
+ * answer Pi gives when its own conversion fails, and one every caller already
+ * handles.
+ * @param base64Data - the image payload, base64 encoded.
+ * @param mimeType - its declared type.
+ */
+export async function convertToPng(
+  base64Data: string,
+  mimeType: string,
+): Promise<{ data: string, mimeType: string } | null> {
+  if (mimeType === 'image/png') return { data: base64Data, mimeType }
+  return null
 }
 
-export interface ShellConfig {
-  shell: string
-  args: string[]
-}
 
-export function getShellConfig(): ShellConfig {
-  if (process.platform === 'win32') {
-    return { shell: process.env.COMSPEC ?? 'cmd.exe', args: ['/d', '/s', '/c'] }
-  }
-  const preferred = process.env.SHELL
-  if (preferred !== undefined && preferred.length > 0 && existsSync(preferred)) {
-    return { shell: preferred, args: ['-c'] }
-  }
-  for (const candidate of ['/bin/bash', '/bin/zsh', '/bin/sh']) {
-    if (existsSync(candidate)) return { shell: candidate, args: ['-c'] }
-  }
-  return { shell: 'sh', args: ['-c'] }
-}
+
 
 // Pi's install-directory locator: PI_PACKAGE_DIR override, else a stable
 // bridge-owned location (Pi itself falls back to its executable's directory,
@@ -906,6 +939,14 @@ export async function processImage(
 
 export { formatSkillsForPrompt } from './vendor/pi-skills-format.js'
 
+// Pi's own implementations, vendored. Hand-written stand-ins for these three
+// diverged from Pi in ways a package cannot see: a shell picked from $SHELL
+// where Pi is bash-only, head-truncation where Pi keeps the tail, and a diff
+// renderer with a different signature entirely.
+export { getShellConfig, type ShellConfig } from './vendor/pi-shell-config.js'
+export { truncateToVisualLines } from './vendor/pi-tools/visual-truncate.js'
+export { renderDiff } from './vendor/pi-tools/diff-component.js'
+
 export function createEventBus(): {
   emit(channel: string, data: unknown): void
   on(channel: string, handler: (data: unknown) => void): () => void
@@ -991,31 +1032,14 @@ export interface RenderDiffOptions {
   [key: string]: unknown
 }
 
-export function renderDiff(oldText: string, newText: string, _options: RenderDiffOptions = {}): string[] {
-  const removed = oldText.split('\n').map(line => `- ${line}`)
-  const added = newText.split('\n').map(line => `+ ${line}`)
-  return [...removed, ...added]
-}
+
 
 export interface VisualTruncateResult {
   visualLines: string[]
   skippedCount: number
 }
 
-export function truncateToVisualLines(
-  text: string,
-  maxVisualLines: number,
-  width: number,
-  paddingX = 0,
-): VisualTruncateResult {
-  const inner = Math.max(1, width - paddingX * 2)
-  const lines = text.split('\n').map(line =>
-    visibleWidth(line) > inner ? truncateToWidth(line, inner) : line)
-  return {
-    visualLines: lines.slice(0, Math.max(0, maxVisualLines)),
-    skippedCount: Math.max(0, lines.length - maxVisualLines),
-  }
-}
+
 
 export function keyHint(keybinding: string, description: string): string {
   return `${keybinding} ${description}`
