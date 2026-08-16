@@ -10,7 +10,8 @@
 // belong to the host — configure the gateway in the host's llm settings
 // (the official llm-pi-ai adapter) instead.
 
-import { dshRequestToPiContext, piEventsToDshChunks, type DshLlmLike } from './model-bridge.js'
+import { LlmError } from '@deepseek-ai/dsh-llm'
+import { blocksContainImage, dshRequestToPiContext, piEventsToDshChunks, type DshAttachmentsLike, type DshLlmLike } from './model-bridge.js'
 import { getSupportedThinkingLevels } from './compat/pi-ai.js'
 
 type UnknownRecord = Record<string, unknown>
@@ -32,6 +33,8 @@ export interface ProviderAdapterHost {
   /** Pi's full credential chain for this provider (stored OAuth → stored key → ambient env). */
   resolveAuth(): Promise<{ auth?: UnknownRecord } | undefined>
   warn(message: string): void
+  /** The durable attachment store, when the composition mounts one. */
+  resolveAttachments?(): DshAttachmentsLike | undefined
 }
 
 export function providerCarriesTransport(value: UnknownRecord | undefined): value is PiTransportProvider & UnknownRecord {
@@ -161,7 +164,24 @@ export function piProviderDshAdapter(providerId: string, provider: PiTransportPr
       // unlisted id passes through as pi-ai's advisory-catalog contract allows.
       const model = providerModels(provider).find(entry => entry.id === modelId)
         ?? { id: modelId, provider: providerId }
-      const piContext = dshRequestToPiContext(options)
+      // Images are read through the attachment service, exactly as DSH's own
+      // pi-ai adapter reads them — and refused under DSH's own code when they
+      // cannot be. Dropping them silently (what this bridge did) sends the
+      // model a request about an image it was never given, and the answer
+      // reads as a model failure rather than a missing capability.
+      const messages = Array.isArray(options.messages) ? options.messages as UnknownRecord[] : []
+      const carriesImage = messages.some(message => blocksContainImage(message.content))
+      if (carriesImage) {
+        const declared = Array.isArray(model.input) ? model.input as unknown[] : []
+        if (!declared.includes('image')) {
+          throw new LlmError(`pi2dsh: model "${modelId}" does not declare image input`, 'UNSUPPORTED_CONTENT')
+        }
+      }
+      const attachments = carriesImage ? host.resolveAttachments?.() : undefined
+      if (carriesImage && attachments === undefined) {
+        throw new LlmError('pi2dsh: image input requires the durable attachment service', 'UNSUPPORTED_CONTENT')
+      }
+      const piContext = await dshRequestToPiContext(options, attachments)
       const effort = typeof options.reasoningEffort === 'string' ? options.reasoningEffort : undefined
       const piOptions: UnknownRecord = {
         ...(auth?.apiKey === undefined ? {} : { apiKey: auth.apiKey }),

@@ -29,7 +29,7 @@ import {
   resolvePiProviderAuth,
 } from './oauth-bridge.js'
 import { __setPiAiLlmBridge, builtinProviders } from './compat/pi-ai.js'
-import { ModelCatalog, llmOf, streamViaDshLlm } from './model-bridge.js'
+import { ModelCatalog, llmOf, streamViaDshLlm, type DshAttachmentsLike } from './model-bridge.js'
 import { imageAdmissionCompanionAdapter, registerPiProviderRoute } from './provider-adapter.js'
 
 type UnknownRecord = Record<string, unknown>
@@ -1167,7 +1167,7 @@ async function dshToPiContent(ctx: Context, content: readonly ContentBlock[]): P
  */
 async function piImageBlock(ctx: Context, attachment: unknown): Promise<UnknownRecord | undefined> {
   if (attachment === undefined || attachment === null) return undefined
-  const attachments = optionalService<{ readImage(ref: unknown): Promise<{ data: ArrayBufferLike }> }>(ctx, 'attachments')
+  const attachments = optionalService<DshAttachmentsLike>(ctx, 'attachments')
   if (attachments === undefined) return undefined
   try {
     const stored = await attachments.readImage(attachment)
@@ -1696,9 +1696,7 @@ async function applyPiContextTransform(
 // attachment service) simply contribute none — the path-in-prompt flow the
 // vision packages document works either way.
 async function collectPiImages(ctx: Context, messages: UnknownRecord[]): Promise<UnknownRecord[]> {
-  const attachments = (ctx as unknown as { get(name: string): unknown }).get('attachments') as {
-    readImage(attachment: unknown): Promise<{ data: ArrayBufferLike }>
-  } | undefined
+  const attachments = optionalService<DshAttachmentsLike>(ctx, 'attachments')
   if (attachments === undefined) return []
   const images: UnknownRecord[] = []
   for (const message of messages) {
@@ -2373,6 +2371,10 @@ function createPiApi(ctx: Context, state: RuntimeState): UnknownRecord {
             providerId: name, providerConfig: value, store: oauthStoreOf(state),
           }) as Promise<{ auth?: UnknownRecord } | undefined>,
           warn: message => logger(ctx).warn(message),
+          // Image bytes live in the attachment service; without it an image
+          // request is refused rather than sent as text the model cannot
+          // answer from.
+          resolveAttachments: () => optionalService<DshAttachmentsLike>(ctx, 'attachments'),
         },
       })
       if (routeDisposer !== undefined) {

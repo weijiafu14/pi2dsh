@@ -192,6 +192,75 @@ describe('Pi provider as a DSH llm route', () => {
     expect(off.options).not.toHaveProperty('reasoningEffort')
   })
 
+  // A Pi provider is reached through the DSH llm seam, where image bytes live
+  // in the attachment service and the block carries only a reference. The
+  // conversion had no image branch at all, so the block vanished and the model
+  // was asked about a picture it never received.
+  const imageRequest = {
+    messages: [{
+      role: 'user',
+      source: { kind: 'user' },
+      content: [
+        { type: 'text', text: 'what is this?' },
+        { type: 'image', attachment: { attachmentId: 'a1', mediaType: 'image/png', bytes: 4, width: 1, height: 1 } },
+      ],
+    }],
+  }
+  const PIXEL = 'iVBORw0KGgo='
+
+  it('reads an image through the attachment service into the block Pi expects', async () => {
+    const fixture = piFixtureProvider({
+      model: { id: 'pifix-1', name: 'Pi Fixture One', provider: 'pifix', contextWindow: 32000, input: ['text', 'image'] },
+    })
+    const ctx = new Context()
+    await ctx.plugin(LlmRuntime as never, {} as never)
+    const llm = (ctx as unknown as { llm: { stream(o: UnknownRecord): AsyncIterable<UnknownRecord> } }).llm
+    registerPiProviderRoute({
+      llm: llm as never,
+      providerId: 'pifix',
+      provider: fixture.provider as never,
+      host: {
+        resolveAuth: async () => undefined,
+        warn: () => {},
+        resolveAttachments: () => ({ readImage: async () => ({ data: Buffer.from(PIXEL, 'base64'), ref: { mediaType: 'image/png' } }) }),
+      },
+    })
+    for await (const _ of llm.stream({ provider: 'pifix', model: 'pifix-1', ...imageRequest })) { /* drained */ }
+    const sent = (fixture.calls[0]?.context.messages as UnknownRecord[])[0]
+    expect(sent?.content).toEqual([
+      { type: 'text', text: 'what is this?' },
+      { type: 'image', data: PIXEL, mimeType: 'image/png' },
+    ])
+  })
+
+  it('refuses an image request it cannot serve instead of dropping the image', async () => {
+    // An adapter that throws reaches the caller as DSH's terminal error chunk
+    // — the harness's other sanctioned error path — with the code intact.
+    const run = async (model: UnknownRecord): Promise<UnknownRecord | undefined> => {
+      const ctx = new Context()
+      await ctx.plugin(LlmRuntime as never, {} as never)
+      const llm = (ctx as unknown as { llm: { stream(o: UnknownRecord): AsyncIterable<UnknownRecord> } }).llm
+      const fixture = piFixtureProvider({ model })
+      registerPiProviderRoute({
+        llm: llm as never,
+        providerId: 'pifix',
+        provider: fixture.provider as never,
+        host: { resolveAuth: async () => undefined, warn: () => {} },
+      })
+      const chunks: UnknownRecord[] = []
+      for await (const chunk of llm.stream({ provider: 'pifix', model: 'pifix-1', ...imageRequest })) chunks.push(chunk)
+      // The refusal happens before the provider is asked anything.
+      expect(fixture.calls).toHaveLength(0)
+      return chunks.at(-1)
+    }
+    // The model never declared image input…
+    expect(await run({ id: 'pifix-1', provider: 'pifix', contextWindow: 32000, input: ['text'] }))
+      .toMatchObject({ reason: { kind: 'error', failure: { code: 'UNSUPPORTED_CONTENT', message: /image input/ } } })
+    // …and a vision model with no attachment service to read the bytes from.
+    expect(await run({ id: 'pifix-1', provider: 'pifix', contextWindow: 32000, input: ['text', 'image'] }))
+      .toMatchObject({ reason: { kind: 'error', failure: { code: 'UNSUPPORTED_CONTENT', message: /attachment service/ } } })
+  })
+
   it('forwards the session identity Pi providers use for cache affinity and routing', async () => {
     const seen = await requestThrough(piFixtureProvider(), { sessionId: 'sess-1234' })
     expect(seen.options).toMatchObject({ sessionId: 'sess-1234' })
@@ -329,8 +398,8 @@ describe('Pi provider as a DSH llm route', () => {
     expect(usage).toEqual({ type: 'usage', usage: { inputTokens: 5, outputTokens: 2, cacheWriteTokens: 7 } })
   })
 
-  it('names the tool a result belongs to, which DSH states only on the call', () => {
-    const context = dshRequestToPiContext({
+  it('names the tool a result belongs to, which DSH states only on the call', async () => {
+    const context = await dshRequestToPiContext({
       messages: [
         { role: 'assistant', content: [{ type: 'tool-call', id: 'c9', name: 'bash', arguments: '{}' }] },
         {
@@ -344,8 +413,8 @@ describe('Pi provider as a DSH llm route', () => {
     expect(messages.at(-1)).toMatchObject({ role: 'toolResult', toolCallId: 'c9', toolName: 'bash' })
   })
 
-  it('round-trips assistant tool-call history through the reverse conversion', () => {
-    const context = dshRequestToPiContext({
+  it('round-trips assistant tool-call history through the reverse conversion', async () => {
+    const context = await dshRequestToPiContext({
       messages: [
         {
           role: 'assistant',
