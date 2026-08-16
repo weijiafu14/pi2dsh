@@ -1,9 +1,17 @@
-// Minimal Pi provider declaring the compat field DSH's own config layer drops.
-// Points at the local fake endpoint so the wire can be inspected.
+// A minimal Pi provider standing in for a private gateway: it declares the
+// compat quirks and reasoning levels that DSH's own settings path cannot
+// carry, and points at the local fake endpoint so the wire can be inspected.
+//
+// Each declaration below maps to a reported symptom:
+//   supportsDeveloperRole: false  → gateways that reject `developer`
+//   maxTokensField                → gateways that only accept one spelling
+//   supportsStore: false          → gateways that reject `store`
+//   thinkingLevelMap              → a model whose levels differ from default
+//   input: ['text','image']       → a custom provider offering vision
 import { createProvider } from '@earendil-works/pi-ai'
 import { openAICompletionsApi } from '@earendil-works/pi-ai/compat'
 
-const BASE = 'http://127.0.0.1:4599/v1'
+const BASE = process.env.PROBE_BASE_URL ?? 'http://127.0.0.1:4599/v1'
 
 export default function (pi) {
   const provider = createProvider({
@@ -13,7 +21,6 @@ export default function (pi) {
     auth: {
       apiKey: {
         name: 'Probe API key',
-        // Pi resolves the key per request through this seam.
         resolve: async () => ({ auth: { apiKey: 'probe-key' } }),
       },
     },
@@ -24,12 +31,24 @@ export default function (pi) {
       api: 'openai-completions',
       baseUrl: BASE,
       reasoning: true,
-      input: ['text'],
+      // `minimal` is unsupported here; `xhigh` exists only because it is
+      // declared. Neither can be expressed through DSH settings.
+      thinkingLevelMap: {
+        minimal: null,
+        low: 'low',
+        medium: 'medium',
+        high: 'high',
+        xhigh: 'xhigh',
+      },
+      input: ['text', 'image'],
       cost: { input: 0, output: 0 },
       contextWindow: 128000,
       maxTokens: 4096,
-      // The whole point: a private gateway that does NOT accept `developer`.
-      compat: { supportsDeveloperRole: false },
+      compat: {
+        supportsDeveloperRole: false,
+        maxTokensField: 'max_completion_tokens',
+        supportsStore: false,
+      },
     }],
     api: { 'openai-completions': openAICompletionsApi() },
   })

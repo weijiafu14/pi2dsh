@@ -1,10 +1,12 @@
 # Replies for the `developer` role / gateway-compat threads
 
-Four threads share one root cause. Post the shared reply below in each, with
+Ten threads share one root cause: a compat field that cannot reach the request
+through DSH settings. Post the shared reply below in each, with
 the per-thread first line. **All of them are unanswered by maintainers**, so
 lead with the workaround, not with us.
 
-Verified on 2026-08-16 with pi2dsh 0.12.0 on a real DSH web session.
+Verified on 2026-08-16 with pi2dsh 0.12.0 on a real DSH web session. Each
+claim below was observed on the wire, not inferred.
 
 ## Ground rules
 
@@ -22,7 +24,9 @@ Verified on 2026-08-16 with pi2dsh 0.12.0 on a real DSH web session.
 | **#472** (schema drops all but two compat fields; Ark / Kimi) | 同样撞到这个问题，说一个不用自建代理的绕法。 |
 | **#1232** (`supportsDeveloperRole: false` silently discarded) | 你分析的根因是对的——`resolveModelCompat()` 确实把这个字段排除了。补一个能绕过去的办法。 |
 | **#1498** (hostname allowlist; Bedrock / Volcano / newapi / DashScope) | 私有网关不在 hostname 白名单里，这个诊断没错。有个不改 DSH 也能用的路子。 |
-| **#990** (Ollama Cloud: can't set context / reasoning strength) | 这个和 #472 / #1232 / #1498 是同一层的问题，一并说下绕法。 |
+| **#990** (Ollama Cloud: can't set context / reasoning strength) | 这个和 #472 / #1232 / #1498 是同一层的问题，但**先看下面的前提**——现成的 `pi-ollama-cloud` 走不通这条路。 |
+| **#780 / #1272 / #1861 / #1992** (full compat passthrough · `maxTokensField` · thinking level map · custom-provider image modality) | 这四条我们逐条在真机上验过了，证据见下。 |
+| **#473 / #551 / #614 / #636 / #2007 / #2023** (same root cause) | 和 #472 / #1232 / #1498 同一个根因，直接套用同一份正文。 |
 
 ## Shared body (Chinese)
 
@@ -80,9 +84,50 @@ Verified on 2026-08-16 with pi2dsh 0.12.0 on a real DSH web session.
 >
 > https://github.com/weijiafu14/pi2dsh
 
+## The precondition — say this, it decides whether the workaround applies
+
+Only a Pi provider plugin that **brings its own transport** becomes a DSH llm
+route. A plugin that only declares a model catalog falls back to the host's llm
+settings and hits the very same dropped-field problem.
+
+Anyone can check without reading code — install, start dsh, read one line:
+
+```
+[pi2dsh] Pi provider "<name>" registered as a native DSH llm route      ← works
+[pi2dsh] Pi provider "<name>" declares a model catalog but no transport ← does not
+```
+
+Checked so far: `pi-provider-litellm` **carries a transport (works)**;
+`pi-ollama-cloud` is **catalog-only (does not)**; `pi-llama-cpp` **registers no
+provider at all (not applicable)**.
+
+So for **#990** specifically: the mechanism is real, but the Ollama plugin that
+exists today cannot carry it. Do not hand that thread an install command —
+say the mechanism works and the precondition is a transport-carrying provider.
+Same caution for **#1058** until a llama-server provider with a transport shows
+up.
+
+## What was verified on the wire (0.12.0)
+
+One request from a private-gateway stand-in, with everything the plugin
+declared surviving the trip:
+
+```json
+{"roles":["system","user",…],
+ "maxTokensField":"max_completion_tokens",
+ "reasoningEffort":"xhigh",
+ "store":null}
+```
+
+- `system` instead of `developer` — #472 / #1232 / #1498 and the six same-root threads
+- the model's own max-tokens spelling — #1272
+- three different compat flags honored at once — #780 (whole `compat` survives, not a chosen few)
+- effort selector shows `Off / Low / Medium / High / Xhigh`: `Minimal` removed by the model's map, `Xhigh` added by it — #1861
+- a model declaring image input no longer gets a text-only companion route — #1992
+
 ## What we had to fix (mention only if asked)
 
-Two general gaps in our bridge, both now closed, neither vendor-specific:
+Three general gaps in our bridge, all now closed, none vendor-specific:
 
 1. Pi describes reasoning as a boolean plus a `thinkingLevelMap`; DSH asks an
    adapter for selectable efforts. We translated neither, so a
@@ -90,5 +135,8 @@ Two general gaps in our bridge, both now closed, neither vendor-specific:
    was rejected with `UNSUPPORTED_REASONING_EFFORT`.
 2. Once efforts were offered, the picked one was not forwarded into the
    package's stream call — the selector was decorative.
+3. A model declaring `input: ['text','image']` advertised it in the catalog
+   listing but not in the exact-route resolve, which is what the host consults
+   before a request — so it silently degraded to text-only.
 
-Both unlock every Pi provider plugin at once.
+Each unlocks every Pi provider plugin at once.

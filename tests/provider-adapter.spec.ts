@@ -258,4 +258,42 @@ describe('Pi provider as a DSH llm route', () => {
     expect(seen).toHaveLength(1)
     expect(seen[0]).toMatchObject({ reasoningEffort: 'high' })
   })
+
+  // A capability the catalog advertises but the resolve omits is worse than
+  // one that is missing everywhere: the host consults the resolve before a
+  // request, so the model silently degrades exactly when it is used.
+  it('reports declared input modalities on BOTH the listing and the resolve', async () => {
+    const ctx = new Context()
+    await ctx.plugin(LlmRuntime as never, {} as never)
+    const llm = (ctx as unknown as {
+      llm: {
+        registerAdapter(providers: string[], adapter: unknown): () => void
+        listModels(p: string): Promise<UnknownRecord[]>
+        resolveModelInfo(p: string, m: string): Promise<UnknownRecord>
+      }
+    }).llm
+    const provider = {
+      id: 'modal',
+      name: 'Modal Gateway',
+      getModels: () => [
+        { id: 'sees', provider: 'modal', input: ['text', 'image'] },
+        { id: 'reads', provider: 'modal', input: ['text'] },
+      ],
+      async *stream(): AsyncIterable<UnknownRecord> { yield { type: 'done', reason: 'stop', message: {} } },
+    }
+    registerPiProviderRoute({
+      llm,
+      providerId: 'modal',
+      provider: provider as never,
+      host: { resolveAuth: async () => ({ auth: {} }), warn: () => {} },
+    })
+
+    const listed = await llm.listModels('modal')
+    expect(listed.find(model => model.id === 'sees')).toMatchObject({ inputModalities: ['text', 'image'] })
+
+    const resolvedVision = await llm.resolveModelInfo('modal', 'sees')
+    expect(resolvedVision).toMatchObject({ inputModalities: ['text', 'image'] })
+    const resolvedText = await llm.resolveModelInfo('modal', 'reads')
+    expect(resolvedText).toMatchObject({ inputModalities: ['text'] })
+  })
 })

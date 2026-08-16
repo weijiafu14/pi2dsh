@@ -50,6 +50,21 @@ const PI_CARRIED_FIELDS = [
 ] as const
 
 /**
+ * Model capabilities DSH asks about by its own names. Shared by the catalog
+ * listing and the exact-route resolve deliberately: a capability present in
+ * one and absent from the other is how a model silently loses an ability —
+ * the host consults the resolve before a request, so a modality declared only
+ * in the listing reads as "text only" at the moment it matters.
+ * @param model - the Pi model descriptor as its package declared it.
+ */
+function capabilityProjection(model: UnknownRecord): UnknownRecord {
+  if (!Array.isArray(model.input)) return {}
+  const modalities = (model.input as unknown[])
+    .filter((entry): entry is string => entry === 'text' || entry === 'image')
+  return modalities.length === 0 ? {} : { inputModalities: modalities }
+}
+
+/**
  * Pi's reasoning capability, in DSH's shape.
  *
  * The two sides say the same thing differently: Pi carries a `reasoning`
@@ -105,15 +120,16 @@ export function piProviderDshAdapter(providerId: string, provider: PiTransportPr
     // {efforts} object) must never ride through with the Pi shape.
     listModels: async (id: string) => providerModels(provider).map(model => ({
       ...piCarriedFields(model),
+      ...capabilityProjection(model),
       provider: id,
       id: String(model.id ?? ''),
       name: String(model.name ?? model.id ?? ''),
-      ...(Array.isArray(model.input) ? { inputModalities: (model.input as string[]).filter(m => m === 'text' || m === 'image') } : {}),
     })),
     resolveModel: async (id: string, modelId: string) => {
       const known = providerModels(provider).find(model => model.id === modelId)
       return {
         ...(known === undefined ? {} : piCarriedFields(known)),
+        ...(known === undefined ? {} : capabilityProjection(known)),
         ...(known === undefined ? {} : reasoningProjection(known)),
         provider: id,
         id: modelId,

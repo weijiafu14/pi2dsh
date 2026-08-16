@@ -53,9 +53,32 @@ endpoint with a fixed model list and no compat quirks, you do **not** need any
 of this — configure it directly in DSH settings, see
 [`custom-gateways`](../custom-gateways/).
 
+
+## Which plugins can actually do this
+
+Only a plugin that **brings its own transport** — one whose provider has a
+`stream` of its own — becomes a DSH llm route. A plugin that merely declares a
+model catalog stays on the host's llm configuration, so it hits the exact same
+dropped-field problem this example is about.
+
+You do not have to guess. Install it, start dsh, and read one line:
+
+```
+[pi2dsh] Pi provider "<name>" registered as a native DSH llm route
+   → its own requests, so your compat declarations ship
+
+[pi2dsh] Pi provider "<name>" declares a model catalog but no transport;
+         it was not added as a DSH llm route
+   → falls back to host llm settings; this example does NOT help
+```
+
+Checked so far: `pi-provider-litellm` carries a transport (works);
+`pi-ollama-cloud` is catalog-only (does not); `pi-llama-cpp` registers no
+provider at all (not applicable).
+
 ## What pi2dsh had to fix for this to work
 
-Two gaps, both general — no per-package code:
+Three gaps, all general — no per-package code:
 
 1. **Reasoning efforts were not offered at all.** Pi describes reasoning with
    a boolean plus a `thinkingLevelMap`; DSH asks an adapter for selectable
@@ -69,14 +92,22 @@ Two gaps, both general — no per-package code:
    `reasoningEffort` into the package's stream call, so the selector was
    decorative.
 
-Both are fixed in 0.12.0, and both unlock every Pi provider plugin at once,
-not just one vendor's.
+3. **Declared image input was lost on the resolve path.** A model declaring
+   `input: ['text','image']` advertised it in the catalog listing but not in
+   the exact-route resolve — which is what the host consults before a request,
+   so the model silently degraded to text-only exactly when it mattered.
+
+All three are fixed in 0.12.0, and each unlocks every Pi provider plugin at
+once, not just one vendor's.
 
 ## Verify it yourself, without a real gateway
 
-`probe/` contains a fake OpenAI-compatible endpoint that records the roles it
-receives, plus a minimal Pi provider that declares
-`compat: { supportsDeveloperRole: false }`.
+`probe/` contains a fake OpenAI-compatible endpoint that records what it is
+sent, plus a minimal Pi provider standing in for a private gateway: it
+declares `supportsDeveloperRole: false`, `maxTokensField:
+'max_completion_tokens'`, `supportsStore: false`, a `thinkingLevelMap` that
+removes `minimal` and adds `xhigh`, and `input: ['text','image']` — none of
+which DSH settings can carry.
 
 ```sh
 node examples/gateway-compat/probe/fake-endpoint.mjs      # terminal 1
@@ -88,12 +119,26 @@ dsh --profile web --port 5184                             # terminal 2
 Send any message and read what the endpoint recorded:
 
 ```json
-{"roles":["system","user"],"hasReasoningEffort":true,"model":"probe-model"}
+{"roles":["system","user",…],
+ "maxTokensField":"max_completion_tokens",
+ "reasoningEffort":"xhigh",
+ "store":null,
+ "bodyKeys":["max_completion_tokens","messages","model","reasoning_effort","stream","stream_options","tools"]}
 ```
 
-`system`, not `developer` — the plugin's declaration reached the wire. And
-`hasReasoningEffort: true` — the effort you picked in the DSH selector was
-actually sent.
+Every one of those is a declaration surviving the trip: `system` instead of
+`developer`; the model's own spelling of the max-tokens field; the effort you
+picked, after the model's own level map; and no `store` field, because the
+model said the gateway rejects it.
+
+Two more, visible outside the request body:
+
+- The effort selector lists `Off / Low / Medium / High / Xhigh` — `Minimal` is
+  gone because the map marks it unsupported, and `Xhigh` is there because the
+  map declares it. Neither is the default set.
+- No `probe-vision` companion route is registered at startup, because the
+  model declares image input. (A text-only route still gets one — check the
+  log for `deepseek-official-vision`.)
 
 ## Honest scope
 
