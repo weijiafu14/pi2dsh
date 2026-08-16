@@ -242,11 +242,11 @@ export const HOST_IMPORT_RULES: Readonly<Record<string, Readonly<Record<string, 
 export const CONTEXT_RULES: Readonly<Record<string, Rule>> = Object.freeze({
   cwd: rule('full', 'Mapped to the active DSH agent session working directory.'),
   signal: rule('full', 'Mapped to the active DSH cancellation signal when one is available.'),
-  hasUI: rule('full', 'Reports whether the native DSH userQuestions service is available to back Pi dialogs.'),
+  hasUI: rule('full', 'Reports whether a human can actually answer: false when no questions service is mounted, false when the service is mounted with no provider registered (the headless posture), and false inside a child agent, which DSH refuses to let ask.'),
   mode: rule('partial', 'Reports rpc mode so Pi extensions can choose their documented headless fallback.'),
   isIdle: rule('partial', 'Command contexts report idle; tool/lifecycle contexts conservatively report non-idle.'),
   isProjectTrusted: rule('partial', 'Fails closed as untrusted because DSH does not expose Pi project-trust state.'),
-  hasPendingMessages: rule('partial', 'Conservatively reports no Pi-specific pending-message queue.'),
+  hasPendingMessages: rule('full', 'Reads the DSH agent inbox — next-step plus next-turn input — which is exactly Pi\'s steering plus follow-up queue.'),
   getContextUsage: rule('partial', 'Returns no Pi token-usage projection.'),
   getSystemPrompt: rule('full', 'Returns the system prompt currently assembled by the bridge.'),
   getSystemPromptOptions: rule('partial', 'Returns an empty Pi option projection in command contexts.'),
@@ -254,7 +254,7 @@ export const CONTEXT_RULES: Readonly<Record<string, Rule>> = Object.freeze({
   sessionManager: rule('partial', 'A real read-only projection: DSH durable messages plus pi2dsh sidecar entries, exposed through Pi\'s exact 14-method surface as a single-branch tree.'),
   modelRegistry: rule('partial', 'A live registry over the ONE model directory — the DSH llm directory — projected exactly into Pi vocabulary; package-registered Pi-native routes keep api/baseUrl and the full Model shape through the round trip. Custom gateways are HOST configuration (the official llm-pi-ai adapter\'s settings), never a Pi-side file: Pi\'s ~/.pi/agent/models.json is deliberately NOT read — user-facing configuration is DSH-shaped only. getProviderAuth/getApiKeyAndHeaders run Pi\'s full credential chain for package-registered providers and the host\'s configurable-provider + credentials seams for DSH routes. Host configuration may declare "<route>-vision" image-admission companions: real DSH routes that admit images, replace image blocks with explicit path-carrying notices (materialized attachment files any path-taking tool can read), and forward text-only to the original route; Pi\'s ctx.model reports the original route for a companion selection.'),
   model: rule('partial', 'The agent\'s real provider/model route (a setModel() override wins), enriched from the projected catalog. When the selected route is an image-admission companion, ctx.model reports the ORIGINAL route with its true modalities — the generating model is the original text-only one, which is the truth extensions branching on input modalities (a vision bridge\'s activation check) need.'),
-  scopedModels: rule('partial', 'The projected model catalog (DSH llm directory plus package-registered providers).'),
+  scopedModels: rule('full', 'Empty, carrying Pi\'s own meaning for empty: no model scope is configured, so every available model is usable. DSH has no model-scope concept to narrow it.'),
   hasConfiguredAuth: rule('partial', 'Configuration check on the projected registry: true when the model\'s provider has a live route or package registration (not a key-liveness probe).'),
   thinkingLevel: rule('partial', 'Reflects the level recorded by setThinkingLevel(); applied as reasoningEffort on the next request.'),
   abort: rule('partial', 'Mapped to agent.cancel({ kind: "hook" }) on the live DSH agent.'),
@@ -268,13 +268,13 @@ export const CONTEXT_RULES: Readonly<Record<string, Rule>> = Object.freeze({
 })
 
 export const UI_CONTEXT_RULES: Readonly<Record<string, Rule>> = Object.freeze({
-  notify: rule('full', 'Captured as a command result when applicable and emitted through DSH logging.'),
+  notify: rule('full', 'Captured as a command result when applicable and emitted through DSH logging at the severity the caller passed (warning and error log as warnings).'),
   setStatus: rule('partial', 'Accepted as a no-op because DSH owns status presentation.'),
   setWidget: rule('partial', 'Accepted as a no-op because Pi terminal widgets cannot render in DSH.'),
   select: rule('full', 'Mapped to one native DSH userQuestions single-select request.'),
   confirm: rule('full', 'Mapped to one native DSH userQuestions Yes/No request.'),
   input: rule('full', 'Mapped to one native DSH userQuestions free-text request.'),
-  editor: rule('partial', 'Mapped to one DSH userQuestions free-text request; multi-line editing UX is not emulated.'),
+  editor: rule('partial', 'Mapped to one DSH userQuestions free-text request. The prefill is shown as context but is NOT editable text: the caller receives what the user typed fresh, not an edit of the prefill.'),
   custom: rule('partial', 'Resolves undefined, exactly like Pi\'s own rpc mode; guarded fallbacks keep working.'),
   onTerminalInput: rule('partial', 'Raw terminal input is absent; feature-detected listeners remain disabled.'),
   setWorkingMessage: rule('partial', 'Accepted as a no-op; DSH owns progress presentation.'),
@@ -358,12 +358,12 @@ export const API_RULES: Readonly<Record<string, Rule>> = Object.freeze({
     detail: 'Persisted in a pi2dsh sidecar next to the DSH session and replayed on session start; DSH\'s main log stays untouched because it has no out-of-repo plugin-event channel yet.',
   },
   setSessionName: {
-    level: 'partial',
-    detail: 'Persisted in the pi2dsh sidecar and announced through session_info_changed; DSH\'s own title events are also projected when present.',
+    level: 'full',
+    detail: 'Renames the DSH session through ctx.sessionTitle, so every DSH surface shows it and the title is pinned against automatic regeneration, and announces it through session_info_changed. A composition that mounts no title service falls back to the pi2dsh sidecar, as does a blank name (DSH requires visible characters in a title; Pi does not).',
   },
   getSessionName: {
-    level: 'partial',
-    detail: 'Reads the sidecar-persisted session name.',
+    level: 'full',
+    detail: 'Reads DSH\'s own session title, so it agrees with what DSH displays and sees titles DSH generated itself; falls back to the sidecar when no title service is mounted.',
   },
   setLabel: {
     level: 'partial',
@@ -383,7 +383,7 @@ export const API_RULES: Readonly<Record<string, Rule>> = Object.freeze({
   },
   setActiveTools: {
     level: 'partial',
-    detail: 'Mapped to the active DSH agent scope through tools.restrict({ allow }), preserving per-agent global-tool visibility without mutating other agents; DSH scope-local tools remain visible by design.',
+    detail: 'Mapped to the active DSH agent scope through tools.restrict, per-agent and without mutating other agents. Names DSH does not know are skipped exactly as Pi skips them. A tool DSH does not permit restricting (a scope\'s own registration, or a reserved transport name) cannot be deactivated at all and is reported once rather than silently left running.',
   },
   getCommands: {
     level: 'partial',
@@ -435,7 +435,7 @@ export const EVENT_RULES: Readonly<Record<string, Rule>> = Object.freeze({
   },
   before_agent_start: {
     level: 'full',
-    detail: 'Fires at the turn\'s first pre-step with the real prompt text and image attachments; returned custom messages enter the turn beside the user message, and a returned systemPrompt overrides this turn\'s assembly.',
+    detail: 'Fires once per user prompt, inside the assembly of the turn it belongs to, with the real prompt text and image attachments; returned custom messages enter that same turn beside the user message, and a returned systemPrompt overrides that turn\'s own assembly and resets at the next turn.',
   },
   agent_end: {
     level: 'partial',
@@ -443,7 +443,7 @@ export const EVENT_RULES: Readonly<Record<string, Rule>> = Object.freeze({
   },
   turn_end: {
     level: 'partial',
-    detail: 'The lifecycle boundary and tool results are mapped; the exact Pi final-message shape is not guaranteed.',
+    detail: 'The lifecycle boundary, the turn\'s own tool results, and its final assistant message are projected from the turn\'s durable events; Pi-specific provider metadata on that message is not reconstructed.',
   },
   message_start: {
     level: 'partial',
@@ -463,7 +463,7 @@ export const EVENT_RULES: Readonly<Record<string, Rule>> = Object.freeze({
   },
   session_compact: {
     level: 'partial',
-    detail: 'Projected from DSH compaction summary/end events.',
+    detail: 'Fires once per SUCCESSFUL compaction, from DSH\'s summary event, with the summary rendered to the string Pi\'s CompactionEntry declares. A manual compaction is identified as manual; DSH does not record which automatic trigger fired, so automatic ones report "threshold" and willRetry is always false.',
   },
   model_select: {
     level: 'partial',

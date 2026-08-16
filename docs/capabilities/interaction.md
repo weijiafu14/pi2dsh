@@ -14,13 +14,13 @@ modes. Plugin-drawn cards are the one Pi UI surface pi2dsh does not draw yet.
 | `registerMessageRenderer` | `pi.*` | Mapped, difference stated | Registration is accepted; DSH owns presentation, so the renderer is never invoked — matching Pi's non-TUI surfaces. |
 | `registerEntryRenderer` | `pi.*` | Mapped, difference stated | Registration is accepted; DSH owns presentation, so the renderer is never invoked — matching Pi's non-TUI surfaces. |
 | `registerMarkdownTransformer` | `pi.*` | Mapped, difference stated | Registration is accepted; DSH owns presentation, so the transformer is never invoked — matching Pi's non-TUI surfaces. |
-| `notify` | `ctx.ui.*` | Same semantics | Captured as a command result when applicable and emitted through DSH logging. |
+| `notify` | `ctx.ui.*` | Same semantics | Captured as a command result when applicable and emitted through DSH logging at the severity the caller passed (warning and error log as warnings). |
 | `setStatus` | `ctx.ui.*` | Mapped, difference stated | Accepted as a no-op because DSH owns status presentation. |
 | `setWidget` | `ctx.ui.*` | Mapped, difference stated | Accepted as a no-op because Pi terminal widgets cannot render in DSH. |
 | `select` | `ctx.ui.*` | Same semantics | Mapped to one native DSH userQuestions single-select request. |
 | `confirm` | `ctx.ui.*` | Same semantics | Mapped to one native DSH userQuestions Yes/No request. |
 | `input` | `ctx.ui.*` | Same semantics | Mapped to one native DSH userQuestions free-text request. |
-| `editor` | `ctx.ui.*` | Mapped, difference stated | Mapped to one DSH userQuestions free-text request; multi-line editing UX is not emulated. |
+| `editor` | `ctx.ui.*` | Mapped, difference stated | Mapped to one DSH userQuestions free-text request. The prefill is shown as context but is NOT editable text: the caller receives what the user typed fresh, not an edit of the prefill. |
 | `custom` | `ctx.ui.*` | Mapped, difference stated | Resolves undefined, exactly like Pi's own rpc mode; guarded fallbacks keep working. |
 | `setWorkingMessage` | `ctx.ui.*` | Mapped, difference stated | Accepted as a no-op; DSH owns progress presentation. |
 | `setWorkingVisible` | `ctx.ui.*` | Mapped, difference stated | Accepted as a no-op; DSH owns progress presentation. |

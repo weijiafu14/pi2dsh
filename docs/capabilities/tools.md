@@ -16,7 +16,7 @@ path, and results land in the session log in DSH's own shapes.
 | `exec` | `pi.*` | Mapped, difference stated | Mapped to ctx.subprocess, so the selected local/E2B provider owns execution, isolation, cancellation, and tree cleanup; output is bounded to 64 MiB per stream. |
 | `getActiveTools` | `pi.*` | Mapped, difference stated | Returns every tool visible in the current DSH agent scope, including native and migrated tools; scope-local tools follow DSH composition rules. |
 | `getAllTools` | `pi.*` | Mapped, difference stated | Returns metadata for all tools visible in the current DSH scope, without Pi-specific prompt guidelines unavailable from DSH schemas. |
-| `setActiveTools` | `pi.*` | Mapped, difference stated | Mapped to the active DSH agent scope through tools.restrict({ allow }), preserving per-agent global-tool visibility without mutating other agents; DSH scope-local tools remain visible by design. |
+| `setActiveTools` | `pi.*` | Mapped, difference stated | Mapped to the active DSH agent scope through tools.restrict, per-agent and without mutating other agents. Names DSH does not know are skipped exactly as Pi skips them. A tool DSH does not permit restricting (a scope's own registration, or a reserved transport name) cannot be deactivated at all and is reported once rather than silently left running. |
 | `tool_execution_start` | `event` | Same semantics | Mapped from durable tool/call events. |
 | `tool_execution_end` | `event` | Same semantics | Mapped from finalized tools/result events. |
 | `tool_execution_update` | `event` | Mapped, difference stated | Fired from migrated Pi tools' own onUpdate callbacks; DSH-native tools expose no partial-result stream. |

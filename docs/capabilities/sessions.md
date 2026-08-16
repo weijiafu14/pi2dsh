@@ -12,25 +12,25 @@ child records the host's own identity event, so it is listed, named after the
 package, opened in its own view and continuable. See
 [`examples/side-conversation`](../../examples/side-conversation/).
 
-**24 Pi surfaces** — 4 same semantics · 20 mapped, difference stated.
+**24 Pi surfaces** — 6 same semantics · 18 mapped, difference stated.
 
 | Pi surface | Kind | Status | How it maps onto DSH |
 |---|---|---|---|
 | `appendEntry` | `pi.*` | Mapped, difference stated | Persisted in a pi2dsh sidecar next to the DSH session and replayed on session start; DSH's main log stays untouched because it has no out-of-repo plugin-event channel yet. |
-| `setSessionName` | `pi.*` | Mapped, difference stated | Persisted in the pi2dsh sidecar and announced through session_info_changed; DSH's own title events are also projected when present. |
-| `getSessionName` | `pi.*` | Mapped, difference stated | Reads the sidecar-persisted session name. |
+| `setSessionName` | `pi.*` | Same semantics | Renames the DSH session through ctx.sessionTitle, so every DSH surface shows it and the title is pinned against automatic regeneration, and announces it through session_info_changed. A composition that mounts no title service falls back to the pi2dsh sidecar, as does a blank name (DSH requires visible characters in a title; Pi does not). |
+| `getSessionName` | `pi.*` | Same semantics | Reads DSH's own session title, so it agrees with what DSH displays and sees titles DSH generated itself; falls back to the sidecar when no title service is mounted. |
 | `setLabel` | `pi.*` | Mapped, difference stated | Persisted in the pi2dsh sidecar and reflected by the sessionManager projection. |
 | `session_start` | `event` | Same semantics | Mapped to agent/session-start. |
 | `session_shutdown` | `event` | Same semantics | Mapped to agent disposal and plugin teardown with duplicate suppression. |
 | `session_info_changed` | `event` | Mapped, difference stated | Fired by setSessionName() and projected from DSH session/title events. |
 | `session_before_compact` | `event` | Mapped, difference stated | Projected from DSH compaction/start as a notification; cancel/replace cannot reach DSH's compactor. |
-| `session_compact` | `event` | Mapped, difference stated | Projected from DSH compaction summary/end events. |
+| `session_compact` | `event` | Mapped, difference stated | Fires once per SUCCESSFUL compaction, from DSH's summary event, with the summary rendered to the string Pi's CompactionEntry declares. A manual compaction is identified as manual; DSH does not record which automatic trigger fired, so automatic ones report "threshold" and willRetry is always false. |
 | `session_before_switch` | `event` | Mapped, difference stated | Registration is accepted; Pi session switching never occurs on DSH surfaces, so the handler never fires. Loading is unaffected. |
 | `session_before_fork` | `event` | Mapped, difference stated | Registration is accepted; Pi tree forking never occurs on DSH surfaces, so the handler never fires. Loading is unaffected. |
 | `session_before_tree` | `event` | Mapped, difference stated | Registration is accepted; Pi session-tree navigation never occurs on DSH surfaces, so the handler never fires. Loading is unaffected. |
 | `session_tree` | `event` | Mapped, difference stated | Registration is accepted; Pi session-tree navigation never occurs on DSH surfaces, so the handler never fires. Loading is unaffected. |
 | `cwd` | `ctx.*` | Same semantics | Mapped to the active DSH agent session working directory. |
-| `hasUI` | `ctx.*` | Same semantics | Reports whether the native DSH userQuestions service is available to back Pi dialogs. |
+| `hasUI` | `ctx.*` | Same semantics | Reports whether a human can actually answer: false when no questions service is mounted, false when the service is mounted with no provider registered (the headless posture), and false inside a child agent, which DSH refuses to let ask. |
 | `mode` | `ctx.*` | Mapped, difference stated | Reports rpc mode so Pi extensions can choose their documented headless fallback. |
 | `sessionManager` | `ctx.*` | Mapped, difference stated | A real read-only projection: DSH durable messages plus pi2dsh sidecar entries, exposed through Pi's exact 14-method surface as a single-branch tree. |
 | `shutdown` | `ctx.*` | Mapped, difference stated | Pi defines shutdown behavior as host-provided (runner.ts bindExtensions); this host absorbs the request — the user owns DSH process exit — and informs the user once. The package keeps running. |

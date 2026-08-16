@@ -6,7 +6,7 @@ a step, and observing the loop. These map onto DSH's waterfalls and durable
 events. Nothing here fabricates a result — where DSH has no equivalent moment,
 the surface is registered and stated as never firing rather than faked.
 
-**20 Pi surfaces** — 7 same semantics · 13 mapped, difference stated.
+**20 Pi surfaces** — 8 same semantics · 12 mapped, difference stated.
 
 | Pi surface | Kind | Status | How it maps onto DSH |
 |---|---|---|---|
@@ -15,16 +15,16 @@ the surface is registered and stated as never firing rather than faked.
 | `agent_start` | `event` | Same semantics | Mapped to the DSH turn/start boundary. |
 | `agent_settled` | `event` | Same semantics | Mapped to the DSH turn/end boundary. |
 | `turn_start` | `event` | Same semantics | Mapped from durable turn/start events. |
-| `before_agent_start` | `event` | Same semantics | Fires at the turn's first pre-step with the real prompt text and image attachments; returned custom messages enter the turn beside the user message, and a returned systemPrompt overrides this turn's assembly. |
+| `before_agent_start` | `event` | Same semantics | Fires once per user prompt, inside the assembly of the turn it belongs to, with the real prompt text and image attachments; returned custom messages enter that same turn beside the user message, and a returned systemPrompt overrides that turn's own assembly and resets at the next turn. |
 | `agent_end` | `event` | Mapped, difference stated | The lifecycle boundary is mapped, but the reconstructed Pi message history is intentionally minimal. |
-| `turn_end` | `event` | Mapped, difference stated | The lifecycle boundary and tool results are mapped; the exact Pi final-message shape is not guaranteed. |
+| `turn_end` | `event` | Mapped, difference stated | The lifecycle boundary, the turn's own tool results, and its final assistant message are projected from the turn's durable events; Pi-specific provider metadata on that message is not reconstructed. |
 | `message_start` | `event` | Mapped, difference stated | Durable user, assistant, and tool-result messages are mapped without Pi-specific provider metadata. |
 | `message_end` | `event` | Mapped, difference stated | Durable messages are observed, but message replacement is not supported. |
 | `message_update` | `event` | Mapped, difference stated | Projected from DSH assistant/chunk events with accumulated text; Pi's full AgentMessage accumulation state is approximated. |
 | `context` | `event` | Mapped, difference stated | Fires before each step with the full message projection; the transform applies to the step's not-yet-entered messages (the slice packages rewrite), while already-entered history stays read-only under DSH's append-only log. |
 | `signal` | `ctx.*` | Same semantics | Mapped to the active DSH cancellation signal when one is available. |
 | `isIdle` | `ctx.*` | Mapped, difference stated | Command contexts report idle; tool/lifecycle contexts conservatively report non-idle. |
-| `hasPendingMessages` | `ctx.*` | Mapped, difference stated | Conservatively reports no Pi-specific pending-message queue. |
+| `hasPendingMessages` | `ctx.*` | Same semantics | Reads the DSH agent inbox — next-step plus next-turn input — which is exactly Pi's steering plus follow-up queue. |
 | `getContextUsage` | `ctx.*` | Mapped, difference stated | Returns no Pi token-usage projection. |
 | `getSystemPrompt` | `ctx.*` | Same semantics | Returns the system prompt currently assembled by the bridge. |
 | `getSystemPromptOptions` | `ctx.*` | Mapped, difference stated | Returns an empty Pi option projection in command contexts. |

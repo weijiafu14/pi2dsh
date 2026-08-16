@@ -16,7 +16,7 @@ bridge's `auth.json`** rather than by DSH credentials. Worth knowing if you
 audit where your keys go. Interactive OAuth flows from the Pi ecosystem run on
 DSH-native interaction and persist with Pi's `auth.json` semantics.
 
-**15 Pi surfaces** — 12 mapped, difference stated · 3 not available.
+**15 Pi surfaces** — 1 same semantics · 11 mapped, difference stated · 3 not available.
 
 | Pi surface | Kind | Status | How it maps onto DSH |
 |---|---|---|---|
@@ -32,7 +32,7 @@ DSH-native interaction and persist with Pi's `auth.json` semantics.
 | `after_provider_response` | `event` | Not available | Provider response interception belongs in a native DSH LLM adapter; the handler is accepted but never fires. |
 | `modelRegistry` | `ctx.*` | Mapped, difference stated | A live registry over the ONE model directory — the DSH llm directory — projected exactly into Pi vocabulary; package-registered Pi-native routes keep api/baseUrl and the full Model shape through the round trip. Custom gateways are HOST configuration (the official llm-pi-ai adapter's settings), never a Pi-side file: Pi's ~/.pi/agent/models.json is deliberately NOT read — user-facing configuration is DSH-shaped only. getProviderAuth/getApiKeyAndHeaders run Pi's full credential chain for package-registered providers and the host's configurable-provider + credentials seams for DSH routes. Host configuration may declare "<route>-vision" image-admission companions: real DSH routes that admit images, replace image blocks with explicit path-carrying notices (materialized attachment files any path-taking tool can read), and forward text-only to the original route; Pi's ctx.model reports the original route for a companion selection. |
 | `model` | `ctx.*` | Mapped, difference stated | The agent's real provider/model route (a setModel() override wins), enriched from the projected catalog. When the selected route is an image-admission companion, ctx.model reports the ORIGINAL route with its true modalities — the generating model is the original text-only one, which is the truth extensions branching on input modalities (a vision bridge's activation check) need. |
-| `scopedModels` | `ctx.*` | Mapped, difference stated | The projected model catalog (DSH llm directory plus package-registered providers). |
+| `scopedModels` | `ctx.*` | Same semantics | Empty, carrying Pi's own meaning for empty: no model scope is configured, so every available model is usable. DSH has no model-scope concept to narrow it. |
 | `hasConfiguredAuth` | `ctx.*` | Mapped, difference stated | Configuration check on the projected registry: true when the model's provider has a live route or package registration (not a key-liveness probe). |
 | `thinkingLevel` | `ctx.*` | Mapped, difference stated | Reflects the level recorded by setThinkingLevel(); applied as reasoningEffort on the next request. |
 

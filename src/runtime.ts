@@ -113,6 +113,14 @@ interface RuntimeState {
   // Per-agent, per-turn system-prompt override returned by before_agent_start
   // (Pi resets to the base prompt when a turn's handlers return none).
   turnSystemPromptOverrides: WeakMap<object, string>
+  /**
+   * The single ordered stream for projections that must keep durable-log
+   * order. Several of them now await the attachment service (Pi's content
+   * blocks carry image bytes inline), and the subscribers that feed them are
+   * synchronous — without one shared chain a tool result with an image can be
+   * announced after the turn that produced it has already ended.
+   */
+  projection: Promise<unknown>
   /** Messages DSH claimed for the step that is about to be assembled. */
   claimedForStep: WeakMap<object, UnknownRecord[]>
   /** The turn each agent's before_agent_start has already fired for. */
@@ -1221,11 +1229,6 @@ function sourceReason(value: unknown): string {
 }
 
 function subscribeLifecycle(ctx: Context, state: RuntimeState): void {
-  // Projecting a message now awaits the attachment service (Pi's image blocks
-  // carry bytes inline), and this subscriber is synchronous. Chaining keeps
-  // successive message_start/message_end pairs in durable-log order instead of
-  // letting a message with an image lose its place to the one after it.
-  let messageProjection: Promise<unknown> = Promise.resolve()
   const cordis = ctx as unknown as {
     on(name: string, callback: (...args: any[]) => unknown, options?: unknown): () => void
     effect(callback: () => unknown, label?: string): unknown
@@ -1372,7 +1375,7 @@ function subscribeLifecycle(ctx: Context, state: RuntimeState): void {
         state.lastLoggedModels.set(agent, String(model))
       }
     }
-    messageProjection = messageProjection.then(async () => {
+    state.projection = state.projection.then(async () => {
       const message = await messageFromSessionEvent(ctx, event)
       if (message === undefined) return
       await dispatch(state, 'message_start', { type: 'message_start', message }, eventContext)
@@ -1380,12 +1383,29 @@ function subscribeLifecycle(ctx: Context, state: RuntimeState): void {
     }).catch(error => warn('message lifecycle', error))
     if (type === 'turn/end') {
       const data = event.data as UnknownRecord
-      const turnIndex = Number(data.turn ?? 1) - 1
-      const finalMessage = { role: 'assistant', content: [] }
-      void dispatch(state, 'turn_end', { type: 'turn_end', turnIndex, message: finalMessage, toolResults: [] }, eventContext)
-        .then(() => dispatch(state, 'agent_end', { type: 'agent_end', messages: [] }, eventContext))
-        .then(() => dispatch(state, 'agent_settled', { type: 'agent_settled' }, eventContext))
-        .catch(error => warn('turn end lifecycle', error))
+      const turn = Number(data.turn ?? 1)
+      // Behind the message chain so the turn's own messages have been
+      // projected first, and so the projections below (which read the
+      // attachment service) are awaited rather than raced.
+      state.projection = state.projection.then(async () => {
+        // Pi's turn_end carries the turn's final assistant message and its
+        // tool results; both were hardcoded empty here, and the declaration
+        // said the tool results were mapped. They come from the turn's own
+        // durable events.
+        const turnEvents = ((session.events ?? []) as UnknownRecord[])
+          .filter(entry => Number((entry.data as UnknownRecord | undefined)?.turn ?? -1) === turn)
+        const toolResults = (await Promise.all(turnEvents
+          .filter(entry => entry.type === 'tool/result')
+          .map(entry => messageFromSessionEvent(ctx, entry))))
+          .filter((message): message is UnknownRecord => message !== undefined)
+        const lastAssistant = turnEvents.findLast(entry => entry.type === 'assistant/message')
+        const finalMessage = lastAssistant === undefined
+          ? { role: 'assistant', content: [] }
+          : await messageFromSessionEvent(ctx, lastAssistant) ?? { role: 'assistant', content: [] }
+        await dispatch(state, 'turn_end', { type: 'turn_end', turnIndex: turn - 1, message: finalMessage, toolResults }, eventContext)
+        await dispatch(state, 'agent_end', { type: 'agent_end', messages: [] }, eventContext)
+        await dispatch(state, 'agent_settled', { type: 'agent_settled' }, eventContext)
+      }).catch(error => warn('turn end lifecycle', error))
     }
   })
 
@@ -1407,21 +1427,6 @@ function subscribeLifecycle(ctx: Context, state: RuntimeState): void {
     }
   })
 
-  cordis.on('tools/result', (exec: ToolExecution, result: ToolExecutionResult) => {
-    // A child agent's tool traffic must not reach extensions mounted on the
-    // parent: DSH lets an untagged listener see every scope, so without this
-    // a parent's guard would silently police another session's calls, and its
-    // handlers would receive an end without ever having seen the start.
-    if (isSubagentOrigin(exec.agent as unknown as UnknownRecord | undefined)) return
-    const agent = exec.agent as unknown as UnknownRecord | undefined
-    void (async () => dispatch(state, 'tool_execution_end', {
-      type: 'tool_execution_end',
-      toolCallId: exec.callId,
-      toolName: exec.name,
-      result: { content: await dshToPiContent(ctx, result.content), details: result.meta ?? null },
-      isError: result.isError,
-    }, contextFor(ctx, state, agent, exec.signal)))().catch(error => warn('tool_execution_end', error))
-  })
 
   cordis.effect(() => async () => {
     for (const agent of state.activeAgents) {
@@ -1478,6 +1483,19 @@ function subscribeInterceptors(ctx: Context, state: RuntimeState): void {
     // handlers would receive an end without ever having seen the start.
     if (isSubagentOrigin(exec.agent as unknown as UnknownRecord | undefined)) return next()
     const downstream = await next()
+    // Pi emits the execution's end as part of completing it, so a handler has
+    // run before the caller sees the result. This waterfall is that moment;
+    // the `tools/result` observer it used to ride is a fire-and-forget emit,
+    // which — once projecting the content had to await the attachment service
+    // — could land after the turn that produced it had already ended.
+    await dispatch(state, 'tool_execution_end', {
+      type: 'tool_execution_end',
+      toolCallId: exec.callId,
+      toolName: exec.name,
+      result: { content: await dshToPiContent(ctx, result.content), details: result.meta ?? null },
+      isError: result.isError,
+    }, contextFor(ctx, state, exec.agent as unknown as UnknownRecord, exec.signal))
+      .catch(error => logger(ctx).warn(`[pi2dsh] tool_execution_end handler failed: ${String(error)}`))
     if (downstream.kind === 'block') return downstream
     const event: UnknownRecord = {
       type: 'tool_result',
@@ -2920,6 +2938,7 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
     modelOverrides: new WeakMap(),
     thinkingLevels: new WeakMap(),
     turnSystemPromptOverrides: new WeakMap(),
+    projection: Promise.resolve(),
     claimedForStep: new WeakMap(),
     promptedTurn: new WeakMap(),
     pendingInjections: new WeakMap(),

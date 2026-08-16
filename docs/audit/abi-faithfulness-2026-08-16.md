@@ -314,6 +314,21 @@ threshold 和 overflow。manual 能可靠推出；自动一律报 threshold，`w
 
 ---
 
+## 四点五、台账已对齐（第四节的落实）
+
+第四节点名的四处，加上今天修完后不再成立的六处，一并改了声明并重新生成 `docs/capabilities/`：
+
+| 声明 | 原文问题 | 现在 |
+|------|----------|------|
+| `turn_end` | 说"tool results 被映射了"，实际是写死的空数组（`message` 也是空的） | 从该轮自己的 durable 事件投影出真实 toolResults 和最终 assistant message |
+| `editor` | 唯一限制说小了：写"多行编辑 UX 未模拟"，真实损失是 prefill **不可编辑** | 明说 prefill 只作为上下文展示，拿回的是用户重新键入的文本 |
+| `registerProvider` | 密钥去向写反（此前已修） | 按两种 overload 分述 |
+| `hasUI` / `hasPendingMessages` / `scopedModels` / `notify` / `setSessionName` / `getSessionName` / `setActiveTools` / `before_agent_start` / `session_compact` | 或夸大、或已过时 | 逐条改成今天实现真正做到的事，含说不出口的那半（自动压缩分不出 threshold/overflow、不可限制的工具关不掉） |
+
+**规矩照旧**：声明由 `src/compatibility.ts` 生成进 `docs/capabilities/`，`pnpm verify` 里的 `check:docs` 会在两者不一致时红 —— 改行为不改声明会被卡住。
+
+---
+
 ## 五点五、第六节的处置（原"需要拍板"）
 
 按标准逐条查证后，其中 6 条不需要拍板 —— 要么审计的前提本身不成立，要么标准已经指明做法。已修：
