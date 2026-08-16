@@ -408,6 +408,88 @@ describe('DSH content projected into the Pi blocks packages read', () => {
   })
 })
 
+describe("Pi's argument gate in front of a migrated tool", () => {
+  async function mountToolPackage(scratchName: string): Promise<Context> {
+    const scratch = await mkdtemp(join(tmpdir(), scratchName))
+    cleanup.push(scratch)
+    await mkdir(join(scratch, 'pkg'), { recursive: true })
+    await writeFile(join(scratch, 'pkg', 'extension.js'), [
+      'export default function (pi) {',
+      '  pi.registerTool({',
+      "    name: 'pi_typed',",
+      "    description: 'Reports exactly what it was handed.',",
+      '    parameters: {',
+      "      type: 'object',",
+      "      properties: { count: { type: 'number' }, note: { type: 'string' } },",
+      "      required: ['count'],",
+      '    },',
+      '    execute: async (_id, args) => ({',
+      "      content: [{ type: 'text', text: JSON.stringify({ value: args.count, kind: typeof args.count, keys: Object.keys(args) }) }],",
+      '    }),',
+      '  })',
+      '}',
+    ].join('\n'), 'utf8')
+    const ctx = new Context()
+    await ctx.plugin(SessionStore)
+    await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
+    await ctx.plugin(ToolRuntime)
+    await ctx.plugin(CommandRuntime)
+    await ctx.plugin(SkillRegistry)
+    await ctx.plugin(AgentRegistry)
+    await ctx.plugin({
+      name: 'pi2dsh:arg-gate-test',
+      inject: ['tools', 'systemPrompt', 'commands', 'skills'],
+      async apply(inner: Context) {
+        await applyPiPackage(inner, {
+          rootUrl: pathToFileURL(`${join(scratch, 'pkg')}/`),
+          manifest: {
+            schemaVersion: 1,
+            package: { name: '@pi2dsh-fixtures/typed', version: '0.0.0' },
+            extensions: ['extension.js'],
+            skillDirs: [],
+            prompts: [],
+          } as never,
+        })
+      },
+    } as Plugin.Object)
+    return ctx
+  }
+
+  it('coerces a stringified number the way Pi does, and drops an optional explicit null', async () => {
+    // Models emit "3" for number parameters routinely. Pi coerces before the
+    // tool sees it; running no gate at all handed the tool's own code a
+    // string where its schema says number.
+    const ctx = await mountToolPackage('pi2dsh-arg-gate-')
+    const result = await ctx.tools.execute({
+      signal: new AbortController().signal,
+      callId: CallId('typed-1'),
+      name: 'pi_typed',
+      arguments: { count: '3', note: null },
+      agent: undefined as never,
+    })
+    expect(result.isError).toBe(false)
+    expect(JSON.parse((result.content[0] as { text: string }).text)).toEqual({
+      value: 3,
+      kind: 'number',
+      // An explicit null on an OPTIONAL property is removed, not passed through.
+      keys: ['count'],
+    })
+  })
+
+  it('returns the violation to the model instead of running the tool on bad input', async () => {
+    const ctx = await mountToolPackage('pi2dsh-arg-gate-bad-')
+    const result = await ctx.tools.execute({
+      signal: new AbortController().signal,
+      callId: CallId('typed-2'),
+      name: 'pi_typed',
+      arguments: { note: 'no count at all' },
+      agent: undefined as never,
+    })
+    expect(result.isError).toBe(true)
+    expect((result.content[0] as { text: string }).text).toContain('count')
+  })
+})
+
 describe("a Pi tool's own system-prompt contributions", () => {
   it('renders promptSnippet and promptGuidelines into the assembled DSH prompt', async () => {
     // Pi puts `promptSnippet` in the prompt's "Available tools" list — a tool

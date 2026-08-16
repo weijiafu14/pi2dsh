@@ -29,6 +29,7 @@ import {
   resolvePiProviderAuth,
 } from './oauth-bridge.js'
 import { __setPiAiLlmBridge, builtinProviders } from './compat/pi-ai.js'
+import { validateToolArguments } from './compat/vendor/pi-tool-validation.js'
 import { ModelCatalog, llmOf, streamViaDshLlm, type DshAttachmentsLike } from './model-bridge.js'
 import { imageAdmissionCompanionAdapter, registerPiProviderRoute } from './provider-adapter.js'
 
@@ -2001,7 +2002,16 @@ function registerTool(ctx: Context, state: RuntimeState, tool: PiTool): void {
       const mutated = state.argMutations.get(exec as unknown as object)
       if (mutated !== undefined) state.argMutations.delete(exec as unknown as object)
       const effective = mutated ?? args
-      const prepared = live.prepareArguments?.(cloneJson(effective)) ?? effective
+      // Pi's order, unchanged: the tool's own `prepareArguments` shim first,
+      // then the argument gate its agent loop runs before EVERY execution —
+      // coerce against the schema, then check. Without it a model that emits
+      // "3" for a number parameter hands the tool a string (Pi hands it 3),
+      // and malformed arguments reach the tool instead of coming back to the
+      // model as the violation text it can retry against.
+      const prepared = validateToolArguments(
+        { name: live.name, parameters: live.parameters },
+        { name: live.name, arguments: live.prepareArguments?.(cloneJson(effective)) ?? effective },
+      )
       const agent = exec.agent as unknown as UnknownRecord | undefined
       const result = await normalizeToolResultForDsh(ctx, await state.agentScope.run(agent, () => live.execute(
           String(exec.callId),
