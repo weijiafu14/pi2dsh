@@ -458,6 +458,13 @@ function currentPiModel(state: RuntimeState, agent: UnknownRecord): UnknownRecor
   return known ?? { id, name: id, provider, api: 'faux', input: ['text'], reasoning: false }
 }
 
+/** A session's durable events, whether the store exposes them as value or method. */
+function eventsOf(session: UnknownRecord): readonly UnknownRecord[] {
+  const events = (session as { events?: unknown }).events
+  if (typeof events === 'function') return (events as () => readonly UnknownRecord[]).call(session) ?? []
+  return Array.isArray(events) ? events as readonly UnknownRecord[] : []
+}
+
 /** The session id a presentation call belongs to, or '' outside a session. */
 function sessionIdOf(state: RuntimeState, agent: UnknownRecord | undefined): string {
   const session = agentSession(agent ?? currentAgent(state))
@@ -3213,21 +3220,38 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
   // would ever show them; running the registered EntryRenderer and projecting
   // its component to text is what puts a package's own entries on screen.
   ctx.effect(() => browserSurfaces.trackEntries(state.packageName ?? 'pi', (sessionId) => {
-    const renderers = state.entryRenderers
-    if (renderers.size === 0) return []
     const rendered: Array<{ id: string, customType: string, text: string }> = []
-    for (const entry of state.bridge.customEntries(sessionId)) {
-      const renderer = renderers.get(entry.customType)
-      if (typeof renderer !== 'function') continue
-      const text = surfaceText(
-        (renderer as (entry: unknown, options: unknown, theme: unknown) => unknown)(
-          { type: 'custom', id: entry.id, customType: entry.customType, data: entry.data, timestamp: entry.timestamp },
-          {},
+    const draw = (renderer: unknown, subject: UnknownRecord): string | undefined => (
+      typeof renderer !== 'function'
+        ? undefined
+        : surfaceText(
+          (renderer as (subject: unknown, options: unknown, theme: unknown) => unknown)(subject, {}, state.theme),
           state.theme,
-        ),
-        state.theme,
-      )
+        )
+    )
+    // Custom ENTRIES live in the sidecar, addressed by session id.
+    for (const entry of state.bridge.customEntries(sessionId)) {
+      const text = draw(state.entryRenderers.get(entry.customType), {
+        type: 'custom', id: entry.id, customType: entry.customType, data: entry.data, timestamp: entry.timestamp,
+      })
       if (text !== undefined) rendered.push({ id: entry.id, customType: entry.customType, text })
+    }
+    // Custom MESSAGES are durable DSH log entries carrying Pi's role:"custom"
+    // marker, so they are read back from the session itself rather than from a
+    // cache — a renderer must still work after a restart.
+    if (state.messageRenderers.size > 0) {
+      const sessions = optionalService<{ get(id: unknown): UnknownRecord | undefined }>(ctx, 'sessions')
+      const session = sessions?.get(sessionId)
+      const events = session === undefined ? [] : eventsOf(session)
+      for (const event of events) {
+        const data = (event.data ?? {}) as UnknownRecord
+        const customType = (data.source as UnknownRecord | undefined)?.piCustomType
+        if (typeof customType !== 'string') continue
+        const text = draw(state.messageRenderers.get(customType), {
+          role: 'custom', customType, content: data.content, id: `dsh-${String(event.seq ?? '')}`,
+        })
+        if (text !== undefined) rendered.push({ id: `dsh-${String(event.seq ?? '')}`, customType, text })
+      }
     }
     return rendered
   }))
