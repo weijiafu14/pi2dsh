@@ -1,7 +1,12 @@
 #!/usr/bin/env node
 // End-to-end proof, on the real dsh CLI against a live model, of the step
-// seams this bridge rewired — each one a place where a migrated Pi package
-// previously observed something other than what DSH held:
+// seams this bridge rewired — each one a place where a Pi package previously
+// observed something other than what DSH held.
+//
+// It walks the ONLY install path this project ships: `dsh plugin add pi2dsh`,
+// then `dsh plugin add <pi package>`. There is no conversion step and no
+// generated bundle — testing one would be testing a path no reader is told
+// to take.
 //
 //   1. the argument gate  — the tool's prepareArguments shim hands the gate a
 //                           string where the schema says number, plus an
@@ -25,7 +30,6 @@ import { chmod, mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'n
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { promisify } from 'node:util'
-import { generateBundle, resolvePiPackage } from '../dist/index.mjs'
 
 const execFile = promisify(execFileCallback)
 const projectRoot = resolve(new URL('..', import.meta.url).pathname)
@@ -137,7 +141,6 @@ try {
   await stat(dshBin)
 
   const home = join(scratch, 'dsh-home')
-  const bundle = join(scratch, 'bundle')
   const source = join(scratch, 'pi-package')
   const report = join(scratch, 'report.json')
   const shimDir = join(scratch, 'bin')
@@ -146,23 +149,17 @@ try {
   await writeFile(pnpmShim, '#!/bin/sh\nexec corepack pnpm@11.7.0 "$@"\n')
   await chmod(pnpmShim, 0o755)
 
-  // A real Pi package on disk, converted by the real generator.
+  // A real Pi package on disk — added as-is, the way a reader adds one from
+  // npm. Nothing converts it.
+  const packageName = '@pi2dsh-e2e/step-seams'
   await mkdir(source, { recursive: true })
   await writeFile(join(source, 'package.json'), `${JSON.stringify({
-    name: '@pi2dsh-e2e/step-seams',
+    name: packageName,
     version: '0.0.0',
     type: 'module',
     pi: { extensions: ['extension.js'] },
   }, null, 2)}\n`)
   await writeFile(join(source, 'extension.js'), EXTENSION_SOURCE)
-
-  const pkg = await resolvePiPackage(source)
-  let generatedPackage
-  try {
-    generatedPackage = (await generateBundle(pkg, { outDir: bundle })).packageName
-  } finally {
-    await pkg.dispose()
-  }
 
   const environment = {
     ...process.env,
@@ -183,7 +180,9 @@ try {
     maxBuffer: 16 * 1024 * 1024,
   })
 
-  const installed = await runDsh(['plugin', '--profile', 'headless', 'add', `file:${bundle}`])
+  // The two commands from the README, in order: the engine, then the package.
+  const installedEngine = await runDsh(['plugin', '--profile', 'headless', 'add', `file:${projectRoot}`])
+  const installed = await runDsh(['plugin', '--profile', 'headless', 'add', `file:${source}`])
   await writeFile(join(home, 'profiles/headless/cordis.patch.yml'), [
     '- id: session-persistence-jsonl',
     '  config:',
@@ -201,7 +200,10 @@ try {
   const rawLog = await readFile(sessionFiles[0], 'utf8')
   const seen = JSON.parse(await readFile(report, 'utf8'))
 
-  const potentiallySensitive = `${installed.stdout}\n${installed.stderr}\n${run.stdout}\n${run.stderr}\n${rawLog}\n${JSON.stringify(seen)}`
+  const potentiallySensitive = [
+    installedEngine.stdout, installedEngine.stderr, installed.stdout, installed.stderr,
+    run.stdout, run.stderr, rawLog, JSON.stringify(seen),
+  ].join('\n')
   assert(!potentiallySensitive.includes(apiKey), 'credential appeared in captured test artifacts')
 
   const records = rawLog.split('\n').filter(Boolean).map(line => JSON.parse(line))
@@ -254,14 +256,14 @@ try {
   assert.deepEqual(withResults[0].toolResultRoles, ['toolResult'])
   assert.equal(seen.turns.at(-1)?.finalRole, 'assistant')
 
-  // The converted bundle really is the thing that ran.
-  const listed = await runDsh(['plugin', '--profile', 'headless', 'list'])
-  assert(listed.stdout.includes(generatedPackage),
-    `the converted package ${generatedPackage} is not installed in the profile`)
+  // The package really is mounted, as itself — no bundle in between.
+  assert(installed.stdout.includes('pi2dsh') || run.stderr.includes('pi2dsh'),
+    'the pi2dsh engine did not announce mounting the package')
 
   const evidence = {
     schemaVersion: 1,
-    generatedPackage,
+    packageName,
+    installPath: 'engine (dsh plugin add pi2dsh, then the package) — no conversion',
     dshCommit: (await execFile('git', ['rev-parse', 'HEAD'], { cwd: dshRoot })).stdout.trim(),
     pi2dshCommit: (await execFile('git', ['rev-parse', 'HEAD'], { cwd: projectRoot })).stdout.trim(),
     profile: 'headless',

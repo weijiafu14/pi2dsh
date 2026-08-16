@@ -1,6 +1,6 @@
-// The analyzer/generator (which pull the 23 MB typescript compiler, an
-// optional peer) load lazily inside their commands only — `matrix`,
-// `mcp-config`, and `host` must run on an install without typescript.
+// The analyzer (which pulls the 23 MB typescript compiler, an optional peer)
+// loads lazily inside its own command only — `matrix` and `mcp-config` must
+// run on an install without typescript.
 import { writeFileSync } from 'node:fs'
 import { parseArgs } from 'node:util'
 import { API_RULES, CONTEXT_RULES, EVENT_RULES, HOST_IMPORT_RULES, UI_CONTEXT_RULES } from './compatibility.js'
@@ -12,12 +12,10 @@ function usage(): string {
   return `pi2dsh — migrate Pi packages to DeepSeek Harness\n\n`
     + `Usage:\n`
     + `  pi2dsh inspect <package-or-path> [--json]\n`
-    + `  pi2dsh convert <package-or-path> --out <directory> [--runtime <spec>] [--strict] [--allow-unsupported]\n`
     + `  pi2dsh mcp-config [--cwd <dir>] [--out <file>] [--json]\n`
-    + `  pi2dsh host --packages <spec,spec,...> --out <directory> [--name <bundle-name>]\n`
     + `  pi2dsh matrix [--json]\n\n`
-    + `host generates ONE installable DSH bundle that mounts the listed Pi\n`
-    + `packages as ordinary npm dependencies — no per-package conversion.\n\n`
+    + `Installing is dsh's own job — \`dsh plugin add pi2dsh\`, then\n`
+    + `\`dsh plugin add <pi package>\`. This CLI only inspects.\n\n`
     + `mcp-config reads Pi's standard mcpServers files (six-layer precedence)\n`
     + `and emits DSH cordis.patch.yml entries for the official dsh-mcp-client —\n`
     + `Pi's MCP adapter code is never executed.\n`
@@ -69,11 +67,6 @@ async function main(): Promise<void> {
       json: { type: 'boolean', default: false },
       out: { type: 'string' },
       cwd: { type: 'string' },
-      packages: { type: 'string' },
-      name: { type: 'string' },
-      runtime: { type: 'string' },
-      strict: { type: 'boolean', default: false },
-      'allow-unsupported': { type: 'boolean', default: false },
       help: { type: 'boolean', short: 'h', default: false },
     },
   })
@@ -84,19 +77,6 @@ async function main(): Promise<void> {
   }
   if (command === 'matrix') {
     matrix(parsed.values.json)
-    return
-  }
-  if (command === 'host') {
-    if (parsed.values.out === undefined) throw new Error('host requires --out <directory>')
-    if (parsed.values.packages === undefined) throw new Error('host requires --packages <spec,spec,...>')
-    const { generateHostBundle } = await import('./host.js')
-    const result = await generateHostBundle({
-      outDir: parsed.values.out,
-      packages: parsed.values.packages.split(',').map(spec => spec.trim()).filter(Boolean),
-      ...(parsed.values.name === undefined ? {} : { bundleName: parsed.values.name }),
-    })
-    console.log(`Generated host bundle ${result.packageName} in ${result.outDir}`)
-    console.log(`Install with: dsh plugin --profile headless add file:${result.outDir}`)
     return
   }
   if (command === 'mcp-config') {
@@ -112,29 +92,16 @@ async function main(): Promise<void> {
     }
     return
   }
-  if ((command !== 'inspect' && command !== 'convert') || source === undefined) {
+  if (command !== 'inspect' || source === undefined) {
     throw new Error(`invalid command\n\n${usage()}`)
   }
 
   const pkg = await resolvePiPackage(source)
   try {
-    if (command === 'inspect') {
-      const { analyzePackage } = await import('./analyzer.js')
-      const report = await analyzePackage(pkg)
-      console.log(parsed.values.json ? JSON.stringify(report, null, 2) : reportText(report))
-      if (report.verdict === 'blocked') process.exitCode = 2
-      return
-    }
-    if (parsed.values.out === undefined) throw new Error('convert requires --out <directory>')
-    const { generateBundle } = await import('./generator.js')
-    const result = await generateBundle(pkg, {
-      outDir: parsed.values.out,
-      ...(parsed.values.runtime !== undefined ? { runtimeSpec: parsed.values.runtime } : {}),
-      strict: parsed.values.strict,
-      allowUnsupported: parsed.values['allow-unsupported'],
-    })
-    console.log(`Generated ${result.packageName} in ${result.outDir}`)
-    console.log(reportText(result.report))
+    const { analyzePackage } = await import('./analyzer.js')
+    const report = await analyzePackage(pkg)
+    console.log(parsed.values.json ? JSON.stringify(report, null, 2) : reportText(report))
+    if (report.verdict === 'blocked') process.exitCode = 2
   } finally {
     await pkg.dispose()
   }

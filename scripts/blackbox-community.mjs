@@ -1,6 +1,7 @@
 #!/usr/bin/env node
-// Black-box verification for the community corpus: convert every non-fatal
-// package and LOAD it inside a real DSH runtime composition. Static analysis
+// Black-box verification for the community corpus: install every non-fatal
+// package and MOUNT it inside a real DSH runtime composition, exactly as the
+// engine does for a reader (`dsh plugin add <pkg>`). Static analysis
 // screens; this run certifies. Output per package:
 //   - loaded:      the bundle mounted; registration surface recorded
 //   - load-failed: the error message is a concrete ABI gap to fix
@@ -26,9 +27,9 @@
 //   PI2DSH_BLACKBOX_PI_ARGS (override that default provider/model).
 import { execFile as execFileCallback } from 'node:child_process'
 import { createServer } from 'node:http'
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { basename, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { promisify } from 'node:util'
 import { Context } from '@deepseek-ai/cordis'
@@ -42,7 +43,7 @@ import LocalSubprocessRuntime from '@deepseek-ai/dsh-subprocess-local'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
 import UserQuestionService from '@deepseek-ai/dsh-user-questions'
-import { generateBundle, resolvePiPackage } from '../dist/index.mjs'
+import { analyzePackage, applyPiHost, resolvePiPackage } from '../dist/index.mjs'
 
 const execFile = promisify(execFileCallback)
 const projectRoot = resolve(new URL('..', import.meta.url).pathname)
@@ -345,7 +346,15 @@ async function exerciseSurface(ctx, agent, assembly, commands) {
 const emptyBaseline = { tools: new Set(), commands: new Set() }
 
 async function loadBundle(bundleDir, { baseline = emptyBaseline, probe = exercise } = {}) {
-  const generated = await import(`${pathToFileURL(join(bundleDir, 'index.js')).href}?bb=${Date.now()}`)
+  // The engine's own mount, over the package where it is installed — the same
+  // call `dsh plugin add pi2dsh` ends up making. Nothing is generated.
+  const generated = {
+    name: `pi2dsh:blackbox:${basename(bundleDir)}`,
+    inject: ['tools', 'systemPrompt', 'commands', 'skills'],
+    async apply(inner) {
+      await applyPiHost(inner, { packages: [{ name: basename(bundleDir), rootDir: bundleDir }] })
+    },
+  }
   const ctx = new Context()
   await ctx.plugin(SessionStore)
   await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
@@ -425,17 +434,17 @@ async function verifyOne(entry) {
   } catch (error) {
     return { ...record, status: 'fatal', stage: 'resolve', error: String(error?.message ?? error) }
   }
-  const bundleDir = join(scratch, 'bundles', `${entry.rank}-${entry.name.replace(/[^a-zA-Z0-9._-]+/gu, '_')}`)
+  const bundleDir = join(scratch, 'packages', `${entry.rank}-${entry.name.replace(/[^a-zA-Z0-9._-]+/gu, '_')}`)
   try {
     let report
     try {
-      const result = await generateBundle(pkg, { outDir: bundleDir })
-      report = result.report
+      await cp(pkg.rootDir, bundleDir, { recursive: true })
+      report = await analyzePackage(pkg)
     } catch (error) {
-      return { ...record, status: 'fatal', stage: 'convert', error: String(error?.message ?? error) }
+      return { ...record, status: 'fatal', stage: 'stage', error: String(error?.message ?? error) }
     }
     try {
-      // npm, exactly as a user installs a bundle: build scripts run by default,
+      // npm, exactly as a profile installs a package: build scripts run by default,
       // so native modules (better-sqlite3) come out usable. pnpm 11 was tried
       // here and fights this harness both ways: --ignore-scripts skips builds
       // without recording them (approve-builds then has nothing to approve),
@@ -491,8 +500,8 @@ async function computeHostBaseline() {
   await writeFile(join(fixtureDir, 'index.js'), 'export default function piBlackboxBaseline() {}\n')
   const pkg = await resolvePiPackage(fixtureDir)
   try {
-    const bundleDir = join(scratch, 'bundles', 'baseline')
-    await generateBundle(pkg, { outDir: bundleDir })
+    const bundleDir = join(scratch, 'packages', 'baseline')
+    await cp(pkg.rootDir, bundleDir, { recursive: true })
     await execFile('npm', ['install', '--omit=dev', '--no-audit', '--no-fund'], {
       cwd: bundleDir,
       env: { ...process.env, CI: '1', npm_config_registry: 'https://registry.npmjs.org' },

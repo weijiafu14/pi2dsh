@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict'
 import { execFile as execFileCallback } from 'node:child_process'
 import { createServer } from 'node:http'
-import { chmod, mkdir, mkdtemp, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
+import { cp, chmod, mkdir, mkdtemp, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { basename, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -15,7 +15,7 @@ import SkillRegistry from '@deepseek-ai/dsh-skill'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
 import { symlink } from 'node:fs/promises'
-import { generateBundle, generateHostBundle, resolvePiPackage } from '../dist/index.mjs'
+import { applyPiHost, resolvePiPackage } from '../dist/index.mjs'
 
 const execFile = promisify(execFileCallback)
 const projectRoot = resolve(new URL('..', import.meta.url).pathname)
@@ -41,10 +41,10 @@ if (generateBundles) {
   for (const candidate of candidates) {
     const pkg = await resolvePiPackage(candidate.specifier)
     const outDir = join(bundleRoot, candidate.directory)
+    // Staged where it is installed and mounted by the engine — the reader's
+    // path. Nothing converts the package.
     try {
-      await generateBundle(pkg, {
-        outDir,
-      })
+      await cp(pkg.rootDir, outDir, { recursive: true })
     } finally {
       await pkg.dispose()
     }
@@ -163,11 +163,16 @@ const delay = ms => new Promise(resolveDelay => setTimeout(resolveDelay, ms))
 
 async function loadHarness(candidate) {
   const bundle = join(bundleRoot, candidate.directory)
-  await stat(join(bundle, 'index.js'))
   const packageJson = JSON.parse(await readFile(join(bundle, 'package.json'), 'utf8'))
-  const manifest = JSON.parse(await readFile(join(bundle, 'pi2dsh.manifest.json'), 'utf8'))
-  assert.equal(manifest.package.name, candidate.package)
-  const generated = await import(`${pathToFileURL(join(bundle, 'index.js')).href}?verify=${Date.now()}-${candidate.directory}`)
+  assert.equal(packageJson.name, candidate.package)
+  const manifest = { package: { name: packageJson.name, version: packageJson.version } }
+  const generated = {
+    name: `pi2dsh:verify:${candidate.directory}`,
+    inject: ['tools', 'systemPrompt', 'commands', 'skills'],
+    async apply(inner) {
+      await applyPiHost(inner, { packages: [{ name: candidate.package, rootDir: bundle }] })
+    },
+  }
   const ctx = new Context()
   await ctx.plugin(SessionStore)
   await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
@@ -311,73 +316,17 @@ try {
     assert.equal(profile.dsh?.profile?.bundles?.includes(item.package) ?? false, false)
   }
 
-  // --- Host-bundle end-to-end: ONE bundle mounting several unmodified Pi
-  // packages as npm dependencies, through the official plugin manager and a
-  // real runtime composition.
-  const hostDir = join(scratch, 'host-bundle')
-  const hostPackages = ['@juicesharp/rpiv-web-tools@2.4.0', 'pi-simplify@0.2.3']
-  await generateHostBundle({ outDir: hostDir, packages: hostPackages, bundleName: 'dsh-pi-host-e2e' })
-  await execFile('corepack', ['pnpm@11.7.0', 'install', '--ignore-scripts', '--prod'], {
-    cwd: hostDir,
-    env: managerEnv,
-    timeout: 240_000,
-    maxBuffer: 16 * 1024 * 1024,
-  })
-  await runDsh(['plugin', '--profile', 'headless', 'add', `file:${hostDir}`])
-  const hostDump = await runDsh(['--profile', 'headless', '--dump-config'])
-  assert.match(hostDump.stdout, /dsh-pi-host-e2e/u)
-  await runDsh(['plugin', '--profile', 'headless', 'remove', 'dsh-pi-host-e2e'])
-  // Mount in-process: peers resolve through symlinks like a real profile's
-  // hoisted install.
-  // pnpm's hoisted install may already provide some @deepseek-ai packages
-  // (skill-filesystem's tree); fill remaining peers PER PACKAGE — a
-  // directory-level link would silently shadow nothing when the directory
-  // already exists, leaving dsh-llm and friends unresolvable.
-  const peerScopeSource = join(projectRoot, 'node_modules/@deepseek-ai')
-  const peerScopeTarget = join(hostDir, 'node_modules/@deepseek-ai')
-  await mkdir(peerScopeTarget, { recursive: true })
-  for (const peer of await readdir(peerScopeSource)) {
-    await symlink(join(peerScopeSource, peer), join(peerScopeTarget, peer), 'dir')
-      .catch(error => { if (error.code !== 'EEXIST') throw error })
-  }
-  await symlink(join(projectRoot, 'node_modules/typebox'), join(hostDir, 'node_modules/typebox'), 'dir')
-    .catch(error => { if (error.code !== 'EEXIST') throw error })
-  const hostModule = await import(`${pathToFileURL(join(hostDir, 'index.js')).href}?host=${Date.now()}`)
-  const hostCtx = new Context()
-  await hostCtx.plugin(SessionStore)
-  await hostCtx.plugin(SystemPrompt, { includeHarnessIdentity: false })
-  await hostCtx.plugin(ToolRuntime)
-  await hostCtx.plugin(CommandRuntime)
-  await hostCtx.plugin(SkillRegistry)
-  const hostFiber = await hostCtx.plugin(hostModule)
-  const hostAssembly = await hostCtx.systemPrompt.assemble()
-  const hostTools = hostAssembly.tools.map(tool => tool.name)
-  assert(hostTools.includes('web_search'), `host bundle missing web_search; got ${hostTools.join(', ')}`)
-  assert(hostTools.includes('web_fetch'), `host bundle missing web_fetch; got ${hostTools.join(', ')}`)
-  await hostFiber.dispose()
-  const hostResult = {
-    bundle: 'dsh-pi-host-e2e',
-    packages: hostPackages,
-    install: 'passed',
-    activation: 'passed',
-    remove: 'passed',
-    mountedTools: hostTools.filter(name => ['web_search', 'web_fetch'].includes(name)),
-    status: 'passed',
-  }
-
   const dshCommit = (await execFile('git', ['rev-parse', 'HEAD'], { cwd: dshRoot })).stdout.trim()
   const value = {
     schemaVersion: 1,
     generatedAt: new Date().toISOString(),
     dshCommit,
-    runtimePackaging: 'embedded',
+    installPath: 'engine (dsh plugin add pi2dsh, then each package)',
     runtime: runtimeResults,
     officialPluginManager: managerResults,
-    hostBundle: hostResult,
     counts: {
       runtimePassed: runtimeResults.length,
       installActivateRemovePassed: managerResults.length,
-      hostBundlePassed: 1,
     },
   }
   if (outputPath !== undefined) await writeFile(outputPath, `${JSON.stringify(value, null, 2)}\n`)

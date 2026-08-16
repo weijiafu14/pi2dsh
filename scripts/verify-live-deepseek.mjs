@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 import assert from 'node:assert/strict'
 import { execFile as execFileCallback } from 'node:child_process'
-import { chmod, mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
+import { cp, chmod, mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { promisify } from 'node:util'
-import { generateBundle, resolvePiPackage } from '../dist/index.mjs'
+
 
 const execFile = promisify(execFileCallback)
 const projectRoot = resolve(new URL('..', import.meta.url).pathname)
@@ -42,15 +42,10 @@ try {
   await writeFile(pnpmShim, '#!/bin/sh\nexec corepack pnpm@11.7.0 "$@"\n')
   await chmod(pnpmShim, 0o755)
 
-  const pkg = await resolvePiPackage(join(projectRoot, 'fixtures/complete-package'))
-  let generatedPackage
-  try {
-    generatedPackage = (await generateBundle(pkg, {
-      outDir: bundle,
-    })).packageName
-  } finally {
-    await pkg.dispose()
-  }
+  // The reader's path: the engine, then the package as it is. Nothing is
+  // converted and nothing is generated.
+  const generatedPackage = '@pi2dsh-fixtures/complete'
+  await cp(join(projectRoot, 'fixtures/complete-package'), bundle, { recursive: true })
 
   const environment = {
     ...process.env,
@@ -70,6 +65,7 @@ try {
     maxBuffer: 16 * 1024 * 1024,
   })
 
+  const installedEngine = await runDsh(['plugin', '--profile', 'headless', 'add', `file:${projectRoot}`])
   const installed = await runDsh(['plugin', '--profile', 'headless', 'add', `file:${bundle}`])
   const profilePatch = join(home, 'profiles/headless/cordis.patch.yml')
   await writeFile(profilePatch, [
@@ -86,7 +82,10 @@ try {
   assert.equal(sessionFiles.length, 1, `expected one durable session log, found ${sessionFiles.length}`)
   const rawLog = await readFile(sessionFiles[0], 'utf8')
 
-  const potentiallySensitive = `${installed.stdout}\n${installed.stderr}\n${run.stdout}\n${run.stderr}\n${rawLog}`
+  const potentiallySensitive = [
+    installedEngine.stdout, installedEngine.stderr,
+    installed.stdout, installed.stderr, run.stdout, run.stderr, rawLog,
+  ].join('\n')
   assert(!potentiallySensitive.includes(apiKey), 'credential appeared in captured test artifacts')
 
   const records = rawLog.split('\n').filter(Boolean).map(line => JSON.parse(line))

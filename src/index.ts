@@ -3,10 +3,10 @@
 // loader discard the function-plugin namespace).
 export { apply, inject, name, discoverProfilePiPackages, findProfileRoot, type EngineConfig } from './engine.js'
 
-// CLI-only analysis surfaces load lazily: their static-analysis dependency
+// The CLI-only analysis surface loads lazily: its static-analysis dependency
 // (the 23 MB typescript compiler, an optional peer) must never be pulled
-// into a profile that installs the ENGINE. The dynamic imports below keep
-// analyzer/generator in their own chunks, off the engine's load path.
+// into a profile that installs the ENGINE. The dynamic import below keeps
+// the analyzer in its own chunk, off the engine's load path.
 import type { CompatibilityReport, ResolvedPiPackage } from './types.js'
 
 /**
@@ -19,15 +19,6 @@ export async function analyzePackage(pkg: ResolvedPiPackage): Promise<Compatibil
   return run(pkg)
 }
 
-/**
- * Generate a vendored per-package bundle (CLI `convert`).
- * @param options - generation options (see the generator module).
- * @returns the generation result.
- */
-export async function generateBundle(...args: Parameters<typeof import('./generator.js').generateBundle>): ReturnType<typeof import('./generator.js').generateBundle> {
-  const { generateBundle: run } = await import('./generator.js')
-  return run(...args)
-}
 export {
   API_RULES,
   CONTEXT_RULES,
@@ -43,7 +34,7 @@ export {
   ruleForHostImport,
   ruleForUiContextProperty,
 } from './compatibility.js'
-export { applyPiHost, generateHostBundle, manifestForInstalled } from './host.js'
+export { applyPiHost, manifestForInstalled } from './host.js'
 export { collectPiMcpServers, convertPiMcpConfig, renderMcpPatch } from './mcp-config.js'
 export { resolvePiPackage } from './source.js'
 export type * from './types.js'

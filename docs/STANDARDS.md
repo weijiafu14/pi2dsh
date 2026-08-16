@@ -20,10 +20,15 @@ dsh plugin --profile p remove <pkg>            # 卸载
 dsh plugin --profile p add pi2dsh@latest       # 升引擎（插件不动）
 ```
 
-零转换、零生成产物。convert（vendored 快照）与 host bundle（钉版本
-清单）只服务特例：未发布/本地包、供应链冻结审计。
+零转换、零生成产物 —— 而且**代码里也不再有第二条路**：`convert` /
+`host` 两个命令、`generateBundle` / `generateHostBundle` 两个导出、
+`src/generator.ts` 整个文件，连同只测它们的两个测试文件，全部删除。
 
-**事故档案（0.5.x 及以前）**：最初的形态是逐包 `pi2dsh convert` 生成
+留着它们的代价不是"多一个特例"，是**验证会架在错的路上**：主集成测试和
+真机端到端曾经都在装转换产物，跑得再绿也证明不了用户那条路。开发和测试
+必须走同一条路，而那条路只有一条。
+
+**事故档案（0.5.x 及以前，代码已删除）**：最初的形态是逐包 `pi2dsh convert` 生成
 bundle 再 `add file:...`——N 个插件 = N 个 bundle = N 份桥运行时拷贝。
 桥升级要把每个 bundle 重转重装；多份桥实例各自注册，`/login` 撞出
 `/login-2`、models.json 路由重复注册（"already has a live adapter"）、

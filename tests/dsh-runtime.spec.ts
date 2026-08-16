@@ -1,4 +1,4 @@
-import { copyFile, mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from 'node:fs/promises'
+import { copyFile, cp, mkdir, mkdtemp, readFile, readdir, realpath, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -15,7 +15,7 @@ import ToolRuntime from '@deepseek-ai/dsh-tools'
 import UserQuestionService from '@deepseek-ai/dsh-user-questions'
 import CommandRuntime from '@deepseek-ai/dsh-commands'
 import SkillRegistry from '@deepseek-ai/dsh-skill'
-import { generateBundle } from '../src/generator.js'
+import { manifestForInstalled } from '../src/host.js'
 import { applyPiPackage, runtimeInternals } from '../src/runtime.js'
 import { resolvePiPackage } from '../src/source.js'
 import type { GeneratedRuntimeManifest } from '../src/types.js'
@@ -32,30 +32,25 @@ async function settle(): Promise<void> {
   await new Promise(resolve => setTimeout(resolve, 10))
 }
 
-async function linkRuntimeDependencies(bundle: string): Promise<void> {
-  const modules = join(bundle, 'node_modules')
-  await mkdir(modules, { recursive: true })
-  await symlink(projectRoot, join(modules, 'pi2dsh'), 'dir')
-  await symlink(join(projectRoot, 'node_modules/@earendil-works'), join(modules, '@earendil-works'), 'dir')
-  await symlink(join(projectRoot, 'node_modules/typebox'), join(modules, 'typebox'), 'dir')
-}
-
-describe('generated plugin in the real DSH runtime', () => {
-  it('loads one generated bundle and executes tools, policy hooks, commands, prompts, skills, and lifecycle events', async () => {
+describe('an installed Pi package in the real DSH runtime', () => {
+  it('mounts one installed package and executes tools, policy hooks, commands, prompts, skills, and lifecycle events', async () => {
     const scratch = await mkdtemp(join(tmpdir(), 'pi2dsh-dsh-runtime-'))
     cleanup.push(scratch)
-    const bundle = join(scratch, 'bundle')
-    const pkg = await resolvePiPackage(fixtureRoot)
+    // The engine's own path: the package is mounted where it is installed,
+    // with its manifest built in place. Nothing converts it, and nothing is
+    // generated — which is the only way a reader ever installs one.
+    const bundle = join(scratch, 'package')
+    await cp(fixtureRoot, bundle, { recursive: true })
+    const runtimeEdgePath = 'vendor/runtime-edge-extension.ts'
+    await mkdir(join(bundle, 'vendor'), { recursive: true })
+    await copyFile(join(projectRoot, 'fixtures/runtime-edge-extension.ts'), join(bundle, runtimeEdgePath))
+    const pkg = await resolvePiPackage(bundle)
+    let manifest: GeneratedRuntimeManifest
     try {
-      await generateBundle(pkg, { outDir: bundle, runtimeSpec: `file:${projectRoot}` })
+      manifest = await manifestForInstalled(pkg)
     } finally {
       await pkg.dispose()
     }
-    await linkRuntimeDependencies(bundle)
-
-    const manifest = JSON.parse(await readFile(join(bundle, 'pi2dsh.manifest.json'), 'utf8')) as GeneratedRuntimeManifest
-    const runtimeEdgePath = 'vendor/runtime-edge-extension.ts'
-    await copyFile(join(projectRoot, 'fixtures/runtime-edge-extension.ts'), join(bundle, runtimeEdgePath))
     manifest.extensions.push(runtimeEdgePath)
     const generated: Plugin.Object = {
       name: 'pi2dsh:test-runtime-source',
