@@ -11,32 +11,68 @@ import { dshRequestToPiContext, piEventsToDshChunks } from '../src/model-bridge.
 
 type UnknownRecord = Record<string, unknown>
 
-function piFixtureProvider() {
-  const calls: Array<{ model: UnknownRecord, context: UnknownRecord, options: UnknownRecord }> = []
-  const provider = {
+/**
+ * A Pi provider fixture. Real Pi providers carry BOTH entry points — the
+ * portable `streamSimple` and the per-API `stream` — so the fixture does too,
+ * and records which one the bridge chose. `legacy: true` drops `streamSimple`
+ * to stand in for a package that hand-rolls a provider object.
+ */
+function piFixtureProvider(options: { legacy?: boolean, model?: UnknownRecord } = {}) {
+  const calls: Array<{ entry: 'streamSimple' | 'stream', model: UnknownRecord, context: UnknownRecord, options: UnknownRecord }> = []
+  const model = options.model ?? { id: 'pifix-1', name: 'Pi Fixture One', provider: 'pifix', contextWindow: 32000 }
+  async function* run(entry: 'streamSimple' | 'stream', m: UnknownRecord, context: UnknownRecord, opts: UnknownRecord): AsyncIterable<UnknownRecord> {
+    calls.push({ entry, model: m, context, options: opts })
+    yield { type: 'start', partial: {} }
+    yield { type: 'text_start', contentIndex: 0 }
+    yield { type: 'text_delta', contentIndex: 0, delta: 'pi says ' }
+    yield { type: 'text_delta', contentIndex: 0, delta: 'hi' }
+    yield { type: 'text_end', contentIndex: 0, content: 'pi says hi' }
+    yield {
+      type: 'done',
+      reason: 'stop',
+      message: {
+        role: 'assistant',
+        content: [{ type: 'text', text: 'pi says hi' }],
+        usage: { input: 9, output: 3, cacheRead: 1 },
+        stopReason: 'stop',
+      },
+    }
+  }
+  const provider: UnknownRecord = {
     id: 'pifix',
     name: 'Pi Fixture Gateway',
-    getModels: () => [{ id: 'pifix-1', name: 'Pi Fixture One', provider: 'pifix', contextWindow: 32000 }],
-    async *stream(model: UnknownRecord, context: UnknownRecord, options: UnknownRecord): AsyncIterable<UnknownRecord> {
-      calls.push({ model, context, options })
-      yield { type: 'start', partial: {} }
-      yield { type: 'text_start', contentIndex: 0 }
-      yield { type: 'text_delta', contentIndex: 0, delta: 'pi says ' }
-      yield { type: 'text_delta', contentIndex: 0, delta: 'hi' }
-      yield { type: 'text_end', contentIndex: 0, content: 'pi says hi' }
-      yield {
-        type: 'done',
-        reason: 'stop',
-        message: {
-          role: 'assistant',
-          content: [{ type: 'text', text: 'pi says hi' }],
-          usage: { input: 9, output: 3, cacheRead: 1 },
-          stopReason: 'stop',
-        },
-      }
-    },
+    getModels: () => [model],
+    stream: (m: UnknownRecord, c: UnknownRecord, o: UnknownRecord) => run('stream', m, c, o),
+  }
+  if (options.legacy !== true) {
+    provider.streamSimple = (m: UnknownRecord, c: UnknownRecord, o: UnknownRecord) => run('streamSimple', m, c, o)
   }
   return { provider, calls }
+}
+
+/** Drive one request through a registered route and hand back what the provider saw. */
+async function requestThrough(
+  fixture: ReturnType<typeof piFixtureProvider>,
+  request: UnknownRecord = {},
+): Promise<{ options: UnknownRecord, entry: string, warnings: string[] }> {
+  const ctx = new Context()
+  await ctx.plugin(LlmRuntime as never, {} as never)
+  const llm = (ctx as unknown as { llm: { stream(o: UnknownRecord): AsyncIterable<UnknownRecord> } }).llm
+  const warnings: string[] = []
+  registerPiProviderRoute({
+    llm: llm as never,
+    providerId: 'pifix',
+    provider: fixture.provider as never,
+    host: { resolveAuth: async () => undefined, warn: message => warnings.push(message) },
+  })
+  for await (const _ of llm.stream({
+    provider: 'pifix',
+    model: 'pifix-1',
+    messages: [{ role: 'user', content: [{ type: 'text', text: 'hi' }], source: { kind: 'user' } }],
+    ...request,
+  })) { /* drained: the assertions are on what the provider was handed */ }
+  const call = fixture.calls[0]
+  return { options: call?.options ?? {}, entry: call?.entry ?? 'none', warnings }
 }
 
 describe('Pi provider as a DSH llm route', () => {
@@ -122,21 +158,190 @@ describe('Pi provider as a DSH llm route', () => {
     expect(warnings.join('\n')).toContain('existing route keeps the name')
   })
 
-  it('translates aborts and package errors into terminal DSH chunks, never fabricated finishes', async () => {
+  // A route only accepts an effort its resolved model declares, so these carry
+  // a reasoning model — which doubles as proof the effort projection reaches
+  // DSH's own validation rather than merely being emitted.
+  const reasoningModel = { id: 'pifix-1', name: 'Pi Fixture One', provider: 'pifix', contextWindow: 32000, reasoning: true }
+
+  it('prefers the portable entry point, where a reasoning level reaches every API', async () => {
+    const seen = await requestThrough(piFixtureProvider({ model: reasoningModel }), { reasoningEffort: 'high' })
+    expect(seen.entry).toBe('streamSimple')
+    // `reasoningEffort` is an option only the two OpenAI-family APIs read; the
+    // portable name is what an anthropic or google route would also honour.
+    expect(seen.options).toMatchObject({ reasoning: 'high' })
+    expect(seen.options).not.toHaveProperty('reasoningEffort')
+  })
+
+  it('sends the "off" effort as absence, never as the string', async () => {
+    // Pi lists `off` for every reasoning model, so it is a level the user can
+    // actually pick — and the string is truthy on the OpenAI-compatible path,
+    // which would switch thinking ON for the choice that means switch it off.
+    const seen = await requestThrough(piFixtureProvider({ model: reasoningModel }), { reasoningEffort: 'off' })
+    expect(seen.options).not.toHaveProperty('reasoning')
+    expect(seen.options).not.toHaveProperty('reasoningEffort')
+  })
+
+  it('falls back to the per-API entry point for a provider that hand-rolls one', async () => {
+    const seen = await requestThrough(piFixtureProvider({ legacy: true, model: reasoningModel }), { reasoningEffort: 'low' })
+    expect(seen.entry).toBe('stream')
+    // That entry point takes per-API options, so the level is spelled its way.
+    expect(seen.options).toMatchObject({ reasoningEffort: 'low' })
+    expect(seen.options).not.toHaveProperty('reasoning')
+
+    const off = await requestThrough(piFixtureProvider({ legacy: true, model: reasoningModel }), { reasoningEffort: 'off' })
+    expect(off.options).not.toHaveProperty('reasoningEffort')
+  })
+
+  it('forwards the session identity Pi providers use for cache affinity and routing', async () => {
+    const seen = await requestThrough(piFixtureProvider(), { sessionId: 'sess-1234' })
+    expect(seen.options).toMatchObject({ sessionId: 'sess-1234' })
+  })
+
+  it('says so when a request carries stop sequences Pi cannot model', async () => {
+    const seen = await requestThrough(piFixtureProvider(), { stop: ['\n\n'] })
+    expect(seen.warnings.join('\n')).toContain('stop sequences')
+    // Silence is the failure mode being prevented: the request still runs, but
+    // the model will not halt on them and the operator is told exactly that.
+    expect(seen.entry).toBe('streamSimple')
+  })
+
+  // Pi delivers a failure as a terminal EVENT whose payload is an
+  // AssistantMessage — not a thrown Error, and not an Error object. Reading it
+  // as one produced "[object Object]" as the user-facing failure text.
+  const piErrorEvent = (errorMessage: string, extra: UnknownRecord = {}): UnknownRecord => ({
+    type: 'error',
+    reason: 'error',
+    error: {
+      role: 'assistant', content: [], model: 'fixture-model',
+      stopReason: 'error', errorMessage,
+      usage: { input: 12, output: 0, cacheRead: 0, cacheWrite: 0 },
+      ...extra,
+    },
+  })
+
+  async function collect(events: AsyncIterable<UnknownRecord>, contextWindow?: number): Promise<UnknownRecord[]> {
+    const chunks: UnknownRecord[] = []
+    for await (const chunk of piEventsToDshChunks(events, contextWindow)) chunks.push(chunk)
+    return chunks
+  }
+
+  it('reads the failure text off the assistant message Pi puts on its error event', async () => {
     async function* erroring(): AsyncIterable<UnknownRecord> {
       yield { type: 'text_start', contentIndex: 0 }
-      yield { type: 'error', reason: 'error', error: new Error('gateway melted') }
+      yield piErrorEvent('gateway melted')
     }
-    const chunks: UnknownRecord[] = []
-    for await (const chunk of piEventsToDshChunks(erroring())) chunks.push(chunk)
-    expect(chunks.at(-1)).toMatchObject({ type: 'finish', reason: { kind: 'error', failure: { message: 'gateway melted' } } })
+    const chunks = await collect(erroring())
+    expect(chunks.at(-1)).toMatchObject({
+      type: 'finish',
+      reason: { kind: 'error', failure: { message: 'gateway melted' } },
+    })
+    // The usage the failed turn did consume is still reported, so a failure
+    // does not silently drop tokens the user was billed for.
+    expect(chunks.at(-2)).toMatchObject({ type: 'usage', usage: { inputTokens: 12 } })
+  })
 
+  // The whole point of classifying: four of these codes are in DSH's default
+  // retryable set, so getting them wrong means a Pi provider's rate limit is
+  // never retried. A bridge-invented code matches nothing.
+  it.each([
+    ['429 Too Many Requests', 'RATE_LIMIT'],
+    ['503 upstream unavailable', 'SERVER'],
+    ['request timed out after 60s', 'TIMEOUT'],
+    ['terminated', 'TRANSPORT'],
+    ['stream ended before message_stop', 'TRANSPORT'],
+    ['401 Unauthorized', 'AUTH'],
+  ])('classifies %j as %s so DSH retry policy can match it', async (text, code) => {
+    async function* erroring(): AsyncIterable<UnknownRecord> { yield piErrorEvent(text) }
+    const chunks = await collect(erroring())
+    expect(chunks.at(-1)).toMatchObject({ reason: { failure: { code } } })
+  })
+
+  it('maps a provider overflow error and a silent overflow to the same harness code', async () => {
+    async function* stated(): AsyncIterable<UnknownRecord> {
+      yield piErrorEvent('prompt is too long: 213462 tokens > 200000 maximum')
+    }
+    expect((await collect(stated())).at(-1))
+      .toMatchObject({ reason: { failure: { code: 'CONTEXT_WINDOW_EXCEEDED' } } })
+
+    // The provider that accepts an oversized request and answers normally says
+    // nothing to match on; only usage against the model's capacity shows it.
+    async function* silent(): AsyncIterable<UnknownRecord> {
+      yield { type: 'text_start', contentIndex: 0 }
+      yield {
+        type: 'done',
+        message: {
+          content: [{ type: 'text', text: 'hi' }], model: 'fixture-model', stopReason: 'stop',
+          usage: { input: 900, output: 5, cacheRead: 200, cacheWrite: 0 },
+        },
+      }
+    }
+    expect((await collect(silent(), 1000)).at(-1))
+      .toMatchObject({ reason: { failure: { code: 'CONTEXT_WINDOW_EXCEEDED' } } })
+  })
+
+  it('reports an aborted stream as aborted, not as an error', async () => {
+    async function* aborted(): AsyncIterable<UnknownRecord> {
+      yield {
+        type: 'error',
+        reason: 'aborted',
+        error: { stopReason: 'aborted', content: [], usage: { input: 3, output: 0, cacheRead: 0, cacheWrite: 0 } },
+      }
+    }
+    expect((await collect(aborted())).at(-1)).toMatchObject({ reason: { kind: 'aborted' } })
+  })
+
+  it('refuses a stream that ended without a terminal event', async () => {
     async function* truncated(): AsyncIterable<UnknownRecord> {
       yield { type: 'text_start', contentIndex: 0 }
     }
-    const tail: UnknownRecord[] = []
-    for await (const chunk of piEventsToDshChunks(truncated())) tail.push(chunk)
-    expect(tail.at(-1)).toMatchObject({ type: 'finish', reason: { kind: 'error' } })
+    await expect(collect(truncated())).rejects.toMatchObject({ code: 'STREAM_CLOSED' })
+  })
+
+  it('carries the tool call identity Pi states only on the partial message', async () => {
+    const partial = { content: [{ type: 'toolCall', id: 'call-7', name: 'read', arguments: {} }] }
+    async function* calling(): AsyncIterable<UnknownRecord> {
+      yield { type: 'toolcall_start', contentIndex: 0, partial }
+      yield { type: 'toolcall_delta', contentIndex: 0, delta: '{"path"', partial }
+      yield { type: 'toolcall_delta', contentIndex: 0, delta: ':"a.txt"}', partial }
+      yield {
+        type: 'done',
+        message: { content: partial.content, stopReason: 'toolUse', usage: { input: 1, output: 1, cacheRead: 0, cacheWrite: 0 } },
+      }
+    }
+    const deltas = (await collect(calling())).filter(chunk => chunk.type === 'tool-call-delta')
+    expect(deltas).toHaveLength(2)
+    // An empty id makes a delta unattributable to its call downstream.
+    for (const delta of deltas) expect(delta).toMatchObject({ id: 'call-7', name: 'read' })
+  })
+
+  it('omits cache counts the provider reported as zero rather than as absent', async () => {
+    async function* done(): AsyncIterable<UnknownRecord> {
+      yield { type: 'text_start', contentIndex: 0 }
+      yield {
+        type: 'done',
+        message: {
+          content: [{ type: 'text', text: 'x' }], stopReason: 'stop',
+          usage: { input: 5, output: 2, cacheRead: 0, cacheWrite: 7 },
+        },
+      }
+    }
+    const usage = (await collect(done())).find(chunk => chunk.type === 'usage')
+    expect(usage).toEqual({ type: 'usage', usage: { inputTokens: 5, outputTokens: 2, cacheWriteTokens: 7 } })
+  })
+
+  it('names the tool a result belongs to, which DSH states only on the call', () => {
+    const context = dshRequestToPiContext({
+      messages: [
+        { role: 'assistant', content: [{ type: 'tool-call', id: 'c9', name: 'bash', arguments: '{}' }] },
+        {
+          role: 'user',
+          source: { kind: 'tool' },
+          content: [{ toolCallId: 'c9', content: [{ type: 'text', text: 'ok' }], isError: false }],
+        },
+      ],
+    })
+    const messages = context.messages as UnknownRecord[]
+    expect(messages.at(-1)).toMatchObject({ role: 'toolResult', toolCallId: 'c9', toolName: 'bash' })
   })
 
   it('round-trips assistant tool-call history through the reverse conversion', () => {

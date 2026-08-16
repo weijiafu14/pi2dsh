@@ -223,6 +223,57 @@
 
 第 3 条一个改动同时结掉两个 `full` 误声明，性价比最高；第 1 条是纯删代码。
 
+### 修复进度
+
+已修（每条都带契约测试，`pnpm verify` 全绿）：
+
+| # | 状态 | 落点 |
+|---|------|------|
+| 1 | ✅ | 三个手写 shim 改 re-export `compat/vendor/`；`getShellConfig` / `truncateToVisualLines` / `renderDiff` |
+| 4 | ✅ | `runtime.ts` 三处 tool 订阅加 `isSubagentOrigin` 守卫 |
+| 5 | ✅ | `model-bridge.ts` 错误事件按 AssistantMessage 读 `errorMessage` |
+| 6 | ✅ | `dshRequestToPiContext` 先扫 assistant 的 tool-call 建 id→name 表，回填 `toolResult.toolName` |
+| 7 | ✅ | `toolcall_start` 从 `partial.content[contentIndex]` 记 `{id,name}`，每个 delta 带上 |
+| 8 | ✅ | `provider-adapter.ts` 转发 `options.sessionId` |
+| 15 | ✅ | `resizeImage` 改 Pi 真签名（Uint8Array→base64 + 四个尺寸字段），尺寸从文件头解析 |
+| 18 | ✅ | `'off'` 送成"字段缺席"；改走 `provider.streamSimple` |
+
+### 查证中发现的、比条目本身更严重的两处
+
+**第 5 条不止是文案。** 原来错误码硬编码 `'PI_PROVIDER'`。DSH 的默认可重试码是
+`[EMPTY_RESPONSE, RATE_LIMIT, SERVER, TIMEOUT, TRANSPORT]`（`llm/src/retry-policy.ts:18`），
+`PI_PROVIDER` 一个都不沾 —— **凡是经这座桥进来的 Pi provider，429、超时、socket 断流全部
+永不重试**，`dsh-llm-retry` 根本认不出来。已按 DSH 自己的 pi-ai adapter
+（`llm-pi-ai/src/stream.ts` 的 `classifyPiAiError`）逐条对齐分类，并一并补上它的
+上下文溢出判定（Pi 的 `isContextOverflow`，已 vendored）、空回复判定、`usage` 上报、
+以及流未终止时的 `STREAM_CLOSED` 拒绝。
+
+那份实现是这套转换的权威版本，但 `toStreamChunks` 没从包根导出、发布 tarball 也不含
+`src/`，import 不到；所以是照它的语义逐条对齐 + 在注释里写明出处，分类器所依赖的
+`isQuotaExceededError` / `isContextWindowExceededError` / 三个错误码常量都是从
+`@deepseek-ai/dsh-llm` 真 import 的官方实现。唯一一处有意偏离：DSH 的 adapter 能信任
+pi-ai 一定填 `content`，我这边事件来自任意第三方包，所以额外把"实际流过的 block"也算作
+有内容 —— 只会让 `EMPTY_RESPONSE` 判得更窄，不会把有输出的流误判成空。
+
+**第 18 条是个反转，不是省略。** `reasoningEffort` 只存在于 openai-completions /
+openai-responses 两个 API 的选项里，anthropic / google 等路由根本不认 —— 用户选的 effort
+**在这些路由上完全不生效**。更糟的是 `openai-completions.ts:754` 写的是
+`options?.reasoningEffort ? enabled : disabled`，而 `getSupportedThinkingLevels` 对每个
+reasoning 模型都会列出 `'off'`（`EXTENDED_THINKING_LEVELS` 首项），也就是说 `'off'` 是用户
+真能选中的一档 —— 字符串 `'off'` 是 truthy，**选"关掉思考"反而把思考打开了**。
+正解是走 Pi 自己的可移植入口 `Provider.streamSimple`（接口必选方法），它接
+`reasoning?: ThinkingLevel` 并由各 API 模块翻译成自己的方言，`'off'` 用缺席表达 ——
+这正是 Pi 自己 `clampedReasoning === "off" ? undefined` 的写法。
+
+### 新记一条：真的映射不了
+
+Pi 在任何层都没有 stop sequence（`packages/ai/src/` 全仓零命中），而 DSH 的
+`GenerateOptions.stop` 是有的。请求带了 stop 却被静默丢弃会直接改变模型输出，所以按
+"映射不了要响亮"的标准，改成**每条路由 warn 一次**（不是每请求一次，也不是抛错终止
+请求）。这条要进 support matrix。
+
+
+
 ---
 
 ## 六、需要拍板的设计决定

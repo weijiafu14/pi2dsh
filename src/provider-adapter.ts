@@ -16,7 +16,13 @@ import { getSupportedThinkingLevels } from './compat/pi-ai.js'
 type UnknownRecord = Record<string, unknown>
 
 interface PiTransportProvider {
-  stream(model: UnknownRecord, context: UnknownRecord, options: UnknownRecord): AsyncIterable<UnknownRecord>
+  // `streamSimple` is the portable half of Pi's Provider contract — required
+  // by the interface, and the only entry point that translates a reasoning
+  // level into each API's own dialect. `stream` takes per-API concrete options
+  // instead, so it is the fallback for a package that hand-rolls a provider
+  // object rather than building one through Pi's factory.
+  streamSimple?(model: UnknownRecord, context: UnknownRecord, options: UnknownRecord): AsyncIterable<UnknownRecord>
+  stream?(model: UnknownRecord, context: UnknownRecord, options: UnknownRecord): AsyncIterable<UnknownRecord>
   getModels?(): UnknownRecord[]
   name?: unknown
   [key: string]: unknown
@@ -29,7 +35,7 @@ export interface ProviderAdapterHost {
 }
 
 export function providerCarriesTransport(value: UnknownRecord | undefined): value is PiTransportProvider & UnknownRecord {
-  return typeof value?.stream === 'function'
+  return typeof value?.streamSimple === 'function' || typeof value?.stream === 'function'
 }
 
 function providerModels(provider: PiTransportProvider): UnknownRecord[] {
@@ -109,6 +115,15 @@ function piCarriedFields(model: UnknownRecord): UnknownRecord {
  * Structural typing carries it through `llm.registerAdapter`.
  */
 export function piProviderDshAdapter(providerId: string, provider: PiTransportProvider, host: ProviderAdapterHost): UnknownRecord {
+  let warnedStop = false
+  const warnStopUnsupported = (): void => {
+    if (warnedStop) return
+    warnedStop = true
+    host.warn(
+      `[pi2dsh] a request to Pi provider ${JSON.stringify(providerId)} carries stop sequences, which Pi models at`
+      + ' no layer — they cannot be forwarded, so the model will not halt on them',
+    )
+  }
   return {
     providerInfo: (id: string) => ({ id, name: typeof provider.name === 'string' ? provider.name : id }),
     providerRetryPolicy: () => undefined,
@@ -147,6 +162,7 @@ export function piProviderDshAdapter(providerId: string, provider: PiTransportPr
       const model = providerModels(provider).find(entry => entry.id === modelId)
         ?? { id: modelId, provider: providerId }
       const piContext = dshRequestToPiContext(options)
+      const effort = typeof options.reasoningEffort === 'string' ? options.reasoningEffort : undefined
       const piOptions: UnknownRecord = {
         ...(auth?.apiKey === undefined ? {} : { apiKey: auth.apiKey }),
         ...(auth?.baseUrl === undefined ? {} : { baseUrl: auth.baseUrl }),
@@ -154,13 +170,44 @@ export function piProviderDshAdapter(providerId: string, provider: PiTransportPr
         ...(options.signal instanceof AbortSignal ? { signal: options.signal } : {}),
         ...(typeof options.maxTokens === 'number' ? { maxTokens: options.maxTokens } : {}),
         ...(typeof options.temperature === 'number' ? { temperature: options.temperature } : {}),
-        // The effort the user picked. Both sides spell it `reasoningEffort`,
-        // and pi-ai applies the model's own thinkingLevelMap to it, so the
-        // level travels verbatim. Without this the selector offers efforts
-        // that never reach the request — chosen, yet silently inert.
-        ...(typeof options.reasoningEffort === 'string' ? { reasoningEffort: options.reasoningEffort } : {}),
+        // DSH stamps the session so an adapter can map it to model-hidden
+        // transport metadata; Pi spells the same field the same way, and its
+        // providers use it for prompt-cache affinity and request routing.
+        ...(typeof options.sessionId === 'string' ? { sessionId: options.sessionId } : {}),
+        // The effort the user picked, under the name Pi's PORTABLE entry point
+        // reads. Two reasons it is not the per-API `reasoningEffort`:
+        //
+        //  - `reasoningEffort` exists only on the two OpenAI-family APIs, so
+        //    on an anthropic or google route the chosen effort would be an
+        //    unrecognized option — selected, yet silently inert.
+        //  - `off` is a level Pi lists for every reasoning model, so it is a
+        //    level the user can pick. It has to be sent as ABSENCE: the string
+        //    reads as truthy on the OpenAI-compatible path, which would turn
+        //    thinking on for the one choice that means turn it off. Omitting
+        //    the field is exactly what Pi's own streamSimple does with it.
+        ...(effort === undefined || effort === 'off' ? {} : { reasoning: effort }),
       }
-      yield* piEventsToDshChunks(provider.stream(model, piContext, piOptions))
+      // The capacity travels with the stream because two of the three
+      // context-overflow signals are usage-based: the providers that accept an
+      // oversized request and answer normally, or truncate it and stop on
+      // `length`, say nothing an error string could be matched against.
+      const contextWindow = typeof model.contextWindow === 'number' ? model.contextWindow : undefined
+      // Pi models no stop sequences at any layer, so a request carrying them
+      // cannot be served faithfully — and dropping them silently changes what
+      // the model returns. Said once per route, not once per request.
+      if (Array.isArray(options.stop) && options.stop.length > 0) warnStopUnsupported()
+      if (typeof provider.streamSimple === 'function') {
+        yield* piEventsToDshChunks(provider.streamSimple(model, piContext, piOptions), contextWindow)
+        return
+      }
+      // A hand-rolled provider object carrying only `stream`: that entry point
+      // takes per-API options, so the level is spelled the way the
+      // OpenAI-family APIs read it. `off` stays absent for the same reason.
+      const { reasoning, ...rest } = piOptions
+      yield* piEventsToDshChunks(
+        provider.stream!(model, piContext, reasoning === undefined ? rest : { ...rest, reasoningEffort: reasoning }),
+        contextWindow,
+      )
     },
   }
 }
