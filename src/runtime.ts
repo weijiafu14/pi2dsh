@@ -1298,6 +1298,11 @@ function subscribeLifecycle(ctx: Context, state: RuntimeState): void {
   })
 
   cordis.on('tools/result', (exec: ToolExecution, result: ToolExecutionResult) => {
+    // A child agent's tool traffic must not reach extensions mounted on the
+    // parent: DSH lets an untagged listener see every scope, so without this
+    // a parent's guard would silently police another session's calls, and its
+    // handlers would receive an end without ever having seen the start.
+    if (isSubagentOrigin(exec.agent as unknown as UnknownRecord | undefined)) return
     const agent = exec.agent as unknown as UnknownRecord | undefined
     void dispatch(state, 'tool_execution_end', {
       type: 'tool_execution_end',
@@ -1325,6 +1330,11 @@ function subscribeLifecycle(ctx: Context, state: RuntimeState): void {
 function subscribeInterceptors(ctx: Context, state: RuntimeState): void {
   const cordis = ctx as unknown as { on(name: string, callback: (...args: any[]) => unknown): () => void }
   cordis.on('tools/pre-execute', async (exec: ToolExecution, next: () => Promise<PreToolDecision>): Promise<PreToolDecision> => {
+    // A child agent's tool traffic must not reach extensions mounted on the
+    // parent: DSH lets an untagged listener see every scope, so without this
+    // a parent's guard would silently police another session's calls, and its
+    // handlers would receive an end without ever having seen the start.
+    if (isSubagentOrigin(exec.agent as unknown as UnknownRecord | undefined)) return next()
     const input = cloneJson(exec.arguments)
     const event: UnknownRecord = { type: 'tool_call', toolName: exec.name, toolCallId: exec.callId, input }
     const results = await dispatch(state, 'tool_call', event, contextFor(ctx, state, exec.agent as unknown as UnknownRecord, exec.signal))
@@ -1352,6 +1362,11 @@ function subscribeInterceptors(ctx: Context, state: RuntimeState): void {
     result: ToolExecutionResult,
     next: () => Promise<PostToolDecision>,
   ): Promise<PostToolDecision> => {
+    // A child agent's tool traffic must not reach extensions mounted on the
+    // parent: DSH lets an untagged listener see every scope, so without this
+    // a parent's guard would silently police another session's calls, and its
+    // handlers would receive an end without ever having seen the start.
+    if (isSubagentOrigin(exec.agent as unknown as UnknownRecord | undefined)) return next()
     const downstream = await next()
     if (downstream.kind === 'block') return downstream
     const event: UnknownRecord = {
@@ -2681,6 +2696,7 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
 
 export const runtimeInternals = {
   expandPrompt,
+  isSubagentOrigin,
   normalizeToolResult,
   splitArguments,
   textBlocks,

@@ -16,7 +16,7 @@ import UserQuestionService from '@deepseek-ai/dsh-user-questions'
 import CommandRuntime from '@deepseek-ai/dsh-commands'
 import SkillRegistry from '@deepseek-ai/dsh-skill'
 import { generateBundle } from '../src/generator.js'
-import { applyPiPackage } from '../src/runtime.js'
+import { applyPiPackage, runtimeInternals } from '../src/runtime.js'
 import { resolvePiPackage } from '../src/source.js'
 import type { GeneratedRuntimeManifest } from '../src/types.js'
 
@@ -347,5 +347,32 @@ describe('generated plugin in the real DSH runtime', () => {
     })
 
     await fiber.dispose()
+  })
+})
+
+// DSH dispatches an untagged listener across every scope, so tool traffic from
+// a child agent reaches extensions mounted on the parent unless the bridge
+// filters it. Two things go wrong when it does not: a parent's tool_call guard
+// silently polices another session's calls, and its handlers see an end for a
+// start they never saw. The bridge's three tool subscriptions all gate on this
+// predicate.
+describe('child-agent origin detection (the guard on the tool subscriptions)', () => {
+  it('recognises a child session through both header shapes, and passes real ones through', () => {
+    const { isSubagentOrigin } = runtimeInternals as unknown as {
+      isSubagentOrigin(subject: Record<string, unknown> | undefined): boolean
+    }
+
+    // The durable header carries creation meta flattened…
+    expect(isSubagentOrigin({ session: { header: { origin: 'subagent' } } })).toBe(true)
+    // …and the agent may be passed instead of its session.
+    expect(isSubagentOrigin({ header: { origin: 'subagent' } })).toBe(true)
+    // …while older and mock shapes nest it under meta.
+    expect(isSubagentOrigin({ session: { header: { meta: { origin: 'subagent' } } } })).toBe(true)
+
+    // A real user turn must still be delivered — over-filtering would silence
+    // every extension instead of just the child's traffic.
+    expect(isSubagentOrigin({ session: { header: { origin: 'user' } } })).toBe(false)
+    expect(isSubagentOrigin({ session: { header: {} } })).toBe(false)
+    expect(isSubagentOrigin(undefined)).toBe(false)
   })
 })
