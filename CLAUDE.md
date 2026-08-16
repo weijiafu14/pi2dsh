@@ -250,6 +250,28 @@ Model 是一个对象且 getAll 同步，插件读 `model.contextWindow` 拿到 
 模型会早压缩一个数量级。catalog 里那个 resolve() 早写好了，但生产链路一次没接，
 只有测试在调）。三条都是单测和本机开发看不见的。
 
+### 五点一点五、浏览器半边（客户端插件面）
+
+DSH 有两半，桥也必须有两半。凡是"形态"类的 Pi 能力（浮层、卡片、渲染器、编辑器
+组件、状态条），落点在**浏览器壳的 slot 座位**，不是服务端。
+
+- 契约：包声明 `dsh.client: { platform: 'web', inject: [...] }` + 导出
+  `./client`（闭包工厂产物）+ **必须同时导出 `./package.json`**——宿主
+  `client-modules` 用 `require.resolve('<pkg>/package.json')` 找清单，没导出就抛
+  `ERR_PACKAGE_PATH_NOT_EXPORTED`，异常被吞掉并**永久缓存成"不是 client 行"**，
+  表现是浏览器里什么都没有、控制台没报错。
+- 产物格式：cjs + `platform: 'browser'` + banner/footer 包成
+  `window.__ModuleLoader__.load({id, factory})` + `intro` 里自己声明
+  `module`/`exports`（少了就 `exports is not defined`）。官方 preset 不发布，
+  照 `packages/client/tsdown.client.ts` 复刻。
+- **两个产物必须一条命令构建**：曾经分两条，而 `prepare`（pnpm 按路径装本包时会
+  跑）只跑第一条 → 主构建的 `clean` 把客户端产物删了 → 每个新装的 profile 里
+  浏览器半边静默消失。现在是一个 config 数组。
+- 数据走**自有路由**（`ctx.webServer.register`），不碰 DSH 的 typert Remote
+  体系——那是一等公民的代码生成契约，仓外插件不该冒充。
+- 判据同五点二：断言必须是"只有浮层真工作才成立"的信号（面板里有答案 && 主对话
+  里没有），不能拿页面文字凑。
+
 ### 五点二、发版后必须跑完整回归（铁律，用户明令）
 
 **每个版本发出去之后，立刻跑一次完整端到端回归——一条命令、全部场景、CLI 与
@@ -266,6 +288,9 @@ pnpm verify:release   # verify + 全部 examples（装 npm 上刚发的那版）
 - **没跑的必须 skipped 并写原因**，缺任何一个场景的结果算 failed，不算通过。
 - 事故（2026-08-16，用户当场抓）：发完 0.12.2 我只补了单个场景就去写文档，被斥
   "左手干右手丢"。
+- **pnpm 11 的 minimumReleaseAge 会挡住刚发布的版本**：发版后立刻跑回归会以
+  `pnpm failed in profile directory` 失败（没有别的信息）。回归装置里显式
+  `PNPM_CONFIG_MINIMUM_RELEASE_AGE=0`；这是装置属性，用户隔天装不受影响。
 
 **回归必须能说出自己测的是哪个 build。**
 

@@ -1,11 +1,11 @@
-# Posting kit — pi2dsh 0.12.2
+# Posting kit — pi2dsh 0.12.3
 
-Everything needed to announce pi2dsh 0.12.2 and bring earlier posts up to date.
+Everything needed to announce pi2dsh 0.12.3 and bring earlier posts up to date.
 Written for someone else to post: copy a file's body, attach the named
 screenshots, publish.
 
 **Status of the facts in here**: every number and claim was verified on
-2026-08-17 against pi2dsh 0.12.2 (published to npm) — `pnpm verify` green,
+2026-08-17 against pi2dsh 0.12.3 (published to npm) — `pnpm verify` green,
 CLI and web end-to-end runs on the published engine, and a bare-environment
 install from the public registry. The side-conversation screenshots come from
 the automated regression (`pnpm test:examples`), not a hand-driven session. The screenshots in `assets/` are from a

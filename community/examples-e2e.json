@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pi2dshCommit": "cb0a3e755239f9b8ee5e5a9e6976ec199f27004c",
+  "pi2dshCommit": "7420aac0f6b5513e056c44c099527ddee0d705f0",
   "dshCommit": "47f943859bef60e4160492346772ded9b24f765a",
   "results": {
     "visionBridge": {
@@ -12,7 +12,7 @@
       "reason": "no vision endpoint configured (VISION_BRIDGE_BASE_URL, VISION_BRIDGE_MODEL, VISION_BRIDGE_API_KEY)"
     },
     "gatewayCompat": {
-      "engine": "0.12.2",
+      "engine": "0.12.3",
       "status": "passed",
       "requests": 2,
       "roles": [
@@ -43,7 +43,7 @@
     },
     "customGateways": {
       "status": "passed",
-      "engine": "0.12.2",
+      "engine": "0.12.3",
       "seenByPackage": {
         "provider": "my-gateway",
         "id": "deepseek-chat",
@@ -53,7 +53,7 @@
     },
     "sideConversation": {
       "status": "passed",
-      "engine": "0.12.2",
+      "engine": "0.12.3",
       "screenshots": [
         "01-side-conversation-main-thread-clean.png",
         "01-vision-companion-model-picker.png",

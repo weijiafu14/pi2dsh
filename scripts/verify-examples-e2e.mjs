@@ -106,6 +106,12 @@ async function makeHome(scratch, extraEnv = {}) {
     DSH_PERMISSION_MODE: 'danger-full-access',
     npm_config_registry: 'https://registry.npmjs.org',
     PNPM_CONFIG_REGISTRY: 'https://registry.npmjs.org',
+    // A release check installs a release that is minutes old, and pnpm 11 holds
+    // back very recent versions by default (minimumReleaseAge) — the profile
+    // install then fails with nothing but "pnpm failed in profile directory".
+    // Turning it off here is a property of the harness, not of the product: a
+    // user installing tomorrow is past the window anyway.
+    PNPM_CONFIG_MINIMUM_RELEASE_AGE: '0',
     ...extraEnv,
   }
   const runDsh = args => execFile('node', ['--import', 'tsx/esm', dshBin, ...args], {
