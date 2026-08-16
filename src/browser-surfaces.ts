@@ -75,6 +75,8 @@ export class BrowserSurfaces {
   readonly #byParent = new Map<string, Map<string, TrackedThread>>()
   // session -> package -> what that package put on screen
   readonly #surfaces = new Map<string, Map<string, SurfaceView>>()
+  // package -> its custom-entry renderer, pulled per request
+  readonly #entrySources = new Map<string, EntrySource>()
 
   /**
    * Track one child session under its parent.
@@ -189,6 +191,39 @@ export class BrowserSurfaces {
   setWorkingVisible(sessionId: string, packageName: string | undefined, visible: boolean): void {
     if (sessionId.length === 0) return
     this.#view(sessionId, packageName).workingVisible = visible
+  }
+
+  /**
+   * Register one package's custom-entry renderer.
+   *
+   * Pulled rather than pushed: a renderer's output depends on the session being
+   * looked at, and the package registers once at mount for every session it
+   * will ever be asked about.
+   * @param packageName - owning Pi package.
+   * @param source - called with the session id the browser is showing.
+   * @returns a disposer that unregisters the source.
+   */
+  trackEntries(packageName: string, source: EntrySource): () => void {
+    this.#entrySources.set(packageName, source)
+    return () => { this.#entrySources.delete(packageName) }
+  }
+
+  /**
+   * Custom entries every package renders for one session, in package order.
+   * @param sessionId - session the browser is showing.
+   * @returns rendered entries; a renderer that throws contributes nothing.
+   */
+  entries(sessionId: string): RenderedEntry[] {
+    const out: RenderedEntry[] = []
+    for (const [packageName, source] of this.#entrySources) {
+      try {
+        for (const entry of source(sessionId)) out.push({ ...entry, package: packageName })
+      } catch {
+        // A renderer is the package's own code; one that throws leaves the
+        // conversation intact instead of taking the request down.
+      }
+    }
+    return out
   }
 
   /**
@@ -307,6 +342,17 @@ export function surfaceText(value: unknown, theme?: unknown): string | undefined
   return text.length === 0 || text === '[object Object]' ? undefined : text
 }
 
+/** One custom entry a package rendered for the conversation. */
+export interface RenderedEntry {
+  id: string
+  customType: string
+  package?: string
+  text: string
+}
+
+/** A package's renderer, pulled at snapshot time for the session on screen. */
+export type EntrySource = (sessionId: string) => RenderedEntry[]
+
 interface WebServerLike {
   register(route: { kind: string, path: string, handler: (req: UnknownRecord, res: UnknownRecord) => Promise<void> }): () => void
 }
@@ -348,8 +394,12 @@ export function registerBrowserSurfaceRoute(ctx: Context, registry: BrowserSurfa
       }
       const session = url.searchParams.get('session') ?? ''
       const body = JSON.stringify(session === ''
-        ? { threads: [], surfaces: [] }
-        : { threads: registry.snapshot(session), surfaces: registry.surfaces(session) })
+        ? { threads: [], surfaces: [], entries: [] }
+        : {
+          threads: registry.snapshot(session),
+          surfaces: registry.surfaces(session),
+          entries: registry.entries(session),
+        })
       response.writeHead(200, {
         'content-type': 'application/json; charset=utf-8',
         // The panel polls; a cached answer would freeze the thread mid-turn.

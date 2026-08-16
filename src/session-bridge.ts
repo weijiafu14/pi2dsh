@@ -122,6 +122,25 @@ export class PiSessionBridge {
     return id
   }
 
+  /**
+   * The custom entries a package appended to one session, oldest first.
+   *
+   * Addressed by id alone: the browser half asks for a session it is showing,
+   * and has no DSH session object to hand over.
+   * @param sessionId - session whose sidecar to read.
+   * @returns each custom entry with its type, data and id.
+   */
+  customEntries(sessionId: string): Array<{ id: string, customType: string, data: unknown, timestamp: string }> {
+    this.load(sessionId)
+    const out: Array<{ id: string, customType: string, data: unknown, timestamp: string }> = []
+    for (const record of this.records.get(sessionId) ?? []) {
+      if (record.kind !== 'custom') continue
+      const entry = record as unknown as { id: string, customType: string, data?: unknown, timestamp: string }
+      out.push({ id: entry.id, customType: entry.customType, data: entry.data, timestamp: entry.timestamp })
+    }
+    return out
+  }
+
   appendBranchSummary(sessionId: string, summary: string, fromId: string): string {
     const id = randomUUID()
     this.persist(sessionId, {

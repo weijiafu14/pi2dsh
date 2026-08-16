@@ -36,6 +36,7 @@ gateways, hosts, or credentials appear in any of them.
 | `assets/02-side-conversation-panel.png` | The floating panel pi2dsh's own browser half draws in DSH's `shell.overlay` seat: the side question and its answer, while the conversation underneath still has neither |
 | `assets/03-side-conversation-host-catalog.png` | DSH's own subagent list, with the `pi-btw side conversation` row (`continuable · not running`) |
 | `assets/04-side-conversation-injected-on-request.png` | After `/btw-inject`: the thread enters the main conversation — the user's explicit action, and only then |
+| `assets/06-pi-surfaces-on-dsh.png` | Nine Pi presentation calls on screen at once, each in the host's own seat: header (top right), a package's own custom entry inside the conversation, widget lines beside the composer, footer / working message / indicator / thinking label below it, and title + status as pills |
 | `assets/05-side-conversation-child-view.png` | The side thread opened as its own session: its own breadcrumb, its own composer, the answer inside it |
 | `assets/xiaohongshu-cover-v2.png` | 3:4 Xiaohongshu cover: give DeepSeek Harness visual capabilities through the Pi ecosystem |
 

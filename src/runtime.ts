@@ -22,7 +22,7 @@ import { CapabilityLedger, PiCapabilityError } from './capability.js'
 import { PiSessionBridge } from './session-bridge.js'
 import { ExtensionRunner, Theme, __setSubagentSessionFactory, generateBranchSummary, getAgentDir } from './compat/pi-coding-agent.js'
 import { childLabel, createBridgedAgentSession, type SubagentHost } from './subagent-bridge.js'
-import { BrowserSurfaces, registerBrowserSurfaceRoute, type SurfaceKey } from './browser-surfaces.js'
+import { BrowserSurfaces, registerBrowserSurfaceRoute, surfaceText, type SurfaceKey } from './browser-surfaces.js'
 
 /** Fallback thread ids when a child session reports none. */
 let sidePanelSerial = 0
@@ -3207,6 +3207,30 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
   if (state.shared.browserSurfacesRouted !== true) {
     state.shared.browserSurfacesRouted = registerBrowserSurfaceRoute(ctx, browserSurfaces)
   }
+  // Pi's custom entries, drawn by the package's OWN renderer. `appendEntry`
+  // writes to the pi2dsh sidecar (DSH's log has no channel for event types
+  // declared outside the harness), so nothing in the host's conversation view
+  // would ever show them; running the registered EntryRenderer and projecting
+  // its component to text is what puts a package's own entries on screen.
+  ctx.effect(() => browserSurfaces.trackEntries(state.packageName ?? 'pi', (sessionId) => {
+    const renderers = state.entryRenderers
+    if (renderers.size === 0) return []
+    const rendered: Array<{ id: string, customType: string, text: string }> = []
+    for (const entry of state.bridge.customEntries(sessionId)) {
+      const renderer = renderers.get(entry.customType)
+      if (typeof renderer !== 'function') continue
+      const text = surfaceText(
+        (renderer as (entry: unknown, options: unknown, theme: unknown) => unknown)(
+          { type: 'custom', id: entry.id, customType: entry.customType, data: entry.data, timestamp: entry.timestamp },
+          {},
+          state.theme,
+        ),
+        state.theme,
+      )
+      if (text !== undefined) rendered.push({ id: entry.id, customType: entry.customType, text })
+    }
+    return rendered
+  }))
   __setSubagentSessionFactory(async (subagentOptions) => {
     const created = await createBridgedAgentSession(subagentHost(), subagentOptions)
     // Track it against the session the panel floats over — the PARENT, not the

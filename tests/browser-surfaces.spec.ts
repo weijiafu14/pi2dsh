@@ -195,6 +195,31 @@ describe('surfaceText', () => {
     )).toBe('styled')
   })
 
+  it('publishes custom entries through the package\'s own renderer', () => {
+    const registry = new BrowserSurfaces()
+    const dispose = registry.trackEntries('pi-probe', sessionId => sessionId === 'session-1'
+      ? [{ id: 'e1', customType: 'probe-note', text: 'entry(probe-note): drawn by the package' }]
+      : [])
+
+    expect(registry.entries('session-2')).toEqual([])
+    expect(registry.entries('session-1')).toEqual([
+      { id: 'e1', customType: 'probe-note', text: 'entry(probe-note): drawn by the package', package: 'pi-probe' },
+    ])
+    dispose()
+    expect(registry.entries('session-1')).toEqual([])
+  })
+
+  it('keeps the conversation when one package\'s renderer throws', () => {
+    const registry = new BrowserSurfaces()
+    registry.trackEntries('pi-broken', () => { throw new Error('renderer bug') })
+    registry.trackEntries('pi-fine', () => [{ id: 'e2', customType: 'note', text: 'still here' }])
+    // A renderer is the package's own code; its bug must not blank the seat or
+    // fail the request that every other package's entries ride on.
+    expect(registry.entries('session-1')).toEqual([
+      { id: 'e2', customType: 'note', text: 'still here', package: 'pi-fine' },
+    ])
+  })
+
   it('clears on undefined and rejects unrenderable values', () => {
     expect(surfaceText(undefined)).toBeUndefined()
     expect(surfaceText(null)).toBeUndefined()

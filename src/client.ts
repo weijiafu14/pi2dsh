@@ -35,7 +35,7 @@
 // module table at runtime and are not dependencies of this package.
 import { createElement, useEffect, useState } from 'react'
 
-interface SlotRegistration { name: string, id: string, order?: number }
+interface SlotRegistration { name: string, id: string, order?: number, select?: (...args: unknown[]) => unknown }
 interface SlotScope {
   slots: {
     inject(name: string, apply: () => unknown): void
@@ -67,13 +67,14 @@ interface SurfaceView {
   widgets: Record<string, string>
   workingVisible: boolean
 }
-interface BrowserState { threads: PanelThread[], surfaces: SurfaceView[] }
+interface RenderedEntry { id: string, customType: string, package?: string, text: string }
+interface BrowserState { threads: PanelThread[], surfaces: SurfaceView[], entries: RenderedEntry[] }
 
 /** Services this half needs before it can take a seat. */
 export const inject = ['slots']
 
 const POLL_MS = 1000
-const EMPTY: BrowserState = { threads: [], surfaces: [] }
+const EMPTY: BrowserState = { threads: [], surfaces: [], entries: [] }
 
 /**
  * One poller per session, shared by every seat this package takes.
@@ -106,6 +107,7 @@ function watch(session: string, notify: (state: BrowserState) => void): () => vo
         const state: BrowserState = {
           threads: Array.isArray(payload.threads) ? payload.threads : [],
           surfaces: Array.isArray(payload.surfaces) ? payload.surfaces : [],
+          entries: Array.isArray(payload.entries) ? payload.entries : [],
         }
         latest.set(session, state)
         for (const reader of subscribers.get(session) ?? []) reader(state)
@@ -289,6 +291,25 @@ function textSeat(
 }
 
 /**
+ * Custom entries a package appended and renders itself.
+ *
+ * They live in pi2dsh's sidecar, not DSH's durable log — the host has no
+ * channel for event types declared outside the harness — so the host's own
+ * conversation view cannot show them. This seat is where a package's own
+ * entries become visible, drawn by the package's registered renderer.
+ * @param props - the session standard kit.
+ * @returns the entry strip, or null when the package appended none.
+ */
+function EntryStrip({ sessionId }: { sessionId?: string }) {
+  const { entries } = useBrowserState(sessionId)
+  if (entries.length === 0) return null
+  return createElement('div', { 'data-pi2dsh': 'entries', style: styles.strip },
+    ...entries.map(entry => createElement('div',
+      { key: entry.id, style: styles.inline, title: `${entry.package ?? 'pi'} · ${entry.customType}` }, entry.text)),
+  )
+}
+
+/**
  * Client plugin body: take the seats this package draws into.
  * @param ctx - client root context.
  */
@@ -309,6 +330,10 @@ export function apply(ctx: ClientContext): void {
     // card, where DSH's own stats line sits. Footer lands here too: it is the
     // bottom band of the conversation, the same seat the terminal's bottom
     // line would take.
+    scope.slots.inject('conversation.chat.turnTail', () => scope.slots.register({
+      name: 'conversation.chat.turnTail', id: 'pi2dsh-entries', order: 1,
+      select: () => ({}),
+    }, EntryStrip))
     scope.slots.inject('conversation.composer.dock', () => scope.slots.register({
       name: 'conversation.composer.dock', id: 'pi2dsh-working', order: 1,
     }, textSeat('working', ['footer', 'workingMessage', 'workingIndicator', 'hiddenThinkingLabel'])))
