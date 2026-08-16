@@ -1,0 +1,6 @@
+{
+  "name": "pi-probe-provider",
+  "version": "1.0.0",
+  "type": "module",
+  "pi": { "extensions": ["./index.mjs"] }
+}

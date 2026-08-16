@@ -19,6 +19,7 @@ gateways, hosts, or credentials appear in any of them.
 | `post-pi-community.md` | Companion post for the Pi community |
 | `post-xiaohongshu.md` | Xiaohongshu title and ready-to-post Chinese body |
 | `updates-to-earlier-posts.md` | One short update comment per earlier thread (#14, #218, #421, #759, #1120, #1398) |
+| `replies-gateway-compat.md` | Replies for the four `developer`-role / gateway-compat threads (#472, #990, #1232, #1498) — one shared body, per-thread opener |
 | `support-matrix.md` | What is supported today, what is deliberately not, with evidence |
 | `assets/` | Screenshots (see below) |
 | `archive-0.2.0/` | The superseded 0.2.0-era drafts, kept for reference — **do not post these** |

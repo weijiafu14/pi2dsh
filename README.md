@@ -334,6 +334,7 @@ in one has actually been executed against a real DSH loop before landing.
 |---|---|
 | [`vision-bridge`](examples/vision-bridge/) | A text-only model answers questions about images — CLI and web, probe images included |
 | [`side-conversation`](examples/side-conversation/) | `/btw <question>` runs a side thread in DSH's native subagent UI; your main conversation stays clean |
+| [`gateway-compat`](examples/gateway-compat/) | Private / domestic / proxy gateways that reject the `developer` role: why reasoning 400s, and how a Pi provider plugin gets past it (fake-endpoint probe included) |
 | [`custom-gateways`](examples/custom-gateways/) | Add any OpenAI-compatible gateway the official DSH way, and every Pi plugin sees it |
 
 ## Other tools

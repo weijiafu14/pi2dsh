@@ -11,6 +11,7 @@
 // (the official llm-pi-ai adapter) instead.
 
 import { dshRequestToPiContext, piEventsToDshChunks, type DshLlmLike } from './model-bridge.js'
+import { getSupportedThinkingLevels } from './compat/pi-ai.js'
 
 type UnknownRecord = Record<string, unknown>
 
@@ -48,6 +49,38 @@ const PI_CARRIED_FIELDS = [
   'api', 'baseUrl', 'cost', 'contextWindow', 'maxTokens', 'samplingParams', 'thinkingLevelMap', 'compat', 'headers',
 ] as const
 
+/**
+ * Pi's reasoning capability, in DSH's shape.
+ *
+ * The two sides say the same thing differently: Pi carries a `reasoning`
+ * boolean plus a `thinkingLevelMap` whose `null` entries mark unsupported
+ * levels, while DSH asks an adapter for the selectable efforts directly.
+ * Translating is this layer's job — carrying Pi's boolean through under the
+ * name `reasoning` would collide with DSH's `{efforts}` object, and carrying
+ * nothing (what this bridge did before) leaves every package-registered route
+ * with no selectable effort at all, so any reasoning request is rejected.
+ *
+ * The mapping is DSH's own: its native pi-ai adapter derives efforts from
+ * `getSupportedThinkingLevels` and names them the same way, so a route a Pi
+ * package registers offers exactly the efforts it would through the host's
+ * own adapter. It belongs to the exact-route resolve, not the catalog listing
+ * — `reasoning` is a resolved-model field in DSH's contract.
+ * @param model - the Pi model descriptor as its package declared it.
+ */
+function reasoningProjection(model: UnknownRecord): UnknownRecord {
+  if (model.reasoning !== true) return {}
+  const levels = getSupportedThinkingLevels(model as never)
+  if (levels.length === 0) return {}
+  return {
+    reasoning: {
+      efforts: levels.map(level => ({
+        id: level,
+        name: `${level.charAt(0).toUpperCase()}${level.slice(1)}`,
+      })),
+    },
+  }
+}
+
 function piCarriedFields(model: UnknownRecord): UnknownRecord {
   const carried: UnknownRecord = {}
   for (const field of PI_CARRIED_FIELDS) {
@@ -81,6 +114,7 @@ export function piProviderDshAdapter(providerId: string, provider: PiTransportPr
       const known = providerModels(provider).find(model => model.id === modelId)
       return {
         ...(known === undefined ? {} : piCarriedFields(known)),
+        ...(known === undefined ? {} : reasoningProjection(known)),
         provider: id,
         id: modelId,
         name: String(known?.name ?? modelId),
@@ -104,6 +138,11 @@ export function piProviderDshAdapter(providerId: string, provider: PiTransportPr
         ...(options.signal instanceof AbortSignal ? { signal: options.signal } : {}),
         ...(typeof options.maxTokens === 'number' ? { maxTokens: options.maxTokens } : {}),
         ...(typeof options.temperature === 'number' ? { temperature: options.temperature } : {}),
+        // The effort the user picked. Both sides spell it `reasoningEffort`,
+        // and pi-ai applies the model's own thinkingLevelMap to it, so the
+        // level travels verbatim. Without this the selector offers efforts
+        // that never reach the request — chosen, yet silently inert.
+        ...(typeof options.reasoningEffort === 'string' ? { reasoningEffort: options.reasoningEffort } : {}),
       }
       yield* piEventsToDshChunks(provider.stream(model, piContext, piOptions))
     },

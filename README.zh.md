@@ -289,6 +289,7 @@ loop 上实际跑过才会进来。
 |---|---|
 | [`vision-bridge`](examples/vision-bridge/) | 纯文本模型回答图片问题——CLI 与 Web 双端，附探针图 |
 | [`side-conversation`](examples/side-conversation/) | `/btw <问题>` 在 DSH 原生子代理界面里开一条侧边线程，主会话保持干净 |
+| [`gateway-compat`](examples/gateway-compat/) | 私有 / 国内 / 代理网关拒收 `developer` 角色：为什么一开推理就 400，以及用 Pi provider 插件怎么绕过去（附假端点探针） |
 | [`custom-gateways`](examples/custom-gateways/) | 按 DSH 官方方式接任何 OpenAI 兼容网关，每个 Pi 插件都能看到它 |
 
 ## 其它工具
