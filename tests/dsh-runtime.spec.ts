@@ -408,6 +408,76 @@ describe('DSH content projected into the Pi blocks packages read', () => {
   })
 })
 
+describe('hasUI reports whether a human can actually answer', () => {
+  it('is false when the question service is mounted but no provider registered', async () => {
+    // The headless posture: the service exists, nothing answers. Reporting
+    // true here made a package skip its non-interactive path and then throw
+    // on the first select/confirm/input.
+    const scratch = await mkdtemp(join(tmpdir(), 'pi2dsh-hasui-'))
+    cleanup.push(scratch)
+    await mkdir(join(scratch, 'pkg'), { recursive: true })
+    await writeFile(join(scratch, 'pkg', 'extension.js'), [
+      'export default function (pi) {',
+      '  pi.registerTool({',
+      "    name: 'pi_hasui',",
+      "    description: 'Reports ctx.hasUI.',",
+      "    parameters: { type: 'object', properties: {} },",
+      "    execute: async (_id, _args, _signal, _onUpdate, ctx) => ({",
+      "      content: [{ type: 'text', text: JSON.stringify({ hasUI: ctx.hasUI }) }],",
+      '    }),',
+      '  })',
+      '}',
+    ].join('\n'), 'utf8')
+
+    const build = async (withProvider: boolean): Promise<boolean> => {
+      const ctx = new Context()
+      await ctx.plugin(SessionStore)
+      await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
+      await ctx.plugin(ToolRuntime)
+      await ctx.plugin(CommandRuntime)
+      await ctx.plugin(SkillRegistry)
+      await ctx.plugin(AgentRegistry)
+      await ctx.plugin(UserQuestionService)
+      if (withProvider) {
+        ctx.userQuestions.registerProvider({
+          async ask(request: { questions: Array<{ id: string }> }) {
+            return { answers: request.questions.map(() => ({ questionId: 'q', optionId: 'a' })) } as never
+          },
+        } as never)
+      }
+      await ctx.plugin({
+        name: 'pi2dsh:hasui-test',
+        inject: ['tools', 'systemPrompt', 'commands', 'skills'],
+        async apply(inner: Context) {
+          await applyPiPackage(inner, {
+            rootUrl: pathToFileURL(`${join(scratch, 'pkg')}/`),
+            manifest: {
+              schemaVersion: 1,
+              package: { name: '@pi2dsh-fixtures/hasui', version: '0.0.0' },
+              extensions: ['extension.js'],
+              skillDirs: [],
+              prompts: [],
+            } as never,
+          })
+        },
+      } as Plugin.Object)
+      const result = await ctx.tools.execute({
+        signal: new AbortController().signal,
+        callId: CallId('hasui'),
+        name: 'pi_hasui',
+        arguments: {},
+        agent: undefined as never,
+      })
+      return (JSON.parse((result.content[0] as { text: string }).text) as { hasUI: boolean }).hasUI
+    }
+
+    expect(await build(false)).toBe(false)
+    // …and the probe must not have consumed the slot: a real provider still
+    // reports true, and is still the one that would be asked.
+    expect(await build(true)).toBe(true)
+  })
+})
+
 describe("Pi's argument gate in front of a migrated tool", () => {
   async function mountToolPackage(scratchName: string): Promise<Context> {
     const scratch = await mkdtemp(join(tmpdir(), scratchName))

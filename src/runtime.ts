@@ -113,6 +113,12 @@ interface RuntimeState {
   // Per-agent, per-turn system-prompt override returned by before_agent_start
   // (Pi resets to the base prompt when a turn's handlers return none).
   turnSystemPromptOverrides: WeakMap<object, string>
+  /** Messages DSH claimed for the step that is about to be assembled. */
+  claimedForStep: WeakMap<object, UnknownRecord[]>
+  /** The turn each agent's before_agent_start has already fired for. */
+  promptedTurn: WeakMap<object, number>
+  /** Custom messages a before_agent_start handler returned, awaiting the step. */
+  pendingInjections: WeakMap<object, UnknownRecord[]>
   globalThinkingLevel: string
   // Pi tool_call handlers mutate event.input in place; mutations apply to
   // pi2dsh-owned tools through this channel (DSH core deliberately forbids
@@ -791,7 +797,11 @@ function contextFor(
   const base: UnknownRecord = {
     ui,
     mode: 'rpc',
-    hasUI: userQuestions !== undefined,
+    // A getter, not a value: this context is rebuilt for every dispatched
+    // event, and the probe below costs a register/dispose. Packages read
+    // `hasUI` rarely, and reading it lazily also makes the answer current at
+    // the moment it is asked rather than at the moment the context was built.
+    get hasUI(): boolean { return humanAnswererAvailable(userQuestions, agent) },
     cwd: contextCwd,
     sessionManager: session === undefined
       ? state.bridge.readonlySessionManager({ id: 'pi2dsh-detached', events: [] }, contextCwd)
@@ -1493,62 +1503,30 @@ function subscribeInterceptors(ctx: Context, state: RuntimeState): void {
     return downstream
   })
 
-  // Pi's before_agent_start fires once per user prompt: after the user
-  // message is known, before the first model call. DSH's agent/pre-step
-  // waterfall is exactly that seam — the step-1 decision carries the turn's
-  // entering user messages, so the Pi event sees the real prompt text and
-  // image attachments (Pi's expandedText/currentImages), returned custom
-  // messages join the step beside the user message as plugin-sourced context
-  // (Pi's role:"custom" append), and a returned systemPrompt becomes this
-  // turn's override, consumed by the assembly interceptor below and reset
-  // next turn exactly as Pi resets to the base prompt.
+  // The claim that opens a step happens immediately BEFORE the assembly
+  // (agent-loop: `inbox.claim(...)` then `systemPrompt.assemble(...)`), and it
+  // publishes each claimed message. Catching them here is what lets the Pi
+  // event run during the assembly it is supposed to influence.
+  cordis.on('agent/inbox/claimed', (payload: UnknownRecord) => {
+    const agent = payload.agent as UnknownRecord | undefined
+    if (agent === undefined || isSubagentOrigin(agent)) return
+    const claimed = state.claimedForStep.get(agent) ?? []
+    claimed.push({ message: payload.message, turn: Number(payload.turn ?? 0) })
+    state.claimedForStep.set(agent, claimed)
+  })
+
   cordis.on('agent/pre-step', async (payload: UnknownRecord, next: () => Promise<UnknownRecord>) => {
     const decision = await next() as UnknownRecord & { kind?: string, messages?: UnknownRecord[] }
-    if (decision.kind !== 'enter' || payload.step !== 1) return decision
-    if ((state.handlers.get('before_agent_start')?.length ?? 0) === 0) return decision
+    if (decision.kind !== 'enter') return decision
     const agent = payload.agent as UnknownRecord
     if (isSubagentOrigin(agent)) return decision
     const signal = payload.signal as AbortSignal | undefined
     const messages = decision.messages ?? []
-    const userMessages = messages.filter(message =>
-      ((message as { source?: { kind?: string } }).source?.kind ?? 'user') === 'user')
-    const prompt = userMessages
-      .flatMap(message => textBlocks((message as { content?: unknown }).content))
-      .map(block => block.text)
-      .join('\n')
-    const images = await collectPiImages(ctx, userMessages)
-    state.turnSystemPromptOverrides.delete(agent)
-    const event: UnknownRecord = {
-      type: 'before_agent_start',
-      prompt,
-      ...(images.length > 0 ? { images } : {}),
-      systemPrompt: state.currentSystemPrompt,
-      systemPromptOptions: {},
-    }
-    const results = await dispatch(state, 'before_agent_start', event, contextFor(ctx, state, agent, signal))
-    const injected: UnknownRecord[] = []
-    for (const result of results) {
-      if (typeof result !== 'object' || result === null) continue
-      const record = result as UnknownRecord
-      if (typeof record.systemPrompt === 'string') {
-        state.turnSystemPromptOverrides.set(agent, record.systemPrompt)
-        event.systemPrompt = record.systemPrompt
-      }
-      const message = record.message as UnknownRecord | undefined
-      if (message !== undefined) {
-        const content = message.content
-        const blocks = await piToDshContent(ctx, typeof content === 'string' ? [{ type: 'text', text: content }] : content ?? [])
-        injected.push(createUserMessage({
-          content: blocks,
-          // piCustomType rides the merge-extensible source so the durable log
-          // (and every later projection) keeps Pi's role:"custom" identity.
-          source: {
-            kind: 'plugin', plugin: state.messageSource,
-            ...(typeof message.customType === 'string' ? { piCustomType: message.customType } : {}),
-          },
-        }) as unknown as UnknownRecord)
-      }
-    }
+    // The custom messages a before_agent_start handler returned during this
+    // step's assembly, joining the step beside the user message as
+    // plugin-sourced context (Pi's role:"custom" append).
+    const injected = state.pendingInjections.get(agent) ?? []
+    state.pendingInjections.delete(agent)
     const stepMessages = injected.length === 0 ? messages : [...messages, ...injected]
     // Pi's context event fires before every model call with the full message
     // array and may return a transformed copy. DSH's durable history is
@@ -1590,8 +1568,14 @@ function subscribeInterceptors(ctx: Context, state: RuntimeState): void {
     state.currentSystemPrompt = original
     const agent = (assembleContext.agent ?? assembleContext.scope) as UnknownRecord | undefined
     if (agent !== undefined && !isSubagentOrigin(agent)) {
-      // A live agent assembly: the pre-step bridge above owns the Pi event
-      // for its turn; this interceptor only applies the stored override.
+      // Pi's before_agent_start fires once per user prompt: after the user
+      // message is known, before the first model call. That is HERE — the
+      // loop claims the turn's messages and then assembles — and it has to be
+      // here, because a handler's returned systemPrompt is meant to be this
+      // turn's prompt. Running it on the later pre-step waterfall (what this
+      // bridge did) left the override one step behind: it missed the turn
+      // that produced it and then applied to the following one.
+      await runBeforeAgentStart(ctx, state, agent, assembleContext.signal as AbortSignal | undefined, original)
       const override = state.turnSystemPromptOverrides.get(agent)
       if (override === undefined) return downstream
       state.currentSystemPrompt = override
@@ -1615,6 +1599,80 @@ function subscribeInterceptors(ctx: Context, state: RuntimeState): void {
     state.currentSystemPrompt = replacement
     return { ...downstream, sections: [{ name: 'pi2dsh:system-prompt', text: replacement }] }
   })
+}
+
+/**
+ * Pi's `before_agent_start`, run inside the assembly of the turn it belongs to.
+ *
+ * Fires once per user prompt: only when this step's claim opened a NEW turn,
+ * matching Pi, where the event follows the user's message rather than every
+ * model call. A handler's `systemPrompt` becomes this turn's override (reset
+ * at the next turn, exactly as Pi resets to the base prompt) and a returned
+ * `message` is held for the step that is about to be entered.
+ * @param ctx - context used for attachments and handler dispatch.
+ * @param state - runtime state holding claims, overrides, and injections.
+ * @param agent - the agent whose assembly this is.
+ * @param signal - the turn's control signal, when one exists.
+ * @param assembled - the prompt as assembled, before any package override.
+ */
+async function runBeforeAgentStart(
+  ctx: Context,
+  state: RuntimeState,
+  agent: UnknownRecord,
+  signal: AbortSignal | undefined,
+  assembled: string,
+): Promise<void> {
+  const claimed = state.claimedForStep.get(agent) ?? []
+  state.claimedForStep.delete(agent)
+  if (claimed.length === 0) return
+  // Steering claimed mid-turn carries the turn already prompted for; only a
+  // turn this bridge has not announced yet is a new user prompt.
+  const turn = Number(claimed[0]?.turn ?? 0)
+  if (state.promptedTurn.get(agent) === turn) return
+  state.promptedTurn.set(agent, turn)
+  // A new turn resets to the base prompt whether or not any handler runs.
+  state.turnSystemPromptOverrides.delete(agent)
+  if ((state.handlers.get('before_agent_start')?.length ?? 0) === 0) return
+
+  const userMessages = claimed
+    .map(entry => entry.message as UnknownRecord)
+    .filter(message => ((message.source as { kind?: string } | undefined)?.kind ?? 'user') === 'user')
+  const prompt = userMessages
+    .flatMap(message => textBlocks(message.content))
+    .map(block => block.text)
+    .join('\n')
+  const images = await collectPiImages(ctx, userMessages)
+  const event: UnknownRecord = {
+    type: 'before_agent_start',
+    prompt,
+    ...(images.length > 0 ? { images } : {}),
+    systemPrompt: assembled,
+    systemPromptOptions: {},
+  }
+  const results = await dispatch(state, 'before_agent_start', event, contextFor(ctx, state, agent, signal))
+  const injected: UnknownRecord[] = []
+  for (const result of results) {
+    if (typeof result !== 'object' || result === null) continue
+    const record = result as UnknownRecord
+    if (typeof record.systemPrompt === 'string') {
+      state.turnSystemPromptOverrides.set(agent, record.systemPrompt)
+      event.systemPrompt = record.systemPrompt
+    }
+    const message = record.message as UnknownRecord | undefined
+    if (message === undefined) continue
+    const content = message.content
+    const blocks = await piToDshContent(ctx, typeof content === 'string' ? [{ type: 'text', text: content }] : content ?? [])
+    injected.push(createUserMessage({
+      content: blocks,
+      // piCustomType rides the merge-extensible source so the durable log
+      // (and every later projection) keeps Pi's role:"custom" identity.
+      source: {
+        kind: 'plugin', plugin: state.messageSource,
+        ...(typeof message.customType === 'string' ? { piCustomType: message.customType } : {}),
+      },
+    }) as unknown as UnknownRecord)
+  }
+  if (injected.length > 0) state.pendingInjections.set(agent, injected)
 }
 
 // Project one not-yet-entered DSH message as the Pi message shape context
@@ -2059,7 +2117,7 @@ function currentAgent(state: RuntimeState): UnknownRecord | undefined {
 
 function toolRuntime(ctx: Context, agent?: UnknownRecord): {
   schemas(scope?: unknown): Array<{ name: string; description?: string; parameters?: unknown }>
-  restrict?(filter: { allow: string[] }): () => void
+  restrict?(filter: { allow?: string[], deny?: string[] }): () => void
 } {
   const scoped = agent?.ctx as { tools?: ReturnType<typeof toolRuntime> } | undefined
   return scoped?.tools ?? (ctx as unknown as { tools: ReturnType<typeof toolRuntime> }).tools
@@ -2101,6 +2159,25 @@ function getActiveTools(ctx: Context, state: RuntimeState): string[] {
   return toolRuntime(ctx, agent).schemas(agent).map(tool => tool.name)
 }
 
+/**
+ * Pi's `setActiveTools`, on DSH's restriction seam.
+ *
+ * Pi walks the requested names and keeps the ones its registry knows —
+ * **unknown names are silently skipped**. DSH's `restrict` instead FAILS the
+ * whole call on a name it cannot restrict (unknown, scope-local, or a
+ * reserved transport name), so passing Pi's list through verbatim turned a
+ * routine Pi call into a hard error over one stale name.
+ *
+ * So the list is narrowed to what DSH says is restrictable before restricting.
+ * The one case that cannot be both: a tool that is VISIBLE but not
+ * restrictable (a scope's own registration, `run_code` outside native mode)
+ * cannot be switched off at all. Silence there would leave a tool running that
+ * the package believes it disabled, so it is reported once — the package's
+ * call still takes effect for everything else.
+ * @param ctx - context used to reach the tool runtime.
+ * @param state - runtime state holding the per-agent restriction disposers.
+ * @param names - the tool names the package wants active.
+ */
 function setActiveTools(ctx: Context, state: RuntimeState, names: string[]): void {
   const unique = [...new Set(names)]
   const agent = currentAgent(state)
@@ -2114,8 +2191,42 @@ function setActiveTools(ctx: Context, state: RuntimeState, names: string[]): voi
     logger(ctx).warn('[pi2dsh] setActiveTools deferred: the current agent exposes no scoped tools.restrict()')
     return
   }
+  const restrictable = restrictableToolNames(scopedTools, agent)
+  const allow = restrictable === undefined ? unique : unique.filter(name => restrictable.has(name))
+  if (restrictable !== undefined) {
+    const visible = new Set(scopedTools.schemas(agent as never).map(schema => schema.name))
+    const unswitchable = [...visible].filter(name => !restrictable.has(name) && !unique.includes(name))
+    if (unswitchable.length > 0) {
+      logger(ctx).warn(
+        `[pi2dsh] setActiveTools could not deactivate ${unswitchable.map(name => JSON.stringify(name)).join(', ')}:`
+        + ' DSH does not allow restricting a scope-registered or reserved tool, so it stays available to the model',
+      )
+    }
+  }
   state.toolRestrictions.get(agent)?.()
-  state.toolRestrictions.set(agent, scopedTools.restrict({ allow: unique }))
+  // An empty allow-list is refused by DSH (an empty filter fails), and it is
+  // also not what Pi means: Pi's empty list deactivates everything, which on
+  // DSH is spelled as denying every restrictable name.
+  state.toolRestrictions.set(agent, allow.length === 0
+    ? scopedTools.restrict({ deny: [...(restrictable ?? new Set<string>())] })
+    : scopedTools.restrict({ allow }))
+}
+
+/**
+ * The tool names DSH will accept in a restriction for this scope.
+ * @param tools - the agent-scoped tool runtime.
+ * @param agent - the scope key.
+ * @returns the restrictable names, or undefined when this runtime exposes no view.
+ */
+function restrictableToolNames(tools: UnknownRecord, agent: unknown): ReadonlySet<string> | undefined {
+  const view = tools.view
+  if (typeof view !== 'function') return undefined
+  try {
+    const names = (view.call(tools, agent) as { restrictableNames?: unknown } | undefined)?.restrictableNames
+    return names instanceof Set ? names as ReadonlySet<string> : undefined
+  } catch {
+    return undefined
+  }
 }
 
 function deliverAgentMessage(agent: DshAgent, message: unknown, mode: 'inject' | 'steer' | 'followup'): void {
@@ -2315,6 +2426,41 @@ function sessionNameOf(ctx: Context, state: RuntimeState, session: { id: string 
   const titles = optionalService<DshSessionTitleService>(ctx, 'sessionTitle')
   const title = titles?.get(session)?.title
   return typeof title === 'string' && title.length > 0 ? title : state.bridge.getName(session.id)
+}
+
+/**
+ * Whether a human can actually answer a question right now.
+ *
+ * Two facts decide it, and the old check (`the service is mounted`) saw
+ * neither: a headless composition mounts the service and registers NO
+ * provider, and a delegated child agent has no human answerer at all — both
+ * make every `ctx.ui.select/confirm/input` throw for a package that was told
+ * `hasUI: true` and skipped its non-interactive path.
+ *
+ * The provider is a private field, but its existence is publicly observable:
+ * DSH allows exactly one provider per context and refuses a second with
+ * `DUPLICATE_PROVIDER`. So registering a probe answers the question — a
+ * refusal means a real provider is there, and an acceptance means there was
+ * none, which the immediate disposal restores.
+ * @param userQuestions - the mounted question service, if any.
+ * @param agent - the agent whose turn this context belongs to.
+ */
+function humanAnswererAvailable(userQuestions: unknown, agent: UnknownRecord | undefined): boolean {
+  if (userQuestions === undefined) return false
+  // A child agent is owned by another agent; DSH refuses its questions with
+  // DELEGATED_CALLER however the composition is wired.
+  if (isSubagentOrigin(agent)) return false
+  const service = userQuestions as { registerProvider?(provider: unknown): () => void }
+  if (typeof service.registerProvider !== 'function') return false
+  let dispose: (() => void) | undefined
+  try {
+    dispose = service.registerProvider({ ask: async () => { throw new Error('pi2dsh probe provider') } })
+  } catch {
+    // Refused: a real provider holds the slot.
+    return true
+  }
+  dispose?.()
+  return false
 }
 
 function requireSession(state: RuntimeState, operation: string): { id: string; events: unknown } {
@@ -2774,6 +2920,9 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
     modelOverrides: new WeakMap(),
     thinkingLevels: new WeakMap(),
     turnSystemPromptOverrides: new WeakMap(),
+    claimedForStep: new WeakMap(),
+    promptedTurn: new WeakMap(),
+    pendingInjections: new WeakMap(),
     globalThinkingLevel: 'off',
     argMutations: new WeakMap(),
     streamingTexts: new Map(),

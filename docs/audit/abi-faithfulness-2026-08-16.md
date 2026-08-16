@@ -314,6 +314,23 @@ threshold 和 overflow。manual 能可靠推出；自动一律报 threshold，`w
 
 ---
 
+## 五点五、第六节的处置（原"需要拍板"）
+
+按标准逐条查证后，其中 6 条不需要拍板 —— 要么审计的前提本身不成立，要么标准已经指明做法。已修：
+
+| 原编号 | 结论 | 落点 |
+|--------|------|------|
+| 11 请求里的 image | ✅ 已修 | `dshRequestToPiContext` 原本**完全没有 image 分支** —— 带图请求静默丢图，模型被问一张它没收到的图。改为照 DSH 官方 pi-ai adapter：经 attachment 服务读成 Pi 内联块；模型没声明 image input、或没挂 attachment 服务，一律按 DSH 自己的 `UNSUPPORTED_CONTENT` 响亮拒绝（拒绝发生在问 provider 之前）。 |
+| 1 工具参数强转 | ✅ 已修 | 前提要更正：不是"要不要接受只校验不强转"，而是**两样都没做**。Pi 的 agent loop 每次执行工具前跑 `validateToolArguments`（先 `Value.Convert` 强转再 Check）；DSH 的 `defineTool` 只 Check 不强转；这座桥两样都没跑，所以模型吐 `"3"` 时工具自己的代码拿到字符串。已 vendor Pi 那份，按 Pi 的顺序（`prepareArguments` → 强转校验 → execute）。DSH 自己的工具仍走 DSH 校验。 |
+| 2 setActiveTools | ✅ 已修 | Pi 静默跳过未知名字；DSH 的 `restrict` 遇到不可限制的名字**整体失败**。改为先按 `view(scope).restrictableNames` 求交（未知名字照 Pi 静默跳过），"可见但不可限制"的那类单独 warn 一次 —— 静默会让包以为自己关掉了某个仍在跑的工具。空列表按 Pi 语义翻成 deny 全部（DSH 拒绝空 filter）。 |
+| 9 headless 的 hasUI | ✅ 已修 | 审计的前提不成立："DSH 没有公开的 provider 存在性探针"—— `registerProvider` 一个 context 只允许一个 provider，第二个报 `DUPLICATE_PROVIDER`，**这就是公开探针**。原来 `hasUI = 服务挂了没`，于是 headless（挂了服务但没注册 provider）报 true，包跳过非交互分支后第一次 select 就炸；子代理同理（DSH 以 `DELEGATED_CALLER` 拒）。改为惰性 getter + 探针，两种情况都报 false。 |
+| 4 before_agent_start 晚一步 | ✅ 已修 | 也不是结构性无解。agent-loop 的真实顺序是 `inbox.claim()` → `systemPrompt.assemble()` → `agent/pre-step` 瀑布，而 `claim` 会发**公开可订阅**的 `agent/inbox/claimed`（`tool-jobs` 就在用）。所以把 Pi 事件从 pre-step 前移到 assemble 里跑，覆写落在**它自己那一轮**，不再是错过本轮又污染下一轮。原来两个测试写的正是错误顺序（先 pre-step 再 assemble），已按真实顺序重写。 |
+| 10 maxTokens 映射 | ✅ 已解决 | `PI_CARRIED_FIELDS` 现在把 `maxTokens` 按原名带过接缝，`defaultMaxTokens` 同时保留给 DSH 自己用。两边消费者都拿到该拿的，不再需要另开通道。 |
+
+**仍然需要拍板的，只剩 5 条**（3 tool_call terminate、5 turn 粒度重映、6 sessionManager 换 surface、7 sendMessage 默认投递、8 newSession setup），共同点是都会改变既有 handler 的触发频率或可见历史 —— 属于 breaking change，要配版本策略，不该我一个人定。
+
+---
+
 ## 六、需要拍板的设计决定
 
 1. **工具参数校验与强转（群 A）**。校验有接缝（`defineTool`），但 Pi 的**强转**（`Value.Convert`，`"3"`→`3`；`normalizeOptionalNulls` 丢掉可选属性上的显式 null）在 DSH 没有对应物，要么 vendor TypeBox 那段，要么接受"只校验不强转"（那会把今天靠强转勉强跑通的调用从"答错"变成"报错"）。**这是行为翻转，得先决定要不要**。

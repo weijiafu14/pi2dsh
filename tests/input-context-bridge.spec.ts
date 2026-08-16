@@ -1,9 +1,14 @@
 // Input/Context Bridge contracts — Pi's before_agent_start and context events
-// running on DSH's agent/pre-step waterfall: the Pi event sees the turn's real
-// prompt, returned custom messages enter the step with their Pi identity, the
-// context transform rewrites the step's not-yet-entered slice, a returned
-// systemPrompt overrides this turn's assembly, and Pi's registerCommand keeps
-// its Map.set same-name replacement semantics.
+// on DSH's step seams. The tests drive the agent loop's REAL order, which is
+// what makes the override land on its own turn:
+//
+//   inbox.claim(...)            → publishes `agent/inbox/claimed` per message
+//   systemPrompt.assemble(...)  → where before_agent_start runs
+//   agent/pre-step waterfall    → where the step's messages are decided
+//
+// (dsh-agent-loop `agent.ts`: claim, then assemble, then the pre-step
+// waterfall.) Driving pre-step alone — what these tests used to do — cannot
+// observe the ordering the override depends on.
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -102,19 +107,40 @@ async function mountedContext() {
 }
 
 describe('input/context bridge in the real DSH runtime', () => {
-  it('runs before_agent_start at pre-step with the real prompt, injects the custom message, and applies the context transform', async () => {
-    const { ctx, agent } = await mountedContext()
+  /** One step of the loop's real sequence: claim → assemble → pre-step. */
+  async function driveStep(
+    ctx: Context,
+    typedCtx: { systemPrompt: { assemble(context: unknown): Promise<unknown> } },
+    agent: unknown,
+    entering: unknown[],
+    turn = 1,
+  ): Promise<{ decision: { kind: string, messages: Array<{ content: Array<{ type: string, text?: string }>, source: Record<string, unknown> }> }, assembly: unknown }> {
     const signal = new AbortController().signal
+    const events = agentEvents(ctx, agent as never) as unknown as {
+      emit(name: string, payload: Record<string, unknown>): void
+      waterfall(name: string, payload: Record<string, unknown>, terminal: () => Promise<unknown>): Promise<never>
+    }
+    for (const message of entering) events.emit('agent/inbox/claimed', { agent, message, turn })
+    const assembly = await typedCtx.systemPrompt.assemble({ agent, signal })
+    const decision = await events.waterfall(
+      'agent/pre-step',
+      { turn, step: 1, signal },
+      async () => ({ kind: 'enter', messages: entering }),
+    ) as unknown as { kind: string, messages: Array<{ content: Array<{ type: string, text?: string }>, source: Record<string, unknown> }> }
+    return { decision, assembly }
+  }
+
+  it('runs before_agent_start during the assembly with the real prompt, injects the custom message, and applies the context transform', async () => {
+    const { ctx, typedCtx, agent } = await mountedContext()
     const entering = createUserMessage({
       content: [{ type: 'text', text: 'What color fills /tmp/x.png ?' }],
       source: { kind: 'user' },
     })
-    const decision = await (agentEvents(ctx, agent as never) as unknown as {
-      waterfall(name: string, payload: Record<string, unknown>, terminal: () => Promise<unknown>): Promise<{
-        kind: string
-        messages: Array<{ content: Array<{ type: string; text?: string }>; source: Record<string, unknown> }>
-      }>
-    }).waterfall('agent/pre-step', { turn: 1, step: 1, signal }, async () => ({ kind: 'enter', messages: [entering] }))
+    const { decision } = await driveStep(ctx, typedCtx as never, agent, [entering])
+    const _unused = (agentEvents(ctx, agent as never) as unknown as {
+      waterfall?: unknown
+    })
+    void _unused
 
     const record = (globalThis as Record<string, unknown>).__icb as {
       beforeAgentStart?: { prompt: string }
@@ -139,16 +165,13 @@ describe('input/context bridge in the real DSH runtime', () => {
     expect(custom.content[0]?.text).toBe('[prefixed] bridge analysis result')
   })
 
-  it("applies the returned systemPrompt as this turn's assembly override", async () => {
+  it("applies the returned systemPrompt to the assembly of its OWN turn", async () => {
     const { ctx, typedCtx, agent } = await mountedContext()
-    const signal = new AbortController().signal
-    await (agentEvents(ctx, agent as never) as unknown as {
-      waterfall(name: string, payload: Record<string, unknown>, terminal: () => Promise<unknown>): Promise<unknown>
-    }).waterfall('agent/pre-step', { turn: 1, step: 1, signal }, async () => ({
-      kind: 'enter',
-      messages: [createUserMessage({ content: [{ type: 'text', text: 'hello' }], source: { kind: 'user' } })],
-    }))
-    const assembly = await typedCtx.systemPrompt.assemble({ agent })
+    const hello = createUserMessage({ content: [{ type: 'text', text: 'hello' }], source: { kind: 'user' } })
+    // The assembly this step actually sends carries the override. Running the
+    // Pi event on the later pre-step waterfall left this assembly with the
+    // base prompt and the override applied to the following turn instead.
+    const { assembly } = await driveStep(ctx, typedCtx as never, agent, [hello])
     expect(renderPrompt(assembly as never)).toContain('OVERRIDDEN BY TEST')
   })
 
