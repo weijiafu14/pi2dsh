@@ -1,12 +1,14 @@
 # Replies for the `developer` role / gateway-compat threads
 
-Ten threads share one root cause: a compat field that cannot reach the request
-through DSH settings. Post the shared reply below in each, with
-the per-thread first line. **All of them are unanswered by maintainers**, so
-lead with the workaround, not with us.
+**Nine threads** share one root cause — a compat field that cannot reach the
+request through DSH settings — and the shared body below answers those nine.
+Four more threads are related but each needs its own evidence; they are listed
+separately, and only one of them is verified today. **All are unanswered by
+maintainers**, so lead with the workaround, not with us.
 
-Verified on 2026-08-16 with pi2dsh 0.12.0 on a real DSH web session. Each
-claim below was observed on the wire, not inferred.
+Verified with pi2dsh 0.12.3 on a real DSH session. Every claim below was read
+off the wire through the passthrough recorder; anything not yet run that way is
+marked NOT VERIFIED rather than implied.
 
 ## Ground rules
 
@@ -25,7 +27,8 @@ claim below was observed on the wire, not inferred.
 | **#1232** (`supportsDeveloperRole: false` silently discarded) | 你分析的根因是对的——`resolveModelCompat()` 确实把这个字段排除了。补一个能绕过去的办法。 |
 | **#1498** (hostname allowlist; Bedrock / Volcano / newapi / DashScope) | 私有网关不在 hostname 白名单里，这个诊断没错。有个不改 DSH 也能用的路子。 |
 | **#990** (Ollama Cloud: can't set context / reasoning strength) | 这个和 #472 / #1232 / #1498 是同一层的问题，但**先看下面的前提**——现成的 `pi-ollama-cloud` 走不通这条路。 |
-| **#780 / #1272 / #1861 / #1992** (full compat passthrough · `maxTokensField` · thinking level map · custom-provider image modality) | 这四条我们逐条在真机上验过了，证据见下。 |
+| **#1272** (`maxTokensField`) | 这条在真 LiteLLM + 真 Kimi 模型名上验过了，请求体证据见下。 |
+| **#780 / #1861 / #1992** (multi-turn `reasoning_content` replay · thinking level map on the official adapter · custom-provider image modality) | **暂不要回**。机制成立，但这三条各自需要自己的端到端证据，目前还没跑到。 |
 | **#473 / #551 / #614 / #636 / #2007 / #2023** (same root cause) | 和 #472 / #1232 / #1498 同一个根因，直接套用同一份正文。 |
 
 ## Shared body (Chinese)
@@ -47,7 +50,7 @@ claim below was observed on the wire, not inferred.
 >
 > **说明白边界**：这不是修好了 DSH——你要是继续用 DSH settings 配网关，那个字段照样被丢。这只是另一条同样受官方支持的入口。
 >
-> 不用真网关也能自己验：`examples/gateway-compat/probe/` 里有个假端点会把收到的 role 记下来，配一个声明 `supportsDeveloperRole: false` 的最小 Pi provider，发一条消息就能看到线上发的是 `system` 而不是 `developer`。
+> 想自己验：`examples/gateway-compat/probe/` 里有个**透传录制代理**——请求真发给你的上游、响应真回来，中间只多存一份请求体到磁盘。配一个声明 `supportsDeveloperRole: false` 的最小 Pi provider，发一条消息，就能在记录里看到线上发的是 `system` 而不是 `developer`。
 >
 > pi2dsh：https://github.com/weijiafu14/pi2dsh
 
@@ -78,8 +81,9 @@ claim below was observed on the wire, not inferred.
 > through DSH settings and the field is still dropped. This is a second,
 > officially supported way in.
 >
-> Reproducible without a real gateway: `examples/gateway-compat/probe/` has a
-> fake endpoint that records the roles it receives — you will see `system`
+> Check it yourself: `examples/gateway-compat/probe/` has a **passthrough
+> recorder** — your request really goes to your upstream and the real response
+> streams back; it only writes down what was sent. You will see `system`
 > instead of `developer`.
 >
 > https://github.com/weijiafu14/pi2dsh
@@ -107,23 +111,43 @@ say the mechanism works and the precondition is a transport-carrying provider.
 Same caution for **#1058** until a llama-server provider with a transport shows
 up.
 
-## What was verified on the wire (0.12.0)
+## What was verified on the wire (0.12.3)
 
-One request from a private-gateway stand-in, with everything the plugin
-declared surviving the trip:
+Two runs, both through the passthrough recorder in front of a real upstream.
+
+**A. The compat flags a plugin declares reach the request** — the example's own
+Pi provider, declaring the NON-default spellings:
 
 ```json
 {"roles":["system","user",…],
- "maxTokensField":"max_completion_tokens",
+ "maxTokensField":"max_tokens",
  "reasoningEffort":"xhigh",
  "store":null}
 ```
 
+**B. #1272, on the real thing** — `pi-provider-litellm` from npm, a real LiteLLM
+proxy, and a Moonshot/Kimi model name (which is when that package declares
+`maxTokensField: "max_tokens"`):
+
+```json
+{"model":"kimi-k2-…",
+ "maxTokensField":"max_tokens",
+ "bodyKeys":["max_tokens","messages","model","stream","stream_options","tools"]}
+```
+
+Both directions were observed on one setup: a non-Moonshot model on the same
+profile still sends `max_completion_tokens`, so the check can fail.
+
 - `system` instead of `developer` — #472 / #1232 / #1498 and the six same-root threads
-- the model's own max-tokens spelling — #1272
-- three different compat flags honored at once — #780 (whole `compat` survives, not a chosen few)
-- effort selector shows `Off / Low / Medium / High / Xhigh`: `Minimal` removed by the model's map, `Xhigh` added by it — #1861
-- a model declaring image input no longer gets a text-only companion route — #1992
+- the model's own max-tokens spelling, on the real gateway — #1272
+- **NOT VERIFIED** — #780 asks for multi-turn `reasoning_content` replay. Several
+  compat flags surviving one request is a weaker claim and does not answer it.
+- **NOT VERIFIED** — #1861 is about DSH's official `deepseek-official` adapter.
+  A Pi route offering the effort says nothing about the official one, and must
+  not be written as "the official adapter is fixed".
+- **NOT VERIFIED** — #1992 needs a real image conversation with a model switch
+  through `@indexyz/pi-provider-sub2api`; the projection bug is fixed, the
+  scenario has not been run.
 
 ## What we had to fix (mention only if asked)
 
