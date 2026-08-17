@@ -35,7 +35,7 @@ import {
 import { __setPiAiLlmBridge, builtinProviders } from './compat/pi-ai.js'
 import { validateToolArguments } from './compat/vendor/pi-tool-validation.js'
 import { ModelCatalog, llmOf, streamViaDshLlm, type DshAttachmentsLike } from './model-bridge.js'
-import { imageAdmissionCompanionAdapter, registerPiProviderRoute } from './provider-adapter.js'
+import { imageAdmissionCompanionAdapter, providerCarriesTransport, registerPiProviderRoute } from './provider-adapter.js'
 
 type UnknownRecord = Record<string, unknown>
 type PiHandler = (event: UnknownRecord, context: UnknownRecord) => unknown | Promise<unknown>
@@ -2161,6 +2161,24 @@ function ensureLoginCommand(ctx: Context, state: RuntimeState): void {
   }
 }
 
+/**
+ * Turn what the user answered into one of the offered provider names.
+ * @param answer - the label, a differently-cased label, or a 1-based position.
+ * @param offered - the OAuth-capable provider names, in the order shown.
+ * @returns the matching provider name, or undefined when nothing matches.
+ */
+function resolveOAuthChoice(answer: string, offered: readonly string[]): string | undefined {
+  const trimmed = answer.trim()
+  if (offered.includes(trimmed)) return trimmed
+  const insensitive = offered.find(name => name.toLowerCase() === trimmed.toLowerCase())
+  if (insensitive !== undefined) return insensitive
+  if (/^\d+$/u.test(trimmed)) {
+    const at = Number(trimmed) - 1
+    if (at >= 0 && at < offered.length) return offered[at]
+  }
+  return undefined
+}
+
 function registerLoginCommand(ctx: Context, state: RuntimeState): void {
   registerCommand(ctx, state, {
     name: 'login',
@@ -2176,15 +2194,21 @@ function registerLoginCommand(ctx: Context, state: RuntimeState): void {
         select(title: unknown, options: unknown[]): Promise<string | undefined>
         notify(message: unknown): void
       }
-      let providerId = args.trim().split(/\s+/u)[0] ?? ''
-      if (providerId.length === 0) {
-        providerId = oauthProviders.length === 1
+      let answer = args.trim().split(/\s+/u)[0] ?? ''
+      if (answer.length === 0) {
+        answer = oauthProviders.length === 1
           ? oauthProviders[0] as string
           : String(await ui.select('Log in to which provider?', oauthProviders) ?? '')
       }
-      const config = state.providers.get(providerId)
-      if (config === undefined || !providerSupportsOAuth(config)) {
-        throw new Error(`unknown OAuth provider ${JSON.stringify(providerId)}; available: ${oauthProviders.join(', ')}`)
+      // The picker's answer is a LABEL by DSH's contract, but the same dialog
+      // also offers a free-text box — a user who types the row number there
+      // sends "1", and the row number is what a person reads off the screen
+      // anyway. Accept the name, any casing of it, or the 1-based position;
+      // anything else still fails loud with the list.
+      const providerId = resolveOAuthChoice(answer, oauthProviders)
+      const config = providerId === undefined ? undefined : state.providers.get(providerId)
+      if (providerId === undefined || config === undefined || !providerSupportsOAuth(config)) {
+        throw new Error(`unknown OAuth provider ${JSON.stringify(answer)}; available: ${oauthProviders.join(', ')}`)
       }
       const oauthName = ((config.oauth as UnknownRecord | undefined)?.name as string | undefined) ?? providerId
       const commandSignal = commandContext.signal as AbortSignal | undefined
@@ -2788,7 +2812,15 @@ function createPiApi(ctx: Context, state: RuntimeState): UnknownRecord {
       if (routeDisposer !== undefined) {
         state.providerRouteDisposers.set(name, routeDisposer)
         void state.modelCatalog?.refresh()
-        logger(ctx).info(`[pi2dsh] Pi provider ${JSON.stringify(name)} registered as a native DSH llm route`)
+        // Only the transport-carrying path is registered by the time this
+        // returns. The catalog-only path mounts DSH's official adapter
+        // asynchronously and reports its OWN outcome, so announcing success
+        // here claimed a route that could still fail a moment later — which is
+        // exactly what a fake credential produced: "registered as a native DSH
+        // llm route" immediately followed by "could not be served".
+        if (providerCarriesTransport(value)) {
+          logger(ctx).info(`[pi2dsh] Pi provider ${JSON.stringify(name)} registered as a native DSH llm route`)
+        }
       } else if (!providerSupportsOAuth(value)) {
         logger(ctx).info(`[pi2dsh] recorded Pi provider ${JSON.stringify(name)}; model calls stay on DSH llm adapters`)
       }
@@ -3410,6 +3442,7 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
 
 export const runtimeInternals = {
   compactionReason,
+  resolveOAuthChoice,
   dshToPiContent,
   expandPrompt,
   isSubagentOrigin,

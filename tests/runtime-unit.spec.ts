@@ -132,3 +132,33 @@ describe('compatibility runtime primitives', () => {
     ])
   })
 })
+
+describe('choosing a provider to log in to', () => {
+  const offered = ['openai-codex', 'anthropic', 'github-copilot', 'kimi-coding', 'litellm']
+  const { resolveOAuthChoice } = runtimeInternals as unknown as {
+    resolveOAuthChoice(answer: string, offered: readonly string[]): string | undefined
+  }
+
+  it('takes the name the picker offered', () => {
+    expect(resolveOAuthChoice('litellm', offered)).toBe('litellm')
+  })
+
+  it('takes the row number a person reads off the dialog', () => {
+    // The picker also has a free-text box, and "1" is what someone types when
+    // the screen shows "1  openai-codex". Passing that through as a provider
+    // name produced `unknown OAuth provider "1"` on a real login attempt.
+    expect(resolveOAuthChoice('1', offered)).toBe('openai-codex')
+    expect(resolveOAuthChoice('5', offered)).toBe('litellm')
+  })
+
+  it('takes a differently-cased name', () => {
+    expect(resolveOAuthChoice('LiteLLM', offered)).toBe('litellm')
+  })
+
+  it('refuses a position outside the list and anything unrecognised', () => {
+    // Still fails loud: the caller reports the answer with the full list.
+    expect(resolveOAuthChoice('0', offered)).toBeUndefined()
+    expect(resolveOAuthChoice('6', offered)).toBeUndefined()
+    expect(resolveOAuthChoice('no-such-gateway', offered)).toBeUndefined()
+  })
+})

@@ -45,8 +45,12 @@ const DEFAULT_PACKAGES = [
 ]
 const packages = process.argv.slice(3).length > 0 ? process.argv.slice(3) : DEFAULT_PACKAGES
 
+// Three outcomes, three lines, none of them printed before the route exists.
+// The old criterion matched an announcement the engine made BEFORE mounting,
+// so a provider that failed a moment later still counted as working.
 const ROUTE = /Pi provider "([^"]+)" registered as a native DSH llm route/u
-const CATALOG_ONLY = /Pi provider "([^"]+)"[^\n]*(no transport|catalog but no)/u
+const SERVED_BY_OFFICIAL = /Pi provider "([^"]+)" declares a catalog only; DSH's official llm-pi-ai adapter now serves it/u
+const NOT_SERVED = /Pi provider "([^"]+)" could not be served by the official adapter \(([^)]*)\)/u
 
 async function probe(name) {
   const scratch = await mkdtemp(join(tmpdir(), 'pi2dsh-gw-'))
@@ -104,13 +108,21 @@ async function probe(name) {
     web.kill('SIGTERM')
 
     const route = ROUTE.exec(log)
-    const catalogOnly = CATALOG_ONLY.exec(log)
+    const served = SERVED_BY_OFFICIAL.exec(log)
+    const notServed = NOT_SERVED.exec(log)
     const mounted = /loaded ([^:]+): \d+ tools/u.exec(log)
+    const failedToLoad = /failed to mount ([^:]+): every Pi extension entry failed to load/u.exec(log)
     return {
       name,
       ...(neededBuildApproval ? { neededBuildApproval: true } : {}),
-      verdict: route !== null ? 'route' : catalogOnly !== null ? 'catalog-only' : mounted !== null ? 'mounted-no-provider' : 'unknown',
-      providerId: route?.[1] ?? catalogOnly?.[1],
+      verdict: route !== null ? 'route'
+        : served !== null ? 'route-via-official'
+        : notServed !== null ? 'not-served'
+        : failedToLoad !== null ? 'load-failed'
+        : mounted !== null ? 'mounted-no-provider'
+        : 'unknown',
+      providerId: route?.[1] ?? served?.[1] ?? notServed?.[1],
+      ...(notServed === null ? {} : { reason: notServed[2].slice(0, 160) }),
       mountLine: (log.split('\n').find(l => l.includes('[pi2dsh]') && l.includes(name.split('/').pop())) ?? '').trim().slice(0, 160),
     }
   } finally {

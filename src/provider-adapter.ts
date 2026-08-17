@@ -400,7 +400,7 @@ function registerCatalogOnlyRoute(options: RegisterPiProviderRouteOptions): (() 
       ) as { dispose?: () => void }
       if (disposed) fiber?.dispose?.()
       else mounted = fiber
-      host.warn(`[pi2dsh] Pi provider ${JSON.stringify(providerId)} declares a catalog only; it is served by DSH's official llm-pi-ai adapter as a native route`)
+      host.warn(`[pi2dsh] Pi provider ${JSON.stringify(providerId)} declares a catalog only; DSH's official llm-pi-ai adapter now serves it as a native route`)
     } catch (error) {
       host.warn(`[pi2dsh] Pi provider ${JSON.stringify(providerId)} could not be served by the official adapter (${error instanceof Error ? error.message : String(error)}); configure the gateway in the host's llm settings instead`)
     }
