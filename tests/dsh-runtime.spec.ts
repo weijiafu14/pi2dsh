@@ -940,7 +940,9 @@ describe('the credential behind the reference the profile names', () => {
       // Always inside Pi's five-minute expiry window, so every resolution
       // rotates and a stored value that is never re-read stays visibly stale.
       "      login: async () => ({ access: 'key-1', refresh: 'r1', expires: Date.now() + 60_000 }),",
-      "      refreshToken: async () => ({ access: `key-${++issued + 1}`, refresh: 'r1', expires: Date.now() + 60_000 }),",
+      // Renews to something ALREADY EXPIRED, so the next request is the
+      // "came back after an idle stretch" case rather than the warm one.
+      "      refreshToken: async () => ({ access: `key-${++issued + 1}`, refresh: 'r1', expires: Date.now() - 1_000 }),",
       '      getApiKey: (credential) => credential.access,',
       '    },',
       '  })',
@@ -999,6 +1001,16 @@ describe('the credential behind the reference the profile names', () => {
       // A request on that route re-publishes: an access token expires, and a
       // value stored once at login goes stale under the user.
       const llm = (ctx as unknown as { llm: { stream(options: object): AsyncIterable<unknown> } }).llm
+      // What the store held at the moment the call actually went out. Our hook
+      // is registered first, so this one runs inside its `next()`.
+      let keyAtCallTime: string | undefined
+      ;(ctx as unknown as { on(event: string, handler: unknown): () => void }).on('llm/stream', ((
+        _options: unknown,
+        next: () => AsyncIterable<unknown>,
+      ) => {
+        keyAtCallTime = stored.get('PI2DSH_OAUTH_FIXCRED')
+        return next()
+      }) as never)
       for await (const _ of llm.stream({
         provider: 'fixcred',
         model: 'anything',
@@ -1006,6 +1018,10 @@ describe('the credential behind the reference the profile names', () => {
       })) { /* the route has no adapter here; the hook runs either way */ }
       await settle()
       expect(stored.get('PI2DSH_OAUTH_FIXCRED')).toBe('key-3')
+      // …and it was renewed BEFORE the request went out. Publishing beside the
+      // request instead means the first call after an idle stretch always goes
+      // out on a dead token and fails, and only the second one works.
+      expect(keyAtCallTime).toBe('key-3')
     } finally {
       delete process.env.PI_CODING_AGENT_DIR
     }

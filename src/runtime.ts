@@ -2377,28 +2377,38 @@ async function publishOAuthCredential(
 /**
  * Re-publish rotating OAuth keys at the moment a request needs them.
  *
- * An access token expires (codex's in about an hour), so a value stored once
- * at login goes stale and every later request fails on a credential the user
+ * An access token expires (codex's in about an hour), so a value stored once at
+ * login goes stale and every later request fails on a credential the user
  * believes they supplied. DSH's own credentials contract is per-operation for
- * exactly this reason, and `llm/stream` is the per-operation seam: Pi's
- * refresh runs there, and only actually rotates when the token is near
- * expiry — the same moment Pi's own hosts would.
+ * exactly this reason, and `llm/stream` is the per-operation seam.
+ *
+ * Whether the refresh is awaited depends on whether this request can still be
+ * served by what is stored. Inside Pi's refresh window the stored token is
+ * still VALID, so refreshing beside the request costs nothing and the rotated
+ * key is there for the next one. Past expiry it is not: publishing in the
+ * background there means the first request after an idle stretch goes out with
+ * a dead token and fails, every time, and only the second one works. So an
+ * expired credential blocks its own request until it has been renewed.
  */
 function keepOAuthCredentialFresh(ctx: Context, state: RuntimeState): void {
   if (state.shared.oauthRefreshHooked === true) return
   state.shared.oauthRefreshHooked = true
   const cordisCtx = ctx as unknown as { on(event: string, handler: (...args: never[]) => unknown): () => void }
-  cordisCtx.on('llm/stream', ((options: UnknownRecord, next: () => unknown) => {
+  cordisCtx.on('llm/stream', ((options: UnknownRecord, next: () => AsyncIterable<unknown>) => {
     const provider = typeof options.provider === 'string' ? options.provider : undefined
     const config = provider === undefined ? undefined : state.providers.get(provider)
     if (provider === undefined || config === undefined || !providerSupportsOAuth(config)) return next()
-    // Refresh alongside the request rather than in front of it: blocking every
-    // stream on a store read would tax routes that never need it, and the
-    // stored value is only stale after the token rotates, which this call is
-    // what fixes for the NEXT request.
-    void publishOAuthCredential(ctx, state, provider, config)
+    const publish = (): Promise<unknown> => publishOAuthCredential(ctx, state, provider, config)
       .catch(error => logger(ctx).warn(`[pi2dsh] could not refresh the stored credential for ${JSON.stringify(provider)}: ${error instanceof Error ? error.message : String(error)}`))
-    return next()
+    return (async function* () {
+      const stored = await storedOAuthCredential(oauthStoreOf(state), provider).catch(() => undefined)
+      const expires = typeof stored?.expires === 'number' ? stored.expires : undefined
+      // Expired (or an unstated expiry, which cannot be trusted): this request
+      // cannot go out on what is stored, so wait for the renewal.
+      if (expires === undefined || expires <= Date.now()) await publish()
+      else void publish()
+      yield* next()
+    })()
   }) as never)
 }
 
