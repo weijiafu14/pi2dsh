@@ -68,7 +68,13 @@ interface SurfaceView {
   workingVisible: boolean
 }
 interface RenderedEntry { id: string, customType: string, package?: string, text: string }
-interface BrowserState { threads: PanelThread[], surfaces: SurfaceView[], entries: RenderedEntry[] }
+interface DraftRequest { text: string, rev: number }
+interface BrowserState {
+  threads: PanelThread[]
+  surfaces: SurfaceView[]
+  entries: RenderedEntry[]
+  draft?: DraftRequest
+}
 
 /** Services this half needs before it can take a seat. */
 export const inject = ['slots']
@@ -108,6 +114,7 @@ function watch(session: string, notify: (state: BrowserState) => void): () => vo
           threads: Array.isArray(payload.threads) ? payload.threads : [],
           surfaces: Array.isArray(payload.surfaces) ? payload.surfaces : [],
           entries: Array.isArray(payload.entries) ? payload.entries : [],
+          ...(payload.draft === undefined ? {} : { draft: payload.draft }),
         }
         latest.set(session, state)
         for (const reader of subscribers.get(session) ?? []) reader(state)
@@ -310,6 +317,55 @@ function EntryStrip({ sessionId }: { sessionId?: string }) {
 }
 
 /**
+ * The composer half of Pi's editor calls.
+ *
+ * `inputActions` is part of the session standard kit — every session-scoped
+ * slot component receives it — so a package's `setEditorText`/`pasteToEditor`
+ * reaches the real composer instead of a buffer nobody reads. The traffic is
+ * two-way on purpose: the live draft is reported back so a package's
+ * `getEditorText` reads what the user actually has, not only its own last
+ * write.
+ * @param props - the session standard kit (state hook plus input actions).
+ * @returns nothing rendered; this seat exists for the effects.
+ */
+function ComposerBridge(
+  { sessionId, useInput, inputActions }: {
+    sessionId?: string
+    useInput?: <T>(select: (state: { draft: string }) => T) => T
+    inputActions?: { setDraft(text: string): void }
+  },
+) {
+  const { draft } = useBrowserState(sessionId)
+  const live = useInput === undefined ? '' : useInput(state => state.draft)
+  const [appliedRev, setAppliedRev] = useState(0)
+
+  // Apply a pending write exactly once per revision: a package retrying the
+  // same text is a new request, and re-applying an old one would fight the
+  // user's own typing.
+  useEffect(() => {
+    if (draft === undefined || inputActions === undefined) return
+    if (draft.rev <= appliedRev) return
+    setAppliedRev(draft.rev)
+    inputActions.setDraft(draft.text)
+  }, [draft?.rev, draft?.text, inputActions, appliedRev])
+
+  // Report what the composer holds, so the server-side read is the truth.
+  useEffect(() => {
+    if (sessionId === undefined || sessionId === '') return
+    void fetch('/pi2dsh/editor-draft', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ session: sessionId, draft: live }),
+    }).catch(() => {
+      // The composer is the browser's; a dropped report only means the
+      // server-side read is one keystroke stale.
+    })
+  }, [sessionId, live])
+
+  return null
+}
+
+/**
  * Client plugin body: take the seats this package draws into.
  * @param ctx - client root context.
  */
@@ -334,6 +390,11 @@ export function apply(ctx: ClientContext): void {
       name: 'conversation.chat.turnTail', id: 'pi2dsh-entries', order: 1,
       select: () => ({}),
     }, EntryStrip))
+    // A seat that renders nothing: it exists because the session standard kit
+    // it receives is the only public write path to the composer.
+    scope.slots.inject('conversation.input.dock', () => scope.slots.register({
+      name: 'conversation.input.dock', id: 'pi2dsh-composer-bridge', order: 2,
+    }, ComposerBridge))
     scope.slots.inject('conversation.composer.dock', () => scope.slots.register({
       name: 'conversation.composer.dock', id: 'pi2dsh-working', order: 1,
     }, textSeat('working', ['footer', 'workingMessage', 'workingIndicator', 'hiddenThinkingLabel'])))

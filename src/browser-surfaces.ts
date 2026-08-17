@@ -77,6 +77,11 @@ export class BrowserSurfaces {
   readonly #surfaces = new Map<string, Map<string, SurfaceView>>()
   // package -> its custom-entry renderer, pulled per request
   readonly #entrySources = new Map<string, EntrySource>()
+  // session -> the composer text a package asked for, and the live text the
+  // browser last reported. Pi's editor calls are two-way: setEditorText writes,
+  // getEditorText reads what the user actually has.
+  readonly #draftRequests = new Map<string, DraftRequest>()
+  readonly #liveDrafts = new Map<string, string>()
 
   /**
    * Track one child session under its parent.
@@ -227,6 +232,53 @@ export class BrowserSurfaces {
   }
 
   /**
+   * Ask the browser to put text in the composer.
+   *
+   * A revision rather than a flag: the seat applies a request once, and the
+   * next call — even with identical text — is a new request rather than a
+   * no-op, which is what a package retrying a paste means.
+   * @param sessionId - session whose composer to write.
+   * @param text - the full next draft.
+   */
+  requestDraft(sessionId: string, text: string): void {
+    if (sessionId.length === 0) return
+    const current = this.#draftRequests.get(sessionId)
+    this.#draftRequests.set(sessionId, { text, rev: (current?.rev ?? 0) + 1 })
+    // Optimistic: a package that writes and immediately reads sees its own
+    // write, exactly as it would in Pi, without waiting for a browser round
+    // trip that may never come (a CLI session has no browser at all).
+    this.#liveDrafts.set(sessionId, text)
+  }
+
+  /**
+   * The pending composer write for one session, if any.
+   * @param sessionId - session the browser is showing.
+   * @returns the request, or undefined when nothing is pending.
+   */
+  draftRequest(sessionId: string): DraftRequest | undefined {
+    return this.#draftRequests.get(sessionId)
+  }
+
+  /**
+   * Record what the composer actually holds, as reported by the browser.
+   * @param sessionId - session the report is about.
+   * @param text - the live draft.
+   */
+  reportDraft(sessionId: string, text: string): void {
+    if (sessionId.length === 0) return
+    this.#liveDrafts.set(sessionId, text)
+  }
+
+  /**
+   * The composer text for one session.
+   * @param sessionId - session to read.
+   * @returns the browser's last report, or the last requested text.
+   */
+  liveDraft(sessionId: string): string {
+    return this.#liveDrafts.get(sessionId) ?? ''
+  }
+
+  /**
    * What packages have put on screen for one session.
    * @param sessionId - session the browser is showing.
    * @returns one entry per package that has driven a surface, empties dropped.
@@ -350,6 +402,12 @@ export interface RenderedEntry {
   text: string
 }
 
+/** One pending composer write, with the revision the browser acknowledges. */
+export interface DraftRequest {
+  text: string
+  rev: number
+}
+
 /** A package's renderer, pulled at snapshot time for the session on screen. */
 export type EntrySource = (sessionId: string) => RenderedEntry[]
 
@@ -381,12 +439,35 @@ export function registerBrowserSurfaceRoute(ctx: Context, registry: BrowserSurfa
         end(body?: string): void
       }
       const method = String(req.method ?? 'GET')
+      const url = new URL(String(req.url ?? '/'), 'http://pi2dsh.invalid')
+      // The one write the browser half performs: reporting what the user has
+      // actually typed, so a package's getEditorText reads the composer rather
+      // than only its own last write.
+      if (method === 'POST' && url.pathname === '/pi2dsh/editor-draft') {
+        const chunks: Buffer[] = []
+        const body = await new Promise<string>((settle) => {
+          const stream = req as unknown as { on(event: string, handler: (chunk?: unknown) => void): void }
+          stream.on('data', chunk => chunks.push(Buffer.from(chunk as Uint8Array)))
+          stream.on('end', () => settle(Buffer.concat(chunks).toString('utf8')))
+        })
+        try {
+          const payload = JSON.parse(body || '{}') as { session?: unknown, draft?: unknown }
+          if (typeof payload.session === 'string' && typeof payload.draft === 'string') {
+            registry.reportDraft(payload.session, payload.draft)
+          }
+        } catch {
+          // A malformed report changes nothing; the composer is still the
+          // browser's, and the next report supersedes this one.
+        }
+        response.writeHead(204)
+        response.end()
+        return
+      }
       if (method !== 'GET' && method !== 'HEAD') {
         response.writeHead(405)
         response.end()
         return
       }
-      const url = new URL(String(req.url ?? '/'), 'http://pi2dsh.invalid')
       if (url.pathname !== '/pi2dsh/browser-state') {
         response.writeHead(404)
         response.end()
@@ -399,6 +480,7 @@ export function registerBrowserSurfaceRoute(ctx: Context, registry: BrowserSurfa
           threads: registry.snapshot(session),
           surfaces: registry.surfaces(session),
           entries: registry.entries(session),
+          ...(registry.draftRequest(session) === undefined ? {} : { draft: registry.draftRequest(session) }),
         })
       response.writeHead(200, {
         'content-type': 'application/json; charset=utf-8',

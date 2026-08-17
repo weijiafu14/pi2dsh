@@ -649,15 +649,31 @@ function contextFor(
     setTitle: (title: unknown) => putSurface(ctx, state, agent, 'title', title),
     // Pi's own rpc mode resolves ui.custom to undefined; mirror that exactly.
     custom: async () => undefined,
+    // Pi's editor calls, on DSH's real composer. `inputActions.setDraft` is
+    // part of the session standard kit every session-scoped slot component
+    // receives, so the bridge's own browser half can perform the write; the
+    // per-agent buffer stays as the answer for a composition with no browser
+    // (the CLI profile), where Pi's own non-interactive modes behave the same.
     pasteToEditor(text: unknown) {
-      if (agent !== undefined) {
-        state.editorBuffers.set(agent, (state.editorBuffers.get(agent) ?? '') + String(text))
-      }
+      const surfaces = state.shared.browserSurfaces
+      const sessionId = sessionIdOf(state, agent)
+      const current = surfaces?.liveDraft(sessionId) ?? (agent === undefined ? '' : state.editorBuffers.get(agent) ?? '')
+      const next = current + String(text)
+      if (agent !== undefined) state.editorBuffers.set(agent, next)
+      surfaces?.requestDraft(sessionId, next)
     },
     setEditorText(text: unknown) {
       if (agent !== undefined) state.editorBuffers.set(agent, String(text))
+      state.shared.browserSurfaces?.requestDraft(sessionIdOf(state, agent), String(text))
     },
-    getEditorText: () => (agent === undefined ? '' : state.editorBuffers.get(agent) ?? ''),
+    // The composer's real contents when a browser is showing this session (the
+    // browser half reports them back), falling back to what this package last
+    // wrote when nothing is watching.
+    getEditorText: () => {
+      const live = state.shared.browserSurfaces?.liveDraft(sessionIdOf(state, agent)) ?? ''
+      if (live.length > 0) return live
+      return agent === undefined ? '' : state.editorBuffers.get(agent) ?? ''
+    },
     addAutocompleteProvider(factory: unknown) {
       state.autocompleteProviders.push(factory)
     },

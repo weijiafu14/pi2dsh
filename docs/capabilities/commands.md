@@ -77,19 +77,19 @@ Recorded; no DSH surface produces raw terminal input, and feature-detecting pack
 
 `ctx.ui.*` · Mapped, difference stated
 
-A per-agent text buffer inside the bridge; the three editor calls only talk to each other.
+Appends to the live composer text and writes it back through the same path as setEditorText — the append is against what the user actually has, not against the package's last write.
 
 ### `setEditorText` <a id="seteditortext-ctxui"></a>
 
 `ctx.ui.*` · Mapped, difference stated
 
-A per-agent text buffer inside the bridge; the three editor calls only talk to each other.
+Writes the DSH composer for real. `inputActions.setDraft` is part of the session standard kit every session-scoped slot component receives, so the bridge's own browser half performs the write; the request carries a revision so a repeated call is a new write rather than a no-op. Without a browser (the CLI profile) it falls back to the per-agent buffer, which is what Pi's own non-interactive modes do.
 
 ### `getEditorText` <a id="geteditortext-ctxui"></a>
 
 `ctx.ui.*` · Mapped, difference stated
 
-Reads the per-agent buffer the other two editor calls write.
+Reads what the composer actually holds: the browser half reports the live draft back to the bridge, so a package sees the user's typing and not only its own writes. With no browser watching, it answers with the last text this package wrote.
 
 ### `addAutocompleteProvider` <a id="addautocompleteprovider-ctxui"></a>
 

@@ -220,6 +220,29 @@ describe('surfaceText', () => {
     ])
   })
 
+  it('carries composer writes with a revision, and reads back what the user has', () => {
+    const registry = new BrowserSurfaces()
+    expect(registry.draftRequest('session-1')).toBeUndefined()
+    expect(registry.liveDraft('session-1')).toBe('')
+
+    registry.requestDraft('session-1', 'written by the package')
+    // A package that writes then reads sees its own write without waiting for
+    // a browser round trip — a CLI session has no browser to answer at all.
+    expect(registry.liveDraft('session-1')).toBe('written by the package')
+    const first = registry.draftRequest('session-1')
+    expect(first).toMatchObject({ text: 'written by the package' })
+
+    // Identical text is still a NEW request: a package retrying a paste means
+    // it, and a seat that deduplicated by text would drop the retry.
+    registry.requestDraft('session-1', 'written by the package')
+    expect(registry.draftRequest('session-1')?.rev).toBe((first?.rev ?? 0) + 1)
+
+    // The browser is the authority on what the composer holds.
+    registry.reportDraft('session-1', 'the user typed over it')
+    expect(registry.liveDraft('session-1')).toBe('the user typed over it')
+    expect(registry.liveDraft('session-2')).toBe('')
+  })
+
   it('clears on undefined and rejects unrenderable values', () => {
     expect(surfaceText(undefined)).toBeUndefined()
     expect(surfaceText(null)).toBeUndefined()

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pi2dshCommit": "87435f718fed3056a060a322cf6fbae7f80b8927",
+  "pi2dshCommit": "6a36472903a229fe4dac80792d46635e227005c3",
   "dshCommit": "47f943859bef60e4160492346772ded9b24f765a",
   "results": {
     "visionBridge": {
@@ -56,17 +56,10 @@
       "engine": "0.12.3",
       "screenshots": [
         "01-side-conversation-main-thread-clean.png",
-        "01-vision-companion-model-picker.png",
-        "02-image-accepted-by-text-only-model.png",
         "02-side-conversation-panel.png",
         "03-side-conversation-host-catalog.png",
-        "03-vision-bridge-answer.png",
         "04-side-conversation-injected-on-request.png",
-        "05-side-conversation-child-view.png",
-        "06-pi-surfaces-on-dsh.png",
-        "xiaohongshu-cover-btw-v1.png",
-        "xiaohongshu-cover-v2.png",
-        "xiaohongshu-cover.png"
+        "05-side-conversation-child-view.png"
       ]
     }
   }
