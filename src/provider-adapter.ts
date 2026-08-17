@@ -349,8 +349,8 @@ export interface RegisterPiProviderRouteOptions {
   providerId: string
   provider: UnknownRecord
   host: ProviderAdapterHost
-  /** The bridge's own context, used to mount DSH's official adapter for a catalog-only route. */
-  ctx?: { plugin(plugin: unknown, config?: unknown): unknown }
+  /** The bridge's own context: the settings seam first, a plugin mount as fallback. */
+  ctx?: { plugin(plugin: unknown, config?: unknown): unknown, get?(name: string): unknown }
 }
 
 /**
@@ -387,13 +387,7 @@ export interface PiRouteHandle {
 function registerCatalogOnlyRoute(options: RegisterPiProviderRouteOptions): PiRouteHandle | undefined {
   const { ctx, providerId, provider, host } = options
   if (ctx === undefined) return undefined
-  let mounted: { dispose?: () => void } | undefined
-  let disposed = false
-  // Each mount attempt claims a number; a later one makes an in-flight mount
-  // stale, so a re-announce that overtakes the first mount cannot leave two
-  // fibers holding the same provider name.
-  let generation = 0
-  const mount = (): void => {
+  return mountOfficialAdapter(ctx, providerId, host, () => {
     // Read the models AT MOUNT TIME, not once at registration: a catalog-only
     // profile is a snapshot, so a re-announce after a login has to rebuild it
     // from whatever the package discovered in the meantime.
@@ -404,7 +398,7 @@ function registerCatalogOnlyRoute(options: RegisterPiProviderRouteOptions): PiRo
     // and omitting it serves that installed catalog, so a route is still built
     // — refusing here would drop a provider that works the moment it is used.
     const first = (models[0] ?? provider) as UnknownRecord
-    const profile: UnknownRecord = {
+    return {
       displayName: typeof provider.name === 'string' ? provider.name : providerId,
       ...(typeof first.api === 'string' ? { api: first.api } : {}),
       ...(typeof first.baseUrl === 'string' ? { baseURL: first.baseUrl } : {}),
@@ -418,9 +412,43 @@ function registerCatalogOnlyRoute(options: RegisterPiProviderRouteOptions): PiRo
         ...(model.compat === undefined ? {} : { compat: model.compat }),
       })) }),
     }
+  }, `[pi2dsh] Pi provider ${JSON.stringify(providerId)} declares a catalog only; DSH's official llm-pi-ai adapter now serves it as a native route`)
+}
+
+/**
+ * Mount DSH's official llm-pi-ai adapter for one route, rebuildable on demand.
+ * @param buildProfile - called per mount, so a re-announce picks up new facts.
+ * @param announcement - what to tell the user once the route is up.
+ */
+function mountOfficialAdapter(
+  ctx: { plugin(plugin: unknown, config?: unknown): unknown, get?(name: string): unknown },
+  providerId: string,
+  host: ProviderAdapterHost,
+  buildProfile: () => UnknownRecord,
+  announcement: string,
+): PiRouteHandle {
+  let mounted: { dispose?: () => void } | undefined
+  let disposed = false
+  // Each mount attempt claims a number; a later one makes an in-flight mount
+  // stale, so a re-announce that overtakes the first mount cannot leave two
+  // fibers holding the same provider name.
+  let generation = 0
+  const mount = (): void => {
+    const profile = buildProfile()
     const mine = ++generation
     void (async () => {
       try {
+        // The route is CONFIGURATION for an adapter the composition normally
+        // already mounts, so it goes into that adapter's settings section.
+        // Mounting a second copy of the plugin instead collides on the
+        // provider directory it declares — the real failure was
+        // `configurable provider "amazon-bedrock" is already declared`, which
+        // names an unrelated route and tells the user nothing.
+        if (await declareInSettings(ctx, providerId, profile)) {
+          if (!disposed && mine === generation) mounted = undefined
+          host.warn(announcement)
+          return
+        }
         const official = await import('@deepseek-ai/dsh-llm-pi-ai')
         const fiber = await ctx.plugin(
           (official as UnknownRecord).default ?? official,
@@ -428,7 +456,7 @@ function registerCatalogOnlyRoute(options: RegisterPiProviderRouteOptions): PiRo
         ) as { dispose?: () => void }
         if (disposed || mine !== generation) fiber?.dispose?.()
         else mounted = fiber
-        host.warn(`[pi2dsh] Pi provider ${JSON.stringify(providerId)} declares a catalog only; DSH's official llm-pi-ai adapter now serves it as a native route`)
+        host.warn(announcement)
       } catch (error) {
         host.warn(`[pi2dsh] Pi provider ${JSON.stringify(providerId)} could not be served by the official adapter (${error instanceof Error ? error.message : String(error)}); configure the gateway in the host's llm settings instead`)
       }
@@ -453,6 +481,33 @@ function registerCatalogOnlyRoute(options: RegisterPiProviderRouteOptions): PiRo
 }
 
 /**
+ * Hand one provider profile to the official adapter through DSH's settings.
+ *
+ * `ctx.settings.update` merges into the user layer of a namespace its OWNER
+ * registered, so this only works where that adapter is mounted — which is the
+ * normal composition, and exactly where mounting a second copy would collide.
+ * A composition without it (a bare test host, an embedded runtime) rejects and
+ * the caller falls back to mounting the plugin itself.
+ * @returns whether the profile was stored.
+ */
+async function declareInSettings(
+  ctx: { get?(name: string): unknown },
+  providerId: string,
+  profile: UnknownRecord,
+): Promise<boolean> {
+  const settings = ctx.get?.('settings') as { update?(ns: string, patch: object): Promise<void> } | undefined
+  if (typeof settings?.update !== 'function') return false
+  try {
+    await settings.update('llm-pi-ai', { providers: { [providerId]: profile } })
+    return true
+  } catch {
+    // Not registered here (no official adapter in this composition), or the
+    // profile is one it refuses. Either way the mount below reports honestly.
+    return false
+  }
+}
+
+/**
  * Register the provider as a live DSH route when an llm service is mounted.
  * A provider carrying its own transport streams through it; a config-only
  * provider gets Pi's synthesized per-api transport. A route conflict (an
@@ -467,7 +522,14 @@ export function registerPiProviderRoute(options: RegisterPiProviderRouteOptions)
   // for the declared protocol), so it must be complete here too — served by
   // DSH's own adapter rather than refused back to the user as configuration
   // homework.
-  if (!providerCarriesTransport(provider)) return registerCatalogOnlyRoute(options)
+  if (!providerCarriesTransport(provider)) {
+    // An OAuth-only provider (Pi's built-in logins, and packages shaped like
+    // them) declares no models and no transport: there is nothing to route
+    // with until a login stores a credential, and declaring it now only
+    // produces "resolves no models". The login path declares it.
+    if (providerModels(provider as PiTransportProvider).length === 0 && provider.oauth !== undefined) return undefined
+    return registerCatalogOnlyRoute(options)
+  }
   try {
     const registration = llm.registerAdapter([providerId], piProviderDshAdapter(providerId, provider, host))
     const route = (() => { registration() }) as PiRouteHandle

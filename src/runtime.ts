@@ -33,11 +33,13 @@ import {
   loginPiProvider,
   providerSupportsOAuth,
   resolvePiProviderAuth,
+  storedOAuthCredential,
 } from './oauth-bridge.js'
 import { __setPiAiLlmBridge, builtinProviders } from './compat/pi-ai.js'
 import { validateToolArguments } from './compat/vendor/pi-tool-validation.js'
 import { ModelCatalog, llmOf, streamViaDshLlm, type DshAttachmentsLike } from './model-bridge.js'
 import { imageAdmissionCompanionAdapter, providerCarriesTransport, registerPiProviderRoute, type PiRouteHandle } from './provider-adapter.js'
+import { oauthCredentialRef } from './credentials-oauth.js'
 
 type UnknownRecord = Record<string, unknown>
 type PiHandler = (event: UnknownRecord, context: UnknownRecord) => unknown | Promise<unknown>
@@ -2245,6 +2247,61 @@ async function supersedeActiveLogin(state: RuntimeState): Promise<string | undef
 }
 
 /**
+ * Give a logged-in provider a route, if nothing else already gave it one.
+ *
+ * Pi's built-in OAuth providers (openai-codex, anthropic, github-copilot,
+ * kimi-coding) are seeded so `/login` can offer them, but they carry no
+ * transport and no catalog — so the registration path above never builds them
+ * a route, and a successful login used to leave the model picker unchanged.
+ * A stored credential is the whole precondition: with one, the models pi-ai's
+ * installed catalog describes become selectable through DSH's own adapter.
+ * @param name - the Pi provider id, which is also its DSH route name.
+ * @param config - the provider config, whose oauth block made it loginable.
+ * @returns whether this call put a route in place.
+ */
+async function ensureLoggedInProviderRoute(
+  ctx: Context,
+  state: RuntimeState,
+  name: string,
+  config: UnknownRecord,
+): Promise<boolean> {
+  if (!providerSupportsOAuth(config)) return false
+  // A package that carries a transport or declares a catalog already has its
+  // own, better, route — this is only for a provider whose sole capability is
+  // logging in.
+  if (providerCarriesTransport(config) || state.providerRouteDisposers.has(name)) return false
+  // Already routed (this profile was written by an earlier session, and the
+  // official adapter registered it at boot): nothing to write, and writing
+  // anyway would rewrite the user's settings file on every start.
+  if (llmOf(ctx)?.listProviders().some(provider => provider.id === name) === true) return false
+  const credential = await storedOAuthCredential(oauthStoreOf(state), name).catch(() => undefined)
+  if (credential === undefined) return false
+  const settings = optionalService<{ update(ns: string, patch: object): Promise<void> }>(ctx, 'settings')
+  if (settings === undefined) {
+    logger(ctx).warn(`[pi2dsh] logged in to ${JSON.stringify(name)}, but this composition has no settings service to declare its model route in`)
+    return false
+  }
+  // The route is CONFIGURATION, not transport: the official llm-pi-ai adapter
+  // is already mounted and owns this namespace, so the profile goes into its
+  // settings section — mounting a second copy of that plugin collides on the
+  // provider directory it declares ("configurable provider ... is already
+  // declared"). The profile names the credential and nothing else: no api, no
+  // baseURL, no models, so the adapter reuses pi-ai's installed provider with
+  // its own protocol, quirks and model catalog.
+  await settings.update('llm-pi-ai', {
+    providers: {
+      [name]: {
+        // The name the user logged in as, so the picker groups models under
+        // "OpenAI (ChatGPT Plus/Pro)" rather than a bare route key.
+        ...(typeof config.name === 'string' ? { displayName: config.name } : {}),
+        apiKeyEnv: oauthCredentialRef(name),
+      },
+    },
+  })
+  return true
+}
+
+/**
  * Ask a provider package to discover its models, then let the host see them.
  *
  * Gateway discovery needs a credential, and a credential is not always there
@@ -2382,7 +2439,12 @@ function registerLoginCommand(ctx: Context, state: RuntimeState): void {
       // missing. Running it now — and re-announcing the route — is what makes
       // this provider's models appear in the model picker without a restart;
       // logging in and then finding nothing to select is not a login.
+      // Logging in is only half of "I want this gateway's models": the other
+      // half is the route. Declared first, so the discovery below (and the
+      // count reported to the user) sees it.
+      const declared = await ensureLoggedInProviderRoute(ctx, state, providerId, config)
       const discovered = await discoverProviderModels(ctx, state, providerId, config)
+        ?? (declared ? await llmOf(ctx)?.listModels(providerId).then(list => list.length).catch(() => undefined) : undefined)
       const models = discovered === undefined ? '' : `; ${discovered} models available`
       ui.notify(`Logged in to ${oauthName}${models}`)
       return `Logged in to ${oauthName}${models}`
@@ -3370,6 +3432,13 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
     state.providers.set(provider.id, { name: provider.name, baseUrl: provider.baseUrl, oauth: provider.auth.oauth })
   }
   ensureLoginCommand(ctx, state)
+  // A credential stored by an EARLIER session must still produce a route:
+  // otherwise the models a user logged in for vanish on the next restart and
+  // they are told to log in again to something they are already logged in to.
+  for (const [name, config] of [...state.providers]) {
+    void ensureLoggedInProviderRoute(ctx, state, name, config)
+      .catch(error => logger(ctx).warn(`[pi2dsh] could not restore the route for logged-in provider ${JSON.stringify(name)}: ${error instanceof Error ? error.message : String(error)}`))
+  }
   if (options.manifest.skillDirs.length > 0) {
     const skills = (ctx as unknown as { get(name: string): unknown }).get('skills')
     if (skills === undefined) logger(ctx).warn('[pi2dsh] migrated skills were not mounted because this DSH composition has no ctx.skills')

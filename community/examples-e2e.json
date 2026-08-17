@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pi2dshCommit": "36fa38b0f835ad9291031d3cfe598ac1d910287c",
+  "pi2dshCommit": "192b3a9787d470190f0da6c836fb9a149d655f01",
   "dshCommit": "47f943859bef60e4160492346772ded9b24f765a",
   "results": {
     "visionBridge": {
@@ -11,87 +11,21 @@
       "status": "skipped",
       "reason": "no vision endpoint configured (VISION_BRIDGE_BASE_URL, VISION_BRIDGE_MODEL, VISION_BRIDGE_API_KEY)"
     },
-    "gatewayCompat": {
-      "engine": {
-        "version": "0.12.3",
-        "from": "local",
-        "spec": "file:/Users/developer/projj/workspace/pi2dsh",
-        "commit": "36fa38b0f835ad9291031d3cfe598ac1d910287c",
-        "dirty": true
-      },
-      "status": "passed",
-      "requests": 2,
-      "roles": [
-        "system",
-        "user",
-        "user",
-        "user",
-        "user"
-      ],
-      "maxTokensField": "max_tokens",
-      "store": null,
-      "reasoningEffort": null,
-      "bodyKeys": [
-        "max_tokens",
-        "messages",
-        "model",
-        "stream",
-        "stream_options",
-        "tools"
-      ],
-      "previews": [
-        "system: You are an AI agent powered by DeepSeek Harness. You are a ",
-        "user: Reply with exactly: gateway-compat-ok",
-        "user: <system-reminder> The following workspace instructions may b",
-        "user: Current runtime context. This snapshot supersedes earlier ru",
-        "user: <system-reminder> A skill is a reusable set of task-specific"
-      ]
-    },
-    "customGateways": {
-      "status": "passed",
-      "engine": {
-        "version": "0.12.3",
-        "from": "local",
-        "spec": "file:/Users/developer/projj/workspace/pi2dsh",
-        "commit": "36fa38b0f835ad9291031d3cfe598ac1d910287c",
-        "dirty": true
-      },
-      "seenByPackage": {
-        "provider": "my-gateway",
-        "id": "deepseek-chat",
-        "api": "faux",
-        "contextWindow": 131072
-      }
+    "sideConversation": {
+      "status": "failed",
+      "error": "Command failed: node /Users/developer/projj/workspace/pi2dsh/docs/posting-kit/capture-screenshots.mjs /var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-ex-side-Q39B2G/shots --url http://127.0.0.1:5187\nnode:internal/modules/run_main:123\n    triggerUncaughtException(\n    ^\n\nbrowserType.launch: Executable doesn't exist at /Users/developer/Library/Caches/ms-playwright/chromium_headless_shell-1228/chrome-headless-shell-mac-arm64/chrome-headless-shell\n╔════════════════════════════════════════════════════════════╗\n║ Looks like Playwright was just installed or updated.       ║\n║ Please run the following command to download new browsers: ║\n║                                                            ║\n║     pnpm exec playwright install                           ║\n║                                                            ║\n║ <3 Playwright Team                                         ║\n╚════════════════════════════════════════════════════════════╝\n    at openApp (/Users/developer/projj/workspace/pi2dsh/docs/posting-kit/web-drive.mjs:56:34)\n    at async file:///Users/developer/projj/workspace/pi2dsh/docs/posting-kit/capture-screenshots.mjs:24:51 {\n  log: [],\n  name: 'Error'\n}\n\nNode.js v22.22.0\n"
     },
     "presentationSurfaces": {
-      "status": "passed",
-      "engine": {
-        "version": "0.12.3",
-        "from": "local",
-        "spec": "file:/Users/developer/projj/workspace/pi2dsh",
-        "commit": "36fa38b0f835ad9291031d3cfe598ac1d910287c",
-        "dirty": true
-      },
-      "screenshots": [
-        "06-presentation-surfaces.png"
-      ]
+      "status": "failed",
+      "error": "Command failed: node /Users/developer/projj/workspace/pi2dsh/docs/posting-kit/capture-surfaces.mjs /var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-ex-surfaces-ZARsJH/shots --url http://127.0.0.1:5189\nnode:internal/modules/run_main:123\n    triggerUncaughtException(\n    ^\n\nbrowserType.launch: Executable doesn't exist at /Users/developer/Library/Caches/ms-playwright/chromium_headless_shell-1228/chrome-headless-shell-mac-arm64/chrome-headless-shell\n╔════════════════════════════════════════════════════════════╗\n║ Looks like Playwright was just installed or updated.       ║\n║ Please run the following command to download new browsers: ║\n║                                                            ║\n║     pnpm exec playwright install                           ║\n║                                                            ║\n║ <3 Playwright Team                                         ║\n╚════════════════════════════════════════════════════════════╝\n    at openApp (/Users/developer/projj/workspace/pi2dsh/docs/posting-kit/web-drive.mjs:56:34)\n    at async file:///Users/developer/projj/workspace/pi2dsh/docs/posting-kit/capture-surfaces.mjs:21:43 {\n  log: [],\n  name: 'Error'\n}\n\nNode.js v22.22.0\n"
     },
-    "sideConversation": {
-      "status": "passed",
-      "engine": {
-        "version": "0.12.3",
-        "from": "local",
-        "spec": "file:/Users/developer/projj/workspace/pi2dsh",
-        "commit": "36fa38b0f835ad9291031d3cfe598ac1d910287c",
-        "dirty": true
-      },
-      "screenshots": [
-        "01-side-conversation-main-thread-clean.png",
-        "02-side-conversation-panel.png",
-        "03-side-conversation-host-catalog.png",
-        "04-side-conversation-injected-on-request.png",
-        "05-side-conversation-child-view.png"
-      ]
+    "customGateways": {
+      "status": "failed",
+      "error": "Command failed: node --import tsx/esm /Users/developer/projj/workspace/deepseek-harness/apps/cli/src/bin.ts --profile headless call the pi_registry_probe tool once and repeat its output\ndsh: TRANSPORT: DeepSeek API request to https://api.deepseek.com failed\n"
+    },
+    "gatewayCompat": {
+      "status": "failed",
+      "error": "Command failed: node --import tsx/esm /Users/developer/projj/workspace/deepseek-harness/apps/cli/src/bin.ts --profile headless Reply with exactly: gateway-compat-ok\ndsh: SERVER: 502: {\"message\":\"recording-proxy: upstream unreachable: TypeError: fetch failed\"}\n"
     }
   }
 }

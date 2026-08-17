@@ -753,3 +753,160 @@ describe('logging in is what makes a gateway\'s models selectable', () => {
     }
   })
 })
+
+describe('an OAuth-only provider has no models until logging in gives it a route', () => {
+  it('declares the route in the official adapter\'s settings section, not a second copy of it', async () => {
+    // Pi's built-in OAuth providers (openai-codex, anthropic, github-copilot,
+    // kimi-coding) ship no transport and no catalog: nothing above builds them
+    // a route, so a successful login stored a token that nothing could use and
+    // the model picker did not change. The route is CONFIGURATION — the
+    // official llm-pi-ai adapter is already mounted and owns that namespace,
+    // so mounting a second copy collides on the provider directory it declares
+    // ("configurable provider ... is already declared"). It goes in settings.
+    const scratch = await mkdtemp(join(tmpdir(), 'pi2dsh-oauth-route-'))
+    cleanup.push(scratch)
+    await mkdir(join(scratch, 'pkg'), { recursive: true })
+    await writeFile(join(scratch, 'pkg', 'extension.js'), [
+      'export default function (pi) {',
+      // Nothing but an oauth block: the shape of every built-in login provider.
+      "  pi.registerProvider('fixauth', {",
+      "    id: 'fixauth',",
+      "    name: 'Fixture Account',",
+      '    oauth: {',
+      "      name: 'Fixture Account',",
+      "      login: async () => ({ access: 'tok-xyz', refresh: 'r1', expires: Date.now() + 3_600_000 }),",
+      '      refreshToken: async (credential) => credential,',
+      '      getApiKey: (credential) => credential.access,',
+      '    },',
+      '  })',
+      '}',
+    ].join('\n'), 'utf8')
+
+    const written: Array<{ ns: string, patch: unknown }> = []
+    const ctx = new Context()
+    await ctx.plugin(SessionStore)
+    await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
+    await ctx.plugin(ToolRuntime)
+    await ctx.plugin(CommandRuntime)
+    await ctx.plugin(SkillRegistry)
+    await ctx.plugin(AgentRegistry)
+    await ctx.plugin(LlmRuntime as never, {} as never)
+    // Stand in for the settings service the composition mounts, recording what
+    // the bridge asks it to store.
+    ;(ctx as unknown as { provide(name: string, value: unknown): void }).provide('settings', {
+      update: async (ns: string, patch: unknown) => { written.push({ ns, patch }) },
+    })
+    process.env.PI_CODING_AGENT_DIR = join(scratch, 'agent')
+    try {
+      await ctx.plugin({
+        name: 'pi2dsh:oauth-route-test',
+        inject: ['tools', 'systemPrompt', 'commands', 'skills'],
+        async apply(inner: Context) {
+          await applyPiPackage(inner, {
+            rootUrl: pathToFileURL(`${join(scratch, 'pkg')}/`),
+            manifest: {
+              schemaVersion: 1,
+              package: { name: '@pi2dsh-fixtures/oauth-route', version: '0.0.0' },
+              extensions: ['extension.js'],
+              skillDirs: [],
+              prompts: [],
+            } as never,
+          })
+        },
+      } as Plugin.Object)
+      await settle()
+
+      // Before the login there is nothing to route with, so nothing is written.
+      expect(written).toEqual([])
+
+      const session = ctx.sessions.create(SessionId('pi2dsh-oauth-route'), {
+        meta: { createdAt: Date.now(), cwd: scratch },
+      })
+      const agent = { id: session.id, session, ctx: undefined as unknown, options: {}, inbox: {}, status: 'idle' }
+      const result = await ctx.commands.execute(agent as never, '/login fixauth', new AbortController().signal)
+      expect(result?.result.kind).toBe('success')
+      await settle()
+
+      // One write, into the official adapter's own namespace, naming the
+      // credential REFERENCE and never the token.
+      expect(written).toHaveLength(1)
+      expect(written[0]?.ns).toBe('llm-pi-ai')
+      expect(written[0]?.patch).toEqual({
+        providers: { fixauth: { displayName: 'Fixture Account', apiKeyEnv: 'PI2DSH_OAUTH_FIXAUTH' } },
+      })
+      expect(JSON.stringify(written[0])).not.toContain('tok-xyz')
+    } finally {
+      delete process.env.PI_CODING_AGENT_DIR
+    }
+  })
+})
+
+describe('a catalog-only Pi provider is declared, not mounted twice', () => {
+  it('writes its profile into the official adapter\'s settings section', async () => {
+    // Same collision, the other entry point: a package that declares a gateway
+    // without shipping code to call it used to get its own copy of the
+    // official llm-pi-ai plugin. In any composition that already mounts that
+    // adapter — the normal one — the second copy re-declares the whole
+    // provider directory and is refused, so the gateway simply never worked.
+    const scratch = await mkdtemp(join(tmpdir(), 'pi2dsh-catalog-route-'))
+    cleanup.push(scratch)
+    await mkdir(join(scratch, 'pkg'), { recursive: true })
+    await writeFile(join(scratch, 'pkg', 'extension.js'), [
+      'export default function (pi) {',
+      "  pi.registerProvider('fixcat', {",
+      "    id: 'fixcat',",
+      "    name: 'Fixture Catalog Gateway',",
+      '    getModels: () => [{',
+      "      id: 'fixcat-1', name: 'Fixture Cat One', provider: 'fixcat',",
+      "      api: 'openai-completions', baseUrl: 'https://gw.fixture.test/v1',",
+      "      contextWindow: 64000, maxTokens: 4096, compat: { maxTokensField: 'max_tokens' },",
+      '    }],',
+      '  })',
+      '}',
+    ].join('\n'), 'utf8')
+
+    const written: Array<{ ns: string, patch: unknown }> = []
+    const ctx = new Context()
+    await ctx.plugin(SessionStore)
+    await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
+    await ctx.plugin(ToolRuntime)
+    await ctx.plugin(CommandRuntime)
+    await ctx.plugin(SkillRegistry)
+    await ctx.plugin(AgentRegistry)
+    await ctx.plugin(LlmRuntime as never, {} as never)
+    ;(ctx as unknown as { provide(name: string, value: unknown): void }).provide('settings', {
+      update: async (ns: string, patch: unknown) => { written.push({ ns, patch }) },
+    })
+    await ctx.plugin({
+      name: 'pi2dsh:catalog-route-test',
+      inject: ['tools', 'systemPrompt', 'commands', 'skills'],
+      async apply(inner: Context) {
+        await applyPiPackage(inner, {
+          rootUrl: pathToFileURL(`${join(scratch, 'pkg')}/`),
+          manifest: {
+            schemaVersion: 1,
+            package: { name: '@pi2dsh-fixtures/catalog-route', version: '0.0.0' },
+            extensions: ['extension.js'],
+            skillDirs: [],
+            prompts: [],
+          } as never,
+        })
+      },
+    } as Plugin.Object)
+    await settle()
+
+    expect(written).toHaveLength(1)
+    expect(written[0]?.ns).toBe('llm-pi-ai')
+    expect(written[0]?.patch).toMatchObject({
+      providers: {
+        fixcat: {
+          displayName: 'Fixture Catalog Gateway',
+          api: 'openai-completions',
+          baseURL: 'https://gw.fixture.test/v1',
+          // The gateway's dialect rides through: it is why these packages exist.
+          models: [{ id: 'fixcat-1', contextWindow: 64000, compat: { maxTokensField: 'max_tokens' } }],
+        },
+      },
+    })
+  })
+})
