@@ -99,7 +99,13 @@ describe('interactive OAuth host seam', () => {
     expect(seenCallbacks).toEqual(['prompt:typed-answer', 'select:acct-1'])
     expect(notices.some(notice => notice.includes('https://auth.example.test/authorize'))).toBe(true)
     expect(notices.some(notice => notice.includes('ABCD-1234'))).toBe(true)
-    expect(prompts).toEqual(['Paste code', 'Pick account'])
+    // The first prompt now CARRIES the address the flow announced. It used to
+    // be the bare question, and the announcement went out as a command notice —
+    // which DSH delivers when the command ends, while this command is blocked
+    // waiting for the user to act on it. The user saw only the redirect URI.
+    expect(prompts[0]).toContain('Paste code')
+    expect(prompts[0]).toContain('ABCD-1234')
+    expect(prompts[1]).toBe('Pick account')
 
     const onDisk = JSON.parse(await readFile(path, 'utf8')) as Record<string, { type: string, access: string }>
     expect(onDisk.example).toMatchObject({ type: 'oauth', access: 'tok-access' })
@@ -190,5 +196,58 @@ describe('interactive OAuth host seam', () => {
 
     // auth.oauth nested inside a pi-ai provider object is recognized too.
     expect(providerSupportsOAuth({ auth: { oauth: { login: () => ({}), getApiKey: () => 'k' } } })).toBe(true)
+  })
+})
+
+describe('where the user is told to go', () => {
+  /** Record what each surface was asked to show. */
+  function surface() {
+    const notices: string[] = []
+    const prompts: string[] = []
+    return {
+      notices,
+      prompts,
+      ui: {
+        notify: (message: unknown) => { notices.push(String(message)) },
+        input: async (title: unknown) => { prompts.push(String(title)); return 'the-code' },
+        select: async (title: unknown, options: unknown[]) => { prompts.push(String(title)); return String(options[0]) },
+      },
+    }
+  }
+
+  it('carries the authorization URL into the next prompt', async () => {
+    // The flow announces the URL and then blocks asking for the code. A notice
+    // is delivered when the COMMAND ends, and the command cannot end until the
+    // user has visited that URL — so the address arrived after it was needed
+    // and the dialog showed only the redirect URI, which does nothing when
+    // clicked. It has to be in the prompt the user is looking at.
+    const seen = surface()
+    const flow = oauthInteraction(seen.ui as never)
+    flow.notify({ type: 'auth_url', url: 'https://auth.example.com/authorize?x=1' } as never)
+    const answer = await flow.prompt({ type: 'manual_code', message: 'Paste the code here:' } as never)
+
+    expect(answer).toBe('the-code')
+    expect(seen.prompts[0]).toContain('https://auth.example.com/authorize?x=1')
+    expect(seen.prompts[0]).toContain('Paste the code here:')
+  })
+
+  it('carries a device code the same way', async () => {
+    const seen = surface()
+    const flow = oauthInteraction(seen.ui as never)
+    flow.notify({ type: 'device_code', verificationUri: 'https://example.com/device', userCode: 'WXYZ-1234' } as never)
+    await flow.prompt({ type: 'text', message: 'Waiting…' } as never)
+
+    expect(seen.prompts[0]).toContain('https://example.com/device')
+    expect(seen.prompts[0]).toContain('WXYZ-1234')
+  })
+
+  it('carries it once, not onto every later prompt', async () => {
+    const seen = surface()
+    const flow = oauthInteraction(seen.ui as never)
+    flow.notify({ type: 'auth_url', url: 'https://auth.example.com/authorize' } as never)
+    await flow.prompt({ type: 'manual_code', message: 'First:' } as never)
+    await flow.prompt({ type: 'manual_code', message: 'Second:' } as never)
+
+    expect(seen.prompts[1]).toBe('Second:')
   })
 })

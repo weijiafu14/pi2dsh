@@ -104,21 +104,41 @@ export function oauthInteraction(ui: OAuthUiSurface, signal?: AbortSignal): {
   // Pi hosts always hand flows a live signal; flows attach abort listeners
   // unconditionally, so an absent caller signal becomes a never-aborting one.
   const effectiveSignal = signal ?? new AbortController().signal
+  // Where the user has to GO to authorize, held until the next prompt.
+  //
+  // The flow announces the authorization URL through notify() and then blocks
+  // on prompt() for the code. A notice is a command notice on DSH: it reaches
+  // the user when the command ENDS — and this command cannot end until the user
+  // acts on the notice. So the address was delivered after it was needed, and
+  // the dialog on screen showed only the redirect URI (localhost/auth/callback),
+  // which does nothing when clicked. Carrying it into the prompt puts it where
+  // the user is already looking.
+  let pending: string | undefined
+  const withPending = (message: string): string => {
+    if (pending === undefined) return message
+    const carried = pending
+    pending = undefined
+    return `${carried}\n\n${message}`
+  }
   return {
     signal: effectiveSignal,
     async prompt(prompt) {
       if (prompt.type === 'select') {
         const options = prompt.options ?? []
-        const picked = await ui.select(prompt.message, options.map(option => option.label))
+        const picked = await ui.select(withPending(prompt.message), options.map(option => option.label))
         return options.find(option => option.label === picked)?.id ?? picked
       }
-      return ui.input(prompt.message, prompt.placeholder)
+      return ui.input(withPending(prompt.message), prompt.placeholder)
     },
     notify(event) {
       if (event.type === 'auth_url') {
-        ui.notify(`Open this URL to authorize: ${event.url}${event.instructions !== undefined ? `\n${event.instructions}` : ''}`)
+        const text = `Open this URL to authorize: ${event.url}${event.instructions !== undefined ? `\n${event.instructions}` : ''}`
+        pending = text
+        ui.notify(text)
       } else if (event.type === 'device_code') {
-        ui.notify(`Visit ${event.verificationUri} and enter code ${event.userCode}`)
+        const text = `Visit ${event.verificationUri} and enter code ${event.userCode}`
+        pending = text
+        ui.notify(text)
       } else if (event.message !== undefined) {
         ui.notify(event.message)
       }
