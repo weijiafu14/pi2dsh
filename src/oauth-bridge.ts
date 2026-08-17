@@ -4,6 +4,7 @@ import { dirname } from 'node:path'
 import { InMemoryCredentialStore } from './compat/vendor/pi-ai-credential-store.js'
 import { resolveProviderAuth } from './compat/vendor/pi-ai-auth-resolve.js'
 import { adaptOAuth } from './compat/vendor/pi-oauth-adapt.js'
+import { openBrowser } from './compat/vendor/pi-open-browser.js'
 
 type UnknownRecord = Record<string, unknown>
 
@@ -96,6 +97,21 @@ interface OAuthNotifyEvent {
 
 // The pi-ai interaction surface ({prompt, notify, signal}) over the Pi ui
 // surface pi2dsh already maps to DSH userQuestions.
+/**
+ * Hand a URL to the platform browser, never letting the attempt break login.
+ * @param url - the address the flow announced, when it announced one.
+ */
+function openIfPossible(url: string | undefined): void {
+  if (typeof url !== 'string' || !/^https?:\/\//u.test(url)) return
+  try {
+    openBrowser(url)
+  } catch {
+    // Best effort by design: the URL is in the prompt either way, and a host
+    // with no desktop session (a container, a remote box) must still be able to
+    // finish the login by pasting the code.
+  }
+}
+
 export function oauthInteraction(ui: OAuthUiSurface, signal?: AbortSignal): {
   prompt(prompt: OAuthPromptEvent): Promise<string | undefined>
   notify(event: OAuthNotifyEvent): void
@@ -135,10 +151,16 @@ export function oauthInteraction(ui: OAuthUiSurface, signal?: AbortSignal): {
         const text = `Open this URL to authorize: ${event.url}${event.instructions !== undefined ? `\n${event.instructions}` : ''}`
         pending = text
         ui.notify(text)
+        // Open it, the way Pi's own login dialog does. The flows themselves
+        // print "A browser window should open" — that sentence is Pi telling
+        // the user what the HOST is about to do, and a host that does not do it
+        // leaves a wrapped, unclickable URL and no way to authorize.
+        openIfPossible(event.url)
       } else if (event.type === 'device_code') {
         const text = `Visit ${event.verificationUri} and enter code ${event.userCode}`
         pending = text
         ui.notify(text)
+        openIfPossible(event.verificationUri)
       } else if (event.message !== undefined) {
         ui.notify(event.message)
       }
