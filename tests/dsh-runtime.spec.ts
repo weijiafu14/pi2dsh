@@ -796,6 +796,12 @@ describe('an OAuth-only provider has no models until logging in gives it a route
     ;(ctx as unknown as { provide(name: string, value: unknown): void }).provide('settings', {
       update: async (ns: string, patch: unknown) => { written.push({ ns, patch }) },
     })
+    // A route is only declared once its credential can actually be supplied —
+    // declaring one first is what produced MISSING_CREDENTIAL on every request.
+    ;(ctx as unknown as { provide(name: string, value: unknown): void }).provide('credentials', {
+      set: async () => {},
+      describe: async () => ({ configured: false, writable: true }),
+    })
     process.env.PI_CODING_AGENT_DIR = join(scratch, 'agent')
     try {
       await ctx.plugin({
@@ -908,5 +914,100 @@ describe('a catalog-only Pi provider is declared, not mounted twice', () => {
         },
       },
     })
+  })
+})
+
+describe('the credential behind the reference the profile names', () => {
+  it('stores the logged-in key in the host credential service, and refreshes it per request', async () => {
+    // The profile says `apiKeyEnv: PI2DSH_OAUTH_<ID>`; something has to put a
+    // value behind that name or every request fails with MISSING_CREDENTIAL —
+    // which is exactly what a real login produced. DSH's credentials service is
+    // a SINGLE service, so the bridge cannot mount a resolver beside the host's
+    // own: the value goes into the host's store. And an OAuth token rotates, so
+    // storing it once at login is not enough — the per-request seam re-reads it
+    // through Pi's own refresh.
+    const scratch = await mkdtemp(join(tmpdir(), 'pi2dsh-cred-publish-'))
+    cleanup.push(scratch)
+    await mkdir(join(scratch, 'pkg'), { recursive: true })
+    await writeFile(join(scratch, 'pkg', 'extension.js'), [
+      'let issued = 0',
+      'export default function (pi) {',
+      "  pi.registerProvider('fixcred', {",
+      "    id: 'fixcred',",
+      "    name: 'Fixture Credential Gateway',",
+      '    oauth: {',
+      "      name: 'Fixture Credential Gateway',",
+      // Always inside Pi's five-minute expiry window, so every resolution
+      // rotates and a stored value that is never re-read stays visibly stale.
+      "      login: async () => ({ access: 'key-1', refresh: 'r1', expires: Date.now() + 60_000 }),",
+      "      refreshToken: async () => ({ access: `key-${++issued + 1}`, refresh: 'r1', expires: Date.now() + 60_000 }),",
+      '      getApiKey: (credential) => credential.access,',
+      '    },',
+      '  })',
+      '}',
+    ].join('\n'), 'utf8')
+
+    const stored = new Map<string, string>()
+    const ctx = new Context()
+    await ctx.plugin(SessionStore)
+    await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
+    await ctx.plugin(ToolRuntime)
+    await ctx.plugin(CommandRuntime)
+    await ctx.plugin(SkillRegistry)
+    await ctx.plugin(AgentRegistry)
+    await ctx.plugin(LlmRuntime as never, {} as never)
+    ;(ctx as unknown as { provide(name: string, value: unknown): void }).provide('settings', {
+      update: async () => {},
+    })
+    ;(ctx as unknown as { provide(name: string, value: unknown): void }).provide('credentials', {
+      set: async (ref: string, value: string) => { stored.set(ref, value) },
+      describe: async () => ({ configured: false, writable: true }),
+    })
+    process.env.PI_CODING_AGENT_DIR = join(scratch, 'agent')
+    try {
+      await ctx.plugin({
+        name: 'pi2dsh:cred-publish-test',
+        inject: ['tools', 'systemPrompt', 'commands', 'skills'],
+        async apply(inner: Context) {
+          await applyPiPackage(inner, {
+            rootUrl: pathToFileURL(`${join(scratch, 'pkg')}/`),
+            manifest: {
+              schemaVersion: 1,
+              package: { name: '@pi2dsh-fixtures/cred-publish', version: '0.0.0' },
+              extensions: ['extension.js'],
+              skillDirs: [],
+              prompts: [],
+            } as never,
+          })
+        },
+      } as Plugin.Object)
+      await settle()
+
+      const session = ctx.sessions.create(SessionId('pi2dsh-cred-publish'), {
+        meta: { createdAt: Date.now(), cwd: scratch },
+      })
+      const agent = { id: session.id, session, ctx: undefined as unknown, options: {}, inbox: {}, status: 'idle' }
+      await ctx.commands.execute(agent as never, '/login fixcred', new AbortController().signal)
+      await settle()
+
+      // The key the package's own getApiKey produced, under the reference the
+      // profile names — Pi's resolution refreshed the expiring token first, so
+      // this is the ROTATED key and never the refresh token beside it.
+      expect(stored.get('PI2DSH_OAUTH_FIXCRED')).toBe('key-2')
+      expect([...stored.values()].join()).not.toContain('r1')
+
+      // A request on that route re-publishes: an access token expires, and a
+      // value stored once at login goes stale under the user.
+      const llm = (ctx as unknown as { llm: { stream(options: object): AsyncIterable<unknown> } }).llm
+      for await (const _ of llm.stream({
+        provider: 'fixcred',
+        model: 'anything',
+        messages: [{ role: 'user', content: [{ type: 'text', text: 'hi' }], source: { kind: 'user' } }],
+      })) { /* the route has no adapter here; the hook runs either way */ }
+      await settle()
+      expect(stored.get('PI2DSH_OAUTH_FIXCRED')).toBe('key-3')
+    } finally {
+      delete process.env.PI_CODING_AGENT_DIR
+    }
   })
 })

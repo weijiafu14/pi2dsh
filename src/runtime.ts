@@ -32,6 +32,7 @@ import {
   joinSignals,
   loginPiProvider,
   providerSupportsOAuth,
+  resolveOAuthApiKey,
   resolvePiProviderAuth,
   storedOAuthCredential,
 } from './oauth-bridge.js'
@@ -166,6 +167,9 @@ interface RuntimeState {
   companionRoutes: Map<string, string>
   // Live DSH llm routes registered for transport-carrying Pi providers.
   providerRouteDisposers: Map<string, PiRouteHandle>
+  // Last key handed to the host credential store per provider, so a request
+  // that did not rotate anything writes nothing.
+  publishedOAuthKeys: Map<string, string>
   // The host-shared slice this package state was built over.
   shared: SharedHostState
 }
@@ -1990,10 +1994,12 @@ const COMPANION_ROUTE_PREFIX = 'pi2dsh-companion/'
 interface SharedHostState {
   companionRoutes: Map<string, string>
   providerRouteDisposers: Map<string, PiRouteHandle>
+  publishedOAuthKeys: Map<string, string>
   providers: Map<string, UnknownRecord>
   modelCatalog?: ModelCatalog
   catalogSubscribed?: boolean
   loginRegistered?: boolean
+  oauthRefreshHooked?: boolean
   companionSweepSubscribed?: boolean
   oauthStore?: FileCredentialStore
   capabilityLedger?: CapabilityLedger
@@ -2035,6 +2041,7 @@ function sharedHostStateOf(ctx: Context): SharedHostState {
     shared = {
       companionRoutes: new Map(),
       providerRouteDisposers: new Map(),
+      publishedOAuthKeys: new Map(),
       providers: new Map(),
     }
     SHARED_HOST_STATE.set(key, shared)
@@ -2288,6 +2295,13 @@ async function ensureLoggedInProviderRoute(
   // declared"). The profile names the credential and nothing else: no api, no
   // baseURL, no models, so the adapter reuses pi-ai's installed provider with
   // its own protocol, quirks and model catalog.
+  // The profile names a credential; something has to put a value behind that
+  // name. DSH's credentials service is a SINGLE service (credentials-local
+  // holds it), so a bridge-owned provider cannot be mounted beside it without
+  // shadowing the host's own store — the value goes into the host's store
+  // instead, and stays fresh through the per-request hook below.
+  if (!await publishOAuthCredential(ctx, state, name, config)) return false
+  keepOAuthCredentialFresh(ctx, state)
   await settings.update('llm-pi-ai', {
     providers: {
       [name]: {
@@ -2299,6 +2313,83 @@ async function ensureLoggedInProviderRoute(
     },
   })
   return true
+}
+
+interface DshCredentialsLike {
+  set(ref: string, value: string): Promise<void>
+  describe(ref: string): Promise<{ configured: boolean, writable: boolean }>
+}
+
+/**
+ * Put a logged-in provider's current key where the official adapter reads it.
+ *
+ * Pi keeps the OAuth credential (access + refresh + expiry) in its own store;
+ * DSH's adapter reads one opaque value through the credentials seam. This is
+ * the join: Pi's resolution runs — including its double-checked-lock refresh
+ * when the token is inside the five-minute window — and whatever key that
+ * yields is stored under the reference the profile names.
+ * @returns whether a key is now behind the reference.
+ */
+async function publishOAuthCredential(
+  ctx: Context,
+  state: RuntimeState,
+  name: string,
+  config: UnknownRecord,
+): Promise<boolean> {
+  const credentials = optionalService<DshCredentialsLike>(ctx, 'credentials')
+  if (credentials === undefined) {
+    logger(ctx).warn(`[pi2dsh] logged in to ${JSON.stringify(name)}, but this composition has no credentials service to hand the token to`)
+    return false
+  }
+  const key = await resolveOAuthApiKey({
+    providerId: name, providerConfig: config, store: oauthStoreOf(state),
+  }).catch(() => undefined)
+  if (key === undefined || key.length === 0) {
+    // Some flows hand back a header rather than a key (kimi-coding returns
+    // `{headers: {Authorization: ...}}`). DSH's profile carries a credential
+    // REFERENCE, never a secret, so a header-shaped credential has nowhere to
+    // go — and staying silent about it is how "logged in, still no models"
+    // happens. Say it once, plainly, instead of leaving an empty picker.
+    logger(ctx).warn(`[pi2dsh] logged in to ${JSON.stringify(name)}, but this provider authenticates with a request header rather than an api key — DSH routes name a credential reference, so no model route was added for it`)
+    return false
+  }
+  const ref = oauthCredentialRef(name)
+  // An inherited environment value is the one layer the host cannot edit, and
+  // it WINS resolution — writing under it would be stored and never read.
+  const described = await credentials.describe(ref).catch(() => undefined)
+  if (described?.writable === false) return true
+  if (state.publishedOAuthKeys.get(name) === key) return true
+  await credentials.set(ref, key)
+  state.publishedOAuthKeys.set(name, key)
+  return true
+}
+
+/**
+ * Re-publish rotating OAuth keys at the moment a request needs them.
+ *
+ * An access token expires (codex's in about an hour), so a value stored once
+ * at login goes stale and every later request fails on a credential the user
+ * believes they supplied. DSH's own credentials contract is per-operation for
+ * exactly this reason, and `llm/stream` is the per-operation seam: Pi's
+ * refresh runs there, and only actually rotates when the token is near
+ * expiry — the same moment Pi's own hosts would.
+ */
+function keepOAuthCredentialFresh(ctx: Context, state: RuntimeState): void {
+  if (state.shared.oauthRefreshHooked === true) return
+  state.shared.oauthRefreshHooked = true
+  const cordisCtx = ctx as unknown as { on(event: string, handler: (...args: never[]) => unknown): () => void }
+  cordisCtx.on('llm/stream', ((options: UnknownRecord, next: () => unknown) => {
+    const provider = typeof options.provider === 'string' ? options.provider : undefined
+    const config = provider === undefined ? undefined : state.providers.get(provider)
+    if (provider === undefined || config === undefined || !providerSupportsOAuth(config)) return next()
+    // Refresh alongside the request rather than in front of it: blocking every
+    // stream on a store read would tax routes that never need it, and the
+    // stored value is only stale after the token rotates, which this call is
+    // what fixes for the NEXT request.
+    void publishOAuthCredential(ctx, state, provider, config)
+      .catch(error => logger(ctx).warn(`[pi2dsh] could not refresh the stored credential for ${JSON.stringify(provider)}: ${error instanceof Error ? error.message : String(error)}`))
+    return next()
+  }) as never)
 }
 
 /**
@@ -3422,6 +3513,7 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
     streamingTexts: new Map(),
     lastLoggedModels: new WeakMap(),
     providerRouteDisposers: shared.providerRouteDisposers,
+    publishedOAuthKeys: shared.publishedOAuthKeys,
   }
   subscribeLifecycle(ctx, state)
   subscribeInterceptors(ctx, state)
