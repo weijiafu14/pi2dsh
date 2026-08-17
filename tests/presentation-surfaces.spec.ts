@@ -58,6 +58,57 @@ export default function (pi) {
   command('s-message', async (args, ctx) => {
     pi.sendMessage({ role: 'custom', customType: 'probe-msg', content: 'raw' })
   })
+  const report = (ctx, key, value) => ctx.ui.setStatus(key, JSON.stringify(value))
+
+  command('s-state', async (args, ctx) => {
+    report(ctx, 'state', {
+      isIdle: ctx.isIdle(),
+      isProjectTrusted: ctx.isProjectTrusted(),
+      hasPendingMessages: ctx.hasPendingMessages(),
+      getContextUsage: ctx.getContextUsage() ?? null,
+      scopedModels: ctx.scopedModels,
+      getSystemPromptOptions: ctx.getSystemPromptOptions(),
+    })
+  })
+  command('s-wait-idle', async (args, ctx) => {
+    await ctx.waitForIdle()
+    report(ctx, 'waited', true)
+  })
+  command('s-auth', async (args, ctx) => {
+    report(ctx, 'auth', {
+      unknown: ctx.modelRegistry.hasConfiguredAuth({ provider: 'no-such-provider' }),
+      empty: ctx.modelRegistry.hasConfiguredAuth({}),
+    })
+  })
+  command('s-registry', async (args, ctx) => {
+    report(ctx, 'registry', { isArray: Array.isArray(ctx.modelRegistry.getAll()) })
+  })
+  command('s-terminal', async (args, ctx) => {
+    const off = ctx.ui.onTerminalInput(() => {})
+    report(ctx, 'terminal', { returns: typeof off })
+    off()
+  })
+  command('s-editor-component', async (args, ctx) => {
+    const factory = () => ({ render: () => ['x'] })
+    ctx.ui.setEditorComponent(factory)
+    report(ctx, 'editorComponent', { readBack: ctx.ui.getEditorComponent() === factory })
+  })
+  command('s-theme', async (args, ctx) => {
+    const all = ctx.ui.getAllThemes()
+    report(ctx, 'theme', {
+      count: all.length,
+      known: ctx.ui.getTheme(all[0].name) !== undefined,
+      unknown: ctx.ui.getTheme('no-such-theme') === undefined,
+      setKnown: ctx.ui.setTheme(all[0].name),
+      setUnknown: ctx.ui.setTheme('no-such-theme'),
+    })
+  })
+  command('s-tools-expanded', async (args, ctx) => {
+    const before = ctx.ui.getToolsExpanded()
+    ctx.ui.setToolsExpanded(true)
+    report(ctx, 'toolsExpanded', { before, after: ctx.ui.getToolsExpanded() })
+  })
+
   command('s-complete', async (args, ctx) => {
     ctx.ui.addAutocompleteProvider(current => ({
       async getSuggestions(lines, cursorLine, cursorCol, options) {
@@ -299,6 +350,90 @@ describe('content the package draws itself', () => {
     await run('s-message')
     const state = await get(`/pi2dsh/browser-state?session=${SESSION}`)
     expect((state.entries as Json[]).map(entry => entry.text)).toContain('message drawn by the package')
+  })
+})
+
+/** Read one JSON-reported status back out of the route. */
+async function reported(key: string): Promise<Json> {
+  const statuses = (await view()).statuses as Record<string, string | undefined>
+  const raw = statuses[key]
+  expect(raw, `the command reported no "${key}" status`).toBeTypeOf('string')
+  return JSON.parse(raw as string) as Json
+}
+
+describe('what a package can read about the session it is in', () => {
+  it('reports idle, trust, queued messages, context usage, scoped models and prompt options', async () => {
+    await run('s-state')
+    expect(await reported('state')).toEqual({
+      // A command runs outside a turn, so Pi's "is the agent idle" is true.
+      isIdle: true,
+      // DSH has no project-trust prompt; claiming trust would be a lie.
+      isProjectTrusted: false,
+      // The agent's durable inbox is empty in this fixture. This one used to be
+      // hardcoded false, which told every package the queue never fills.
+      hasPendingMessages: false,
+      // No live turn, so there is no usage to report — undefined over a guess.
+      getContextUsage: null,
+      // Empty means "not restricted". Handing back the whole catalog said the
+      // opposite: that the session is restricted to every model.
+      scopedModels: [],
+      getSystemPromptOptions: {},
+    })
+  })
+
+  it('waitForIdle resolves against the live agent rather than hanging', async () => {
+    await run('s-wait-idle')
+    expect(await reported('waited')).toBe(true)
+  })
+
+  it('hasConfiguredAuth answers false for a provider no route declares', async () => {
+    await run('s-auth')
+    // A configuration check, like Pi's: an unknown provider is not configured,
+    // and a model with no provider cannot be.
+    expect(await reported('auth')).toEqual({ unknown: false, empty: false })
+  })
+
+  it('modelRegistry.getAll returns a list, not undefined, with no models configured', async () => {
+    await run('s-registry')
+    expect(await reported('registry')).toEqual({ isArray: true })
+  })
+})
+
+// These are declined on purpose. A test still belongs here: the declining is a
+// decision, and it should break loudly if someone changes it by accident
+// rather than silently changing what packages observe.
+describe('surfaces this bridge deliberately does not connect', () => {
+  it('onTerminalInput accepts the subscription and hands back a disposer', async () => {
+    // DSH has no raw-terminal seam (no setRawMode anywhere), so nothing will
+    // ever fire — but Pi's contract is that the return value is callable, and
+    // a package that calls the disposer must not crash.
+    await run('s-terminal')
+    expect(await reported('terminal')).toEqual({ returns: 'function' })
+  })
+
+  it('setEditorComponent stores the factory and reads back identical', async () => {
+    // Mounting a Pi TUI editor component in a browser is the same class of
+    // problem as ui.custom; the factory is kept so getEditorComponent is
+    // honest, and nothing renders it.
+    await run('s-editor-component')
+    expect(await reported('editorComponent')).toEqual({ readBack: true })
+  })
+
+  it('the theme family answers about the one headless theme, and refuses others', async () => {
+    await run('s-theme')
+    expect(await reported('theme')).toMatchObject({
+      count: 1,
+      known: true,
+      unknown: true,
+      setKnown: { success: true },
+      // Refused with a reason rather than a fabricated success.
+      setUnknown: { success: false, error: expect.stringContaining('single theme') },
+    })
+  })
+
+  it('setToolsExpanded round-trips the flag it was given', async () => {
+    await run('s-tools-expanded')
+    expect(await reported('toolsExpanded')).toEqual({ before: false, after: true })
   })
 })
 
