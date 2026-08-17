@@ -118,6 +118,14 @@ export function getModel(_provider: string, _id: string): undefined {
   return undefined
 }
 
+// Pi exports both spellings of these three (`getModels` is an alias for
+// `getBuiltinModels`, and the providers/all entry uses the builtin spelling).
+// A package importing the name we happened not to export throws at load and
+// takes its whole package down, which reads as "the plugin is broken".
+export const getBuiltinModels = (provider?: string): unknown[] => getModels(provider)
+export const getBuiltinModel = (provider: string, id: string): undefined => getModel(provider, id)
+export const getBuiltinProviders = (): string[] => getProviders()
+
 export function getModels(_provider?: string): unknown[] {
   return []
 }

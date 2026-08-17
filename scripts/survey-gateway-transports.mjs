@@ -69,9 +69,23 @@ async function probe(name) {
 
     await mkdir(home, { recursive: true })
     await run(['plugin', '--profile', 'web', 'add', `file:${projectRoot}`])
-    const added = await run(['plugin', '--profile', 'web', 'add', name])
+    let added = await run(['plugin', '--profile', 'web', 'add', name])
+    let neededBuildApproval = false
+    if (!added.ok && added.out.includes('ERR_PNPM_IGNORED_BUILDS')) {
+      // Not a broken package: pnpm blocks dependency build scripts by default
+      // and that gate is the user's decision, which the README documents. A
+      // survey that reports this as "install failed" blames the package for a
+      // host policy. Approve it here (a measurement, recorded as such) and say
+      // so in the result.
+      neededBuildApproval = true
+      const blocked = [...added.out.matchAll(/Ignored build scripts: ([^\n]+)/gu)]
+        .flatMap(match => match[1].split(',').map(entry => entry.trim().replace(/@[^@]*$/u, '')))
+      await writeFile(join(home, 'profiles/web/pnpm-workspace.yaml'),
+        `allowBuilds:\n${blocked.map(pkg => `  ${JSON.stringify(pkg)}: true`).join('\n')}\n`)
+      added = await run(['plugin', '--profile', 'web', 'add', name])
+    }
     if (!added.ok) {
-      return { name, verdict: 'install-failed', detail: added.out.split('\n').filter(Boolean).slice(-2).join(' | ').slice(0, 200) }
+      return { name, verdict: 'install-failed', neededBuildApproval, detail: added.out.split('\n').filter(Boolean).slice(-2).join(' | ').slice(0, 200) }
     }
 
     // Boot once and read the mount lines. No turn, so no model call.
@@ -94,6 +108,7 @@ async function probe(name) {
     const mounted = /loaded ([^:]+): \d+ tools/u.exec(log)
     return {
       name,
+      ...(neededBuildApproval ? { neededBuildApproval: true } : {}),
       verdict: route !== null ? 'route' : catalogOnly !== null ? 'catalog-only' : mounted !== null ? 'mounted-no-provider' : 'unknown',
       providerId: route?.[1] ?? catalogOnly?.[1],
       mountLine: (log.split('\n').find(l => l.includes('[pi2dsh]') && l.includes(name.split('/').pop())) ?? '').trim().slice(0, 160),

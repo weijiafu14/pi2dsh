@@ -2,9 +2,8 @@
   "schemaVersion": 1,
   "note": "verdict is what the bridge reported at mount. \"route\" means the package carries its own transport and its compat reaches the request; it is NOT a claim that a real turn was run against that gateway.",
   "counts": {
-    "route": 3,
-    "mounted-no-provider": 8,
-    "install-failed": 1
+    "route": 10,
+    "mounted-no-provider": 2
   },
   "results": [
     {
@@ -26,17 +25,20 @@
     },
     {
       "name": "pi-cliproxyapi-provider",
-      "verdict": "mounted-no-provider",
+      "verdict": "route",
+      "providerId": "cpa",
       "mountLine": "[pi2dsh] loaded pi-cliproxyapi-provider: 0 tools, 2 commands, 0 skill roots"
     },
     {
       "name": "pi-provider-alibaba-bailian",
-      "verdict": "mounted-no-provider",
+      "verdict": "route",
+      "providerId": "alibaba-bailian",
       "mountLine": "[pi2dsh] loaded pi-provider-alibaba-bailian: 0 tools, 1 commands, 0 skill roots"
     },
     {
       "name": "pi-volcengine-provider",
-      "verdict": "mounted-no-provider",
+      "verdict": "route",
+      "providerId": "volcengine-plan",
       "mountLine": "[pi2dsh] loaded pi-volcengine-provider: 0 tools, 1 commands, 0 skill roots"
     },
     {
@@ -47,27 +49,32 @@
     },
     {
       "name": "@indexyz/pi-provider-sub2api",
-      "verdict": "install-failed",
-      "detail": "Command failed: node --import tsx/esm /Users/developer/projj/workspace/deepseek-harness/apps/cli/src/bin.ts plugin --profile web add @indexyz/pi-provider-sub2api | dsh: pnpm fa"
+      "neededBuildApproval": true,
+      "verdict": "mounted-no-provider",
+      "mountLine": "[pi2dsh] loaded @indexyz/pi-provider-sub2api: 0 tools, 1 commands, 0 skill roots"
     },
     {
       "name": "pi-moonshot-provider",
-      "verdict": "mounted-no-provider",
+      "verdict": "route",
+      "providerId": "moonshot",
       "mountLine": "[pi2dsh] loaded pi-moonshot-provider: 0 tools, 1 commands, 0 skill roots"
     },
     {
       "name": "pi-qwencloud-provider",
-      "verdict": "mounted-no-provider",
+      "verdict": "route",
+      "providerId": "qw",
       "mountLine": "[pi2dsh] loaded pi-qwencloud-provider: 0 tools, 2 commands, 0 skill roots"
     },
     {
       "name": "pi-fireworks-provider",
-      "verdict": "mounted-no-provider",
+      "verdict": "route",
+      "providerId": "fireworks",
       "mountLine": "[pi2dsh] loaded pi-fireworks-provider: 0 tools, 3 commands, 0 skill roots"
     },
     {
       "name": "pi-baseten-provider",
-      "verdict": "mounted-no-provider",
+      "verdict": "route",
+      "providerId": "baseten",
       "mountLine": "[pi2dsh] loaded pi-baseten-provider: 0 tools, 1 commands, 0 skill roots"
     }
   ]

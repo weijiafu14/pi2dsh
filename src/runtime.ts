@@ -3064,6 +3064,17 @@ async function loadExtensions(
     aliases[`${family}/pi-ai/compat`] = aiShim
     aliases[`${family}/pi-ai/oauth`] = aiShim
     aliases[`${family}/pi-ai/providers/all`] = aiShim
+    aliases[`${family}/pi-ai/bedrock-provider`] = aiShim
+    aliases[`${family}/pi-ai/bun-oauth`] = aiShim
+    // Pi publishes `./api/*` too, and a gateway package reaches for the entry
+    // that matches its protocol. Every one of them lands on the same shim.
+    for (const api of [
+      'anthropic-messages', 'openai-completions', 'openai-responses', 'openai-codex-responses',
+      'azure-openai-responses', 'google-generative-ai', 'google-vertex',
+      'mistral-conversations', 'bedrock-converse-stream', 'pi-messages',
+    ]) {
+      aliases[`${family}/pi-ai/api/${api}`] = aiShim
+    }
   }
   // Pi's loader hands extensions the host's typebox without a declaration;
   // mirror that by resolving every typebox entry the whitelist names to the

@@ -368,16 +368,18 @@ export interface RegisterPiProviderRouteOptions {
 function registerCatalogOnlyRoute(options: RegisterPiProviderRouteOptions): (() => void) | undefined {
   const { ctx, providerId, provider, host } = options
   const models = providerModels(provider as PiTransportProvider)
-  if (ctx === undefined || models.length === 0) {
-    host.warn(`[pi2dsh] Pi provider ${JSON.stringify(providerId)} declares no models to serve; nothing was registered`)
-    return undefined
-  }
-  const first = models[0] as UnknownRecord
+  if (ctx === undefined) return undefined
+  // An empty list at mount is normal, not a defect: a package may discover its
+  // models from the gateway later, or rely on pi-ai's installed catalog for a
+  // known provider name. The official profile's `models` is optional and
+  // omitting it serves that installed catalog, so a route is still built —
+  // refusing here would drop a provider that works the moment it is used.
+  const first = (models[0] ?? provider) as UnknownRecord
   const profile: UnknownRecord = {
     displayName: typeof provider.name === 'string' ? provider.name : providerId,
     ...(typeof first.api === 'string' ? { api: first.api } : {}),
     ...(typeof first.baseUrl === 'string' ? { baseURL: first.baseUrl } : {}),
-    models: models.map(model => ({
+    ...(models.length === 0 ? {} : { models: models.map(model => ({
       id: String(model.id ?? ''),
       ...(typeof model.name === 'string' ? { name: model.name } : {}),
       ...(typeof model.contextWindow === 'number' ? { contextWindow: model.contextWindow } : {}),
@@ -385,7 +387,7 @@ function registerCatalogOnlyRoute(options: RegisterPiProviderRouteOptions): (() 
       ...(Array.isArray(model.input) ? { input: model.input } : {}),
       // The gateway's dialect, which is the whole reason these packages exist.
       ...(model.compat === undefined ? {} : { compat: model.compat }),
-    })),
+    })) }),
   }
   let mounted: { dispose?: () => void } | undefined
   let disposed = false
