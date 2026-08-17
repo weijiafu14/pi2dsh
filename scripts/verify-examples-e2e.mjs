@@ -554,6 +554,63 @@ async function runCustomGateways() {
   }
 }
 
+// ---------------------------------------------------------------------------
+// examples/presentation-surfaces — a Pi package's own chrome, in DSH web seats
+// ---------------------------------------------------------------------------
+// The package under test is the one the example ships, installed the way its
+// README says to install it (`file:` on the checkout). No inline copy: a second
+// copy would let the example rot while the regression stayed green.
+async function runPresentationSurfaces() {
+  if (apiKey === undefined || apiKey.length === 0) {
+    results.presentationSurfaces = { status: 'skipped', reason: 'DEEPSEEK_API_KEY not set' }
+    return
+  }
+  const playwrightFrom = process.env.PLAYWRIGHT_FROM ?? join(dshRoot, 'apps/web')
+  const scratch = await mkdtemp(join(tmpdir(), 'pi2dsh-ex-surfaces-'))
+  let web
+  try {
+    const demo = join(projectRoot, 'examples/presentation-surfaces/pi-surface-demo')
+    await stat(join(demo, 'index.mjs'))
+    const { home, env, runDsh } = await makeHome(scratch)
+    await runDsh(['plugin', '--profile', 'web', 'add', engineSpec])
+    await runDsh(['plugin', '--profile', 'web', 'add', `file:${demo}`])
+    await useJsonlSessions(home, 'web')
+
+    const port = Number(process.env.SURFACES_PORT ?? 5189)
+    web = spawn('node', ['--import', 'tsx/esm', dshBin, '--profile', 'web', '--port', String(port)], {
+      cwd: dshRoot, env, stdio: ['ignore', 'pipe', 'pipe'],
+    })
+    let webLog = ''
+    web.stdout.on('data', chunk => { webLog += String(chunk) })
+    web.stderr.on('data', chunk => { webLog += String(chunk) })
+    const url = `http://127.0.0.1:${port}`
+    const deadline = Date.now() + 60_000
+    for (;;) {
+      if (web.exitCode !== null) throw new Error(`dsh web exited on startup:\n${webLog}`)
+      const up = await fetch(url).then(() => true).catch(() => false)
+      if (up) break
+      if (Date.now() > deadline) throw new Error(`dsh web never came up:\n${webLog}`)
+      await new Promise(done => setTimeout(done, 500))
+    }
+
+    // The capture script IS the assertion: each seat has to hold the string the
+    // Pi package supplied, checked inside that seat rather than in page text.
+    const shots = shotDir ?? join(scratch, 'shots')
+    await execFile('node', [join(projectRoot, 'docs/posting-kit/capture-surfaces.mjs'), shots, '--url', url], {
+      cwd: projectRoot,
+      env: { ...env, PLAYWRIGHT_FROM: playwrightFrom },
+      timeout: 300_000,
+      maxBuffer: 16 * 1024 * 1024,
+    }).catch(error => { console.log(String(error.stdout ?? '')); throw error })
+    const captured = await readdir(shots)
+    assert(captured.length > 0, 'the surfaces run produced no screenshots')
+    results.presentationSurfaces = { status: 'passed', engine: await installedEngineVersion(home, 'web'), screenshots: captured.sort() }
+  } finally {
+    web?.kill('SIGTERM')
+    await rm(scratch, { recursive: true, force: true })
+  }
+}
+
 // ONLY=<name> runs a single example, for iterating on one without paying for
 // the npm installs and browser runs of the others.
 const only = process.env.ONLY
@@ -563,6 +620,7 @@ const SCENARIOS = [
   ['side-conversation', runSideConversation, 'sideConversation'],
   ['vision-bridge-web', runVisionBridgeWeb, 'visionBridgeWeb'],
   ['custom-gateways', runCustomGateways, 'customGateways'],
+  ['presentation-surfaces', runPresentationSurfaces, 'presentationSurfaces'],
 ]
 const selected = SCENARIOS.filter(([name]) => only === undefined || only === name)
 if (selected.length === 0) {

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pi2dshCommit": "27131eb97194f8c0cec806dfa90599d16795ee5b",
+  "pi2dshCommit": "adcbb909440a47e4370238fc3781972f1a642ec2",
   "dshCommit": "47f943859bef60e4160492346772ded9b24f765a",
   "results": {
     "visionBridge": {
@@ -50,6 +50,15 @@
         "api": "faux",
         "contextWindow": 131072
       }
+    },
+    "presentationSurfaces": {
+      "status": "passed",
+      "engine": "0.12.3",
+      "screenshots": [
+        "06-presentation-surfaces.png",
+        "07-presentation-surfaces-composer.png",
+        "08-presentation-surfaces-mentions.png"
+      ]
     },
     "sideConversation": {
       "status": "passed",

@@ -222,7 +222,8 @@ ERR_PNPM_IGNORED_BUILDS）。example 里每条命令必须实际跑过；对外�
 
 已有：examples/vision-bridge（视觉委托）、examples/custom-gateways
 （DSH settings 网关配置）、examples/gateway-compat（provider compat 三坑）、
-examples/side-conversation（/btw 侧边会话）。存量已验证能力（guardian 审批、
+examples/side-conversation（/btw 侧边会话）、examples/presentation-surfaces
+（Pi 插件自己的界面落进 Web 座位）。存量已验证能力（guardian 审批、
 跨会话记忆、OAuth /login、MCP 配置转换、host 模式）的 example 待补——补前
 必须按上述判据重新端到端验证，禁止凭记忆写。
 
