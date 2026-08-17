@@ -62,14 +62,14 @@ const jsonlSessions = (home, profile) => writeFile(join(home, `profiles/${profil
 ].join('\n'))
 
 /** Start the passthrough recorder in front of the real upstream. */
-async function startRecorder(scratch, port) {
+async function startRecorder(scratch, port, upstream = 'https://api.deepseek.com') {
   const recordPath = join(scratch, 'requests.jsonl')
   if (await fetch(`http://127.0.0.1:${port}/v1/models`).then(() => true).catch(() => false)) {
     throw new Error(`port ${port} is already serving — a leftover recorder would answer this run and log elsewhere`)
   }
   const proc = spawn('node', [join(projectRoot, 'examples/gateway-compat/probe/recording-proxy.mjs')], {
     cwd: projectRoot,
-    env: { ...process.env, PROXY_PORT: String(port), PROXY_LOG: recordPath, PROXY_UPSTREAM: 'https://api.deepseek.com' },
+    env: { ...process.env, PROXY_PORT: String(port), PROXY_LOG: recordPath, PROXY_UPSTREAM: upstream },
     stdio: ['ignore', 'pipe', 'pipe'],
   })
   let log = ''
@@ -105,20 +105,35 @@ async function run1272() {
   let recorder
   try {
     const port = Number(process.env.RECORD_PORT_1272 ?? 4611)
-    recorder = await startRecorder(scratch, port)
+    // #1272 is a LiteLLM report, so the upstream is a REAL LiteLLM proxy: the
+    // package asks litellm's own endpoints (/model/info) that a plain OpenAI
+    // API answers with 404, which is why its catalog stayed empty before.
+    const litellm = process.env.LITELLM_UPSTREAM ?? 'http://127.0.0.1:4000'
+    const reachable = await fetch(`${litellm}/v1/models`, { headers: { authorization: 'Bearer sk-1234' } })
+      .then(r => r.ok).catch(() => false)
+    if (!reachable) {
+      results['1272'] = { status: 'skipped', reason: `no LiteLLM proxy at ${litellm} (start one: litellm --config <cfg> --port 4000)` }
+      return
+    }
+    recorder = await startRecorder(scratch, port, litellm)
     const base = `http://127.0.0.1:${port}/v1`
     const { home, runDsh } = await makeHome(scratch, {
       LITELLM_BASE_URL: base, LITELLM_API_KEY: apiKey,
-      OPENAI_BASE_URL: base, OPENAI_API_KEY: apiKey,
+      OPENAI_BASE_URL: base, OPENAI_API_KEY: apiKey, PI2DSH_TRACE_COMPAT: '1',
     })
     await runDsh(['plugin', '--profile', 'headless', 'add', `file:${projectRoot}`])
     const added = await runDsh(['plugin', '--profile', 'headless', 'add', 'pi-provider-litellm'])
     await jsonlSessions(home, 'headless')
     // The turn has to RUN on the package's route; on the profile default it
     // completes happily through another provider and the recorder stays empty.
-    await useDefaultModel(home, 'litellm', 'deepseek-chat')
+    // The report's model family: the package declares max_tokens (and no
+    // developer role) only for Moonshot/Kimi names, which is exactly the
+    // gateway pairing the reporter runs.
+    await useDefaultModel(home, 'litellm', 'kimi-k2-0905-preview')
 
     const run = await runDsh(['--profile', 'headless', 'Reply with exactly: litellm-ok'])
+    const everything = (await readFile(recorder.recordPath, 'utf8')).split('\n').filter(Boolean).map(l => JSON.parse(l))
+    console.log(`   recorder saw ${everything.length} request(s): ${JSON.stringify(everything.map(e => `${e.method ?? '?'} ${e.path ?? e.url ?? '?'}`).slice(0, 8))}`)
     const completions = await completionsFrom(recorder.recordPath)
     if (completions.length === 0) {
       // Report what the run actually did instead of asserting into the dark:
@@ -132,7 +147,10 @@ async function run1272() {
       }
       return
     }
+    const traced = `${run.stdout}${run.stderr}`.split('\n').filter(l => l.includes('[trace]'))
+    console.log(`   trace lines: ${traced.length === 0 ? '(none — our adapter never ran)' : traced.map(l => l.slice(0, 300)).join(' || ')}`)
     const first = completions[0]
+    console.log(`   first completion: ${JSON.stringify({ model: first.model, maxTokensField: first.maxTokensField, bodyKeys: first.bodyKeys })}`)
     assert.equal(first.maxTokensField, 'max_tokens',
       `the report needs max_tokens on the wire; the request carried ${first.maxTokensField}`)
     results['1272'] = { status: 'passed', maxTokensField: first.maxTokensField, requests: completions.length }

@@ -284,7 +284,10 @@ async function runGatewayCompat() {
     // settings path cannot express any of them; the Pi provider declares them.
     assert(!first.roles.includes('developer'),
       `supportsDeveloperRole:false was ignored — the request used a developer role: ${JSON.stringify(first.roles)}`)
-    assert.equal(first.maxTokensField, 'max_completion_tokens',
+    // The declared spelling must WIN over the default. Asserting the default
+    // here proved nothing for weeks — it is what a request carries when the
+    // declaration is dropped on the floor.
+    assert.equal(first.maxTokensField, 'max_tokens',
       `the declared maxTokensField was ignored (saw ${first.maxTokensField})`)
     assert.equal(first.store, null, 'supportsStore:false was ignored — `store` was sent')
     // No effort was selected, so nothing should be on the wire: sending the

@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "results": {
+    "1272": {
+      "status": "passed",
+      "maxTokensField": "max_tokens",
+      "requests": 2
+    }
+  }
+}

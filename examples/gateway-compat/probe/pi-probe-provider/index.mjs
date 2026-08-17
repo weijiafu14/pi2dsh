@@ -54,7 +54,12 @@ export default function (pi) {
       maxTokens: 4096,
       compat: {
         supportsDeveloperRole: false,
-        maxTokensField: 'max_completion_tokens',
+        // Deliberately the NON-default spelling. Declaring the default one
+        // ('max_completion_tokens', which is what goes out when nothing is
+        // declared) made the assertion unfalsifiable: it passed whether or not
+        // the declaration was honoured. Verified against the real
+        // pi-provider-litellm, whose Moonshot models declare this same value.
+        maxTokensField: 'max_tokens',
         supportsStore: false,
       },
     }],

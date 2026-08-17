@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pi2dshCommit": "f123ee64eda61fe89617fcdf5c9996d4d28e98ca",
+  "pi2dshCommit": "6c5d6c982326e496686170e78952c530ddbcf942",
   "dshCommit": "47f943859bef60e4160492346772ded9b24f765a",
   "results": {
     "visionBridge": {
@@ -16,7 +16,7 @@
         "version": "0.12.3",
         "from": "local",
         "spec": "file:/Users/developer/projj/workspace/pi2dsh",
-        "commit": "f123ee64eda61fe89617fcdf5c9996d4d28e98ca",
+        "commit": "6c5d6c982326e496686170e78952c530ddbcf942",
         "dirty": true
       },
       "status": "passed",
@@ -28,11 +28,11 @@
         "user",
         "user"
       ],
-      "maxTokensField": "max_completion_tokens",
+      "maxTokensField": "max_tokens",
       "store": null,
       "reasoningEffort": null,
       "bodyKeys": [
-        "max_completion_tokens",
+        "max_tokens",
         "messages",
         "model",
         "stream",
@@ -53,7 +53,7 @@
         "version": "0.12.3",
         "from": "local",
         "spec": "file:/Users/developer/projj/workspace/pi2dsh",
-        "commit": "f123ee64eda61fe89617fcdf5c9996d4d28e98ca",
+        "commit": "6c5d6c982326e496686170e78952c530ddbcf942",
         "dirty": true
       },
       "seenByPackage": {
@@ -69,7 +69,7 @@
         "version": "0.12.3",
         "from": "local",
         "spec": "file:/Users/developer/projj/workspace/pi2dsh",
-        "commit": "f123ee64eda61fe89617fcdf5c9996d4d28e98ca",
+        "commit": "6c5d6c982326e496686170e78952c530ddbcf942",
         "dirty": true
       },
       "screenshots": [
@@ -82,7 +82,7 @@
         "version": "0.12.3",
         "from": "local",
         "spec": "file:/Users/developer/projj/workspace/pi2dsh",
-        "commit": "f123ee64eda61fe89617fcdf5c9996d4d28e98ca",
+        "commit": "6c5d6c982326e496686170e78952c530ddbcf942",
         "dirty": true
       },
       "screenshots": [
