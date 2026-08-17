@@ -306,6 +306,103 @@ describe('where the user is told to go', () => {
   })
 })
 
+describe('opening a window is the host\'s call, never ours', () => {
+  it('opens nothing when no opener was handed over', () => {
+    // Reaching for the platform opener from inside the translation layer made
+    // EVERY caller open a real tab — including this test suite, which spawned
+    // one per assertion on the developer's machine. The opener is injected now,
+    // so a caller that did not supply one opens nothing.
+    const opened: string[] = []
+    const ui = { notify: () => {}, input: async () => undefined, select: async () => undefined }
+    const flow = oauthInteraction(ui as never)
+    flow.notify({ type: 'auth_url', url: 'https://auth.example.com/authorize' } as never)
+    flow.notify({ type: 'device_code', userCode: 'A-1', verificationUri: 'https://auth.example.com/device' } as never)
+    expect(opened).toEqual([])
+  })
+
+  it('opens both kinds of address when the host supplied an opener', () => {
+    const opened: string[] = []
+    const ui = { notify: () => {}, input: async () => undefined, select: async () => undefined }
+    const flow = oauthInteraction(ui as never, undefined, undefined, url => { opened.push(url) })
+    flow.notify({ type: 'auth_url', url: 'https://auth.example.com/authorize' } as never)
+    flow.notify({ type: 'device_code', userCode: 'A-1', verificationUri: 'https://auth.example.com/device' } as never)
+    // The real address, not the short stand-in: the short one only exists to be
+    // read and clicked by a person.
+    expect(opened).toEqual(['https://auth.example.com/authorize', 'https://auth.example.com/device'])
+  })
+
+  it('never opens something that is not a web address', () => {
+    const opened: string[] = []
+    const ui = { notify: () => {}, input: async () => undefined, select: async () => undefined }
+    const flow = oauthInteraction(ui as never, undefined, undefined, url => { opened.push(url) })
+    flow.notify({ type: 'auth_url', url: 'file:///etc/passwd' } as never)
+    expect(opened).toEqual([])
+  })
+})
+
+describe('cancelling a login takes its question off the screen', () => {
+  /** A ui whose question only settles when it is answered or cancelled — a real dialog. */
+  function dialogUi() {
+    const opened: string[] = []
+    const wait = (title: unknown, signal?: AbortSignal) => new Promise<string | undefined>((resolve, reject) => {
+      opened.push(String(title))
+      signal?.addEventListener('abort', () => reject(new Error('This operation was aborted')), { once: true })
+    })
+    return {
+      opened,
+      ui: {
+        notify: () => {},
+        input: (title: unknown, _detail?: unknown, signal?: unknown) => wait(title, signal as AbortSignal | undefined),
+        select: (title: unknown, _options: unknown[], signal?: unknown) => wait(title, signal as AbortSignal | undefined),
+      },
+    }
+  }
+
+  it('closes the paste box when the login is called off', async () => {
+    // Cancelling only tells the FLOW; the question belongs to the host. Pi's
+    // host takes its dialog down, which is what lets the flow's own
+    // `await manualPromise` settle — Pi's anthropic flow deadlocks otherwise:
+    // its callback wait returns nothing and it then waits on the paste box
+    // forever, because the abort that closes the box sits in a `finally` that
+    // wait never reaches. Symptom: a login that will not shut down, and a
+    // dialog left on screen.
+    const seen = dialogUi()
+    const login = new AbortController()
+    const flow = oauthInteraction(seen.ui as never, login.signal)
+    const asked = flow.prompt({ type: 'manual_code', message: 'Paste the code here:' } as never)
+    login.abort()
+
+    await expect(asked).rejects.toThrow(/aborted/u)
+    expect(seen.opened).toEqual(['Paste the code here:'])
+  })
+
+  it('closes a picker the same way', async () => {
+    const seen = dialogUi()
+    const login = new AbortController()
+    const flow = oauthInteraction(seen.ui as never, login.signal)
+    const asked = flow.prompt({
+      type: 'select',
+      message: 'Select login method:',
+      options: [{ id: 'browser', label: 'Browser login' }],
+    } as never)
+    login.abort()
+
+    await expect(asked).rejects.toThrow(/aborted/u)
+  })
+
+  it('still honours the flow\'s own per-prompt signal', async () => {
+    // The other direction, kept: codex cancels its paste box when the local
+    // callback wins the race.
+    const seen = dialogUi()
+    const perPrompt = new AbortController()
+    const flow = oauthInteraction(seen.ui as never, new AbortController().signal)
+    const asked = flow.prompt({ type: 'manual_code', message: 'Paste:', signal: perPrompt.signal } as never)
+    perPrompt.abort()
+
+    await expect(asked).rejects.toThrow(/aborted/u)
+  })
+})
+
 describe('the dialog after the login is over', () => {
   it('cancels a question still on screen when the flow ends', async () => {
     // The browser half of an OAuth login finishes at the local callback, not at
@@ -361,6 +458,12 @@ describe('the race a login actually runs', () => {
       signal: perPrompt.signal,
     } as never)
 
-    expect(received, 'the prompt signal never reached the question').toBe(perPrompt.signal)
+    // Behaviour, not identity: the question now gets a signal that fires on
+    // EITHER the flow's own race or the login being called off, so the two
+    // reasons a box must close both reach it.
+    expect(received, 'no signal reached the question').toBeInstanceOf(AbortSignal)
+    expect(received?.aborted).toBe(false)
+    perPrompt.abort()
+    expect(received?.aborted, 'the flow\'s own signal does not close the box').toBe(true)
   })
 })

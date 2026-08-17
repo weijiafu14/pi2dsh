@@ -22,12 +22,14 @@ import { CapabilityLedger, PiCapabilityError } from './capability.js'
 import { PiSessionBridge } from './session-bridge.js'
 import { ExtensionRunner, Theme, __setSubagentSessionFactory, generateBranchSummary, getAgentDir } from './compat/pi-coding-agent.js'
 import { childLabel, createBridgedAgentSession, type SubagentHost } from './subagent-bridge.js'
-import { BrowserSurfaces, publishAuthorization, registerBrowserSurfaceRoute, surfaceText, type SurfaceKey } from './browser-surfaces.js'
+import { openBrowser } from './compat/vendor/pi-open-browser.js'
+import { BrowserSurfaces, publishAuthorization, registerBrowserSurfaceRoute, revokeAuthorization, surfaceText, type SurfaceKey } from './browser-surfaces.js'
 
 /** Fallback thread ids when a child session reports none. */
 let sidePanelSerial = 0
 import {
   FileCredentialStore,
+  joinSignals,
   loginPiProvider,
   providerSupportsOAuth,
   resolvePiProviderAuth,
@@ -405,25 +407,6 @@ function answerText(answer: UnknownRecord | undefined): string | undefined {
   if (typeof answer.custom === 'string' && answer.custom.length > 0) return answer.custom
   const selected = answer.selected
   return Array.isArray(selected) && typeof selected[0] === 'string' ? selected[0] : undefined
-}
-
-/**
- * One signal that aborts when either input does.
- * @param ambient - the surrounding operation's signal, when there is one.
- * @param perCall - a signal the caller supplied for this question alone.
- * @returns the signal to hand the question, or undefined when neither exists.
- */
-function joinSignals(ambient: AbortSignal | undefined, perCall: unknown): AbortSignal | undefined {
-  if (!(perCall instanceof AbortSignal)) return ambient
-  if (ambient === undefined) return perCall
-  const joined = new AbortController()
-  const stop = () => joined.abort()
-  if (ambient.aborted || perCall.aborted) joined.abort()
-  else {
-    ambient.addEventListener('abort', stop, { once: true })
-    perCall.addEventListener('abort', stop, { once: true })
-  }
-  return joined.signal
 }
 
 async function askOne(
@@ -2021,6 +2004,24 @@ interface SharedHostState {
   // contribute threads to it — same rule as the provider directory.
   browserSurfaces?: BrowserSurfaces
   browserSurfacesRouted?: boolean
+  // The one login allowed to be in flight. Interactive OAuth flows own a FIXED
+  // local callback port (codex: 1455) and Pi's own flow, finding it taken,
+  // silently degrades to a server that never receives a code — so a second
+  // concurrent flow hands the user an address whose callback lands on the FIRST
+  // flow's listener, which rejects it as a state mismatch and leaves both
+  // dialogs waiting forever. Pi cannot hit this: its login dialog is modal, so
+  // a second flow cannot be started. On DSH /login is an ordinary command a
+  // user can run again, so the bridge has to enforce what Pi's shape enforced.
+  activeLogin?: ActiveLogin | undefined
+}
+
+interface ActiveLogin {
+  providerName: string
+  controller: AbortController
+  /** Settles when the flow has released its callback port. */
+  finished: Promise<void>
+  /** Short links this flow published, retired when it ends. */
+  published: string[]
 }
 
 const SHARED_HOST_STATE = new WeakMap<object, SharedHostState>()
@@ -2214,6 +2215,35 @@ function resolveOfferedChoice(answer: string, offered: readonly string[]): strin
   return undefined
 }
 
+/**
+ * Cancel the login already in flight, if any, and wait for it to let go.
+ *
+ * Waiting matters: the next flow binds the same fixed callback port, and Pi's
+ * flow answers a taken port by silently degrading to a listener that never
+ * receives a code. Starting the new flow before the old one has closed
+ * reproduces exactly that.
+ * @param state - the mounting package's state, holding the shared host state.
+ * @returns the cancelled provider's name, or undefined when nothing was running.
+ */
+async function supersedeActiveLogin(state: RuntimeState): Promise<string | undefined> {
+  const previous = state.shared.activeLogin
+  if (previous === undefined) return undefined
+  state.shared.activeLogin = undefined
+  previous.controller.abort()
+  for (const path of previous.published) revokeAuthorization(path)
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const released = await Promise.race([
+    previous.finished.then(() => true),
+    new Promise<boolean>(resolve => { timer = setTimeout(() => resolve(false), 5_000) }),
+  ])
+  if (timer !== undefined) clearTimeout(timer)
+  // Never start a flow that would silently lose its callback: say so instead.
+  if (!released) {
+    throw new Error(`the ${previous.providerName} login is still shutting down; try /login again in a moment`)
+  }
+  return previous.providerName
+}
+
 function registerLoginCommand(ctx: Context, state: RuntimeState): void {
   registerCommand(ctx, state, {
     name: 'login',
@@ -2247,13 +2277,33 @@ function registerLoginCommand(ctx: Context, state: RuntimeState): void {
       }
       const oauthName = ((config.oauth as UnknownRecord | undefined)?.name as string | undefined) ?? providerId
       const commandSignal = commandContext.signal as AbortSignal | undefined
-      await loginPiProvider({
+      // One login at a time, host-wide (see SharedHostState.activeLogin). A
+      // newer /login is the user's current intent — nobody runs it twice
+      // wanting two — so it takes over: the previous flow is cancelled, which
+      // also closes its dialog and frees the callback port the new flow needs.
+      const superseded = await supersedeActiveLogin(state)
+      if (superseded !== undefined) ui.notify(`Cancelled the ${superseded} login that was still waiting.`)
+      const active: ActiveLogin = {
+        providerName: oauthName,
+        controller: new AbortController(),
+        finished: Promise.resolve(),
+        published: [],
+      }
+      if (commandSignal !== undefined) {
+        if (commandSignal.aborted) active.controller.abort()
+        else commandSignal.addEventListener('abort', () => active.controller.abort(), { once: true })
+      }
+      const attempt = loginPiProvider({
+        // The host action: this is the one place that opens a window on the
+        // machine dsh runs on. Nothing below this layer reaches for it.
+        open: openBrowser,
         // A short link on this app's own origin, because a 400-character
         // authorize URL in a dialog is not something a person can click.
         shorten: (url: string) => {
           const path = publishAuthorization(url)
           const web = (ctx as unknown as { get(name: string): { port?: number, host?: string } | undefined }).get('webServer')
           if (path === undefined || web?.port === undefined) return undefined
+          active.published.push(path)
           const host = web.host === '0.0.0.0' || web.host === undefined ? '127.0.0.1' : web.host
           return `http://${host}:${web.port}${path}`
         },
@@ -2262,8 +2312,18 @@ function registerLoginCommand(ctx: Context, state: RuntimeState): void {
         providerConfig: config,
         store: oauthStoreOf(state),
         ui,
-        ...(commandSignal !== undefined ? { signal: commandSignal } : {}),
+        signal: active.controller.signal,
       })
+      // What the NEXT /login waits on before binding the port: the attempt
+      // itself, however it ends.
+      active.finished = attempt.then(() => undefined, () => undefined)
+      state.shared.activeLogin = active
+      try {
+        await attempt
+      } finally {
+        for (const path of active.published) revokeAuthorization(path)
+        if (state.shared.activeLogin === active) state.shared.activeLogin = undefined
+      }
       ui.notify(`Logged in to ${oauthName}; credential stored in ${oauthStoreOf(state).path}`)
       return `Logged in to ${oauthName}`
     },
@@ -3492,5 +3552,6 @@ export const runtimeInternals = {
   isSubagentOrigin,
   normalizeToolResult,
   splitArguments,
+  supersedeActiveLogin,
   textBlocks,
 }

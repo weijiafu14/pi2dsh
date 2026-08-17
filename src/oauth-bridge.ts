@@ -4,7 +4,6 @@ import { dirname } from 'node:path'
 import { InMemoryCredentialStore } from './compat/vendor/pi-ai-credential-store.js'
 import { resolveProviderAuth } from './compat/vendor/pi-ai-auth-resolve.js'
 import { adaptOAuth } from './compat/vendor/pi-oauth-adapt.js'
-import { openBrowser } from './compat/vendor/pi-open-browser.js'
 
 type UnknownRecord = Record<string, unknown>
 
@@ -73,6 +72,28 @@ export class FileCredentialStore extends InMemoryCredentialStore {
   }
 }
 
+/**
+ * One signal that fires when EITHER input does.
+ *
+ * A question on screen has two reasons to close: the flow's own race (the
+ * browser callback beating the paste box) and the whole login being called off.
+ * @param ambient - the login's signal, live for the whole flow.
+ * @param perCall - the flow's signal for this one question, when it sent one.
+ * @returns the joined signal, or whichever one exists.
+ */
+export function joinSignals(ambient: AbortSignal | undefined, perCall: unknown): AbortSignal | undefined {
+  if (!(perCall instanceof AbortSignal)) return ambient
+  if (ambient === undefined) return perCall
+  const joined = new AbortController()
+  const stop = () => joined.abort()
+  if (ambient.aborted || perCall.aborted) joined.abort()
+  else {
+    ambient.addEventListener('abort', stop, { once: true })
+    perCall.addEventListener('abort', stop, { once: true })
+  }
+  return joined.signal
+}
+
 export interface OAuthUiSurface {
   /**
    * @param signal cancels THIS question when another path in the flow answers
@@ -109,13 +130,19 @@ interface OAuthNotifyEvent {
 // The pi-ai interaction surface ({prompt, notify, signal}) over the Pi ui
 // surface pi2dsh already maps to DSH userQuestions.
 /**
- * Hand a URL to the platform browser, never letting the attempt break login.
+ * Hand a URL to the host's browser opener, when the host gave one.
+ *
+ * Opening a window is the HOST's action, not the translation layer's, so the
+ * opener is injected rather than reached for. Wiring it in here meant every
+ * caller opened a real browser tab — including the test suite, which spawned a
+ * tab per assertion on the developer's own machine.
+ * @param open - the host's opener, absent when the host does not open windows.
  * @param url - the address the flow announced, when it announced one.
  */
-function openIfPossible(url: string | undefined): void {
-  if (typeof url !== 'string' || !/^https?:\/\//u.test(url)) return
+function openIfPossible(open: ((url: string) => void) | undefined, url: string | undefined): void {
+  if (open === undefined || typeof url !== 'string' || !/^https?:\/\//u.test(url)) return
   try {
-    openBrowser(url)
+    open(url)
   } catch {
     // Best effort by design: the URL is in the prompt either way, and a host
     // with no desktop session (a container, a remote box) must still be able to
@@ -127,6 +154,7 @@ export function oauthInteraction(
   ui: OAuthUiSurface,
   signal?: AbortSignal,
   shorten?: (url: string) => string | undefined,
+  open?: (url: string) => void,
 ): {
   prompt(prompt: OAuthPromptEvent): Promise<string | undefined>
   notify(event: OAuthNotifyEvent): void
@@ -173,12 +201,19 @@ export function oauthInteraction(
       if (prompt.type === 'select') {
         const options = prompt.options ?? []
         pending = undefined
-        const picked = await ui.select(prompt.message, options.map(option => option.label))
+        const picked = await ui.select(prompt.message, options.map(option => option.label), effectiveSignal)
         return options.find(option => option.label === picked)?.id ?? picked
       }
-      // The flow's per-prompt signal: it cancels this box when another path
-      // wins the race (the local callback receiving the code).
-      return ui.input(prompt.message, takePending(prompt.placeholder), prompt.signal)
+      // BOTH signals close this box: the flow's own (another path won the race
+      // — the local callback got the code) and the login's (it was called off).
+      //
+      // The second one is not optional. Cancelling a flow only tells the flow;
+      // the question is the HOST's, and Pi's host takes its dialog down, which
+      // is how the flow's `await manualPromise` gets to settle. Pi's anthropic
+      // flow deadlocks without that: cancelling makes its callback wait return
+      // nothing, and it then waits on the paste box forever, because the abort
+      // that would close the box sits in a `finally` this wait never reaches.
+      return ui.input(prompt.message, takePending(prompt.placeholder), joinSignals(effectiveSignal, prompt.signal))
     },
     notify(event) {
       if (event.type === 'auth_url') {
@@ -196,7 +231,7 @@ export function oauthInteraction(
         // print "A browser window should open" — that sentence is Pi telling
         // the user what the HOST is about to do, and a host that does not do it
         // leaves a wrapped, unclickable URL and no way to authorize.
-        openIfPossible(event.url)
+        openIfPossible(open, event.url)
       } else if (event.type === 'device_code') {
         // A device code EXPIRES. Dropping that left the user staring at a code
         // with no idea it was on a clock — every device-code flow sends the
@@ -208,7 +243,7 @@ export function oauthInteraction(
         // notice. The code stays as code so it survives the markdown pass.
         pending = `[Open the device login page](${event.verificationUri}) and enter code \`${event.userCode}\`${window}`
         ui.notify(`Visit ${event.verificationUri} and enter code ${event.userCode}${window}`)
-        openIfPossible(event.verificationUri)
+        openIfPossible(open, event.verificationUri)
       } else if (event.message !== undefined) {
         ui.notify(event.message)
       }
@@ -256,6 +291,8 @@ export async function loginPiProvider(options: {
   signal?: AbortSignal
   /** Turns a long authorize URL into a short one the user can actually click. */
   shorten?: (url: string) => string | undefined
+  /** The host's browser opener. Absent = this host opens nothing. */
+  open?: (url: string) => void
 }): Promise<UnknownRecord> {
   const oauthConfig = oauthConfigOf(options.providerConfig)
   if (oauthConfig === undefined) {
@@ -273,7 +310,7 @@ export async function loginPiProvider(options: {
     else options.signal.addEventListener('abort', () => done.abort(), { once: true })
   }
   try {
-    const credential = await adapter.login(oauthInteraction(options.ui, done.signal, options.shorten))
+    const credential = await adapter.login(oauthInteraction(options.ui, done.signal, options.shorten, options.open))
     await options.store.modify(options.providerId, async () => credential)
     return credential
   } finally {

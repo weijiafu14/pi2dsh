@@ -162,3 +162,57 @@ describe('choosing a provider to log in to', () => {
     expect(resolveOfferedChoice('no-such-gateway', offered)).toBeUndefined()
   })
 })
+
+describe('only one login may be in flight', () => {
+  const { supersedeActiveLogin } = runtimeInternals as unknown as {
+    supersedeActiveLogin(state: { shared: { activeLogin?: unknown } }): Promise<string | undefined>
+  }
+
+  /** A state holding one in-flight login, with the flow's own resolve exposed. */
+  function inFlight(name: string, published: string[] = []) {
+    let release = (): void => {}
+    const finished = new Promise<void>(resolve => { release = resolve })
+    const controller = new AbortController()
+    const state = { shared: { activeLogin: { providerName: name, controller, finished, published } } }
+    // A flow that ends when cancelled, as a real one does (its ui question is
+    // aborted, the flow throws, loginPiProvider's finally runs).
+    controller.signal.addEventListener('abort', () => { release() }, { once: true })
+    return { state, controller }
+  }
+
+  it('does nothing when no login is running', async () => {
+    const state = { shared: {} }
+    expect(await supersedeActiveLogin(state)).toBeUndefined()
+  })
+
+  it('cancels the running login and waits for it to release the callback port', async () => {
+    // Interactive flows bind a FIXED local port (codex: 1455). Pi's flow, on
+    // finding it taken, silently degrades to a listener that never receives a
+    // code — so the second login hands the user an address whose callback
+    // lands on the FIRST flow's listener and is rejected as a state mismatch,
+    // with both dialogs left waiting. Starting the new flow is only safe once
+    // the old one has actually let go.
+    const { state, controller } = inFlight('OpenAI Codex')
+    expect(await supersedeActiveLogin(state)).toBe('OpenAI Codex')
+    expect(controller.signal.aborted).toBe(true)
+    expect(state.shared.activeLogin).toBeUndefined()
+  })
+
+  it('refuses to start a new flow when the old one will not let go', async () => {
+    // A flow that ignores its cancellation still owns the port. Reporting that
+    // beats starting a login whose callback would silently go nowhere.
+    const finished = new Promise<void>(() => {})
+    const state = {
+      shared: {
+        activeLogin: {
+          providerName: 'OpenAI Codex',
+          controller: new AbortController(),
+          finished,
+          published: [],
+        },
+      },
+    }
+    await expect(supersedeActiveLogin(state)).rejects.toThrow(/still shutting down/u)
+  }, 10_000)
+
+})

@@ -5,7 +5,8 @@
 // end to end by examples/side-conversation and examples/presentation-surfaces.
 import { describe, expect, it } from 'vitest'
 import { SEED_CARRIER_TAG } from '../src/subagent-bridge.js'
-import { BrowserSurfaces, publishAuthorization, registerBrowserSurfaceRoute, surfaceText } from '../src/browser-surfaces.js'
+import { BrowserSurfaces, publishAuthorization, registerBrowserSurfaceRoute, revokeAuthorization, surfaceText } from '../src/browser-surfaces.js'
+import { runtimeInternals } from '../src/runtime.js'
 
 /**
  * Mount the bridge's own route on a stand-in web server and drive it.
@@ -338,5 +339,41 @@ describe('the short login link', () => {
     const route = captureRoute()
     const answer = await route.get('/pi2dsh/authorize/nope')
     expect(answer.status).toBe(404)
+  })
+})
+
+describe('a login link outlives nothing', () => {
+  it('expires the links a superseded flow published', async () => {
+    // A cancelled flow's authorize URL still resolves at the provider, and
+    // following it produces a callback the flow now listening cannot match —
+    // the provider answers "State mismatch", which reads like a broken login
+    // rather than a link that is over. Expiring it says what happened.
+    const { supersedeActiveLogin } = runtimeInternals as unknown as {
+      supersedeActiveLogin(state: { shared: { activeLogin?: unknown } }): Promise<string | undefined>
+    }
+    const path = publishAuthorization('https://auth.example.com/authorize?state=old') as string
+    const route = captureRoute()
+    expect((await route.get(path)).status).toBe(302)
+
+    const controller = new AbortController()
+    let release = (): void => {}
+    const finished = new Promise<void>(resolve => { release = resolve })
+    controller.signal.addEventListener('abort', () => { release() }, { once: true })
+    await supersedeActiveLogin({
+      shared: { activeLogin: { providerName: 'OpenAI Codex', controller, finished, published: [path] } },
+    })
+
+    expect((await route.get(path)).status).toBe(404)
+  })
+
+  it('expires a link on demand without touching the others', () => {
+    const kept = publishAuthorization('https://auth.example.com/authorize?state=kept') as string
+    const dropped = publishAuthorization('https://auth.example.com/authorize?state=dropped') as string
+    revokeAuthorization(dropped)
+    const route = captureRoute()
+    return Promise.all([
+      route.get(kept).then(answer => expect(answer.status).toBe(302)),
+      route.get(dropped).then(answer => expect(answer.status).toBe(404)),
+    ])
   })
 })

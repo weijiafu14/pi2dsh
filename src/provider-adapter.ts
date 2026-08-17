@@ -342,12 +342,31 @@ export function imageAdmissionCompanionAdapter(options: CompanionRouteOptions): 
 }
 
 export interface RegisterPiProviderRouteOptions {
-  llm: { registerAdapter(providers: string[], adapter: unknown): () => void } | undefined
+  llm: {
+    /** DSH returns a disposer carrying `replace`; older fakes return the bare disposer. */
+    registerAdapter(providers: string[], adapter: unknown): (() => void) & { replace?(providers: string[]): void }
+  } | undefined
   providerId: string
   provider: UnknownRecord
   host: ProviderAdapterHost
   /** The bridge's own context, used to mount DSH's official adapter for a catalog-only route. */
   ctx?: { plugin(plugin: unknown, config?: unknown): unknown }
+}
+
+/**
+ * A registered route's disposer, plus the ability to announce it again.
+ *
+ * A package's model list is not always known when the route is registered:
+ * gateway discovery needs a credential, and a credential may only arrive later
+ * (a `/login` mid-session). DSH publishes `llm/adapters-updated` when a route
+ * set is committed, and every directory observer — the browser's model picker
+ * included — refreshes on exactly that event. So a later discovery needs the
+ * route ANNOUNCED again, or the models exist and nobody looks.
+ */
+export interface PiRouteHandle {
+  (): void
+  /** Re-commit this route so directory observers re-read its models. */
+  reannounce?(): void
 }
 
 /**
@@ -365,50 +384,72 @@ export interface RegisterPiProviderRouteOptions {
  * is mounted with it. Nothing here speaks HTTP.
  * @returns a disposer for the mounted route, or undefined when it cannot be built.
  */
-function registerCatalogOnlyRoute(options: RegisterPiProviderRouteOptions): (() => void) | undefined {
+function registerCatalogOnlyRoute(options: RegisterPiProviderRouteOptions): PiRouteHandle | undefined {
   const { ctx, providerId, provider, host } = options
-  const models = providerModels(provider as PiTransportProvider)
   if (ctx === undefined) return undefined
-  // An empty list at mount is normal, not a defect: a package may discover its
-  // models from the gateway later, or rely on pi-ai's installed catalog for a
-  // known provider name. The official profile's `models` is optional and
-  // omitting it serves that installed catalog, so a route is still built —
-  // refusing here would drop a provider that works the moment it is used.
-  const first = (models[0] ?? provider) as UnknownRecord
-  const profile: UnknownRecord = {
-    displayName: typeof provider.name === 'string' ? provider.name : providerId,
-    ...(typeof first.api === 'string' ? { api: first.api } : {}),
-    ...(typeof first.baseUrl === 'string' ? { baseURL: first.baseUrl } : {}),
-    ...(models.length === 0 ? {} : { models: models.map(model => ({
-      id: String(model.id ?? ''),
-      ...(typeof model.name === 'string' ? { name: model.name } : {}),
-      ...(typeof model.contextWindow === 'number' ? { contextWindow: model.contextWindow } : {}),
-      ...(typeof model.maxTokens === 'number' ? { maxTokens: model.maxTokens } : {}),
-      ...(Array.isArray(model.input) ? { input: model.input } : {}),
-      // The gateway's dialect, which is the whole reason these packages exist.
-      ...(model.compat === undefined ? {} : { compat: model.compat }),
-    })) }),
-  }
   let mounted: { dispose?: () => void } | undefined
   let disposed = false
-  void (async () => {
-    try {
-      const official = await import('@deepseek-ai/dsh-llm-pi-ai')
-      const fiber = await ctx.plugin(
-        (official as UnknownRecord).default ?? official,
-        { providers: { [providerId]: profile } },
-      ) as { dispose?: () => void }
-      if (disposed) fiber?.dispose?.()
-      else mounted = fiber
-      host.warn(`[pi2dsh] Pi provider ${JSON.stringify(providerId)} declares a catalog only; DSH's official llm-pi-ai adapter now serves it as a native route`)
-    } catch (error) {
-      host.warn(`[pi2dsh] Pi provider ${JSON.stringify(providerId)} could not be served by the official adapter (${error instanceof Error ? error.message : String(error)}); configure the gateway in the host's llm settings instead`)
+  // Each mount attempt claims a number; a later one makes an in-flight mount
+  // stale, so a re-announce that overtakes the first mount cannot leave two
+  // fibers holding the same provider name.
+  let generation = 0
+  const mount = (): void => {
+    // Read the models AT MOUNT TIME, not once at registration: a catalog-only
+    // profile is a snapshot, so a re-announce after a login has to rebuild it
+    // from whatever the package discovered in the meantime.
+    const models = providerModels(provider as PiTransportProvider)
+    // An empty list at mount is normal, not a defect: a package may discover
+    // its models from the gateway later, or rely on pi-ai's installed catalog
+    // for a known provider name. The official profile's `models` is optional
+    // and omitting it serves that installed catalog, so a route is still built
+    // — refusing here would drop a provider that works the moment it is used.
+    const first = (models[0] ?? provider) as UnknownRecord
+    const profile: UnknownRecord = {
+      displayName: typeof provider.name === 'string' ? provider.name : providerId,
+      ...(typeof first.api === 'string' ? { api: first.api } : {}),
+      ...(typeof first.baseUrl === 'string' ? { baseURL: first.baseUrl } : {}),
+      ...(models.length === 0 ? {} : { models: models.map(model => ({
+        id: String(model.id ?? ''),
+        ...(typeof model.name === 'string' ? { name: model.name } : {}),
+        ...(typeof model.contextWindow === 'number' ? { contextWindow: model.contextWindow } : {}),
+        ...(typeof model.maxTokens === 'number' ? { maxTokens: model.maxTokens } : {}),
+        ...(Array.isArray(model.input) ? { input: model.input } : {}),
+        // The gateway's dialect, which is the whole reason these packages exist.
+        ...(model.compat === undefined ? {} : { compat: model.compat }),
+      })) }),
     }
-  })()
-  return () => {
+    const mine = ++generation
+    void (async () => {
+      try {
+        const official = await import('@deepseek-ai/dsh-llm-pi-ai')
+        const fiber = await ctx.plugin(
+          (official as UnknownRecord).default ?? official,
+          { providers: { [providerId]: profile } },
+        ) as { dispose?: () => void }
+        if (disposed || mine !== generation) fiber?.dispose?.()
+        else mounted = fiber
+        host.warn(`[pi2dsh] Pi provider ${JSON.stringify(providerId)} declares a catalog only; DSH's official llm-pi-ai adapter now serves it as a native route`)
+      } catch (error) {
+        host.warn(`[pi2dsh] Pi provider ${JSON.stringify(providerId)} could not be served by the official adapter (${error instanceof Error ? error.message : String(error)}); configure the gateway in the host's llm settings instead`)
+      }
+    })()
+  }
+  mount()
+  const route = (() => {
     disposed = true
     mounted?.dispose?.()
+  }) as PiRouteHandle
+  // This route's models are a snapshot baked into the official adapter's
+  // config, so re-announcing means re-mounting it. The old fiber releases the
+  // provider name first — llm refuses a second adapter for a name already
+  // held.
+  route.reannounce = () => {
+    if (disposed) return
+    mounted?.dispose?.()
+    mounted = undefined
+    mount()
   }
+  return route
 }
 
 /**

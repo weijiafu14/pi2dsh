@@ -506,6 +506,19 @@ export function publishAuthorization(url: string): string | undefined {
   return `/pi2dsh/authorize/${token}`
 }
 
+/**
+ * Retire a published link when its flow is over.
+ *
+ * A finished (or superseded) flow's address still resolves at the provider, and
+ * following it produces a callback the flow that is now listening cannot match
+ * — the provider answers "State mismatch", which reads like a bug in the login
+ * rather than a link that has expired. Saying so is the honest answer.
+ * @param path - what {@link publishAuthorization} returned.
+ */
+export function revokeAuthorization(path: string): void {
+  pendingAuthorizations.delete(path.slice('/pi2dsh/authorize/'.length))
+}
+
 export function registerBrowserSurfaceRoute(ctx: Context, registry: BrowserSurfaces): boolean {
   const web = (ctx as unknown as { get(name: string): unknown }).get('webServer') as WebServerLike | undefined
   if (web === undefined || typeof web.register !== 'function') return false
