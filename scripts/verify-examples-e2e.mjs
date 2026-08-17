@@ -75,7 +75,31 @@ async function installedEngineVersion(home, profile) {
   assert(wanted === undefined || wanted === version,
     `asked for pi2dsh@${wanted} but the profile installed ${version}`
     + ' — pnpm served stale registry metadata; clear it or pin the version')
-  return version
+  return { version, ...await engineOrigin() }
+}
+
+/**
+ * Say where the engine under test came from — the half of "which build" a
+ * version number cannot carry.
+ *
+ * The working tree declares the version of the LAST release until the next one
+ * is cut, so a local `file:` install and the published release of the same
+ * number are the same string in the evidence and mean entirely different code.
+ * A dirty tree is not any commit at all, so that is recorded too: without it,
+ * "0.12.3, commit abc" reads as reproducible when it is not.
+ */
+let engineOriginOnce
+function engineOrigin() {
+  engineOriginOnce ??= (async () => {
+    if (!engineSpec.startsWith('file:')) return { from: 'registry', spec: engineSpec }
+    const at = engineSpec.slice('file:'.length)
+    const [commit, status] = await Promise.all([
+      execFile('git', ['rev-parse', 'HEAD'], { cwd: at }).then(r => r.stdout.trim()).catch(() => null),
+      execFile('git', ['status', '--porcelain'], { cwd: at }).then(r => r.stdout.trim()).catch(() => ''),
+    ])
+    return { from: 'local', spec: engineSpec, commit, dirty: status.length > 0 }
+  })()
+  return engineOriginOnce
 }
 
 async function filesBelow(directory) {

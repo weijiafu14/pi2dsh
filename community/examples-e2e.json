@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pi2dshCommit": "adcbb909440a47e4370238fc3781972f1a642ec2",
+  "pi2dshCommit": "0b759ebd67528470c6c2d4e6f7007bc47bd7ab44",
   "dshCommit": "47f943859bef60e4160492346772ded9b24f765a",
   "results": {
     "visionBridge": {
@@ -12,7 +12,13 @@
       "reason": "no vision endpoint configured (VISION_BRIDGE_BASE_URL, VISION_BRIDGE_MODEL, VISION_BRIDGE_API_KEY)"
     },
     "gatewayCompat": {
-      "engine": "0.12.3",
+      "engine": {
+        "version": "0.12.3",
+        "from": "local",
+        "spec": "file:/Users/developer/projj/workspace/pi2dsh",
+        "commit": "0b759ebd67528470c6c2d4e6f7007bc47bd7ab44",
+        "dirty": true
+      },
       "status": "passed",
       "requests": 2,
       "roles": [
@@ -43,7 +49,13 @@
     },
     "customGateways": {
       "status": "passed",
-      "engine": "0.12.3",
+      "engine": {
+        "version": "0.12.3",
+        "from": "local",
+        "spec": "file:/Users/developer/projj/workspace/pi2dsh",
+        "commit": "0b759ebd67528470c6c2d4e6f7007bc47bd7ab44",
+        "dirty": true
+      },
       "seenByPackage": {
         "provider": "my-gateway",
         "id": "deepseek-chat",
@@ -53,7 +65,13 @@
     },
     "presentationSurfaces": {
       "status": "passed",
-      "engine": "0.12.3",
+      "engine": {
+        "version": "0.12.3",
+        "from": "local",
+        "spec": "file:/Users/developer/projj/workspace/pi2dsh",
+        "commit": "0b759ebd67528470c6c2d4e6f7007bc47bd7ab44",
+        "dirty": true
+      },
       "screenshots": [
         "06-presentation-surfaces.png",
         "07-presentation-surfaces-composer.png",
@@ -62,7 +80,13 @@
     },
     "sideConversation": {
       "status": "passed",
-      "engine": "0.12.3",
+      "engine": {
+        "version": "0.12.3",
+        "from": "local",
+        "spec": "file:/Users/developer/projj/workspace/pi2dsh",
+        "commit": "0b759ebd67528470c6c2d4e6f7007bc47bd7ab44",
+        "dirty": true
+      },
       "screenshots": [
         "01-side-conversation-main-thread-clean.png",
         "02-side-conversation-panel.png",
