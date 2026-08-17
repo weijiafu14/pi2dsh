@@ -2771,6 +2771,7 @@ function createPiApi(ctx: Context, state: RuntimeState): UnknownRecord {
       // resolved through Pi's own chain per request.
       const routeDisposer = registerPiProviderRoute({
         llm: llmOf(ctx) as never,
+        ctx: ctx as never,
         providerId: name,
         provider: value,
         host: {

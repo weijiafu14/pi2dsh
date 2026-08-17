@@ -346,6 +346,67 @@ export interface RegisterPiProviderRouteOptions {
   providerId: string
   provider: UnknownRecord
   host: ProviderAdapterHost
+  /** The bridge's own context, used to mount DSH's official adapter for a catalog-only route. */
+  ctx?: { plugin(plugin: unknown, config?: unknown): unknown }
+}
+
+/**
+ * Serve a catalog-only Pi provider through DSH's OWN llm adapter.
+ *
+ * A Pi package may declare a gateway without shipping any code to call it —
+ * on Pi that is complete, because pi-ai supplies the transport for the wire
+ * protocol the models name. The bridge used to refuse those and tell the user
+ * to configure the gateway by hand in DSH settings, which is the translation
+ * this package exists to do for them.
+ *
+ * The translation is configuration, not transport: the declaration becomes an
+ * `llm-pi-ai` provider profile — the official adapter's own shape, which
+ * carries `api`, `baseURL` and per-model `compat` — and that official plugin
+ * is mounted with it. Nothing here speaks HTTP.
+ * @returns a disposer for the mounted route, or undefined when it cannot be built.
+ */
+function registerCatalogOnlyRoute(options: RegisterPiProviderRouteOptions): (() => void) | undefined {
+  const { ctx, providerId, provider, host } = options
+  const models = providerModels(provider as PiTransportProvider)
+  if (ctx === undefined || models.length === 0) {
+    host.warn(`[pi2dsh] Pi provider ${JSON.stringify(providerId)} declares no models to serve; nothing was registered`)
+    return undefined
+  }
+  const first = models[0] as UnknownRecord
+  const profile: UnknownRecord = {
+    displayName: typeof provider.name === 'string' ? provider.name : providerId,
+    ...(typeof first.api === 'string' ? { api: first.api } : {}),
+    ...(typeof first.baseUrl === 'string' ? { baseURL: first.baseUrl } : {}),
+    models: models.map(model => ({
+      id: String(model.id ?? ''),
+      ...(typeof model.name === 'string' ? { name: model.name } : {}),
+      ...(typeof model.contextWindow === 'number' ? { contextWindow: model.contextWindow } : {}),
+      ...(typeof model.maxTokens === 'number' ? { maxTokens: model.maxTokens } : {}),
+      ...(Array.isArray(model.input) ? { input: model.input } : {}),
+      // The gateway's dialect, which is the whole reason these packages exist.
+      ...(model.compat === undefined ? {} : { compat: model.compat }),
+    })),
+  }
+  let mounted: { dispose?: () => void } | undefined
+  let disposed = false
+  void (async () => {
+    try {
+      const official = await import('@deepseek-ai/dsh-llm-pi-ai')
+      const fiber = await ctx.plugin(
+        (official as UnknownRecord).default ?? official,
+        { providers: { [providerId]: profile } },
+      ) as { dispose?: () => void }
+      if (disposed) fiber?.dispose?.()
+      else mounted = fiber
+      host.warn(`[pi2dsh] Pi provider ${JSON.stringify(providerId)} declares a catalog only; it is served by DSH's official llm-pi-ai adapter as a native route`)
+    } catch (error) {
+      host.warn(`[pi2dsh] Pi provider ${JSON.stringify(providerId)} could not be served by the official adapter (${error instanceof Error ? error.message : String(error)}); configure the gateway in the host's llm settings instead`)
+    }
+  })()
+  return () => {
+    disposed = true
+    mounted?.dispose?.()
+  }
 }
 
 /**
@@ -359,13 +420,11 @@ export interface RegisterPiProviderRouteOptions {
 export function registerPiProviderRoute(options: RegisterPiProviderRouteOptions): (() => void) | undefined {
   const { llm, providerId, provider, host } = options
   if (llm === undefined) return undefined
-  if (!providerCarriesTransport(provider)) {
-    // Model transports belong to the host. A catalog-only registration gets
-    // no bridge-synthesized wire client; the same gateway is host
-    // configuration (the official llm-pi-ai adapter's settings).
-    host.warn(`[pi2dsh] Pi provider ${JSON.stringify(providerId)} declares a model catalog but no transport; it was not added as a DSH llm route — configure the gateway in the host's llm settings instead`)
-    return undefined
-  }
+  // A catalog-only declaration is complete on Pi (pi-ai supplies the transport
+  // for the declared protocol), so it must be complete here too — served by
+  // DSH's own adapter rather than refused back to the user as configuration
+  // homework.
+  if (!providerCarriesTransport(provider)) return registerCatalogOnlyRoute(options)
   try {
     return llm.registerAdapter([providerId], piProviderDshAdapter(providerId, provider, host))
   } catch (error) {

@@ -262,6 +262,39 @@ export function stream(model: UnknownRecord, context: UnknownRecord, options?: U
   return requireLlmBridge('stream')(model, context, options)
 }
 
+/**
+ * Pi's per-protocol transport factories.
+ *
+ * Pi ships one factory per wire protocol (`pi-ai/compat`), and a gateway
+ * package's most common shape is to take the standard one for its protocol and
+ * hand it to `registerProvider`. Without these names such a package throws at
+ * import — `openAICompletionsApi is not a function` — and the whole package
+ * fails to mount, which reads as "the plugin is broken" rather than "the bridge
+ * is missing an export".
+ *
+ * The provider each returns is not a wire client: its stream is the same DSH
+ * llm route `complete()` and `stream()` already run on, so every model call in
+ * this process keeps going through the one directory and the one path. Without
+ * a mounted llm service it fails loud rather than reaching a provider SDK.
+ * @param api - the protocol id this factory serves.
+ * @returns a provider carrying that protocol's id and the routed stream.
+ */
+function routedApi(api: string): { api: string, stream: PiAiLlmBridge, streamSimple: PiAiLlmBridge } {
+  const routed: PiAiLlmBridge = (model, context, options) => requireLlmBridge(api)(model, context, options)
+  return { api, stream: routed, streamSimple: routed }
+}
+
+export const anthropicMessagesApi = (): ReturnType<typeof routedApi> => routedApi('anthropic-messages')
+export const openAICompletionsApi = (): ReturnType<typeof routedApi> => routedApi('openai-completions')
+export const openAIResponsesApi = (): ReturnType<typeof routedApi> => routedApi('openai-responses')
+export const openAICodexResponsesApi = (): ReturnType<typeof routedApi> => routedApi('openai-codex-responses')
+export const azureOpenAIResponsesApi = (): ReturnType<typeof routedApi> => routedApi('azure-openai-responses')
+export const googleGenerativeAIApi = (): ReturnType<typeof routedApi> => routedApi('google-generative-ai')
+export const googleVertexApi = (): ReturnType<typeof routedApi> => routedApi('google-vertex')
+export const mistralConversationsApi = (): ReturnType<typeof routedApi> => routedApi('mistral-conversations')
+export const bedrockConverseStreamApi = (): ReturnType<typeof routedApi> => routedApi('bedrock-converse-stream')
+export const piMessagesApi = (): ReturnType<typeof routedApi> => routedApi('pi-messages')
+
 export interface StringEnumOptions<T extends readonly string[]> {
   description?: string
   default?: T[number]
