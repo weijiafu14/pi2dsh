@@ -22,7 +22,7 @@ import { CapabilityLedger, PiCapabilityError } from './capability.js'
 import { PiSessionBridge } from './session-bridge.js'
 import { ExtensionRunner, Theme, __setSubagentSessionFactory, generateBranchSummary, getAgentDir } from './compat/pi-coding-agent.js'
 import { childLabel, createBridgedAgentSession, type SubagentHost } from './subagent-bridge.js'
-import { BrowserSurfaces, registerBrowserSurfaceRoute, surfaceText, type SurfaceKey } from './browser-surfaces.js'
+import { BrowserSurfaces, publishAuthorization, registerBrowserSurfaceRoute, surfaceText, type SurfaceKey } from './browser-surfaces.js'
 
 /** Fallback thread ids when a child session reports none. */
 let sidePanelSerial = 0
@@ -2248,6 +2248,15 @@ function registerLoginCommand(ctx: Context, state: RuntimeState): void {
       const oauthName = ((config.oauth as UnknownRecord | undefined)?.name as string | undefined) ?? providerId
       const commandSignal = commandContext.signal as AbortSignal | undefined
       await loginPiProvider({
+        // A short link on this app's own origin, because a 400-character
+        // authorize URL in a dialog is not something a person can click.
+        shorten: (url: string) => {
+          const path = publishAuthorization(url)
+          const web = (ctx as unknown as { get(name: string): { port?: number, host?: string } | undefined }).get('webServer')
+          if (path === undefined || web?.port === undefined) return undefined
+          const host = web.host === '0.0.0.0' || web.host === undefined ? '127.0.0.1' : web.host
+          return `http://${host}:${web.port}${path}`
+        },
         providerId,
         providerName: oauthName,
         providerConfig: config,

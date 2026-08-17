@@ -5,7 +5,40 @@
 // end to end by examples/side-conversation and examples/presentation-surfaces.
 import { describe, expect, it } from 'vitest'
 import { SEED_CARRIER_TAG } from '../src/subagent-bridge.js'
-import { BrowserSurfaces, surfaceText } from '../src/browser-surfaces.js'
+import { BrowserSurfaces, publishAuthorization, registerBrowserSurfaceRoute, surfaceText } from '../src/browser-surfaces.js'
+
+/**
+ * Mount the bridge's own route on a stand-in web server and drive it.
+ *
+ * The route is the seam the browser half fetches, so its answers are checked
+ * here as bytes — status, headers, body — rather than through a browser.
+ * @returns `get(path)` returning the status, headers and body the route wrote.
+ */
+function captureRoute() {
+  let handler: ((req: UnknownRecord, res: UnknownRecord) => Promise<void>) | undefined
+  const ctx = {
+    get: (name: string) => (name === 'webServer'
+      ? { register: (route: { handler: typeof handler }) => { handler = route.handler; return () => {} } }
+      : undefined),
+    effect: (apply: () => unknown) => { apply() },
+  }
+  registerBrowserSurfaceRoute(ctx as never, new BrowserSurfaces())
+  return {
+    async get(path: string) {
+      let status = 0
+      let body = ''
+      let headers: Record<string, string> = {}
+      await handler?.(
+        { method: 'GET', url: path },
+        {
+          writeHead: (code: number, given?: Record<string, string>) => { status = code; headers = given ?? {} },
+          end: (chunk?: string) => { body = chunk ?? '' },
+        } as never,
+      )
+      return { status, headers, body }
+    },
+  }
+}
 
 type UnknownRecord = Record<string, unknown>
 
@@ -276,5 +309,34 @@ describe('surfaceText', () => {
     // Pi's rpc mode where no factory runs at all.
     const needsTui = (tui: { createText(text: string): unknown }) => tui.createText('needs tui')
     expect(surfaceText(needsTui, theme)).toBeUndefined()
+  })
+})
+
+describe('the short login link', () => {
+  it('publishes a short path that redirects to the real authorize URL', async () => {
+    const long = 'https://auth.example.com/oauth/authorize?response_type=code&client_id=app_x&'
+      + 'redirect_uri=http%3A%2F%2Flocalhost%3A1455%2Fauth%2Fcallback&scope=openid+profile+email&'
+      + 'code_challenge=abcdefghijklmnopqrstuvwxyz0123456789&code_challenge_method=S256&state=deadbeef'
+    const path = publishAuthorization(long)
+
+    // Short enough to click, and on this app's own origin.
+    expect(path).toMatch(/^\/pi2dsh\/authorize\/[a-z0-9]+$/u)
+    expect((path ?? '').length).toBeLessThan(40)
+
+    const route = captureRoute()
+    const answer = await route.get(path as string)
+    expect(answer.status).toBe(302)
+    expect(answer.headers.location).toBe(long)
+  })
+
+  it('refuses anything that is not an http(s) address', () => {
+    expect(publishAuthorization('javascript:alert(1)')).toBeUndefined()
+    expect(publishAuthorization('file:///etc/passwd')).toBeUndefined()
+  })
+
+  it('answers an unknown or expired token with 404 rather than a redirect', async () => {
+    const route = captureRoute()
+    const answer = await route.get('/pi2dsh/authorize/nope')
+    expect(answer.status).toBe(404)
   })
 })

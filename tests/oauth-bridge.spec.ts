@@ -239,14 +239,59 @@ describe('where the user is told to go', () => {
     expect(seen.details[0]).toContain('https://auth.example.com/authorize?x=1')
   })
 
+  it('gives the dialog something to click instead of a wall of URL', async () => {
+    // The detail slot is rendered as markdown by the host (QuestionComposer →
+    // MarkdownText), and its link renderer emits a real anchor with
+    // target="_blank". So the address belongs in there as a LINK: one short
+    // line the user clicks. Pasting the raw 400-character authorize URL made
+    // the dialog a block of wrapped text with nothing clickable in it.
+    const seen = surface()
+    const long = 'https://auth.example.com/authorize?client_id=abc&scope=openid+profile+email&state=0123456789abcdef&code_challenge=Zm9vYmFyYmF6cXV4&redirect_uri=http%3A%2F%2Flocalhost%3A1455%2Fauth%2Fcallback'
+    const flow = oauthInteraction(seen.ui as never, undefined, url => `http://127.0.0.1:5210/pi2dsh/authorize/${url.length.toString(36)}`)
+    flow.notify({ type: 'auth_url', url: long, instructions: 'Then paste the code below.' } as never)
+    // codex hands its prompt a placeholder too — the redirect URI. GFM
+    // autolinks a bare URL, so keeping it here would draw a SECOND clickable
+    // address under the real one that does nothing when clicked.
+    await flow.prompt({ type: 'manual_code', message: 'Paste the code here:', placeholder: 'http://localhost:1455/auth/callback' } as never)
+
+    // A markdown link whose label is words, not the address.
+    expect(seen.details[0]).toMatch(/^\[Open the login page\]\(http:\/\/127\.0\.0\.1:5210\/pi2dsh\/authorize\/\w+\)/u)
+    // And the wall is actually gone — not merely joined by a shorter twin.
+    expect(seen.details[0]).not.toContain(long)
+    expect(seen.details[0]).toContain('Then paste the code below.')
+    expect(seen.details[0]).not.toContain('localhost:1455')
+    // The notice is plain text (no markdown pass there), so it keeps the
+    // address readable rather than showing bracket syntax.
+    expect(seen.notices[0]).toContain('http://127.0.0.1:5210/pi2dsh/authorize/')
+    expect(seen.notices[0]).not.toContain('](')
+  })
+
+  it('still hands over the real URL when there is nowhere to shorten it', async () => {
+    // No web server in the composition (the CLI profile): the link is still a
+    // link — the label is short even when the href is not.
+    const seen = surface()
+    const flow = oauthInteraction(seen.ui as never)
+    flow.notify({ type: 'auth_url', url: 'https://auth.example.com/authorize?x=1' } as never)
+    await flow.prompt({ type: 'manual_code', message: 'Paste the code here:' } as never)
+
+    expect(seen.details[0]).toBe('[Open the login page](https://auth.example.com/authorize?x=1)')
+  })
+
   it('carries a device code the same way', async () => {
     const seen = surface()
     const flow = oauthInteraction(seen.ui as never)
-    flow.notify({ type: 'device_code', verificationUri: 'https://example.com/device', userCode: 'WXYZ-1234' } as never)
+    flow.notify({
+      type: 'device_code',
+      verificationUri: 'https://example.com/device',
+      userCode: 'WXYZ-1234',
+      expiresInSeconds: 900,
+    } as never)
     await flow.prompt({ type: 'text', message: 'Waiting…' } as never)
 
     expect(seen.details[0]).toContain('https://example.com/device')
     expect(seen.details[0]).toContain('WXYZ-1234')
+    // The code is on a clock; a user who does not know that walks away from it.
+    expect(seen.details[0]).toContain('15 min')
   })
 
   it('carries it once, not onto every later prompt', async () => {

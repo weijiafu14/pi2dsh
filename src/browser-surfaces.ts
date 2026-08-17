@@ -479,6 +479,33 @@ interface WebServerLike {
  * @param registry - live thread registry to read from.
  * @returns whether the route was registered.
  */
+/**
+ * Short, clickable stand-ins for the authorization URLs a login flow announces.
+ *
+ * An OAuth authorize URL is 400 characters of query string. Putting it in a
+ * dialog produces six wrapped lines with the question buried under them, and a
+ * link that long is unusable even when the surface makes it clickable. These
+ * are the short links shown instead; hitting one redirects to the real address.
+ */
+const pendingAuthorizations = new Map<string, string>()
+
+/**
+ * Publish a short link for one authorization URL.
+ * @param url - the address the flow wants the user to open.
+ * @returns the path to show, or undefined when the URL is not http(s).
+ */
+export function publishAuthorization(url: string): string | undefined {
+  if (!/^https?:\/\//u.test(url)) return undefined
+  const token = Math.random().toString(36).slice(2, 10)
+  pendingAuthorizations.set(token, url)
+  // One login at a time in practice; keep the map from growing without bound.
+  if (pendingAuthorizations.size > 8) {
+    const oldest = pendingAuthorizations.keys().next().value
+    if (oldest !== undefined) pendingAuthorizations.delete(oldest)
+  }
+  return `/pi2dsh/authorize/${token}`
+}
+
 export function registerBrowserSurfaceRoute(ctx: Context, registry: BrowserSurfaces): boolean {
   const web = (ctx as unknown as { get(name: string): unknown }).get('webServer') as WebServerLike | undefined
   if (web === undefined || typeof web.register !== 'function') return false
@@ -517,6 +544,17 @@ export function registerBrowserSurfaceRoute(ctx: Context, registry: BrowserSurfa
       }
       if (method !== 'GET' && method !== 'HEAD') {
         response.writeHead(405)
+        response.end()
+        return
+      }
+      if (url.pathname.startsWith('/pi2dsh/authorize/')) {
+        const target = pendingAuthorizations.get(url.pathname.slice('/pi2dsh/authorize/'.length))
+        if (target === undefined) {
+          response.writeHead(404)
+          response.end('this login link has expired')
+          return
+        }
+        response.writeHead(302, { location: target, 'cache-control': 'no-store' })
         response.end()
         return
       }

@@ -100,6 +100,10 @@ interface OAuthNotifyEvent {
   userCode?: string
   verificationUri?: string
   message?: string
+  /** How long the device code stays valid. Every device-code flow sends it. */
+  expiresInSeconds?: number
+  /** How often the flow polls; sent alongside the expiry. */
+  intervalSeconds?: number
 }
 
 // The pi-ai interaction surface ({prompt, notify, signal}) over the Pi ui
@@ -119,7 +123,11 @@ function openIfPossible(url: string | undefined): void {
   }
 }
 
-export function oauthInteraction(ui: OAuthUiSurface, signal?: AbortSignal): {
+export function oauthInteraction(
+  ui: OAuthUiSurface,
+  signal?: AbortSignal,
+  shorten?: (url: string) => string | undefined,
+): {
   prompt(prompt: OAuthPromptEvent): Promise<string | undefined>
   notify(event: OAuthNotifyEvent): void
   signal: AbortSignal
@@ -149,8 +157,15 @@ export function oauthInteraction(ui: OAuthUiSurface, signal?: AbortSignal): {
   const takePending = (placeholder: unknown): string | undefined => {
     const carried = pending
     pending = undefined
-    if (carried === undefined) return placeholder === undefined ? undefined : String(placeholder)
-    return placeholder === undefined ? carried : `${carried}\n\n${String(placeholder)}`
+    // A carried address takes the slot alone. Pi's placeholder is greyed hint
+    // text INSIDE its input box; DSH's dialog has no such slot, so it lands in
+    // the same body text — and codex's placeholder is the redirect URI
+    // (localhost:1455/auth/callback), which GFM autolinks into a second,
+    // clickable, useless address sitting right under the real one. That is the
+    // trap the user already fell into. Where nothing was announced it is still
+    // the only hint there is, so it stays.
+    if (carried !== undefined) return carried
+    return placeholder === undefined ? undefined : String(placeholder)
   }
   return {
     signal: effectiveSignal,
@@ -167,18 +182,32 @@ export function oauthInteraction(ui: OAuthUiSurface, signal?: AbortSignal): {
     },
     notify(event) {
       if (event.type === 'auth_url') {
-        const text = `Open this URL to authorize: ${event.url}${event.instructions !== undefined ? `\n${event.instructions}` : ''}`
-        pending = text
-        ui.notify(text)
+        // An authorize URL is 400 characters of query string. Pasted whole it
+        // filled the dialog with wrapped text and gave the user nothing to
+        // click. The dialog's detail slot is rendered as markdown, so the
+        // address goes in as a LINK — one short clickable line, opened in a new
+        // tab by the host's own renderer. The short redirect on this app's
+        // origin is what makes it copyable too (a notice is plain text).
+        const shown = (event.url === undefined ? undefined : shorten?.(event.url)) ?? event.url
+        const tail = event.instructions === undefined ? '' : `\n\n${event.instructions}`
+        pending = `[Open the login page](${shown})${tail}`
+        ui.notify(`Open this URL to authorize: ${shown}${tail}`)
         // Open it, the way Pi's own login dialog does. The flows themselves
         // print "A browser window should open" — that sentence is Pi telling
         // the user what the HOST is about to do, and a host that does not do it
         // leaves a wrapped, unclickable URL and no way to authorize.
         openIfPossible(event.url)
       } else if (event.type === 'device_code') {
-        const text = `Visit ${event.verificationUri} and enter code ${event.userCode}`
-        pending = text
-        ui.notify(text)
+        // A device code EXPIRES. Dropping that left the user staring at a code
+        // with no idea it was on a clock — every device-code flow sends the
+        // window, and Pi's own host shows it.
+        const window = typeof event.expiresInSeconds === 'number' && event.expiresInSeconds > 0
+          ? ` (valid for ${Math.round(event.expiresInSeconds / 60)} min)`
+          : ''
+        // Same as above: a clickable line in the dialog, plain text in the
+        // notice. The code stays as code so it survives the markdown pass.
+        pending = `[Open the device login page](${event.verificationUri}) and enter code \`${event.userCode}\`${window}`
+        ui.notify(`Visit ${event.verificationUri} and enter code ${event.userCode}${window}`)
         openIfPossible(event.verificationUri)
       } else if (event.message !== undefined) {
         ui.notify(event.message)
@@ -225,6 +254,8 @@ export async function loginPiProvider(options: {
   store: FileCredentialStore
   ui: OAuthUiSurface
   signal?: AbortSignal
+  /** Turns a long authorize URL into a short one the user can actually click. */
+  shorten?: (url: string) => string | undefined
 }): Promise<UnknownRecord> {
   const oauthConfig = oauthConfigOf(options.providerConfig)
   if (oauthConfig === undefined) {
@@ -242,7 +273,7 @@ export async function loginPiProvider(options: {
     else options.signal.addEventListener('abort', () => done.abort(), { once: true })
   }
   try {
-    const credential = await adapter.login(oauthInteraction(options.ui, done.signal))
+    const credential = await adapter.login(oauthInteraction(options.ui, done.signal, options.shorten))
     await options.store.modify(options.providerId, async () => credential)
     return credential
   } finally {
