@@ -589,11 +589,21 @@ function contextFor(
       const level = type === 'warning' || type === 'error' ? 'warn' : 'info'
       logger(ctx)[level](`[pi2dsh] ${text}`)
     },
-    select: (title: unknown, options: unknown[]) => askOne(ctx, agent, signal, {
-      id: 'pi2dsh-select',
-      question: String(title),
-      options: options.map(option => ({ label: String(option) })),
-    }),
+    // Pi's contract is that select() returns ONE OF THE OPTIONS. DSH's dialog
+    // renders them as numbered rows and also offers a free-text box, so a user
+    // who types what they read on screen ("1", or a differently-cased name)
+    // sends text that is not an option — and the package then rejects its own
+    // answer ("Unknown OpenAI Codex login method: 1"). Resolve back to the
+    // option here, once, for every package rather than in each caller.
+    select: async (title: unknown, options: unknown[]) => {
+      const labels = options.map(option => String(option))
+      const answered = await askOne(ctx, agent, signal, {
+        id: 'pi2dsh-select',
+        question: String(title),
+        options: labels.map(label => ({ label })),
+      })
+      return answered === undefined ? undefined : resolveOfferedChoice(answered, labels)
+    },
     async confirm(title: unknown, message: unknown) {
       return await askOne(ctx, agent, signal, {
         id: 'pi2dsh-confirm',
@@ -2162,12 +2172,12 @@ function ensureLoginCommand(ctx: Context, state: RuntimeState): void {
 }
 
 /**
- * Turn what the user answered into one of the offered provider names.
+ * Turn what the user answered into one of the offered options.
  * @param answer - the label, a differently-cased label, or a 1-based position.
- * @param offered - the OAuth-capable provider names, in the order shown.
- * @returns the matching provider name, or undefined when nothing matches.
+ * @param offered - the options as they were shown, in order.
+ * @returns the matching option, or undefined when nothing matches.
  */
-function resolveOAuthChoice(answer: string, offered: readonly string[]): string | undefined {
+function resolveOfferedChoice(answer: string, offered: readonly string[]): string | undefined {
   const trimmed = answer.trim()
   if (offered.includes(trimmed)) return trimmed
   const insensitive = offered.find(name => name.toLowerCase() === trimmed.toLowerCase())
@@ -2205,7 +2215,7 @@ function registerLoginCommand(ctx: Context, state: RuntimeState): void {
       // sends "1", and the row number is what a person reads off the screen
       // anyway. Accept the name, any casing of it, or the 1-based position;
       // anything else still fails loud with the list.
-      const providerId = resolveOAuthChoice(answer, oauthProviders)
+      const providerId = resolveOfferedChoice(answer, oauthProviders)
       const config = providerId === undefined ? undefined : state.providers.get(providerId)
       if (providerId === undefined || config === undefined || !providerSupportsOAuth(config)) {
         throw new Error(`unknown OAuth provider ${JSON.stringify(answer)}; available: ${oauthProviders.join(', ')}`)
@@ -3442,7 +3452,7 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
 
 export const runtimeInternals = {
   compactionReason,
-  resolveOAuthChoice,
+  resolveOfferedChoice,
   dshToPiContent,
   expandPrompt,
   isSubagentOrigin,
