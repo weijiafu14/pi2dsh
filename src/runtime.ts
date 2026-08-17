@@ -3235,6 +3235,38 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
   // declared outside the harness), so nothing in the host's conversation view
   // would ever show them; running the registered EntryRenderer and projecting
   // its component to text is what puts a package's own entries on screen.
+  // Pi's autocomplete providers, on DSH's trigger menu. Pi asks a provider at
+  // the cursor on every edit; DSH asks a source after `/` or `@`. The two agree
+  // exactly for a provider anchored on a trigger character — which is what an
+  // @-mention provider is, and what the ecosystem's provider actually does — so
+  // the bridge asks the Pi chain with the token the user is typing and offers
+  // whatever it returns. A provider that completes bare words mid-sentence has
+  // no DSH moment to fire in and simply returns nothing here.
+  ctx.effect(() => browserSurfaces.trackCompletions(state.packageName ?? 'pi', async (trigger, query) => {
+    if (state.autocompleteProviders.length === 0) return []
+    // Pi's chain: each factory wraps the current provider, base returns nothing.
+    let provider: UnknownRecord = { getSuggestions: async () => null }
+    for (const factory of state.autocompleteProviders) {
+      if (typeof factory !== 'function') continue
+      provider = (factory as (current: unknown) => UnknownRecord)(provider) ?? provider
+    }
+    const getSuggestions = provider.getSuggestions
+    if (typeof getSuggestions !== 'function') return []
+    // The line the provider sees is the token itself: an anchored provider
+    // reads backwards from the cursor for its trigger, and that is all there is.
+    const line = `${trigger}${query}`
+    const suggestions = await (getSuggestions as (
+      lines: string[], cursorLine: number, cursorCol: number, options: UnknownRecord,
+    ) => Promise<UnknownRecord | null>)([line], 0, line.length, { signal: new AbortController().signal })
+    const items = (suggestions?.items ?? []) as Array<{ value?: unknown, label?: unknown, description?: unknown }>
+    return items
+      .filter(item => typeof item.value === 'string')
+      .map(item => ({
+        value: String(item.value),
+        label: String(item.label ?? item.value),
+        ...(typeof item.description === 'string' ? { description: item.description } : {}),
+      }))
+  }))
   ctx.effect(() => browserSurfaces.trackEntries(state.packageName ?? 'pi', (sessionId) => {
     const rendered: Array<{ id: string, customType: string, text: string }> = []
     const draw = (renderer: unknown, subject: UnknownRecord): string | undefined => (

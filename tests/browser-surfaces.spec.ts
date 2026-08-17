@@ -243,6 +243,22 @@ describe('surfaceText', () => {
     expect(registry.liveDraft('session-2')).toBe('')
   })
 
+  it('offers each package\'s completions for the trigger token, and survives a broken one', async () => {
+    const registry = new BrowserSurfaces()
+    registry.trackCompletions('pi-broken', async () => { throw new Error('provider bug') })
+    registry.trackCompletions('pi-probe', async (trigger, query) => (
+      trigger === '@' && 'probe-alpha'.startsWith(query)
+        ? [{ value: 'probe-alpha', label: 'probe-alpha' }]
+        : []
+    ))
+
+    expect(await registry.completions('@', 'probe')).toEqual([{ value: 'probe-alpha', label: 'probe-alpha' }])
+    expect(await registry.completions('@', 'zzz')).toEqual([])
+    // A provider that throws is the package's own bug and must not empty the
+    // menu for every other package in it.
+    expect((await registry.completions('@', 'probe')).length).toBe(1)
+  })
+
   it('clears on undefined and rejects unrenderable values', () => {
     expect(surfaceText(undefined)).toBeUndefined()
     expect(surfaceText(null)).toBeUndefined()

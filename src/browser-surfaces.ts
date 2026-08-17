@@ -82,6 +82,7 @@ export class BrowserSurfaces {
   // getEditorText reads what the user actually has.
   readonly #draftRequests = new Map<string, DraftRequest>()
   readonly #liveDrafts = new Map<string, string>()
+  readonly #completionSources = new Map<string, CompletionSource>()
 
   /**
    * Track one child session under its parent.
@@ -279,6 +280,36 @@ export class BrowserSurfaces {
   }
 
   /**
+   * Register one package's completion provider.
+   * @param packageName - owning Pi package.
+   * @param source - asked with the trigger character and the typed query.
+   * @returns a disposer that unregisters the source.
+   */
+  trackCompletions(packageName: string, source: CompletionSource): () => void {
+    this.#completionSources.set(packageName, source)
+    return () => { this.#completionSources.delete(packageName) }
+  }
+
+  /**
+   * Completions every package offers for one trigger token.
+   * @param trigger - the trigger character the menu opened on.
+   * @param query - what the user has typed after it.
+   * @returns candidates in package order; a provider that throws contributes none.
+   */
+  async completions(trigger: string, query: string): Promise<CompletionItem[]> {
+    const out: CompletionItem[] = []
+    for (const source of this.#completionSources.values()) {
+      try {
+        out.push(...await source(trigger, query))
+      } catch {
+        // A provider is the package's own code; its failure must not empty the
+        // menu for every other package.
+      }
+    }
+    return out
+  }
+
+  /**
    * What packages have put on screen for one session.
    * @param sessionId - session the browser is showing.
    * @returns one entry per package that has driven a surface, empties dropped.
@@ -408,6 +439,16 @@ export interface DraftRequest {
   rev: number
 }
 
+/** One completion a Pi provider offered for a trigger token. */
+export interface CompletionItem {
+  value: string
+  label: string
+  description?: string
+}
+
+/** A package's completion provider, asked with the token the user is typing. */
+export type CompletionSource = (trigger: string, query: string) => Promise<CompletionItem[]>
+
 /** A package's renderer, pulled at snapshot time for the session on screen. */
 export type EntrySource = (sessionId: string) => RenderedEntry[]
 
@@ -466,6 +507,15 @@ export function registerBrowserSurfaceRoute(ctx: Context, registry: BrowserSurfa
       if (method !== 'GET' && method !== 'HEAD') {
         response.writeHead(405)
         response.end()
+        return
+      }
+      if (url.pathname === '/pi2dsh/completions') {
+        const items = await registry.completions(
+          url.searchParams.get('trigger') ?? '@',
+          url.searchParams.get('query') ?? '',
+        )
+        response.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+        response.end(JSON.stringify({ items }))
         return
       }
       if (url.pathname !== '/pi2dsh/browser-state') {

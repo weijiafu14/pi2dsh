@@ -21,7 +21,7 @@ being sent as chat. Pi's never-throw collision behaviour is preserved.
 | [`pasteToEditor`](#pastetoeditor-ctxui) | `ctx.ui.*` | Mapped, difference stated | Appends to a per-agent editor buffer readable through getEditorText(). |
 | [`setEditorText`](#seteditortext-ctxui) | `ctx.ui.*` | Mapped, difference stated | Stored in a per-agent editor buffer readable through getEditorText(). |
 | [`getEditorText`](#geteditortext-ctxui) | `ctx.ui.*` | Mapped, difference stated | Reads the per-agent editor buffer maintained by the bridge. |
-| [`addAutocompleteProvider`](#addautocompleteprovider-ctxui) | `ctx.ui.*` | Mapped, difference stated | Registration is recorded; no DSH surface requests suggestions. |
+| [`addAutocompleteProvider`](#addautocompleteprovider-ctxui) | `ctx.ui.*` | Mapped, difference stated | The provider really runs: its completions appear as rows in DSH's own `@` trigger menu, and picking one inserts the value it chose. Providers anchored on a trigger character map exactly; one that completes bare words mid-sentence has no moment to fire in. |
 | [`setEditorComponent`](#seteditorcomponent-ctxui) | `ctx.ui.*` | Mapped, difference stated | Registration is recorded; no DSH surface mounts a Pi editor component. |
 | [`getEditorComponent`](#geteditorcomponent-ctxui) | `ctx.ui.*` | Mapped, difference stated | Returns the recorded factory. |
 
@@ -95,7 +95,7 @@ Reads what the composer actually holds: the browser half reports the live draft 
 
 `ctx.ui.*` · Mapped, difference stated
 
-Kept in bridge state and readable back; no DSH surface consumes it.
+Pi asks a provider at the cursor on every edit; DSH asks a source after `/` or `@`. The two agree exactly for a provider ANCHORED on a trigger character — an @-mention provider, which is what the ecosystem's provider is — so the bridge builds Pi's provider chain, asks it with the token being typed, and offers the result as rows in DSH's own trigger menu; picking one inserts the value the provider chose. A provider that completes bare words mid-sentence has no DSH moment to fire in and contributes nothing, rather than being given an interaction its author never designed.
 
 ### `setEditorComponent` <a id="seteditorcomponent-ctxui"></a>
 

@@ -42,8 +42,19 @@ interface SlotScope {
     register(registration: SlotRegistration, component: unknown): () => void
   }
 }
+interface TriggerCandidate { name: string, description?: string }
+interface TriggerSource {
+  trigger: '@' | '/'
+  name: string
+  order?: number
+  candidates(session: unknown, req: { query: string, signal: AbortSignal }): Promise<readonly TriggerCandidate[]>
+  onPick(pick: { candidate: TriggerCandidate }): { text: string } | undefined
+}
 interface ClientContext {
-  inject(services: string[], apply: (scope: SlotScope) => void): void
+  inject(services: string[], apply: (scope: SlotScope & {
+    inputTriggers?: { registerSource(source: TriggerSource): () => void }
+  }) => void): void
+  effect?(apply: () => (() => void) | void, label?: string): void
 }
 
 /** The framework's global session-list selector hook, narrowed to what is read. */
@@ -77,7 +88,7 @@ interface BrowserState {
 }
 
 /** Services this half needs before it can take a seat. */
-export const inject = ['slots']
+export const inject = ['slots', 'inputTriggers']
 
 const POLL_MS = 1000
 const EMPTY: BrowserState = { threads: [], surfaces: [], entries: [] }
@@ -370,6 +381,39 @@ function ComposerBridge(
  * @param ctx - client root context.
  */
 export function apply(ctx: ClientContext): void {
+  // Pi's autocomplete providers, offered under DSH's own trigger menu. The
+  // labels a package returns are the menu rows; picking one inserts the value
+  // the provider chose, which is what its own applyCompletion would have done
+  // with the token.
+  ctx.inject(['inputTriggers'], (scope) => {
+    const triggers = scope.inputTriggers
+    if (triggers === undefined) return
+    // Values are carried on the candidate name, which is what a pick returns.
+    triggers.registerSource({
+      trigger: '@',
+      name: 'pi2dsh',
+      order: 50,
+      candidates: async (_session, req) => {
+        try {
+          const response = await fetch(
+            `/pi2dsh/completions?trigger=${encodeURIComponent('@')}&query=${encodeURIComponent(req.query)}`,
+            { signal: req.signal },
+          )
+          if (!response.ok) return []
+          const payload = await response.json() as { items?: Array<{ value: string, label: string, description?: string }> }
+          return (payload.items ?? []).map(item => ({
+            name: item.value,
+            ...(item.description === undefined ? {} : { description: item.description }),
+          }))
+        } catch {
+          // An aborted or failed lookup contributes no rows; the other sources
+          // in the menu are unaffected.
+          return []
+        }
+      },
+      onPick: pick => ({ text: pick.candidate.name }),
+    })
+  })
   ctx.inject(['slots'], (scope) => {
     scope.slots.inject('shell.overlay', () => scope.slots.register({
       name: 'shell.overlay', id: 'pi2dsh-overlay', order: 1,
