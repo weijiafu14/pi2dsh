@@ -581,9 +581,10 @@ async function runCustomGateways() {
 // ---------------------------------------------------------------------------
 // examples/presentation-surfaces — a Pi package's own chrome, in DSH web seats
 // ---------------------------------------------------------------------------
-// The package under test is the one the example ships, installed the way its
-// README says to install it (`file:` on the checkout). No inline copy: a second
-// copy would let the example rot while the regression stayed green.
+// The package under test is a REAL npm plugin, installed the way the example's
+// README says to install it. Driving a package we wrote proves the surfaces we
+// thought to drive: the demo one that used to be here passed while real plugins
+// rendered raw ANSI escapes into the seats, because nothing we write emits ANSI.
 async function runPresentationSurfaces() {
   if (apiKey === undefined || apiKey.length === 0) {
     results.presentationSurfaces = { status: 'skipped', reason: 'DEEPSEEK_API_KEY not set' }
@@ -593,11 +594,9 @@ async function runPresentationSurfaces() {
   const scratch = await mkdtemp(join(tmpdir(), 'pi2dsh-ex-surfaces-'))
   let web
   try {
-    const demo = join(projectRoot, 'examples/presentation-surfaces/pi-surface-demo')
-    await stat(join(demo, 'index.mjs'))
     const { home, env, runDsh } = await makeHome(scratch)
     await runDsh(['plugin', '--profile', 'web', 'add', engineSpec])
-    await runDsh(['plugin', '--profile', 'web', 'add', `file:${demo}`])
+    await runDsh(['plugin', '--profile', 'web', 'add', 'pi-powerline-footer'])
     await useJsonlSessions(home, 'web')
 
     const port = Number(process.env.SURFACES_PORT ?? 5189)
