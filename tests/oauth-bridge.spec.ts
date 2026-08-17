@@ -26,12 +26,15 @@ async function tempAuthPath(): Promise<string> {
 function collectingUi(answers: Record<string, string> = {}) {
   const notices: string[] = []
   const prompts: string[] = []
+  const details: string[] = []
   return {
     notices,
     prompts,
+    details,
     ui: {
-      async input(title: unknown) {
+      async input(title: unknown, detail?: unknown) {
         prompts.push(String(title))
+        details.push(detail === undefined ? '' : String(detail))
         return answers[String(title)] ?? 'typed-answer'
       },
       async select(title: unknown, options: unknown[]) {
@@ -66,7 +69,7 @@ describe('interactive OAuth host seam', () => {
   it('runs a package login end-to-end: callbacks reach DSH-mapped ui, credential lands in the store', async () => {
     const path = await tempAuthPath()
     const store = new FileCredentialStore(path)
-    const { ui, notices, prompts } = collectingUi()
+    const { ui, notices, prompts, details } = collectingUi()
     const seenCallbacks: string[] = []
 
     const providerConfig = {
@@ -103,8 +106,11 @@ describe('interactive OAuth host seam', () => {
     // be the bare question, and the announcement went out as a command notice —
     // which DSH delivers when the command ends, while this command is blocked
     // waiting for the user to act on it. The user saw only the redirect URI.
-    expect(prompts[0]).toContain('Paste code')
-    expect(prompts[0]).toContain('ABCD-1234')
+    // The question stays the question; the announced address rides in the
+    // DETAIL slot. Prepending 400 characters of authorization URL to the title
+    // buried the actual question under wrapped text.
+    expect(prompts[0]).toBe('Paste code')
+    expect(details[0]).toContain('ABCD-1234')
     expect(prompts[1]).toBe('Pick account')
 
     const onDisk = JSON.parse(await readFile(path, 'utf8')) as Record<string, { type: string, access: string }>
@@ -204,12 +210,14 @@ describe('where the user is told to go', () => {
   function surface() {
     const notices: string[] = []
     const prompts: string[] = []
+    const details: string[] = []
     return {
       notices,
       prompts,
+      details,
       ui: {
         notify: (message: unknown) => { notices.push(String(message)) },
-        input: async (title: unknown) => { prompts.push(String(title)); return 'the-code' },
+        input: async (title: unknown, detail?: unknown) => { prompts.push(String(title)); details.push(detail === undefined ? '' : String(detail)); return 'the-code' },
         select: async (title: unknown, options: unknown[]) => { prompts.push(String(title)); return String(options[0]) },
       },
     }
@@ -227,8 +235,8 @@ describe('where the user is told to go', () => {
     const answer = await flow.prompt({ type: 'manual_code', message: 'Paste the code here:' } as never)
 
     expect(answer).toBe('the-code')
-    expect(seen.prompts[0]).toContain('https://auth.example.com/authorize?x=1')
-    expect(seen.prompts[0]).toContain('Paste the code here:')
+    expect(seen.prompts[0]).toBe('Paste the code here:')
+    expect(seen.details[0]).toContain('https://auth.example.com/authorize?x=1')
   })
 
   it('carries a device code the same way', async () => {
@@ -237,8 +245,8 @@ describe('where the user is told to go', () => {
     flow.notify({ type: 'device_code', verificationUri: 'https://example.com/device', userCode: 'WXYZ-1234' } as never)
     await flow.prompt({ type: 'text', message: 'Waiting…' } as never)
 
-    expect(seen.prompts[0]).toContain('https://example.com/device')
-    expect(seen.prompts[0]).toContain('WXYZ-1234')
+    expect(seen.details[0]).toContain('https://example.com/device')
+    expect(seen.details[0]).toContain('WXYZ-1234')
   })
 
   it('carries it once, not onto every later prompt', async () => {
@@ -249,5 +257,38 @@ describe('where the user is told to go', () => {
     await flow.prompt({ type: 'manual_code', message: 'Second:' } as never)
 
     expect(seen.prompts[1]).toBe('Second:')
+    expect(seen.details[1]).toBe('')
+  })
+})
+
+describe('the dialog after the login is over', () => {
+  it('cancels a question still on screen when the flow ends', async () => {
+    // The browser half of an OAuth login finishes at the local callback, not at
+    // the paste box. A real attempt ended with the provider refusing the token
+    // exchange (region-blocked) and left the "paste the authorization code"
+    // dialog sitting there, unable to do anything.
+    let seenSignal: AbortSignal | undefined
+    const providerConfig = {
+      name: 'Example',
+      auth: {
+        oauth: {
+          async login(interaction: { signal: AbortSignal }) {
+            seenSignal = interaction.signal
+            throw new Error('token exchange failed (403)')
+          },
+        },
+      },
+    }
+    const store = new (await import('../src/oauth-bridge.js')).FileCredentialStore(
+      join(await mkdtemp(join(tmpdir(), 'pi2dsh-oauth-')), 'auth.json'),
+    )
+    await expect(loginPiProvider({
+      providerId: 'example',
+      providerConfig: providerConfig as never,
+      store,
+      ui: { input: async () => undefined, select: async () => undefined, notify: () => {} } as never,
+    })).rejects.toThrow(/token exchange failed/u)
+
+    expect(seenSignal?.aborted, 'the flow ended but its questions were never cancelled').toBe(true)
   })
 })

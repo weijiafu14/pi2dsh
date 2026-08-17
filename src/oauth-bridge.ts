@@ -130,21 +130,31 @@ export function oauthInteraction(ui: OAuthUiSurface, signal?: AbortSignal): {
   // which does nothing when clicked. Carrying it into the prompt puts it where
   // the user is already looking.
   let pending: string | undefined
-  const withPending = (message: string): string => {
-    if (pending === undefined) return message
+  /**
+   * Hand the announced address to the prompt as its DETAIL, not its title.
+   *
+   * An authorization URL is 400 characters of query string. Prepending it to
+   * the question turned the dialog into a wall of wrapped text with the actual
+   * question buried underneath; `detail` is the slot DSH renders supporting
+   * text in.
+   * @param placeholder - the flow's own placeholder, kept when it supplied one.
+   */
+  const takePending = (placeholder: unknown): string | undefined => {
     const carried = pending
     pending = undefined
-    return `${carried}\n\n${message}`
+    if (carried === undefined) return placeholder === undefined ? undefined : String(placeholder)
+    return placeholder === undefined ? carried : `${carried}\n\n${String(placeholder)}`
   }
   return {
     signal: effectiveSignal,
     async prompt(prompt) {
       if (prompt.type === 'select') {
         const options = prompt.options ?? []
-        const picked = await ui.select(withPending(prompt.message), options.map(option => option.label))
+        pending = undefined
+        const picked = await ui.select(prompt.message, options.map(option => option.label))
         return options.find(option => option.label === picked)?.id ?? picked
       }
-      return ui.input(withPending(prompt.message), prompt.placeholder)
+      return ui.input(prompt.message, takePending(prompt.placeholder))
     },
     notify(event) {
       if (event.type === 'auth_url') {
@@ -212,9 +222,23 @@ export async function loginPiProvider(options: {
     throw new Error(`${options.providerName ?? options.providerId} does not support oauth login`)
   }
   const adapter = oauthAdapterOf(oauthConfig)
-  const credential = await adapter.login(oauthInteraction(options.ui, options.signal))
-  await options.store.modify(options.providerId, async () => credential)
-  return credential
+  // The flow's own signal, so a question still on screen when the login ends
+  // gets cancelled. The browser half of an OAuth login finishes at the local
+  // callback, not at the paste box — leaving that box open after the flow has
+  // resolved (or failed, as a region-blocked token exchange does) strands the
+  // user in front of a dialog that can no longer do anything.
+  const done = new AbortController()
+  if (options.signal !== undefined) {
+    if (options.signal.aborted) done.abort()
+    else options.signal.addEventListener('abort', () => done.abort(), { once: true })
+  }
+  try {
+    const credential = await adapter.login(oauthInteraction(options.ui, done.signal))
+    await options.store.modify(options.providerId, async () => credential)
+    return credential
+  } finally {
+    done.abort()
+  }
 }
 
 // Pi's resolveProviderAuth over the stored credential: five-minute expiry
