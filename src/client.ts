@@ -33,7 +33,8 @@
 //
 // Types are declared locally: the client packages resolve through the loader's
 // module table at runtime and are not dependencies of this package.
-import { createElement, useEffect, useState } from 'react'
+import { createElement, useEffect, useState, type ReactNode } from 'react'
+import { hasAnsi, parseAnsi } from './ansi.js'
 
 interface SlotRegistration { name: string, id: string, order?: number, select?: (...args: unknown[]) => unknown }
 interface SlotScope {
@@ -258,7 +259,8 @@ function OverlaySurfaces({ useSessions }: { useSessions: SessionsHook }) {
   return createElement('div', null,
     pills.length === 0 ? null : createElement('div', { style: styles.pillStack, 'data-pi2dsh': 'pills' },
       ...pills.map((pill, index) => createElement('div',
-        { key: `${pill.owner}-${pill.key}-${index}`, style: styles.pill, title: pill.owner }, pill.text)),
+        { key: `${pill.owner}-${pill.key}-${index}`, style: styles.pill, title: pill.owner },
+        ansiText(pill.text))),
     ),
     shown.length === 0 ? null : createElement('div', { 'data-pi2dsh': 'side-panel', style: styles.panel },
       ...shown.map(thread => createElement('div', { key: thread.id, style: { display: 'contents' } },
@@ -289,6 +291,22 @@ function OverlaySurfaces({ useSessions }: { useSessions: SessionsHook }) {
  * @param opts - whether the seat also shows widgets (keyed string arrays).
  * @returns a slot component.
  */
+/**
+ * Render text that may carry ANSI colour into styled spans.
+ *
+ * Parsing lives in ./ansi.js so it can be tested without a DOM; this half
+ * only turns runs into elements. Text with no escapes returns as a plain
+ * string, so the common case adds no wrappers.
+ * @param text - the seat text, possibly with SGR escapes.
+ * @returns react children.
+ */
+function ansiText(text: string): ReactNode {
+  if (!hasAnsi(text)) return text
+  return parseAnsi(text).map((run, index) => (Object.keys(run.style).length === 0
+    ? run.text
+    : createElement('span', { key: `ansi-${index}`, style: run.style }, run.text)))
+}
+
 function textSeat(
   marker: string,
   valueKeys: readonly SurfaceKey[],
@@ -303,7 +321,7 @@ function textSeat(
     if (entries.length === 0) return null
     return createElement('div', { 'data-pi2dsh': marker, style: styles.strip },
       ...entries.map((entry, index) => createElement('div',
-        { key: `${entry.owner}-${index}`, style: styles.inline, title: entry.owner }, entry.text)),
+        { key: `${entry.owner}-${index}`, style: styles.inline, title: entry.owner }, ansiText(entry.text))),
     )
   }
 }
@@ -323,7 +341,8 @@ function EntryStrip({ sessionId }: { sessionId?: string }) {
   if (entries.length === 0) return null
   return createElement('div', { 'data-pi2dsh': 'entries', style: styles.strip },
     ...entries.map(entry => createElement('div',
-      { key: entry.id, style: styles.inline, title: `${entry.package ?? 'pi'} · ${entry.customType}` }, entry.text)),
+      { key: entry.id, style: styles.inline, title: `${entry.package ?? 'pi'} · ${entry.customType}` },
+      ansiText(entry.text))),
   )
 }
 
