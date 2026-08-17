@@ -156,11 +156,22 @@ export class BrowserSurfaces {
    * @param key - the widget's key.
    * @param content - the widget's lines, or undefined to remove the widget.
    */
-  setWidget(sessionId: string, packageName: string | undefined, key: string, content: unknown): void {
+  setWidget(sessionId: string, packageName: string | undefined, key: string, content: unknown, theme?: unknown): void {
     if (sessionId.length === 0) return
     const view = this.#view(sessionId, packageName)
-    if (content === undefined || !Array.isArray(content)) delete view.widgets[key]
-    else view.widgets[key] = content.map(String).join('\n')
+    // Pi's setWidget is overloaded: lines, or a `(tui, theme) => Component`
+    // factory. Both are rendered here, through the same projection the header
+    // and footer use — a component's contract is `render(width): string[]`, so
+    // there is text to show and nothing has to be invented.
+    //
+    // Pi's own rpc mode drops the factory form, but that host also drops
+    // setFooter and setHeader entirely, and this bridge renders those; matching
+    // rpc mode HERE and exceeding it THERE was the inconsistency. Worse, the
+    // old rule deleted on any non-array: a package that set lines and later
+    // updated with a factory had its widget silently disappear.
+    const text = surfaceText(content, theme)
+    if (text === undefined) delete view.widgets[key]
+    else view.widgets[key] = text
   }
 
   /**

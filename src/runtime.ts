@@ -628,9 +628,9 @@ function contextFor(
     setWidget: (key: unknown, content: unknown) => {
       const surfaces = state.shared.browserSurfaces
       if (surfaces === undefined) return
-      // Only string arrays reach a host — the server half owns that rule,
-      // mirroring Pi's rpc mode, which ignores widget factories the same way.
-      surfaces.setWidget(sessionIdOf(state, agent), state.packageName, String(key), content)
+      // Lines or a component factory, both rendered by the server half with
+      // the same headless theme the header and footer use.
+      surfaces.setWidget(sessionIdOf(state, agent), state.packageName, String(key), content, state.theme)
     },
     onTerminalInput: () => () => undefined,
     setWorkingMessage: (message?: unknown) => putSurface(ctx, state, agent, 'workingMessage', message),

@@ -111,14 +111,21 @@ describe('presentation surfaces', () => {
     expect(registry.surfaces('session-1')[0]).toMatchObject({ statuses: { branch: 'main' } })
   })
 
-  it('records setWidget string arrays, ignores non-array content, and clears by key', () => {
+  it('records setWidget lines AND component factories, and clears by key', () => {
     const registry = new BrowserSurfaces()
     registry.setWidget('session-1', 'pi-demo', 'plan-todos', ['- one', '- two'])
-    registry.setWidget('session-1', 'pi-demo', 'ignored', 'not an array')
+    // Pi's second overload. It used to be dropped here — and worse, dropping
+    // went through the same branch as clearing, so updating a live widget with
+    // a factory deleted it.
+    registry.setWidget('session-1', 'pi-demo', 'built', () => ({ render: (width: number) => [`w=${width}`] }))
 
-    expect(registry.surfaces('session-1')[0]?.widgets).toEqual({ 'plan-todos': '- one\n- two' })
+    expect(registry.surfaces('session-1')[0]?.widgets).toEqual({
+      'plan-todos': '- one\n- two',
+      built: expect.stringMatching(/^w=\d+$/u),
+    })
 
     registry.setWidget('session-1', 'pi-demo', 'plan-todos', undefined)
+    registry.setWidget('session-1', 'pi-demo', 'built', undefined)
     expect(registry.surfaces('session-1')).toEqual([])
   })
 

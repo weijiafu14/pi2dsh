@@ -1,0 +1,663 @@
+{
+  "schemaVersion": 1,
+  "corpus": {
+    "source": "https://pi.dev/packages?type=extension",
+    "capturedAt": "2026-08-14",
+    "size": 50
+  },
+  "note": "call sites found in package source. Usage is not proof the plugin works; that comes from an end-to-end run.",
+  "bySurface": {
+    "setStatus": [
+      "@gotgenes/pi-permission-system",
+      "@gotgenes/pi-subagents",
+      "@howaboua/pi-codex-conversion",
+      "@llblab/pi-telegram",
+      "@mjasnikovs/pi-task",
+      "@narumitw/pi-goal",
+      "@narumitw/pi-lsp",
+      "@narumitw/pi-plan-mode",
+      "@narumitw/pi-statusline",
+      "@tintinweb/pi-subagents",
+      "@vigolium/piolium",
+      "mitsupi",
+      "pi-background-tasks",
+      "pi-cc-extensions",
+      "pi-cursor-sdk",
+      "pi-fabric",
+      "pi-goal-list-loop-audit",
+      "pi-goosedump",
+      "pi-harness-runtime",
+      "pi-landstrip",
+      "pi-llama-cpp",
+      "pi-mcp-adapter",
+      "pi-powerline-footer",
+      "pi-prompt-template-model",
+      "pi-zentui"
+    ],
+    "setWidget": [
+      "@gotgenes/pi-subagents",
+      "@howaboua/pi-codex-conversion",
+      "@juicesharp/rpiv-todo",
+      "@mjasnikovs/pi-task",
+      "@narumitw/pi-plan-mode",
+      "@tintinweb/pi-subagents",
+      "@vigolium/piolium",
+      "mitsupi",
+      "pi-background-tasks",
+      "pi-btw",
+      "pi-cc-extensions",
+      "pi-fabric",
+      "pi-goal-list-loop-audit",
+      "pi-goosedump",
+      "pi-landstrip",
+      "pi-powerline-footer",
+      "pi-prompt-template-model",
+      "pi-web-access"
+    ],
+    "setTitle": [
+      "pi-powerline-footer"
+    ],
+    "setHeader": [
+      "@howaboua/pi-codex-conversion",
+      "pi-cc-extensions",
+      "pi-harness-runtime",
+      "pi-powerline-footer"
+    ],
+    "setFooter": [
+      "@narumitw/pi-statusline",
+      "pi-powerline-footer",
+      "pi-zentui"
+    ],
+    "setWorkingMessage": [
+      "mitsupi",
+      "pi-cc-extensions",
+      "pi-prompt-template-model",
+      "pi-zentui"
+    ],
+    "setWorkingIndicator": [
+      "pi-zentui"
+    ],
+    "setHiddenThinkingLabel": [],
+    "registerMessageRenderer": [
+      "@howaboua/pi-codex-conversion",
+      "@tintinweb/pi-subagents",
+      "mitsupi",
+      "pi-btw",
+      "pi-cc-extensions",
+      "pi-lens",
+      "pi-prompt-template-model"
+    ],
+    "registerEntryRenderer": [
+      "@howaboua/pi-codex-conversion",
+      "pi-cc-extensions",
+      "pi-zentui"
+    ],
+    "setEditorText": [
+      "@mjasnikovs/pi-task",
+      "@narumitw/pi-btw",
+      "@narumitw/pi-plan-mode",
+      "mitsupi",
+      "pi-ask-user",
+      "pi-powerline-footer",
+      "pi-zentui"
+    ],
+    "pasteToEditor": [
+      "@howaboua/pi-codex-conversion",
+      "@juicesharp/rpiv-voice"
+    ],
+    "getEditorText": [
+      "@narumitw/pi-btw",
+      "@tintinweb/pi-subagents",
+      "mitsupi",
+      "pi-powerline-footer",
+      "pi-zentui"
+    ],
+    "addAutocompleteProvider": [
+      "@ff-labs/pi-fff",
+      "pi-cc-extensions"
+    ],
+    "appendEntry": [
+      "@ff-labs/pi-fff",
+      "@gotgenes/pi-subagents",
+      "@howaboua/pi-codex-conversion",
+      "@narumitw/pi-goal",
+      "@tintinweb/pi-subagents",
+      "mitsupi",
+      "pi-background-tasks",
+      "pi-btw",
+      "pi-cc-extensions",
+      "pi-landstrip",
+      "pi-web-access",
+      "pi-zentui"
+    ]
+  },
+  "packages": [
+    {
+      "name": "pi-mcp-adapter",
+      "version": "2.26.0",
+      "rank": 1,
+      "downloadsPerMonth": 354400,
+      "bytesScanned": 1127158,
+      "surfaces": [
+        "setStatus"
+      ]
+    },
+    {
+      "name": "@vigolium/piolium",
+      "version": "0.0.13",
+      "rank": 2,
+      "downloadsPerMonth": 231200,
+      "bytesScanned": 656267,
+      "surfaces": [
+        "setStatus",
+        "setWidget"
+      ]
+    },
+    {
+      "name": "pi-web-access",
+      "version": "0.23.0",
+      "rank": 3,
+      "downloadsPerMonth": 222000,
+      "bytesScanned": 876650,
+      "surfaces": [
+        "appendEntry",
+        "setWidget"
+      ]
+    },
+    {
+      "name": "@juicesharp/rpiv-ask-user-question",
+      "version": "2.6.0",
+      "rank": 4,
+      "downloadsPerMonth": 51600,
+      "bytesScanned": 197995,
+      "surfaces": []
+    },
+    {
+      "name": "@juicesharp/rpiv-todo",
+      "version": "2.6.0",
+      "rank": 5,
+      "downloadsPerMonth": 43100,
+      "bytesScanned": 75019,
+      "surfaces": [
+        "setWidget"
+      ]
+    },
+    {
+      "name": "pi-lens",
+      "version": "4.0.1",
+      "rank": 6,
+      "downloadsPerMonth": 40900,
+      "bytesScanned": 8497598,
+      "surfaces": [
+        "registerMessageRenderer"
+      ]
+    },
+    {
+      "name": "@tintinweb/pi-subagents",
+      "version": "0.16.1",
+      "rank": 7,
+      "downloadsPerMonth": 40700,
+      "bytesScanned": 951793,
+      "surfaces": [
+        "appendEntry",
+        "getEditorText",
+        "registerMessageRenderer",
+        "setStatus",
+        "setWidget"
+      ]
+    },
+    {
+      "name": "@ff-labs/pi-fff",
+      "version": "0.10.5",
+      "rank": 8,
+      "downloadsPerMonth": 31100,
+      "bytesScanned": 59227,
+      "surfaces": [
+        "addAutocompleteProvider",
+        "appendEntry"
+      ]
+    },
+    {
+      "name": "pi-simplify",
+      "version": "0.2.3",
+      "rank": 9,
+      "downloadsPerMonth": 30800,
+      "bytesScanned": 16884,
+      "surfaces": []
+    },
+    {
+      "name": "@narumitw/pi-goal",
+      "version": "0.51.0",
+      "rank": 10,
+      "downloadsPerMonth": 30200,
+      "bytesScanned": 249079,
+      "surfaces": [
+        "appendEntry",
+        "setStatus"
+      ]
+    },
+    {
+      "name": "pi-goal-list-loop-audit",
+      "version": "0.35.4",
+      "rank": 11,
+      "downloadsPerMonth": 28500,
+      "bytesScanned": 1507560,
+      "surfaces": [
+        "setStatus",
+        "setWidget"
+      ]
+    },
+    {
+      "name": "pi-fabric",
+      "version": "0.61.1",
+      "rank": 12,
+      "downloadsPerMonth": 28300,
+      "bytesScanned": 2452296,
+      "surfaces": [
+        "setStatus",
+        "setWidget"
+      ]
+    },
+    {
+      "name": "@gotgenes/pi-permission-system",
+      "version": "26.1.0",
+      "rank": 13,
+      "downloadsPerMonth": 27000,
+      "bytesScanned": 694475,
+      "surfaces": [
+        "setStatus"
+      ]
+    },
+    {
+      "name": "pi-background-tasks",
+      "version": "2.4.2",
+      "rank": 14,
+      "downloadsPerMonth": 26900,
+      "bytesScanned": 1128491,
+      "surfaces": [
+        "appendEntry",
+        "setStatus",
+        "setWidget"
+      ]
+    },
+    {
+      "name": "pi-hermes-memory",
+      "version": "0.9.5",
+      "rank": 15,
+      "downloadsPerMonth": 23700,
+      "bytesScanned": 566634,
+      "surfaces": []
+    },
+    {
+      "name": "@mjasnikovs/pi-task",
+      "version": "0.38.11",
+      "rank": 16,
+      "downloadsPerMonth": 22500,
+      "bytesScanned": 2756940,
+      "surfaces": [
+        "setEditorText",
+        "setStatus",
+        "setWidget"
+      ]
+    },
+    {
+      "name": "@narumitw/pi-plan-mode",
+      "version": "0.49.3",
+      "rank": 17,
+      "downloadsPerMonth": 19200,
+      "bytesScanned": 151706,
+      "surfaces": [
+        "setEditorText",
+        "setStatus",
+        "setWidget"
+      ]
+    },
+    {
+      "name": "pi-powerline-footer",
+      "version": "0.15.0",
+      "rank": 18,
+      "downloadsPerMonth": 17500,
+      "bytesScanned": 350669,
+      "surfaces": [
+        "getEditorText",
+        "setEditorText",
+        "setFooter",
+        "setHeader",
+        "setStatus",
+        "setTitle",
+        "setWidget"
+      ]
+    },
+    {
+      "name": "@juicesharp/rpiv-voice",
+      "version": "2.6.0",
+      "rank": 19,
+      "downloadsPerMonth": 17200,
+      "bytesScanned": 117372,
+      "surfaces": [
+        "pasteToEditor"
+      ]
+    },
+    {
+      "name": "@howaboua/pi-codex-conversion",
+      "version": "3.0.15",
+      "rank": 20,
+      "downloadsPerMonth": 16500,
+      "bytesScanned": 3067343,
+      "surfaces": [
+        "appendEntry",
+        "pasteToEditor",
+        "registerEntryRenderer",
+        "registerMessageRenderer",
+        "setHeader",
+        "setStatus",
+        "setWidget"
+      ]
+    },
+    {
+      "name": "@narumitw/pi-lsp",
+      "version": "0.49.4",
+      "rank": 21,
+      "downloadsPerMonth": 16300,
+      "bytesScanned": 63317,
+      "surfaces": [
+        "setStatus"
+      ]
+    },
+    {
+      "name": "pi-readseek",
+      "version": "0.9.13",
+      "rank": 22,
+      "downloadsPerMonth": 16100,
+      "bytesScanned": 222089,
+      "surfaces": []
+    },
+    {
+      "name": "pi-hashline-edit-pro",
+      "version": "2.5.3",
+      "rank": 23,
+      "downloadsPerMonth": 15700,
+      "bytesScanned": 131215,
+      "surfaces": []
+    },
+    {
+      "name": "@llblab/pi-telegram",
+      "version": "0.34.1",
+      "rank": 24,
+      "downloadsPerMonth": 14300,
+      "bytesScanned": 1946018,
+      "surfaces": [
+        "setStatus"
+      ]
+    },
+    {
+      "name": "pi-agent-browser-native",
+      "version": "0.3.0",
+      "rank": 25,
+      "downloadsPerMonth": 13800,
+      "bytesScanned": 1368153,
+      "surfaces": []
+    },
+    {
+      "name": "pi-prompt-template-model",
+      "version": "0.12.0",
+      "rank": 26,
+      "downloadsPerMonth": 13800,
+      "bytesScanned": 260638,
+      "surfaces": [
+        "registerMessageRenderer",
+        "setStatus",
+        "setWidget",
+        "setWorkingMessage"
+      ]
+    },
+    {
+      "name": "pi-landstrip",
+      "version": "0.18.30",
+      "rank": 27,
+      "downloadsPerMonth": 13700,
+      "bytesScanned": 265008,
+      "surfaces": [
+        "appendEntry",
+        "setStatus",
+        "setWidget"
+      ]
+    },
+    {
+      "name": "pi-rtk-optimizer",
+      "version": "0.9.0",
+      "rank": 28,
+      "downloadsPerMonth": 12900,
+      "bytesScanned": 247192,
+      "surfaces": []
+    },
+    {
+      "name": "pi-cc-extensions",
+      "version": "0.8.60",
+      "rank": 29,
+      "downloadsPerMonth": 12000,
+      "bytesScanned": 468471,
+      "surfaces": [
+        "addAutocompleteProvider",
+        "appendEntry",
+        "registerEntryRenderer",
+        "registerMessageRenderer",
+        "setHeader",
+        "setStatus",
+        "setWidget",
+        "setWorkingMessage"
+      ]
+    },
+    {
+      "name": "@narumitw/pi-statusline",
+      "version": "0.49.7",
+      "rank": 30,
+      "downloadsPerMonth": 11900,
+      "bytesScanned": 110362,
+      "surfaces": [
+        "setFooter",
+        "setStatus"
+      ]
+    },
+    {
+      "name": "pi-goosedump",
+      "version": "0.12.51",
+      "rank": 31,
+      "downloadsPerMonth": 11600,
+      "bytesScanned": 104319,
+      "surfaces": [
+        "setStatus",
+        "setWidget"
+      ]
+    },
+    {
+      "name": "pi-deepseek-search",
+      "version": "1.0.20",
+      "rank": 32,
+      "downloadsPerMonth": 11100,
+      "bytesScanned": 10626,
+      "surfaces": []
+    },
+    {
+      "name": "@narumitw/pi-btw",
+      "version": "0.52.0",
+      "rank": 33,
+      "downloadsPerMonth": 10600,
+      "bytesScanned": 107498,
+      "surfaces": [
+        "getEditorText",
+        "setEditorText"
+      ]
+    },
+    {
+      "name": "pi-ask-user",
+      "version": "0.14.0",
+      "rank": 34,
+      "downloadsPerMonth": 10400,
+      "bytesScanned": 93140,
+      "surfaces": [
+        "setEditorText"
+      ]
+    },
+    {
+      "name": "@juicesharp/rpiv-web-tools",
+      "version": "2.6.0",
+      "rank": 35,
+      "downloadsPerMonth": 9876,
+      "bytesScanned": 113346,
+      "surfaces": []
+    },
+    {
+      "name": "pi-cursor-sdk",
+      "version": "0.2.0",
+      "rank": 36,
+      "downloadsPerMonth": 9800,
+      "bytesScanned": 1367988,
+      "surfaces": [
+        "setStatus"
+      ]
+    },
+    {
+      "name": "pi-provider-litellm",
+      "version": "2.0.6",
+      "rank": 37,
+      "downloadsPerMonth": 9789,
+      "bytesScanned": 99717,
+      "surfaces": []
+    },
+    {
+      "name": "pi-zentui",
+      "version": "0.20.1",
+      "rank": 38,
+      "downloadsPerMonth": 9594,
+      "bytesScanned": 493232,
+      "surfaces": [
+        "appendEntry",
+        "getEditorText",
+        "registerEntryRenderer",
+        "setEditorText",
+        "setFooter",
+        "setStatus",
+        "setWorkingIndicator",
+        "setWorkingMessage"
+      ]
+    },
+    {
+      "name": "pi-interview",
+      "version": "0.11.0",
+      "rank": 39,
+      "downloadsPerMonth": 9147,
+      "bytesScanned": 277649,
+      "surfaces": []
+    },
+    {
+      "name": "@alexanderfortin/pi-deepseek-usage",
+      "version": "0.3.19",
+      "rank": 40,
+      "downloadsPerMonth": 8801,
+      "bytesScanned": 5027,
+      "surfaces": []
+    },
+    {
+      "name": "pi-harness-runtime",
+      "version": "1.1.9",
+      "rank": 41,
+      "downloadsPerMonth": 8787,
+      "bytesScanned": 4040553,
+      "surfaces": [
+        "setHeader",
+        "setStatus"
+      ]
+    },
+    {
+      "name": "@ollama/pi-web-search",
+      "version": "0.0.5",
+      "rank": 42,
+      "downloadsPerMonth": 8521,
+      "bytesScanned": 4548,
+      "surfaces": []
+    },
+    {
+      "name": "pi-web-search",
+      "version": "1.3.1",
+      "rank": 43,
+      "downloadsPerMonth": 8514,
+      "bytesScanned": 66239,
+      "surfaces": []
+    },
+    {
+      "name": "pi-mcp-extension",
+      "version": "1.5.0",
+      "rank": 44,
+      "downloadsPerMonth": 8485,
+      "bytesScanned": 78971,
+      "surfaces": []
+    },
+    {
+      "name": "@gotgenes/pi-subagents",
+      "version": "19.3.2",
+      "rank": 45,
+      "downloadsPerMonth": 8460,
+      "bytesScanned": 320170,
+      "surfaces": [
+        "appendEntry",
+        "setStatus",
+        "setWidget"
+      ]
+    },
+    {
+      "name": "pi-btw",
+      "version": "0.4.1",
+      "rank": 46,
+      "downloadsPerMonth": 8436,
+      "bytesScanned": 72882,
+      "surfaces": [
+        "appendEntry",
+        "registerMessageRenderer",
+        "setWidget"
+      ]
+    },
+    {
+      "name": "@amaster.ai/pi-image-gen",
+      "version": "0.1.9",
+      "rank": 47,
+      "downloadsPerMonth": 8204,
+      "bytesScanned": 140990,
+      "surfaces": []
+    },
+    {
+      "name": "pi-llama-cpp",
+      "version": "0.9.1",
+      "rank": 48,
+      "downloadsPerMonth": 8193,
+      "bytesScanned": 62063,
+      "surfaces": [
+        "setStatus"
+      ]
+    },
+    {
+      "name": "@juicesharp/rpiv-advisor",
+      "version": "2.6.0",
+      "rank": 49,
+      "downloadsPerMonth": 7851,
+      "bytesScanned": 60332,
+      "surfaces": []
+    },
+    {
+      "name": "mitsupi",
+      "version": "1.6.0",
+      "rank": 50,
+      "downloadsPerMonth": 7802,
+      "bytesScanned": 601437,
+      "surfaces": [
+        "appendEntry",
+        "getEditorText",
+        "registerMessageRenderer",
+        "setEditorText",
+        "setStatus",
+        "setWidget",
+        "setWorkingMessage"
+      ]
+    }
+  ]
+}
