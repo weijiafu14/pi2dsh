@@ -21,12 +21,14 @@
 import { execFile as execFileCb, spawn } from 'node:child_process'
 import { mkdtemp, mkdir, writeFile, chmod, readFile, readdir, copyFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import { promisify } from 'node:util'
 import { createRequire } from 'node:module'
 
 const execFile = promisify(execFileCb)
-const dshRoot = '/Users/developer/projj/workspace/deepseek-harness'
+const projectRoot = resolve(new URL('..', import.meta.url).pathname)
+// The DSH checkout this repo is developed against, beside it by convention.
+const dshRoot = process.env.DSH_ROOT ?? resolve(projectRoot, '../deepseek-harness')
 const dshBin = join(dshRoot, 'apps/cli/src/bin.ts')
 const { chromium } = createRequire(`${dshRoot}/apps/web/package.json`)('playwright')
 
@@ -62,8 +64,8 @@ const jsonl = profile => writeFile(join(home, `profiles/${profile}/cordis.patch.
 
 try {
   await mkdir(home, { recursive: true })
-  await dsh(['plugin', '--profile', 'headless', 'add', `file:${join(dshRoot, '..', 'pi2dsh')}`])
-  await dsh(['plugin', '--profile', 'web', 'add', `file:${join(dshRoot, '..', 'pi2dsh')}`])
+  await dsh(['plugin', '--profile', 'headless', 'add', `file:${projectRoot}`])
+  await dsh(['plugin', '--profile', 'web', 'add', `file:${projectRoot}`])
   await jsonl('headless'); await jsonl('web')
   const made = await dsh(['--profile', 'headless', PROMPT])
   console.log('turn created:', made.ok)
