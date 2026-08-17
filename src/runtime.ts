@@ -2300,7 +2300,8 @@ async function ensureLoggedInProviderRoute(
   // holds it), so a bridge-owned provider cannot be mounted beside it without
   // shadowing the host's own store — the value goes into the host's store
   // instead, and stays fresh through the per-request hook below.
-  if (!await publishOAuthCredential(ctx, state, name, config)) return false
+  const published = await publishOAuthCredential(ctx, state, name, config)
+  if (!published.ok) return false
   keepOAuthCredentialFresh(ctx, state)
   await settings.update('llm-pi-ai', {
     providers: {
@@ -2308,6 +2309,12 @@ async function ensureLoggedInProviderRoute(
         // The name the user logged in as, so the picker groups models under
         // "OpenAI (ChatGPT Plus/Pro)" rather than a bare route key.
         ...(typeof config.name === 'string' ? { displayName: config.name } : {}),
+        // An endpoint the credential itself decided (github-copilot reads its
+        // host out of the token, so an enterprise or proxied account is not on
+        // the catalog default). It is an address, not a secret, and overriding
+        // it does NOT repoint the route — only naming `api` would, and that is
+        // what would cost the catalog provider's own protocol and quirks.
+        ...(published.baseUrl === undefined ? {} : { baseURL: published.baseUrl }),
         apiKeyEnv: oauthCredentialRef(name),
       },
     },
@@ -2328,22 +2335,24 @@ interface DshCredentialsLike {
  * the join: Pi's resolution runs — including its double-checked-lock refresh
  * when the token is inside the five-minute window — and whatever key that
  * yields is stored under the reference the profile names.
- * @returns whether a key is now behind the reference.
+ * @returns whether a key is now behind the reference, plus any endpoint the
+ *   credential itself decided (some providers read their host out of the token).
  */
 async function publishOAuthCredential(
   ctx: Context,
   state: RuntimeState,
   name: string,
   config: UnknownRecord,
-): Promise<boolean> {
+): Promise<{ ok: boolean, baseUrl?: string }> {
   const credentials = optionalService<DshCredentialsLike>(ctx, 'credentials')
   if (credentials === undefined) {
     logger(ctx).warn(`[pi2dsh] logged in to ${JSON.stringify(name)}, but this composition has no credentials service to hand the token to`)
-    return false
+    return { ok: false }
   }
-  const key = await resolveOAuthApiKey({
+  const resolvedAuth = (await resolvePiProviderAuth({
     providerId: name, providerConfig: config, store: oauthStoreOf(state),
-  }).catch(() => undefined)
+  }).catch(() => undefined))?.auth as { apiKey?: unknown, baseUrl?: unknown } | undefined
+  const key = typeof resolvedAuth?.apiKey === 'string' ? resolvedAuth.apiKey : undefined
   if (key === undefined || key.length === 0) {
     // Some flows hand back a header rather than a key (kimi-coding returns
     // `{headers: {Authorization: ...}}`). DSH's profile carries a credential
@@ -2351,17 +2360,18 @@ async function publishOAuthCredential(
     // go — and staying silent about it is how "logged in, still no models"
     // happens. Say it once, plainly, instead of leaving an empty picker.
     logger(ctx).warn(`[pi2dsh] logged in to ${JSON.stringify(name)}, but this provider authenticates with a request header rather than an api key — DSH routes name a credential reference, so no model route was added for it`)
-    return false
+    return { ok: false }
   }
   const ref = oauthCredentialRef(name)
   // An inherited environment value is the one layer the host cannot edit, and
   // it WINS resolution — writing under it would be stored and never read.
+  const endpoint = typeof resolvedAuth?.baseUrl === 'string' ? { baseUrl: resolvedAuth.baseUrl } : {}
   const described = await credentials.describe(ref).catch(() => undefined)
-  if (described?.writable === false) return true
-  if (state.publishedOAuthKeys.get(name) === key) return true
+  if (described?.writable === false) return { ok: true, ...endpoint }
+  if (state.publishedOAuthKeys.get(name) === key) return { ok: true, ...endpoint }
   await credentials.set(ref, key)
   state.publishedOAuthKeys.set(name, key)
-  return true
+  return { ok: true, ...endpoint }
 }
 
 /**
