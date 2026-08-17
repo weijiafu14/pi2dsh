@@ -74,8 +74,13 @@ export class FileCredentialStore extends InMemoryCredentialStore {
 }
 
 export interface OAuthUiSurface {
-  input(title: unknown, placeholder?: unknown): Promise<string | undefined>
-  select(title: unknown, options: unknown[]): Promise<string | undefined>
+  /**
+   * @param signal cancels THIS question when another path in the flow answers
+   *   first — the browser callback beating the paste box. Optional because
+   *   Pi's own ui.input takes two arguments; the bridge's accepts a third.
+   */
+  input(title: unknown, placeholder?: unknown, signal?: AbortSignal): Promise<string | undefined>
+  select(title: unknown, options: unknown[], signal?: AbortSignal): Promise<string | undefined>
   notify(message: unknown): void
 }
 
@@ -84,6 +89,8 @@ interface OAuthPromptEvent {
   message: string
   placeholder?: string
   options?: Array<{ id: string, label: string }>
+  /** Cancels THIS question when another path in the flow answers first. */
+  signal?: AbortSignal
 }
 
 interface OAuthNotifyEvent {
@@ -154,7 +161,9 @@ export function oauthInteraction(ui: OAuthUiSurface, signal?: AbortSignal): {
         const picked = await ui.select(prompt.message, options.map(option => option.label))
         return options.find(option => option.label === picked)?.id ?? picked
       }
-      return ui.input(prompt.message, takePending(prompt.placeholder))
+      // The flow's per-prompt signal: it cancels this box when another path
+      // wins the race (the local callback receiving the code).
+      return ui.input(prompt.message, takePending(prompt.placeholder), prompt.signal)
     },
     notify(event) {
       if (event.type === 'auth_url') {

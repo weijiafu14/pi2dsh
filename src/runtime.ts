@@ -407,6 +407,25 @@ function answerText(answer: UnknownRecord | undefined): string | undefined {
   return Array.isArray(selected) && typeof selected[0] === 'string' ? selected[0] : undefined
 }
 
+/**
+ * One signal that aborts when either input does.
+ * @param ambient - the surrounding operation's signal, when there is one.
+ * @param perCall - a signal the caller supplied for this question alone.
+ * @returns the signal to hand the question, or undefined when neither exists.
+ */
+function joinSignals(ambient: AbortSignal | undefined, perCall: unknown): AbortSignal | undefined {
+  if (!(perCall instanceof AbortSignal)) return ambient
+  if (ambient === undefined) return perCall
+  const joined = new AbortController()
+  const stop = () => joined.abort()
+  if (ambient.aborted || perCall.aborted) joined.abort()
+  else {
+    ambient.addEventListener('abort', stop, { once: true })
+    perCall.addEventListener('abort', stop, { once: true })
+  }
+  return joined.signal
+}
+
 async function askOne(
   ctx: Context,
   agent: UnknownRecord | undefined,
@@ -595,9 +614,9 @@ function contextFor(
     // sends text that is not an option — and the package then rejects its own
     // answer ("Unknown OpenAI Codex login method: 1"). Resolve back to the
     // option here, once, for every package rather than in each caller.
-    select: async (title: unknown, options: unknown[]) => {
+    select: async (title: unknown, options: unknown[], promptSignal?: unknown) => {
       const labels = options.map(option => String(option))
-      const answered = await askOne(ctx, agent, signal, {
+      const answered = await askOne(ctx, agent, joinSignals(signal, promptSignal), {
         id: 'pi2dsh-select',
         question: String(title),
         options: labels.map(label => ({ label })),
@@ -612,11 +631,17 @@ function contextFor(
         options: [{ label: 'Yes' }, { label: 'No' }],
       }) === 'Yes'
     },
-    input: (title: unknown, placeholder?: unknown) => askOne(ctx, agent, signal, {
-      id: 'pi2dsh-input',
-      question: String(title),
-      ...(placeholder === undefined ? {} : { detail: String(placeholder) }),
-    }),
+    // The optional third argument is additive: Pi's own ui.input takes two, but
+    // pi-ai's OAuth flows hand each prompt its OWN abort signal and cancel it
+    // when another path wins (the browser callback beating the paste box). Not
+    // honouring it left that box on screen after the login had already
+    // succeeded elsewhere.
+    input: (title: unknown, placeholder?: unknown, promptSignal?: unknown) => askOne(
+      ctx, agent, joinSignals(signal, promptSignal), {
+        id: 'pi2dsh-input',
+        question: String(title),
+        ...(placeholder === undefined ? {} : { detail: String(placeholder) }),
+      }),
     editor: (title: unknown, prefill?: unknown) => askOne(ctx, agent, signal, {
       id: 'pi2dsh-editor',
       question: String(title),

@@ -292,3 +292,30 @@ describe('the dialog after the login is over', () => {
     expect(seenSignal?.aborted, 'the flow ended but its questions were never cancelled').toBe(true)
   })
 })
+
+describe('the race a login actually runs', () => {
+  it('passes the prompt\'s own signal through, so the box closes when the callback wins', async () => {
+    // pi-ai's codex flow opens the "paste the code" box and races it against a
+    // local callback server, handing that box its OWN abort signal and firing
+    // it when the browser callback wins. Dropping that signal is what left the
+    // box on screen after the user had already finished logging in.
+    let received: AbortSignal | undefined
+    const ui = {
+      input: async (_title: unknown, _detail: unknown, signal?: unknown) => {
+        received = signal as AbortSignal | undefined
+        return undefined
+      },
+      select: async () => undefined,
+      notify: () => {},
+    }
+    const perPrompt = new AbortController()
+    const flow = oauthInteraction(ui as never)
+    await flow.prompt({
+      type: 'manual_code',
+      message: 'Paste the code',
+      signal: perPrompt.signal,
+    } as never)
+
+    expect(received, 'the prompt signal never reached the question').toBe(perPrompt.signal)
+  })
+})
