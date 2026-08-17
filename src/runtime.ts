@@ -37,7 +37,7 @@ import {
 import { __setPiAiLlmBridge, builtinProviders } from './compat/pi-ai.js'
 import { validateToolArguments } from './compat/vendor/pi-tool-validation.js'
 import { ModelCatalog, llmOf, streamViaDshLlm, type DshAttachmentsLike } from './model-bridge.js'
-import { imageAdmissionCompanionAdapter, providerCarriesTransport, registerPiProviderRoute } from './provider-adapter.js'
+import { imageAdmissionCompanionAdapter, providerCarriesTransport, registerPiProviderRoute, type PiRouteHandle } from './provider-adapter.js'
 
 type UnknownRecord = Record<string, unknown>
 type PiHandler = (event: UnknownRecord, context: UnknownRecord) => unknown | Promise<unknown>
@@ -163,7 +163,7 @@ interface RuntimeState {
   // need that truth, not the admission face.
   companionRoutes: Map<string, string>
   // Live DSH llm routes registered for transport-carrying Pi providers.
-  providerRouteDisposers: Map<string, () => void>
+  providerRouteDisposers: Map<string, PiRouteHandle>
   // The host-shared slice this package state was built over.
   shared: SharedHostState
 }
@@ -1987,7 +1987,7 @@ const COMPANION_ROUTE_PREFIX = 'pi2dsh-companion/'
 // there — existing behavior unchanged.
 interface SharedHostState {
   companionRoutes: Map<string, string>
-  providerRouteDisposers: Map<string, () => void>
+  providerRouteDisposers: Map<string, PiRouteHandle>
   providers: Map<string, UnknownRecord>
   modelCatalog?: ModelCatalog
   catalogSubscribed?: boolean
@@ -2244,6 +2244,60 @@ async function supersedeActiveLogin(state: RuntimeState): Promise<string | undef
   return previous.providerName
 }
 
+/**
+ * Ask a provider package to discover its models, then let the host see them.
+ *
+ * Gateway discovery needs a credential, and a credential is not always there
+ * when the provider registers: OAuth providers get theirs from a `/login` the
+ * user runs later. So this is called at registration AND after a login — the
+ * two moments a credential can appear — and it ends by re-announcing the
+ * route, because DSH's directory observers (the model picker among them)
+ * re-read on the route-set notification and nothing else.
+ * @param name - the Pi provider id, which is also its DSH route name.
+ * @param value - the provider config the package registered.
+ * @returns how many models the route lists afterwards, or undefined when the
+ *   package has no discovery of its own.
+ */
+async function discoverProviderModels(
+  ctx: Context,
+  state: RuntimeState,
+  name: string,
+  value: UnknownRecord,
+): Promise<number | undefined> {
+  const refreshModels = (value as { refreshModels?: unknown }).refreshModels
+  if (typeof refreshModels !== 'function') return undefined
+  try {
+    const resolved = await resolvePiProviderAuth({
+      providerId: name, providerConfig: value, store: oauthStoreOf(state),
+    }).catch(() => undefined)
+    const apiKey = (resolved?.auth as UnknownRecord | undefined)?.apiKey
+    await Promise.resolve(refreshModels.call(value, {
+      stored: undefined,
+      ...(apiKey === undefined ? {} : { credential: { type: 'api_key', key: apiKey } }),
+      store: {
+        read: async () => undefined,
+        write: async () => {},
+        delete: async () => {},
+      },
+      allowNetwork: true,
+      signal: new AbortController().signal,
+      publish: async (publication: { update?: () => void }) => {
+        publication.update?.()
+        return true
+      },
+    }))
+  } catch (error) {
+    logger(ctx).warn(`[pi2dsh] model catalog refresh for Pi provider ${JSON.stringify(name)} failed (its registry entries stay static): ${error instanceof Error ? error.message : String(error)}`)
+    return undefined
+  }
+  // The Pi-side projection, then the DSH-side announcement. Refreshing only
+  // the first is what left a post-login model list invisible until a restart:
+  // the entries existed, and no directory observer had been told to look.
+  void state.modelCatalog?.refresh()
+  state.providerRouteDisposers.get(name)?.reannounce?.()
+  return await llmOf(ctx)?.listModels(name).then(models => models.length).catch(() => undefined)
+}
+
 function registerLoginCommand(ctx: Context, state: RuntimeState): void {
   registerCommand(ctx, state, {
     name: 'login',
@@ -2324,8 +2378,14 @@ function registerLoginCommand(ctx: Context, state: RuntimeState): void {
         for (const path of active.published) revokeAuthorization(path)
         if (state.shared.activeLogin === active) state.shared.activeLogin = undefined
       }
-      ui.notify(`Logged in to ${oauthName}; credential stored in ${oauthStoreOf(state).path}`)
-      return `Logged in to ${oauthName}`
+      // The credential the user just supplied is the one gateway discovery was
+      // missing. Running it now — and re-announcing the route — is what makes
+      // this provider's models appear in the model picker without a restart;
+      // logging in and then finding nothing to select is not a login.
+      const discovered = await discoverProviderModels(ctx, state, providerId, config)
+      const models = discovered === undefined ? '' : `; ${discovered} models available`
+      ui.notify(`Logged in to ${oauthName}${models}`)
+      return `Logged in to ${oauthName}${models}`
     },
   })
 }
@@ -2929,34 +2989,8 @@ function createPiApi(ctx: Context, state: RuntimeState): UnknownRecord {
         logger(ctx).info(`[pi2dsh] recorded Pi provider ${JSON.stringify(name)}; model calls stay on DSH llm adapters`)
       }
       // Pi hosts refresh a registered provider's dynamic model catalog
-      // (fetchModels against its gateway); best-effort and non-blocking, with
-      // pi-ai's publish/store contract and the provider's own resolved
-      // credential (gateway discovery needs one).
-      const refreshModels = (value as { refreshModels?: unknown }).refreshModels
-      if (typeof refreshModels === 'function') {
-        void (async () => {
-          const resolved = await resolvePiProviderAuth({
-            providerId: name, providerConfig: value, store: oauthStoreOf(state),
-          }).catch(() => undefined)
-          const apiKey = (resolved?.auth as UnknownRecord | undefined)?.apiKey
-          await Promise.resolve(refreshModels.call(value, {
-            stored: undefined,
-            ...(apiKey === undefined ? {} : { credential: { type: 'api_key', key: apiKey } }),
-            store: {
-              read: async () => undefined,
-              write: async () => {},
-              delete: async () => {},
-            },
-            allowNetwork: true,
-            signal: new AbortController().signal,
-            publish: async (publication: { update?: () => void }) => {
-              publication.update?.()
-              return true
-            },
-          }))
-          void state.modelCatalog?.refresh()
-        })().catch(error => logger(ctx).warn(`[pi2dsh] model catalog refresh for Pi provider ${JSON.stringify(name)} failed (its registry entries stay static): ${error instanceof Error ? error.message : String(error)}`))
-      }
+      // (fetchModels against its gateway); best-effort and non-blocking.
+      void discoverProviderModels(ctx, state, name, value)
     },
     unregisterProvider(name: string) {
       state.providers.delete(name)

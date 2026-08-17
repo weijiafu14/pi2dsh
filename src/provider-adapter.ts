@@ -460,7 +460,7 @@ function registerCatalogOnlyRoute(options: RegisterPiProviderRouteOptions): PiRo
  * keeps the existing route and reports the skip.
  * @returns the route disposer, or undefined when nothing was registered.
  */
-export function registerPiProviderRoute(options: RegisterPiProviderRouteOptions): (() => void) | undefined {
+export function registerPiProviderRoute(options: RegisterPiProviderRouteOptions): PiRouteHandle | undefined {
   const { llm, providerId, provider, host } = options
   if (llm === undefined) return undefined
   // A catalog-only declaration is complete on Pi (pi-ai supplies the transport
@@ -469,7 +469,17 @@ export function registerPiProviderRoute(options: RegisterPiProviderRouteOptions)
   // homework.
   if (!providerCarriesTransport(provider)) return registerCatalogOnlyRoute(options)
   try {
-    return llm.registerAdapter([providerId], piProviderDshAdapter(providerId, provider, host))
+    const registration = llm.registerAdapter([providerId], piProviderDshAdapter(providerId, provider, host))
+    const route = (() => { registration() }) as PiRouteHandle
+    // This adapter's listModels reads the provider LIVE, so a later discovery
+    // is already visible to anyone who asks — what is missing is the asking.
+    // Re-committing the same route set is DSH's documented atomic
+    // announcement (no observer sees a gap), and it is what makes the model
+    // picker re-read.
+    if (typeof registration.replace === 'function') {
+      route.reannounce = () => registration.replace?.([providerId])
+    }
+    return route
   } catch (error) {
     host.warn(`[pi2dsh] Pi provider ${JSON.stringify(providerId)} was not added as a DSH llm route (${error instanceof Error ? error.message : String(error)}); the existing route keeps the name`)
     return undefined

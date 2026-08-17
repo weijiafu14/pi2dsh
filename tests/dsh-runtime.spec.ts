@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { Context, type Plugin } from '@deepseek-ai/cordis'
 import AgentRegistry from '@deepseek-ai/dsh-agent'
 import LocalAttachmentStore from '@deepseek-ai/dsh-attachment-local'
-import { createUserMessage, CallId } from '@deepseek-ai/dsh-llm'
+import LlmRuntime, { createUserMessage, CallId } from '@deepseek-ai/dsh-llm'
 import { createScope, type Scope } from '@deepseek-ai/dsh-scope'
 import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
 import LocalSubprocessRuntime from '@deepseek-ai/dsh-subprocess-local'
@@ -644,5 +644,112 @@ describe('child-agent origin detection (the guard on the tool subscriptions)', (
     expect(isSubagentOrigin({ session: { header: { origin: 'user' } } })).toBe(false)
     expect(isSubagentOrigin({ session: { header: {} } })).toBe(false)
     expect(isSubagentOrigin(undefined)).toBe(false)
+  })
+})
+
+describe('logging in is what makes a gateway\'s models selectable', () => {
+  it('discovers the models the credential unlocked and announces the route again', async () => {
+    // The reason a user logs in to a gateway is to get its models. Discovery
+    // needs the credential, and an OAuth credential only exists AFTER the
+    // login — so a host that discovers once at mount finds nothing, and the
+    // user is left with a successful login and an empty model picker until
+    // they restart. This is that whole chain, end to end.
+    const scratch = await mkdtemp(join(tmpdir(), 'pi2dsh-login-models-'))
+    cleanup.push(scratch)
+    await mkdir(join(scratch, 'pkg'), { recursive: true })
+    await writeFile(join(scratch, 'pkg', 'extension.js'), [
+      'let discovered = []',
+      'export default function (pi) {',
+      "  pi.registerProvider('fixgw', {",
+      "    id: 'fixgw',",
+      "    name: 'Fixture Gateway',",
+      '    getModels: () => discovered,',
+      // Carrying a transport is what makes this a native DSH route.
+      '    stream: async function* () {',
+      "      yield { type: 'done', reason: 'stop', message: { role: 'assistant', content: [], usage: {}, stopReason: 'stop' } }",
+      '    },',
+      // The gateway refuses to list anything without a credential — which is
+      // exactly what a real one does, and what pi-provider-litellm does.
+      '    refreshModels: async (options) => {',
+      '      if (options?.credential?.key === undefined) throw new Error("discovery requires a credential")',
+      "      discovered = [{ id: 'fixgw-1', name: 'Fixture One', provider: 'fixgw', contextWindow: 12345 }]",
+      '      return true',
+      '    },',
+      '    oauth: {',
+      "      name: 'Fixture Gateway',",
+      // No prompting: this test is about what happens AFTER a login succeeds.
+      "      login: async () => ({ access: 'tok-abc', refresh: 'r1', expires: Date.now() + 3_600_000 }),",
+      '      refreshToken: async (credential) => credential,',
+      '      getApiKey: (credential) => credential.access,',
+      '    },',
+      '  })',
+      '}',
+    ].join('\n'), 'utf8')
+
+    const ctx = new Context()
+    await ctx.plugin(SessionStore)
+    await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
+    await ctx.plugin(ToolRuntime)
+    await ctx.plugin(CommandRuntime)
+    await ctx.plugin(SkillRegistry)
+    await ctx.plugin(AgentRegistry)
+    await ctx.plugin(LlmRuntime as never, {} as never)
+    // Keep the credential store inside the scratch dir, never the real home:
+    // this test performs a real login, and a leaked fixture credential in
+    // ~/.dsh would make the NEXT run start already logged in — which silently
+    // turns the "empty before login" assertion into a lie.
+    process.env.PI_CODING_AGENT_DIR = join(scratch, 'agent')
+    try {
+      await ctx.plugin({
+        name: 'pi2dsh:login-models-test',
+        inject: ['tools', 'systemPrompt', 'commands', 'skills'],
+        async apply(inner: Context) {
+          await applyPiPackage(inner, {
+            rootUrl: pathToFileURL(`${join(scratch, 'pkg')}/`),
+            manifest: {
+              schemaVersion: 1,
+              package: { name: '@pi2dsh-fixtures/login-models', version: '0.0.0' },
+              extensions: ['extension.js'],
+              skillDirs: [],
+              prompts: [],
+            } as never,
+          })
+        },
+      } as Plugin.Object)
+      await settle()
+
+      const llm = (ctx as unknown as {
+        llm: { listProviders(): Array<{ id: string }>, listModels(id: string): Promise<Array<Record<string, unknown>>> }
+      }).llm
+      // The route exists from the moment the package registers it…
+      expect(llm.listProviders().map(entry => entry.id)).toContain('fixgw')
+      // …and it is EMPTY, because mount-time discovery had no credential.
+      expect(await llm.listModels('fixgw')).toEqual([])
+
+      // Every directory observer — the browser's model picker included —
+      // re-reads on this notification and on nothing else, so counting it is
+      // counting whether the user would ever see the new models.
+      let announcements = 0
+      ctx.on('llm/adapters-updated' as never, (() => { announcements += 1 }) as never)
+
+      const session = ctx.sessions.create(SessionId('pi2dsh-login-models'), {
+        meta: { createdAt: Date.now(), cwd: scratch },
+      })
+      const agent = { id: session.id, session, ctx: undefined as unknown, options: {}, inbox: {}, status: 'idle' }
+      const result = await ctx.commands.execute(agent as never, '/login fixgw', new AbortController().signal)
+      expect(result?.result.kind).toBe('success')
+      await settle()
+
+      // The credential unlocked the catalog, and the catalog reached DSH.
+      expect(await llm.listModels('fixgw')).toMatchObject([
+        { provider: 'fixgw', id: 'fixgw-1', name: 'Fixture One' },
+      ])
+      // Announced, or the models sit in a directory nobody re-reads.
+      expect(announcements).toBeGreaterThan(0)
+      // And the user is told, rather than having to go look.
+      expect(String((result?.result as { text?: string }).text)).toContain('1 models available')
+    } finally {
+      delete process.env.PI_CODING_AGENT_DIR
+    }
   })
 })
