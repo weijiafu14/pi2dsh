@@ -371,6 +371,7 @@ in one has actually been executed against a real DSH loop before landing.
 | [`vision-bridge`](examples/vision-bridge/) | A text-only model answers questions about images — CLI and web, probe images included |
 | [`side-conversation`](examples/side-conversation/) | `/btw <question>` runs a side thread in DSH's native subagent UI; your main conversation stays clean |
 | [`presentation-surfaces`](examples/presentation-surfaces/) | A real plugin's terminal chrome (`pi-powerline-footer`) in DSH's web seats, plus which of the top-50 Pi plugins draw at all |
+| [`subscription-login`](examples/subscription-login/) | Use a ChatGPT / Claude / Copilot / Kimi subscription as a DSH model: `/login`, then the route and credential appear on their own |
 | [`gateway-compat`](examples/gateway-compat/) | Private / domestic / proxy gateways that reject the `developer` role: why reasoning 400s, and how a Pi provider plugin gets past it (recording proxy included, so you can read the exact request body we send) |
 | [`custom-gateways`](examples/custom-gateways/) | Add any OpenAI-compatible gateway the official DSH way, and every Pi plugin sees it |
 

@@ -1,89 +1,11 @@
 {
   "schemaVersion": 1,
-  "pi2dshCommit": "1de5a4a1c577e9ce87fd6082a6a6e143948ea2ea",
+  "pi2dshCommit": "2f613fe12cb38a47b3d159d26cc67150c0df9514",
   "dshCommit": "47f943859bef60e4160492346772ded9b24f765a",
   "results": {
-    "visionBridge": {
-      "status": "skipped",
-      "reason": "no vision endpoint configured (VISION_BRIDGE_BASE_URL, VISION_BRIDGE_MODEL, VISION_BRIDGE_API_KEY)"
-    },
-    "visionBridgeWeb": {
-      "status": "skipped",
-      "reason": "no vision endpoint configured (VISION_BRIDGE_BASE_URL, VISION_BRIDGE_MODEL, VISION_BRIDGE_API_KEY)"
-    },
-    "gatewayCompat": {
-      "engine": {
-        "version": "0.12.4",
-        "from": "registry",
-        "spec": "pi2dsh@0.12.4"
-      },
-      "status": "passed",
-      "requests": 2,
-      "roles": [
-        "system",
-        "user",
-        "user",
-        "user",
-        "user"
-      ],
-      "maxTokensField": "max_tokens",
-      "store": null,
-      "reasoningEffort": null,
-      "bodyKeys": [
-        "max_tokens",
-        "messages",
-        "model",
-        "stream",
-        "stream_options",
-        "tools"
-      ],
-      "previews": [
-        "system: You are an AI agent powered by DeepSeek Harness. You are a ",
-        "user: Reply with exactly: gateway-compat-ok",
-        "user: <system-reminder> The following workspace instructions may b",
-        "user: Current runtime context. This snapshot supersedes earlier ru",
-        "user: <system-reminder> A skill is a reusable set of task-specific"
-      ]
-    },
-    "customGateways": {
-      "status": "passed",
-      "engine": {
-        "version": "0.12.4",
-        "from": "registry",
-        "spec": "pi2dsh@0.12.4"
-      },
-      "seenByPackage": {
-        "provider": "my-gateway",
-        "id": "deepseek-chat",
-        "api": "faux",
-        "contextWindow": 131072
-      }
-    },
-    "presentationSurfaces": {
-      "status": "passed",
-      "engine": {
-        "version": "0.12.4",
-        "from": "registry",
-        "spec": "pi2dsh@0.12.4"
-      },
-      "screenshots": [
-        "06-presentation-surfaces.png"
-      ]
-    },
-    "sideConversation": {
-      "status": "passed",
-      "engine": {
-        "version": "0.12.4",
-        "from": "registry",
-        "spec": "pi2dsh@0.12.4"
-      },
-      "screenshots": [
-        "01-side-conversation-main-thread-clean.png",
-        "02-side-conversation-panel.png",
-        "03-side-conversation-host-catalog.png",
-        "04-side-conversation-injected-on-request.png",
-        "05-side-conversation-child-view.png"
-      ]
+    "subscriptionLogin": {
+      "status": "failed",
+      "error": "the installed package's account was not offered in /login:\n[pi2dsh engine] no Pi packages installed in this profile yet — add one with: dsh plugin --profile <p> add <pi-package>\n[pi2dsh] image-admission companion route \"deepseek-official-vision\" registered for \"deepseek-official\"\ndsh web: http://127.0.0.1:5359\n"
     }
   }
 }

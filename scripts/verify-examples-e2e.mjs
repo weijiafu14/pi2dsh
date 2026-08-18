@@ -640,6 +640,61 @@ async function runPresentationSurfaces() {
 // ONLY=<name> runs a single example, for iterating on one without paying for
 // the npm installs and browser runs of the others.
 const only = process.env.ONLY
+/**
+ * examples/subscription-login — the account path, minus the account.
+ *
+ * A real subscription login cannot be automated; that is what OAuth is for.
+ * What CAN be checked without one is everything the example promises BEFORE
+ * the browser: that installing a provider package puts its account in
+ * `/login`, that the package becomes a route of its own, and — the part that
+ * actually bit users — that an account whose credential is a request header
+ * is REFUSED with that reason instead of quietly producing an empty picker.
+ */
+async function runSubscriptionLogin() {
+  const scratch = await mkdtemp(join(tmpdir(), 'pi2dsh-ex-login-'))
+  let web
+  try {
+    const { home, env, runDsh } = await makeHome(scratch)
+    await runDsh(['plugin', '--profile', 'web', 'add', engineSpec])
+    // The package the example names for exactly this case.
+    await runDsh(['plugin', '--profile', 'web', 'add', 'pi-provider-kimi-code'])
+
+    // Boot the runtime and read what the engine announced. Deliberately not a
+    // prompt: this scenario needs no model, so it must not need a model key
+    // either — otherwise the one part of the example that CAN run without an
+    // account would still be skipped for want of one.
+    const port = 5300 + Math.floor(Math.random() * 200)
+    web = spawn('node', ['--import', 'tsx/esm', dshBin, '--profile', 'web', '--port', String(port)],
+      { cwd: dshRoot, env, stdio: ['ignore', 'pipe', 'pipe'] })
+    let log = ''
+    web.stdout.on('data', chunk => { log += String(chunk) })
+    web.stderr.on('data', chunk => { log += String(chunk) })
+    const deadline = Date.now() + 90_000
+    while (!/dsh web:/u.test(log) && web.exitCode === null && Date.now() < deadline) {
+      await new Promise(done => setTimeout(done, 400))
+    }
+    await new Promise(done => setTimeout(done, 2000))
+
+    // 1. the installed package's account is offered by /login
+    if (!/supports OAuth — log in with \/login kimi-coding/u.test(log)) {
+      throw new Error(`the installed package's account was not offered in /login:\n${log.slice(-1500)}`)
+    }
+    // 2. and the package became a route of its own — the path that carries a
+    //    header-shaped credential, which a route profile cannot.
+    if (!/Pi provider "kimi-coding" registered as a native DSH llm route/u.test(log)) {
+      throw new Error(`the package did not become a native route:\n${log.slice(-1500)}`)
+    }
+    results.subscriptionLogin = {
+      status: 'passed',
+      engine: await installedEngineVersion(home, 'web'),
+      note: 'account offered by /login and served as a native route; the live account login is manual (README step 4)',
+    }
+  } finally {
+    web?.kill('SIGTERM')
+    await rm(scratch, { recursive: true, force: true })
+  }
+}
+
 const SCENARIOS = [
   ['gateway-compat', runGatewayCompat, 'gatewayCompat'],
   ['vision-bridge', runVisionBridge, 'visionBridge'],
@@ -647,6 +702,7 @@ const SCENARIOS = [
   ['vision-bridge-web', runVisionBridgeWeb, 'visionBridgeWeb'],
   ['custom-gateways', runCustomGateways, 'customGateways'],
   ['presentation-surfaces', runPresentationSurfaces, 'presentationSurfaces'],
+  ['subscription-login', runSubscriptionLogin, 'subscriptionLogin'],
 ]
 const selected = SCENARIOS.filter(([name]) => only === undefined || only === name)
 if (selected.length === 0) {
