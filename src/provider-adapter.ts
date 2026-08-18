@@ -43,11 +43,33 @@ export function providerCarriesTransport(value: UnknownRecord | undefined): valu
 
 function providerModels(provider: PiTransportProvider): UnknownRecord[] {
   try {
-    const models = provider.getModels?.()
+    // Pi accepts BOTH shapes and so must this: pi-ai's createProvider() builds
+    // an object with getModels(), while an extension's own
+    // `pi.registerProvider(id, {...})` config carries a plain `models` array —
+    // which is what the vendor packages do (moonshot, baseten, bailian, …).
+    // Reading only the function form made every one of those declare an empty
+    // catalog, and a route with no models is refused by the host adapter.
+    const models = typeof provider.getModels === 'function' ? provider.getModels() : provider.models
     return Array.isArray(models) ? models : []
   } catch {
     return []
   }
+}
+
+/**
+ * The environment variable a Pi config value names, when that is all it names.
+ *
+ * Pi's config values (`resolve-config-value.ts`) are `$VAR` / `${VAR}`
+ * interpolation, `!command` execution, or a literal. Only a value that is
+ * exactly one reference can become a DSH credential reference; a command, a
+ * template, or a literal secret must not be copied into settings, which carry
+ * references and never values.
+ * @param value - the package's declared config value, if it declared one.
+ */
+function envReferenceOf(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined
+  const match = /^\$\{([A-Za-z_][A-Za-z0-9_]*)\}$|^\$([A-Za-z_][A-Za-z0-9_]*)$/u.exec(value.trim())
+  return match?.[1] ?? match?.[2]
 }
 
 // Pi Model fields a directory entry may carry (mirrored by the projection's
@@ -369,6 +391,63 @@ export interface PiRouteHandle {
   reannounce?(): void
 }
 
+
+/** A wire protocol DSH's official adapter can serve, or undefined. */
+function protocolOf(value: unknown): string | undefined {
+  return typeof value === 'string' && DSH_PROTOCOLS.has(value) ? value : undefined
+}
+
+// What a route profile may name. A protocol outside this set is not a
+// translation failure — it is a route the official adapter cannot serve, and
+// omitting it lets the adapter say so about the route rather than rejecting
+// the whole settings section over one key.
+const DSH_PROTOCOLS = new Set(['openai-completions', 'openai-responses', 'anthropic-messages'])
+// The modalities and thinking-format spellings the profile schema accepts.
+// A Pi model may carry others; a value outside the set is dropped rather than
+// forwarded, because one unknown spelling rejects the entire section.
+const DSH_MODALITIES = new Set(['text', 'image'])
+const DSH_THINKING_FORMATS = new Set(['openai', 'deepseek', 'openrouter', 'together', 'zai', 'qwen', 'string-thinking', 'ant-ling'])
+
+/** A positive whole number, or undefined — the profile schema rejects 0 and fractions. */
+function wholeAbove(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 1 ? value : undefined
+}
+
+/**
+ * One Pi model as a DSH model profile.
+ *
+ * Field by field on purpose. The two vocabularies overlap but do not match:
+ * Pi's `maxTokens` is routinely 0 for "unstated" while DSH requires at least 1,
+ * Pi's `compat` carries gateway dialect flags DSH's profile has no slot for,
+ * and Pi's `reasoning` is a boolean where DSH's `reasoningEfforts` is a map of
+ * offered levels. Forwarding any of those verbatim rejects the whole settings
+ * section — one bad key takes down every route in it.
+ * @param model - the Pi model descriptor as its package declared it.
+ */
+function modelProfileOf(model: UnknownRecord): UnknownRecord {
+  const compat = model.compat as UnknownRecord | undefined
+  const thinkingFormat = typeof compat?.thinkingFormat === 'string' && DSH_THINKING_FORMATS.has(compat.thinkingFormat)
+    ? { thinkingFormat: compat.thinkingFormat }
+    : {}
+  const supportsReasoningEffort = typeof compat?.supportsReasoningEffort === 'boolean'
+    ? { supportsReasoningEffort: compat.supportsReasoningEffort }
+    : {}
+  const carriedCompat = { ...thinkingFormat, ...supportsReasoningEffort }
+  const input = Array.isArray(model.input)
+    ? (model.input as unknown[]).filter(entry => typeof entry === 'string' && DSH_MODALITIES.has(entry))
+    : []
+  const contextWindow = wholeAbove(model.contextWindow)
+  const maxTokens = wholeAbove(model.maxTokens)
+  return {
+    id: String(model.id ?? ''),
+    ...(typeof model.name === 'string' ? { name: model.name } : {}),
+    ...(contextWindow === undefined ? {} : { contextWindow }),
+    ...(maxTokens === undefined ? {} : { maxTokens }),
+    ...(input.length === 0 ? {} : { input }),
+    ...(Object.keys(carriedCompat).length === 0 ? {} : { compat: carriedCompat }),
+  }
+}
+
 /**
  * Serve a catalog-only Pi provider through DSH's OWN llm adapter.
  *
@@ -397,20 +476,24 @@ function registerCatalogOnlyRoute(options: RegisterPiProviderRouteOptions): PiRo
     // for a known provider name. The official profile's `models` is optional
     // and omitting it serves that installed catalog, so a route is still built
     // — refusing here would drop a provider that works the moment it is used.
-    const first = (models[0] ?? provider) as UnknownRecord
+    const first = (models[0] ?? {}) as UnknownRecord
+    // Pi's own way of saying "the key is in this environment variable" is the
+    // same thing DSH's `apiKeyEnv` says, so the declaration carries across as
+    // configuration. Anything else the package may have written there (a
+    // command, a literal) stays where it is.
+    const apiKeyEnv = envReferenceOf(provider.apiKey)
+    // The wire protocol is a ROUTE-level fact in DSH and may be declared at
+    // either level in Pi (extensions put it on the provider, pi-ai's factory on
+    // each model). The provider's own answer leads; a model's is the fallback.
+    const api = protocolOf(provider.api) ?? protocolOf(first.api)
+    const baseURL = typeof provider.baseUrl === 'string' ? provider.baseUrl
+      : typeof first.baseUrl === 'string' ? first.baseUrl : undefined
     return {
       displayName: typeof provider.name === 'string' ? provider.name : providerId,
-      ...(typeof first.api === 'string' ? { api: first.api } : {}),
-      ...(typeof first.baseUrl === 'string' ? { baseURL: first.baseUrl } : {}),
-      ...(models.length === 0 ? {} : { models: models.map(model => ({
-        id: String(model.id ?? ''),
-        ...(typeof model.name === 'string' ? { name: model.name } : {}),
-        ...(typeof model.contextWindow === 'number' ? { contextWindow: model.contextWindow } : {}),
-        ...(typeof model.maxTokens === 'number' ? { maxTokens: model.maxTokens } : {}),
-        ...(Array.isArray(model.input) ? { input: model.input } : {}),
-        // The gateway's dialect, which is the whole reason these packages exist.
-        ...(model.compat === undefined ? {} : { compat: model.compat }),
-      })) }),
+      ...(apiKeyEnv === undefined ? {} : { apiKeyEnv }),
+      ...(api === undefined ? {} : { api }),
+      ...(baseURL === undefined ? {} : { baseURL }),
+      ...(models.length === 0 ? {} : { models: models.map(modelProfileOf) }),
     }
   }, `[pi2dsh] Pi provider ${JSON.stringify(providerId)} declares a catalog only; DSH's official llm-pi-ai adapter now serves it as a native route`)
 }

@@ -2,8 +2,9 @@
   "schemaVersion": 1,
   "note": "verdict is what the bridge reported at mount. \"route\" means the package carries its own transport and its compat reaches the request; it is NOT a claim that a real turn was run against that gateway.",
   "counts": {
-    "route": 10,
-    "mounted-no-provider": 2
+    "route": 3,
+    "mounted-no-provider": 2,
+    "route-via-official": 7
   },
   "results": [
     {
@@ -25,19 +26,19 @@
     },
     {
       "name": "pi-cliproxyapi-provider",
-      "verdict": "route",
+      "verdict": "route-via-official",
       "providerId": "cpa",
       "mountLine": "[pi2dsh] loaded pi-cliproxyapi-provider: 0 tools, 2 commands, 0 skill roots"
     },
     {
       "name": "pi-provider-alibaba-bailian",
-      "verdict": "route",
+      "verdict": "route-via-official",
       "providerId": "alibaba-bailian",
       "mountLine": "[pi2dsh] loaded pi-provider-alibaba-bailian: 0 tools, 1 commands, 0 skill roots"
     },
     {
       "name": "pi-volcengine-provider",
-      "verdict": "route",
+      "verdict": "route-via-official",
       "providerId": "volcengine-plan",
       "mountLine": "[pi2dsh] loaded pi-volcengine-provider: 0 tools, 1 commands, 0 skill roots"
     },
@@ -55,25 +56,25 @@
     },
     {
       "name": "pi-moonshot-provider",
-      "verdict": "route",
+      "verdict": "route-via-official",
       "providerId": "moonshot",
       "mountLine": "[pi2dsh] loaded pi-moonshot-provider: 0 tools, 1 commands, 0 skill roots"
     },
     {
       "name": "pi-qwencloud-provider",
-      "verdict": "route",
+      "verdict": "route-via-official",
       "providerId": "qw",
       "mountLine": "[pi2dsh] loaded pi-qwencloud-provider: 0 tools, 2 commands, 0 skill roots"
     },
     {
       "name": "pi-fireworks-provider",
-      "verdict": "route",
+      "verdict": "route-via-official",
       "providerId": "fireworks",
       "mountLine": "[pi2dsh] loaded pi-fireworks-provider: 0 tools, 3 commands, 0 skill roots"
     },
     {
       "name": "pi-baseten-provider",
-      "verdict": "route",
+      "verdict": "route-via-official",
       "providerId": "baseten",
       "mountLine": "[pi2dsh] loaded pi-baseten-provider: 0 tools, 1 commands, 0 skill roots"
     }

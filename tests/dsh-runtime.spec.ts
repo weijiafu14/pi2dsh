@@ -862,10 +862,18 @@ describe('a catalog-only Pi provider is declared, not mounted twice', () => {
       "  pi.registerProvider('fixcat', {",
       "    id: 'fixcat',",
       "    name: 'Fixture Catalog Gateway',",
-      '    getModels: () => [{',
+      // Pi's env-reference convention, which is what DSH's apiKeyEnv says too.
+      "    apiKey: '$FIXCAT_API_KEY',",
+      // A plain `models` array, the shape every vendor package actually uses —
+      // pi-ai's createProvider() builds getModels() instead, and reading only
+      // that left these packages declaring an empty catalog.
+      '    models: [{',
       "      id: 'fixcat-1', name: 'Fixture Cat One', provider: 'fixcat',",
       "      api: 'openai-completions', baseUrl: 'https://gw.fixture.test/v1',",
-      "      contextWindow: 64000, maxTokens: 4096, compat: { maxTokensField: 'max_tokens' },",
+      // A compat block mixing what DSH's profile knows with what it does not,
+      // and a maxTokens of 0 — the "unstated" every vendor package writes.
+      "      contextWindow: 64000, maxTokens: 0,",
+      "      compat: { thinkingFormat: 'deepseek', maxTokensField: 'max_tokens' },",
       '    }],',
       '  })',
       '}',
@@ -907,13 +915,23 @@ describe('a catalog-only Pi provider is declared, not mounted twice', () => {
       providers: {
         fixcat: {
           displayName: 'Fixture Catalog Gateway',
+          // The reference travels; the value never does.
+          apiKeyEnv: 'FIXCAT_API_KEY',
           api: 'openai-completions',
           baseURL: 'https://gw.fixture.test/v1',
-          // The gateway's dialect rides through: it is why these packages exist.
-          models: [{ id: 'fixcat-1', contextWindow: 64000, compat: { maxTokensField: 'max_tokens' } }],
+          models: [{ id: 'fixcat-1', contextWindow: 64000, compat: { thinkingFormat: 'deepseek' } }],
         },
       },
     })
+    // Field by field, because the two vocabularies overlap without matching.
+    // One key DSH's schema does not know rejects the WHOLE settings section —
+    // every route in it, not just this one — so an unknown compat key is
+    // dropped rather than forwarded, and `maxTokens: 0` (Pi's "unstated",
+    // below DSH's minimum of 1) never becomes a number DSH refuses.
+    const patch = written[0]?.patch as { providers: { fixcat: { models: Array<Record<string, unknown>> } } }
+    const model = patch.providers.fixcat.models[0] as Record<string, unknown>
+    expect(model).not.toHaveProperty('maxTokens')
+    expect(model.compat).toEqual({ thinkingFormat: 'deepseek' })
   })
 })
 
