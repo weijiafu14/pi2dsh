@@ -105,6 +105,23 @@ async function probe(name) {
       await new Promise(done => setTimeout(done, 400))
     }
     await new Promise(done => setTimeout(done, 2500))
+    // The mount line says how the bridge classified the package. It does NOT
+    // say whether the user would see anything: a route whose catalog needs a
+    // credential registers fine and lists nothing, and an empty picker is what
+    // "installed it, nothing happened" actually looks like. So ask the host's
+    // own directory, which is the same source the model picker reads.
+    let directory
+    try {
+      const response = await fetch(`http://127.0.0.1:${port}/api/llm.models`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ type: 'client-request', rpcId: 'survey', method: 'llm.models', payload: {} }),
+      })
+      const body = await response.json()
+      directory = body?.result?.value?.groups ?? undefined
+    } catch {
+      // The instance may already be gone; the mount line still stands on its own.
+    }
     web.kill('SIGTERM')
 
     const route = ROUTE.exec(log)
@@ -122,6 +139,14 @@ async function probe(name) {
         : mounted !== null ? 'mounted-no-provider'
         : 'unknown',
       providerId: route?.[1] ?? served?.[1] ?? notServed?.[1],
+      // How many models this package's route puts in the picker, with no
+      // credential configured. `0` means the user sees the route and nothing
+      // to choose until they supply a key or log in.
+      ...(directory === undefined ? {} : (() => {
+        const id = route?.[1] ?? served?.[1] ?? notServed?.[1]
+        const group = directory.find(entry => entry.id === id)
+        return { modelsInPicker: group?.models?.length ?? 0 }
+      })()),
       ...(notServed === null ? {} : { reason: notServed[2].slice(0, 160) }),
       mountLine: (log.split('\n').find(l => l.includes('[pi2dsh]') && l.includes(name.split('/').pop())) ?? '').trim().slice(0, 160),
     }

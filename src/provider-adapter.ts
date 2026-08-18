@@ -423,13 +423,20 @@ function wholeAbove(value: unknown): number | undefined {
  * offered levels. Forwarding any of those verbatim rejects the whole settings
  * section — one bad key takes down every route in it.
  * @param model - the Pi model descriptor as its package declared it.
+ * @param api - the wire protocol this route resolved to, which decides whether
+ *   the reasoning compat switches are even a legal thing to state.
  */
-function modelProfileOf(model: UnknownRecord): UnknownRecord {
+function modelProfileOf(model: UnknownRecord, api: string | undefined): UnknownRecord {
   const compat = model.compat as UnknownRecord | undefined
-  const thinkingFormat = typeof compat?.thinkingFormat === 'string' && DSH_THINKING_FORMATS.has(compat.thinkingFormat)
+  // Both switches exist ONLY on openai-completions, and stating them on any
+  // other protocol is refused with the whole settings section. Pi puts them on
+  // the model whatever it speaks, so the protocol decides whether they travel.
+  const reasoningCompatAllowed = api === 'openai-completions'
+  const thinkingFormat = reasoningCompatAllowed
+    && typeof compat?.thinkingFormat === 'string' && DSH_THINKING_FORMATS.has(compat.thinkingFormat)
     ? { thinkingFormat: compat.thinkingFormat }
     : {}
-  const supportsReasoningEffort = typeof compat?.supportsReasoningEffort === 'boolean'
+  const supportsReasoningEffort = reasoningCompatAllowed && typeof compat?.supportsReasoningEffort === 'boolean'
     ? { supportsReasoningEffort: compat.supportsReasoningEffort }
     : {}
   const carriedCompat = { ...thinkingFormat, ...supportsReasoningEffort }
@@ -493,7 +500,7 @@ function registerCatalogOnlyRoute(options: RegisterPiProviderRouteOptions): PiRo
       ...(apiKeyEnv === undefined ? {} : { apiKeyEnv }),
       ...(api === undefined ? {} : { api }),
       ...(baseURL === undefined ? {} : { baseURL }),
-      ...(models.length === 0 ? {} : { models: models.map(modelProfileOf) }),
+      ...(models.length === 0 ? {} : { models: models.map(model => modelProfileOf(model, api)) }),
     }
   }, `[pi2dsh] Pi provider ${JSON.stringify(providerId)} declares a catalog only; DSH's official llm-pi-ai adapter now serves it as a native route`)
 }

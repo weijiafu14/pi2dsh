@@ -950,6 +950,61 @@ describe('a catalog-only Pi provider is declared, not mounted twice', () => {
   })
 })
 
+describe('a compat switch that only exists on one protocol', () => {
+  it('does not travel with a route that speaks another', async () => {
+    // `thinkingFormat` / `supportsReasoningEffort` exist only on
+    // openai-completions. Pi puts them on the model whatever it speaks, and
+    // stating them on an anthropic-messages route is refused — with the WHOLE
+    // settings section, every other route in it included.
+    const scratch = await mkdtemp(join(tmpdir(), 'pi2dsh-compat-protocol-'))
+    cleanup.push(scratch)
+    await mkdir(join(scratch, 'pkg'), { recursive: true })
+    await writeFile(join(scratch, 'pkg', 'extension.js'), [
+      'export default function (pi) {',
+      "  pi.registerProvider('fixproto', {",
+      "    id: 'fixproto', name: 'Fixture Anthropic-Protocol Gateway',",
+      "    api: 'anthropic-messages', baseUrl: 'https://gw.fixture.test',",
+      "    models: [{ id: 'fixproto-1', compat: { thinkingFormat: 'deepseek', supportsReasoningEffort: true } }],",
+      '  })',
+      '}',
+    ].join('\n'), 'utf8')
+
+    const written: Array<{ patch: unknown }> = []
+    const ctx = new Context()
+    await ctx.plugin(SessionStore)
+    await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
+    await ctx.plugin(ToolRuntime)
+    await ctx.plugin(CommandRuntime)
+    await ctx.plugin(SkillRegistry)
+    await ctx.plugin(AgentRegistry)
+    await ctx.plugin(LlmRuntime as never, {} as never)
+    ;(ctx as unknown as { provide(name: string, value: unknown): void }).provide('settings', {
+      update: async (_ns: string, patch: unknown) => { written.push({ patch }) },
+    })
+    await ctx.plugin({
+      name: 'pi2dsh:compat-protocol-test',
+      inject: ['tools', 'systemPrompt', 'commands', 'skills'],
+      async apply(inner: Context) {
+        await applyPiPackage(inner, {
+          rootUrl: pathToFileURL(`${join(scratch, 'pkg')}/`),
+          manifest: {
+            schemaVersion: 1,
+            package: { name: '@pi2dsh-fixtures/compat-protocol', version: '0.0.0' },
+            extensions: ['extension.js'],
+            skillDirs: [],
+            prompts: [],
+          } as never,
+        })
+      },
+    } as Plugin.Object)
+    await settle()
+
+    const patch = written[0]?.patch as { providers: { fixproto: { api: string, models: Array<Record<string, unknown>> } } }
+    expect(patch.providers.fixproto.api).toBe('anthropic-messages')
+    expect(patch.providers.fixproto.models[0]).not.toHaveProperty('compat')
+  })
+})
+
 describe('the credential behind the reference the profile names', () => {
   it('stores the logged-in key in the host credential service, and refreshes it per request', async () => {
     // The profile says `apiKeyEnv: PI2DSH_OAUTH_<ID>`; something has to put a

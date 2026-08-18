@@ -1,0 +1,3671 @@
+{
+  "schemaVersion": 1,
+  "note": "Packages whose published source calls registerProvider. Screening is static: it says a package declares a provider, not that the provider works.",
+  "counts": {
+    "searched": 615,
+    "registersProvider": 262,
+    "carriesTransport": 147,
+    "declaresOAuth": 105,
+    "usedLastWeek": 245,
+    "unreadable": 0
+  },
+  "providers": [
+    {
+      "name": "@0x0.bug/pi-ai",
+      "version": "1.0.9",
+      "description": "Unified LLM API with automatic model discovery and provider configuration",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [
+        "ai-gateway.vercel.sh",
+        "ai.google.dev",
+        "api.ant-ling.com",
+        "api.anthropic.com",
+        "api.cerebras.ai",
+        "api.cloudflare.com",
+        "api.deepseek.com",
+        "api.fireworks.ai"
+      ],
+      "downloads": 933
+    },
+    {
+      "name": "@0x0.bug/pi-coding-agent",
+      "version": "1.0.9",
+      "description": "Coding agent CLI with read, bash, edit, write tools and session management",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": true,
+      "hosts": [
+        "agentskills.io",
+        "ai.corp.com",
+        "api.anthropic.com",
+        "claude.ai",
+        "cloud.gitlab.com",
+        "console.anthropic.com",
+        "distro.ibiblio.org",
+        "feross.org"
+      ],
+      "downloads": 809
+    },
+    {
+      "name": "@aliou/pi-cohere",
+      "version": "0.1.1",
+      "description": "Pi provider extension for Cohere models.",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": true,
+      "hosts": [
+        "api.cohere.ai",
+        "api.cohere.com",
+        "assets.aliou.me",
+        "models.dev"
+      ],
+      "downloads": 484
+    },
+    {
+      "name": "@aliou/pi-edgee",
+      "version": "0.1.3",
+      "description": "Pi provider extension for [Edgee](https://www.edgee.ai), the Agent Gateway that compresses, routes, and observes LLM requests.",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": true,
+      "hosts": [
+        "api.edgee.app",
+        "edgee.io",
+        "www.edgee.ai"
+      ],
+      "downloads": 38
+    },
+    {
+      "name": "@aliou/pi-neuralwatt",
+      "version": "0.14.2",
+      "description": "![banner](https://assets.aliou.me/github/aliou/pi-neuralwatt/banner.png)",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "api-docs.deepseek.com",
+        "api.neuralwatt.com",
+        "assets.aliou.me",
+        "huggingface.co",
+        "pi.dev",
+        "portal.neuralwatt.com"
+      ],
+      "downloads": 944
+    },
+    {
+      "name": "@aliou/pi-synthetic",
+      "version": "0.25.1",
+      "description": "![banner](https://assets.aliou.me/github/aliou/pi-synthetic/banner.png)",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "api.synthetic.new",
+        "assets.aliou.me",
+        "models.dev",
+        "pi.dev"
+      ],
+      "downloads": 232
+    },
+    {
+      "name": "@aliou/pi-ts-aperture",
+      "version": "0.12.0",
+      "description": "Route Pi LLM providers through Tailscale Aperture",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "ai.host.ts.net",
+        "assets.aliou.me",
+        "models.dev",
+        "pi.dev"
+      ],
+      "downloads": 356
+    },
+    {
+      "name": "@amaster.ai/pi-teamwork",
+      "version": "0.1.9",
+      "description": "Pi extension for team collaboration and issue management via Multica",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [],
+      "downloads": 966
+    },
+    {
+      "name": "@andersea/pi-scaleway-provider",
+      "version": "0.3.0",
+      "description": "Pi Agent extension for Scaleway's Generative APIs",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": true,
+      "hosts": [
+        "api.scaleway.ai",
+        "www.scaleway.com"
+      ],
+      "downloads": 30
+    },
+    {
+      "name": "@anierbeck/pi-model-dynamic-router",
+      "version": "1.4.0",
+      "description": "Pi extension that routes model groups to concrete models. Balances intelligence, cost, and availability.",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "api.anthropic.com",
+        "api.cerebras.ai",
+        "api.deepseek.com",
+        "api.groq.com",
+        "api.mistral.ai",
+        "api.openai.com",
+        "api.x.ai",
+        "dashscope.aliyuncs.com"
+      ],
+      "downloads": 61
+    },
+    {
+      "name": "@arcaneorion/pi-provider-manager",
+      "version": "0.3.11",
+      "description": "Visual config panel for models.json + roundrobin failover engine + provider health stats for pi coding agent",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [],
+      "downloads": 370
+    },
+    {
+      "name": "@arvoretech/pi-kiro-provider",
+      "version": "0.8.5",
+      "description": "Pi extension for the Kiro API, maintained by Arvore",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [
+        "app.kiro.dev",
+        "kiro.dev",
+        "mycompany.awsapps.com",
+        "oidc.us-east-1.amazonaws.com",
+        "q.us-east-1.amazonaws.com",
+        "view.awsapps.com"
+      ],
+      "downloads": 50
+    },
+    {
+      "name": "@astronova-ai/pi-provider",
+      "version": "0.1.0",
+      "description": "pi (pi.dev) extension that registers the Salesforce LLM Gateway as a model provider.",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": true,
+      "hosts": [
+        "api.salesforce.com",
+        "help.salesforce.com",
+        "login.salesforce.com",
+        "test.salesforce.com"
+      ],
+      "downloads": 9
+    },
+    {
+      "name": "@averyyy/pi-ai",
+      "version": "0.84.2-piclient.1",
+      "description": "Unified LLM API with automatic model discovery and provider configuration",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [
+        "ai-gateway.vercel.sh",
+        "ai.google.dev",
+        "api.ant-ling.com",
+        "api.anthropic.com",
+        "api.cerebras.ai",
+        "api.cloudflare.com",
+        "api.deepseek.com",
+        "api.fireworks.ai"
+      ],
+      "downloads": 726
+    },
+    {
+      "name": "@averyyy/pi-coding-agent",
+      "version": "0.84.2-piclient.1",
+      "description": "Coding agent CLI with read, bash, edit, write tools and session management",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": true,
+      "hosts": [
+        "agentskills.io",
+        "ai.corp.com",
+        "api.anthropic.com",
+        "claude.ai",
+        "cloud.gitlab.com",
+        "console.anthropic.com",
+        "git-scm.com",
+        "gitlab.com"
+      ],
+      "downloads": 423
+    },
+    {
+      "name": "@ayuanaa/pi-provider-stepfun-cn",
+      "version": "0.1.0-beta.1",
+      "description": "StepFun China Step Plan provider extension for Pi Coding Agent",
+      "carriesTransport": false,
+      "declaresOAuth": true,
+      "envApiKey": true,
+      "hosts": [
+        "api.stepfun.com"
+      ],
+      "downloads": 11
+    },
+    {
+      "name": "@benvargas/pi-synthetic-provider",
+      "version": "1.2.4",
+      "description": "Synthetic (synthetic.new) model provider for pi - Dynamic model fetching with reasoning, vision, and tools support",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": true,
+      "hosts": [
+        "api.synthetic.new"
+      ],
+      "downloads": 241
+    },
+    {
+      "name": "@bergetai/pi-provider",
+      "version": "0.3.1",
+      "description": "Run [Berget AI](https://berget.ai) models inside [Pi](https://pi.dev).",
+      "carriesTransport": false,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [
+        "api.berget.ai",
+        "berget.ai",
+        "keycloak.berget.ai"
+      ],
+      "downloads": 62
+    },
+    {
+      "name": "@bergetai/pi-provider-berget",
+      "version": "0.1.9",
+      "description": "Run [Berget AI](https://berget.ai) models inside [Pi](https://pi.dev).",
+      "carriesTransport": false,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [
+        "api.berget.ai",
+        "berget.ai",
+        "keycloak.berget.ai"
+      ],
+      "downloads": 12
+    },
+    {
+      "name": "@bigking67/pi-67",
+      "version": "0.15.8",
+      "description": "Cross-platform workspace distribution and configuration manager for upstream Pi.",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "api.deepseek.com",
+        "api.siliconflow.cn",
+        "direct.example.invalid",
+        "example.invalid",
+        "feross.org",
+        "file.example.invalid",
+        "files.pythonhosted.org",
+        "home.example.invalid"
+      ],
+      "downloads": 226
+    },
+    {
+      "name": "@billjr99/pi-openai-compat",
+      "version": "1.1.19",
+      "description": "pi-coding-agent extension: OpenAI-compatible endpoint support (OpenRouter, NVIDIA NIM, Nous Portal, Ollama, custom)",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "ai-gateway.vercel.sh",
+        "api.cerebras.ai",
+        "api.cloudflare.com",
+        "api.cohere.com",
+        "api.deepseek.com",
+        "api.fireworks.ai",
+        "api.groq.com",
+        "api.minimax.io"
+      ],
+      "downloads": 2180
+    },
+    {
+      "name": "@carlosgtrz/pi-codex-aliases",
+      "version": "0.3.0",
+      "description": "Pi extension that adds personal and work aliases for the built-in OpenAI Codex provider.",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [],
+      "downloads": 73
+    },
+    {
+      "name": "@caupulican/pi-adaptative",
+      "version": "0.93.5",
+      "description": "Adaptive fork of Pi coding agent for self-evolving agent harness experiments",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": true,
+      "hosts": [
+        "agentskills.io",
+        "ai.corp.com",
+        "api.anthropic.com",
+        "claude.ai",
+        "cloud.gitlab.com",
+        "console.anthropic.com",
+        "distro.ibiblio.org",
+        "download.pytorch.org"
+      ],
+      "downloads": 2892
+    },
+    {
+      "name": "@caupulican/pi-ai",
+      "version": "0.93.5",
+      "description": "Unified LLM API with automatic model discovery and provider configuration",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [
+        "ai-gateway.vercel.sh",
+        "ai.google.dev",
+        "api.anthropic.com",
+        "api.cerebras.ai",
+        "api.cloudflare.com",
+        "api.deepseek.com",
+        "api.fireworks.ai",
+        "api.groq.com"
+      ],
+      "downloads": 3486
+    },
+    {
+      "name": "@ch1nyzzz/pi-ai",
+      "version": "0.80.23",
+      "description": "Unified LLM API with automatic model discovery and provider configuration",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [
+        "ai-gateway.vercel.sh",
+        "ai.google.dev",
+        "api.ant-ling.com",
+        "api.anthropic.com",
+        "api.cerebras.ai",
+        "api.cloudflare.com",
+        "api.deepseek.com",
+        "api.fireworks.ai"
+      ],
+      "downloads": 97
+    },
+    {
+      "name": "@ch1nyzzz/pi-coding-agent",
+      "version": "0.80.23",
+      "description": "Coding agent CLI with read, bash, edit, write tools and session management",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": true,
+      "hosts": [
+        "agentskills.io",
+        "ai.corp.com",
+        "api.anthropic.com",
+        "api.openai.com",
+        "chatgpt.com",
+        "claude.ai",
+        "cloud.gitlab.com",
+        "console.anthropic.com"
+      ],
+      "downloads": 90
+    },
+    {
+      "name": "@chainingintention/pi-web-cn",
+      "version": "2.0.0",
+      "description": "Remote web UI and browser control plane for persistent Pi Coding Agent sessions.",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [
+        "claude.ai",
+        "dev-box.local",
+        "pi-web.local",
+        "www.apple.com"
+      ],
+      "downloads": 280
+    },
+    {
+      "name": "@charmland/pi-hyper-provider",
+      "version": "0.2.2",
+      "description": "Pi extension for Charm's Hyper inference provider",
+      "carriesTransport": false,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [
+        "hyper.charm.land"
+      ],
+      "downloads": 311
+    },
+    {
+      "name": "@cirthan/pi-cirthan-provider",
+      "version": "0.9.2",
+      "description": "Pi provider package for the Cirthan API.",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": true,
+      "hosts": [
+        "api.cirthan.com"
+      ],
+      "downloads": 71
+    },
+    {
+      "name": "@codewithkenzo/pi-clinepass",
+      "version": "0.1.1",
+      "description": "Native Pi provider extension for ClinePass OAuth models.",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [],
+      "downloads": 18
+    },
+    {
+      "name": "@coreinfra/pi-plugin",
+      "version": "0.3.2",
+      "description": "Pi package that adds [CoreInfra AI Hub](https://hub.coreinfra.ai/) as a model provider.",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": true,
+      "hosts": [
+        "hub.coreinfra.ai"
+      ],
+      "downloads": 950
+    },
+    {
+      "name": "@cortexkit/pi-anthropic-auth",
+      "version": "1.19.1",
+      "description": "Pi package for CortexKit Anthropic OAuth support. It overrides Pi's built-in `anthropic` provider with a CortexKit provider extension backed by the shared `@cortexkit/anthropic-auth-core` package.",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [
+        "api.anthropic.com"
+      ],
+      "downloads": 2425
+    },
+    {
+      "name": "@cortexkit/pi-antigravity-auth",
+      "version": "2.1.0",
+      "description": "Google Antigravity OAuth extension for pi - access Gemini 3 and Claude 4.6 using Google credentials",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [
+        "cloudcode-pa.googleapis.com"
+      ],
+      "downloads": 98
+    },
+    {
+      "name": "@cortexkit/pi-openai-auth",
+      "version": "0.6.2",
+      "description": "Pi package for CortexKit OpenAI Codex OAuth support. It overrides Pi's built-in `openai-codex` provider with a CortexKit provider extension backed by Pi's OpenAI Codex Responses transport and OAuth primitives.",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "chatgpt.com"
+      ],
+      "downloads": 3054
+    },
+    {
+      "name": "@d3ara1n/pi-provider-agnes",
+      "version": "1.1.1",
+      "description": "Agnes AI provider for pi — registers agnes (token billing) and agnes-plan (subscription) providers with text and image input models",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": true,
+      "hosts": [
+        "apihub.agnes-ai.com"
+      ],
+      "downloads": 41
+    },
+    {
+      "name": "@d3ara1n/pi-provider-sensenova",
+      "version": "1.2.1",
+      "description": "SenseNova (商汤日日新) provider for pi — registers Token Plan chat models via OpenAI-compatible API",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": true,
+      "hosts": [
+        "token.sensenova.cn"
+      ],
+      "downloads": 346
+    },
+    {
+      "name": "@d3ara1n/pi-provider-stepfun",
+      "version": "0.1.1",
+      "description": "StepFun (阶跃星辰) provider for pi — Step 3.x Flash models via OpenAI-compatible API",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": true,
+      "hosts": [
+        "api.stepfun.com"
+      ],
+      "downloads": 24
+    },
+    {
+      "name": "@danmademe/pi-provider-litellm",
+      "version": "0.13.0",
+      "description": "Pi agent extension for LiteLLM proxy auto-discovery and model configuration",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "oauth2.googleapis.com"
+      ],
+      "downloads": 477
+    },
+    {
+      "name": "@danypops/pi-extension-harness",
+      "version": "0.7.0",
+      "description": "A lightweight, in-process test host for Pi extensions -- unit-test hooks, tools, and commands without booting a real AgentSession, LLM, or I/O. Analogous to ESLint's RuleTester: ships the testing primitives so extension authors stop hand-rolling ad-hoc fa",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [],
+      "downloads": 2366
+    },
+    {
+      "name": "@danypops/pi-packed",
+      "version": "0.27.8",
+      "description": "Pi package lifecycle, validation, daemon, tools, profiles, and TUI",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "gitlab.com",
+        "packed.internal",
+        "packed.test",
+        "pi.dev",
+        "registry.example"
+      ],
+      "downloads": 1743
+    },
+    {
+      "name": "@dongzijie1/pi-ai",
+      "version": "1.2.0",
+      "description": "Unified LLM API with automatic model discovery and provider configuration",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [
+        "ai-gateway.vercel.sh",
+        "ai.google.dev",
+        "api.ant-ling.com",
+        "api.anthropic.com",
+        "api.cerebras.ai",
+        "api.cloudflare.com",
+        "api.deepseek.com",
+        "api.fireworks.ai"
+      ],
+      "downloads": 89
+    },
+    {
+      "name": "@doubleflower/pi-claude",
+      "version": "0.83.13",
+      "description": "Claude Code-styled fork of Pi, a coding agent CLI with read, bash, edit, write tools and session management",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": true,
+      "hosts": [
+        "agentskills.io",
+        "ai-gateway.vercel.sh",
+        "ai.corp.com",
+        "ai.google.dev",
+        "api.ant-ling.com",
+        "api.anthropic.com",
+        "api.cerebras.ai",
+        "api.cloudflare.com"
+      ],
+      "downloads": 103
+    },
+    {
+      "name": "@dude1wudv/pi-coding-agent",
+      "version": "20.1.6",
+      "description": "Coding agent CLI with read, bash, edit, write tools and session management",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [
+        "...git",
+        "addons.mozilla.org",
+        "agent-plugins.org",
+        "agentclientprotocol.com",
+        "agentskills.io",
+        "api.coingecko.com",
+        "api.crossref.org",
+        "api.discogs.com"
+      ],
+      "downloads": 486
+    },
+    {
+      "name": "@earendil-works/pi-ai",
+      "version": "0.84.2",
+      "description": "Unified LLM API with automatic model discovery and provider configuration",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [
+        "ai-gateway.vercel.sh",
+        "ai.google.dev",
+        "api.ant-ling.com",
+        "api.anthropic.com",
+        "api.cerebras.ai",
+        "api.cloudflare.com",
+        "api.deepseek.com",
+        "api.fireworks.ai"
+      ],
+      "downloads": 2989037
+    },
+    {
+      "name": "@earendil-works/pi-coding-agent",
+      "version": "0.84.2",
+      "description": "Coding agent CLI with read, bash, edit, write tools and session management",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": true,
+      "hosts": [
+        "agentskills.io",
+        "ai.corp.com",
+        "api.anthropic.com",
+        "claude.ai",
+        "cloud.gitlab.com",
+        "console.anthropic.com",
+        "feross.org",
+        "git-scm.com"
+      ],
+      "downloads": 1368518
+    },
+    {
+      "name": "@earendil-works/pi-radius",
+      "version": "0.1.10",
+      "description": "Radius provider, web search, and skills for Pi",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "radius.pi.dev"
+      ],
+      "downloads": 304
+    },
+    {
+      "name": "@eiei114/pi-sub-core",
+      "version": "2.0.2",
+      "description": "Shared usage data core for pi extensions",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "api.anthropic.com",
+        "api.kimi.com",
+        "api.z.ai",
+        "chatgpt.com",
+        "cloudcode-pa.googleapis.com",
+        "daily-cloudcode-pa.sandbox.googleapis.com",
+        "openrouter.ai",
+        "status.openai.com"
+      ],
+      "downloads": 47
+    },
+    {
+      "name": "@faks/pi-gateway",
+      "version": "1.0.2",
+      "description": "Pi extension for llama.cpp integration. Supports router, single and legacy models. Supports multiple servers.",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "headroom.local",
+        "infra-headroom-1vnnn6-82-193-93-167.sslip.io",
+        "infra-headroom-1vnnn6.sslip.io",
+        "infra-vulkan-llamacpp-wvayfg-39ab2d-82-193-93-167.sslip.io",
+        "litellm.local",
+        "llama-cpp.local"
+      ],
+      "downloads": 41
+    },
+    {
+      "name": "@fan92rus/pi-coding-agent",
+      "version": "0.83.1-livecraft.4",
+      "description": "<p align=\"center\">   <a href=\"https://pi.dev\">     <img alt=\"pi logo\" src=\"https://pi.dev/logo-auto.svg\" width=\"128\">   </a> </p> <p align=\"center\">   <a href=\"https://discord.com/invite/3cU7Bz4UPx\"><img alt=\"Discord\" src=\"https://img.shields.io/badge/dis",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": true,
+      "hosts": [
+        "agentskills.io",
+        "ai.corp.com",
+        "api.anthropic.com",
+        "claude.ai",
+        "cloud.gitlab.com",
+        "console.anthropic.com",
+        "distro.ibiblio.org",
+        "git-scm.com"
+      ],
+      "downloads": 36
+    },
+    {
+      "name": "@ferris1225/pi-subagents",
+      "version": "2.0.0",
+      "description": "Controllable background sub-agent threads for pi: specialized roles, capability-aware thinking, direct main-model fallback, auto-fix chains, and Git worktree isolation.",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [],
+      "downloads": 984
+    },
+    {
+      "name": "@firstpick/pi-extension-cursor-composer",
+      "version": "0.1.7",
+      "description": "Pi extension and custom model provider for Cursor SDK Composer 2.5.",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": true,
+      "hosts": [],
+      "downloads": 224
+    },
+    {
+      "name": "@fleetagent/pi-ai",
+      "version": "0.1.9",
+      "description": "Unified LLM API with automatic model discovery and provider configuration",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [
+        "ai-gateway.vercel.sh",
+        "ai.google.dev",
+        "api.anthropic.com",
+        "api.cerebras.ai",
+        "api.cloudflare.com",
+        "api.deepseek.com",
+        "api.fireworks.ai",
+        "api.groq.com"
+      ],
+      "downloads": 2228
+    },
+    {
+      "name": "@fractaal/pi-ai",
+      "version": "0.80.3",
+      "description": "Unified LLM API with automatic model discovery and provider configuration",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [
+        "ai-gateway.vercel.sh",
+        "ai.google.dev",
+        "api.ant-ling.com",
+        "api.anthropic.com",
+        "api.cerebras.ai",
+        "api.cloudflare.com",
+        "api.deepseek.com",
+        "api.fireworks.ai"
+      ],
+      "downloads": 316
+    },
+    {
+      "name": "@fractaal/pi-claude-bridge",
+      "version": "1.6.8",
+      "description": "Pi provider bridge that runs Claude Code through the Claude Agent SDK.",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [
+        "api.anthropic.com",
+        "beacon.claude-ai.staging.ant.dev",
+        "claude-staging.fedstart.com",
+        "claude.ai",
+        "claude.com",
+        "claude.fedstart.com",
+        "code.claude.com",
+        "docs.anthropic.com"
+      ],
+      "downloads": 832
+    },
+    {
+      "name": "@fractaal/pi-coding-agent",
+      "version": "0.80.3",
+      "description": "Coding agent CLI with read, bash, edit, write tools and session management",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": true,
+      "hosts": [
+        "agentskills.io",
+        "ai.corp.com",
+        "api.anthropic.com",
+        "claude.ai",
+        "cloud.gitlab.com",
+        "console.anthropic.com",
+        "distro.ibiblio.org",
+        "git-scm.com"
+      ],
+      "downloads": 331
+    },
+    {
+      "name": "@geraschenko/pi-coding-agent",
+      "version": "0.83.0-fork.0",
+      "description": "Coding agent CLI with read, bash, edit, write tools and session management",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": true,
+      "hosts": [
+        "agentskills.io",
+        "ai.corp.com",
+        "api.anthropic.com",
+        "claude.ai",
+        "cloud.gitlab.com",
+        "console.anthropic.com",
+        "distro.ibiblio.org",
+        "feross.org"
+      ],
+      "downloads": 15
+    },
+    {
+      "name": "@gotgenes/pi-anthropic-auth",
+      "version": "2.0.6",
+      "description": "Pi extension package for Anthropic OAuth compatibility",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [],
+      "downloads": 3070
+    },
+    {
+      "name": "@grammeaway/pi-provider-sakana-fugu",
+      "version": "1.0.2",
+      "description": "Sakana Fugu provider extension for the Pi agentic harness (OpenAI-compatible, /login support)",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": true,
+      "hosts": [
+        "api.sakana.ai",
+        "console.sakana.ai"
+      ],
+      "downloads": 8
+    },
+    {
+      "name": "@h-rig/pi-coding-agent",
+      "version": "0.0.6-alpha.286",
+      "description": "Coding agent CLI with read, bash, edit, write tools and session management",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [
+        "...git",
+        "addons.mozilla.org",
+        "agentclientprotocol.com",
+        "agentskills.io",
+        "api.coingecko.com",
+        "api.crossref.org",
+        "api.discogs.com",
+        "api.exa.ai"
+      ],
+      "downloads": 169
+    },
+    {
+      "name": "@h00w/pi-provider-aihubmix",
+      "version": "0.1.2",
+      "description": "Pi provider extension that auto-registers AIHubMix models with multi-protocol routing, caching, and APP-Code support",
+      "carriesTransport": false,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [
+        "aihubmix.com"
+      ],
+      "downloads": 20
+    },
+    {
+      "name": "@handy_wote/pi-ai",
+      "version": "0.85.3",
+      "description": "Unified LLM API with automatic model discovery and provider configuration",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [
+        "api.cloudflare.com",
+        "api.openai.com",
+        "cchistory.mariozechner.at",
+        "chatgpt.com",
+        "developers.cloudflare.com",
+        "docs.aws.amazon.com",
+        "gateway.ai.cloudflare.com",
+        "openrouter.ai"
+      ],
+      "downloads": 408
+    },
+    {
+      "name": "@handy_wote/pi-coding-agent",
+      "version": "0.85.3",
+      "description": "Coding agent CLI with read, bash, edit, write tools and session management",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [
+        "agentskills.io",
+        "ai.corp.com",
+        "claude.ai",
+        "distro.ibiblio.org",
+        "git-scm.com",
+        "mariozechner.at",
+        "mistral.ai",
+        "models.dev"
+      ],
+      "downloads": 504
+    },
+    {
+      "name": "@hhyy668/pi-ai",
+      "version": "0.80.7",
+      "description": "Unified LLM API with automatic model discovery and provider configuration",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [
+        "ai-gateway.vercel.sh",
+        "ai.google.dev",
+        "api.ant-ling.com",
+        "api.anthropic.com",
+        "api.cerebras.ai",
+        "api.cloudflare.com",
+        "api.deepseek.com",
+        "api.fireworks.ai"
+      ],
+      "downloads": 65
+    },
+    {
+      "name": "@hhyy668/pi-coding-agent",
+      "version": "0.80.7",
+      "description": "Coding agent CLI with read, bash, edit, write tools and session management",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": true,
+      "hosts": [
+        "agentskills.io",
+        "ai.corp.com",
+        "api.anthropic.com",
+        "claude.ai",
+        "cloud.gitlab.com",
+        "console.anthropic.com",
+        "distro.ibiblio.org",
+        "feross.org"
+      ],
+      "downloads": 40
+    },
+    {
+      "name": "@howaboua/pi-codex-conversion",
+      "version": "3.0.15",
+      "description": "Codex-oriented tool and prompt adapter for pi coding agent",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [
+        "api.openai.com",
+        "auth.openai.com",
+        "chatgpt.com",
+        "discord.com",
+        "lan-voice.local"
+      ],
+      "downloads": 4710
+    },
+    {
+      "name": "@howaboua/pi-subagent-review",
+      "version": "0.2.17",
+      "description": "Pi extension that adds /review via an isolated review subagent.",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "biomejs.dev"
+      ],
+      "downloads": 363
+    },
+    {
+      "name": "@ifi/pi-provider-catalog",
+      "version": "0.5.1",
+      "description": "Experimental multi-provider package for pi backed by the OpenCode models.dev catalog.",
+      "carriesTransport": false,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [
+        "ai-gateway.helicone.ai",
+        "aistudio.google.com",
+        "api-inference.modelscope.cn",
+        "api-sherlock.cloudferro.com",
+        "api.302.ai",
+        "api.anthropic.com",
+        "api.berget.ai",
+        "api.clarifai.com"
+      ],
+      "downloads": 7
+    },
+    {
+      "name": "@ifi/pi-provider-cursor",
+      "version": "0.5.1",
+      "description": "Experimental Cursor provider for pi with OAuth login, model discovery, and direct AgentService streaming.",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [
+        "api2.cursor.sh",
+        "cursor.com"
+      ],
+      "downloads": 10
+    },
+    {
+      "name": "@ifi/pi-provider-ollama",
+      "version": "0.5.1",
+      "description": "Experimental Ollama provider for pi with local discovery and cloud login support.",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [
+        "docs.ollama.com",
+        "ollama.com"
+      ],
+      "downloads": 7
+    },
+    {
+      "name": "@indexyz/pi-provider-sub2api",
+      "version": "0.1.14",
+      "description": "A pi provider extension for Sub2API-compatible relays with model discovery and quota reporting",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "api.openai.com"
+      ],
+      "downloads": 407
+    },
+    {
+      "name": "@jayteelabs/pi-nous-portal-provider",
+      "version": "0.2.3",
+      "description": "Pi provider package for Nous Research Portal inference.",
+      "carriesTransport": false,
+      "declaresOAuth": true,
+      "envApiKey": true,
+      "hosts": [
+        "inference-api.nousresearch.com",
+        "openrouter.ai",
+        "portal.nousresearch.com"
+      ],
+      "downloads": 82
+    },
+    {
+      "name": "@jiajun0413/pi-provider-manager",
+      "version": "0.6.2",
+      "description": "Roundrobin failover engine for the pi coding agent — virtual provider pooling multiple candidates with sticky failover and cooldown",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [],
+      "downloads": 53
+    },
+    {
+      "name": "@jmfederico/pi-web",
+      "version": "1.202608.1",
+      "description": "Web UI for persistent Pi Coding Agent sessions in real workspaces.",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "claude.ai",
+        "dev-box.local",
+        "pi-web.dev",
+        "pi-web.local",
+        "www.apple.com"
+      ],
+      "downloads": 2069
+    },
+    {
+      "name": "@juvio15/pi-seek",
+      "version": "0.4.1",
+      "description": "pi-seek is an extension for Pi. It connects Pi to the DeepSeek V4 Flash and V4 Pro models. It uses the DeepSeek Responses API and the DeepSeek beta API.",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": true,
+      "hosts": [
+        "api.deepseek.com"
+      ],
+      "downloads": 1572
+    },
+    {
+      "name": "@khanhicetea/pi-multi-codex",
+      "version": "0.2.0",
+      "description": "Pi extension for logging into and switching between multiple OpenAI Codex accounts",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "api.openai.com",
+        "chatgpt.com"
+      ],
+      "downloads": 50
+    },
+    {
+      "name": "@klutometis/pi-provider-vertex-anthropic",
+      "version": "0.1.7",
+      "description": "Pi agent extension for Claude models via Google Cloud Vertex AI",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [
+        "cloud.google.com",
+        "oauth2.googleapis.com",
+        "platform.claude.com",
+        "www.anthropic.com",
+        "www.googleapis.com"
+      ],
+      "downloads": 13
+    },
+    {
+      "name": "@llmgates_api/pi-llmgates-provider",
+      "version": "0.3.0",
+      "description": "Pi provider extension for OpenAI-compatible gateways (NewAPI, Sub2API, CLIProxyAPI): dynamic models from /v1/models and /login setup",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [],
+      "downloads": 257
+    },
+    {
+      "name": "@lpb-work/pi-coding-agent",
+      "version": "0.83.15",
+      "description": "Coding agent CLI with read, bash, edit, write tools and session management",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": true,
+      "hosts": [
+        "addons.mozilla.org",
+        "agentskills.io",
+        "ai.corp.com",
+        "api.anthropic.com",
+        "api.coingecko.com",
+        "api.crossref.org",
+        "api.discogs.com",
+        "api.exa.ai"
+      ],
+      "downloads": 1070
+    },
+    {
+      "name": "@maxpaulus/pi-cline",
+      "version": "0.9.1",
+      "description": "Cline/ClinePass OAuth provider extension for pi.",
+      "carriesTransport": false,
+      "declaresOAuth": true,
+      "envApiKey": true,
+      "hosts": [
+        "api.cline.bot",
+        "api.workos.com",
+        "models.dev"
+      ],
+      "downloads": 86
+    },
+    {
+      "name": "@mcowger/pi-plexus",
+      "version": "1.4.2",
+      "description": "Plexus AI proxy plugin for the pi coding agent",
+      "carriesTransport": false,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [],
+      "downloads": 185
+    },
+    {
+      "name": "@monotykamary/pi-opencode-provider",
+      "version": "1.0.9",
+      "description": "Opencode provider extension for pi - Access GPT, Claude, Gemini, GLM, MiniMax, Kimi and more through the opencode.ai API",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": true,
+      "hosts": [
+        "models.dev",
+        "opencode.ai"
+      ],
+      "downloads": 1196
+    },
+    {
+      "name": "@mozilla-ai/pi-otari",
+      "version": "0.3.0",
+      "description": "Route Pi model requests through Otari with automatic model discovery",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "api.otari.ai"
+      ],
+      "downloads": 63
+    },
+    {
+      "name": "@mupt-ai/pi-ai",
+      "version": "0.80.6-mupt.4",
+      "description": "Unified LLM API with automatic model discovery and provider configuration",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [
+        "ai-gateway.vercel.sh",
+        "ai.google.dev",
+        "api.ant-ling.com",
+        "api.anthropic.com",
+        "api.cerebras.ai",
+        "api.cloudflare.com",
+        "api.deepseek.com",
+        "api.fireworks.ai"
+      ],
+      "downloads": 929
+    },
+    {
+      "name": "@mupt-ai/pi-coding-agent",
+      "version": "0.80.6-mupt.4",
+      "description": "Coding agent CLI with read, bash, edit, write tools and session management",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": true,
+      "hosts": [
+        "agentskills.io",
+        "ai.corp.com",
+        "api.anthropic.com",
+        "claude.ai",
+        "cloud.gitlab.com",
+        "console.anthropic.com",
+        "distro.ibiblio.org",
+        "git-scm.com"
+      ],
+      "downloads": 54
+    },
+    {
+      "name": "@mx_/pi-custom-provider",
+      "version": "0.5.0",
+      "description": "Auto-register custom API providers (new-api/one-api/any OpenAI-compatible proxy) in pi — dynamic model discovery, multi-protocol, zero-code config.",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [],
+      "downloads": 41
+    },
+    {
+      "name": "@myka2003/pi-dpi",
+      "version": "0.8.52",
+      "description": "dπ — 拆解 π：pi 的解耦 agent 仓库引擎",
+      "carriesTransport": false,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [
+        "sui-xiang.com"
+      ],
+      "downloads": 2825
+    },
+    {
+      "name": "@narumitw/pi-accounts",
+      "version": "0.49.7",
+      "description": "Pi extension for switching named subscription OAuth accounts across supported providers.",
+      "carriesTransport": false,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [],
+      "downloads": 575
+    },
+    {
+      "name": "@narumitw/pi-codex-accounts",
+      "version": "0.24.0",
+      "description": "Pi extension for switching self-managed ChatGPT Codex subscription accounts without touching /login.",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [],
+      "downloads": 87
+    },
+    {
+      "name": "@narumitw/pi-subagents",
+      "version": "1.0.2",
+      "description": "Pi extension for delegating work to specialized isolated subagents.",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [],
+      "downloads": 2174
+    },
+    {
+      "name": "@neilurk12/pi-tokenrouter",
+      "version": "0.1.1",
+      "description": "TokenRouter AI model provider extension for pi coding agent",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "api.tokenrouter.com"
+      ],
+      "downloads": 8
+    },
+    {
+      "name": "@nquandt/pi-azure-foundry",
+      "version": "1.0.3",
+      "description": "Pi extension for Azure AI Foundry — discovers deployments and registers models",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [
+        "ai.azure.com",
+        "aka.ms",
+        "allyoucanleet.com",
+        "cognitiveservices.azure.com",
+        "datatracker.ietf.org",
+        "developer.mozilla.org",
+        "disk.azure.com",
+        "docs.microsoft.com"
+      ],
+      "downloads": 51
+    },
+    {
+      "name": "@odinlayer/pi-provider-litellm",
+      "version": "1.0.19",
+      "description": "LiteLLM proxy provider extension for Pi",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "models.dev",
+        "oauth2.googleapis.com"
+      ],
+      "downloads": null
+    },
+    {
+      "name": "@oh-my-pi-zen/pi-ai",
+      "version": "17.3.0-zen.1",
+      "description": "Unified LLM API with automatic model discovery and provider configuration",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": true,
+      "hosts": [
+        "accounts.google.com",
+        "ai.google.dev",
+        "aiplatform.googleapis.com",
+        "anysearch.com",
+        "api.aiand.com",
+        "api.anthropic.com",
+        "api.cerebras.ai",
+        "api.code.umans.ai"
+      ],
+      "downloads": 2360
+    },
+    {
+      "name": "@oh-my-pi-zen/pi-coding-agent",
+      "version": "17.3.0-zen.1",
+      "description": "Coding agent CLI with read, bash, edit, write tools and session management",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [
+        "...git",
+        "addons.mozilla.org",
+        "agent-plugins.org",
+        "agentclientprotocol.com",
+        "agentskills.io",
+        "api.anysearch.com",
+        "api.coingecko.com",
+        "api.crossref.org"
+      ],
+      "downloads": 653
+    },
+    {
+      "name": "@oh-my-pi/pi-ai",
+      "version": "17.3.5",
+      "description": "Unified LLM API with automatic model discovery and provider configuration",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": true,
+      "hosts": [
+        "accounts.google.com",
+        "ai.google.dev",
+        "aiplatform.googleapis.com",
+        "api.aiand.com",
+        "api.anthropic.com",
+        "api.cerebras.ai",
+        "api.code.umans.ai",
+        "api.deepseek.com"
+      ],
+      "downloads": 75741
+    },
+    {
+      "name": "@oh-my-pi/pi-coding-agent",
+      "version": "17.3.5",
+      "description": "Coding agent CLI with read, bash, edit, write tools and session management",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [
+        "...git",
+        "addons.mozilla.org",
+        "agent-plugins.org",
+        "agentclientprotocol.com",
+        "agentskills.io",
+        "api.coingecko.com",
+        "api.crossref.org",
+        "api.discogs.com"
+      ],
+      "downloads": 108579
+    },
+    {
+      "name": "@opencode-compat/pi-bridge",
+      "version": "0.3.0",
+      "description": "Dynamically run unmodified OpenCode aisdk-type plugins as providers on pi or oh-my-pi (omp)",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": true,
+      "hosts": [],
+      "downloads": 325
+    },
+    {
+      "name": "@openeryc/pi-ai",
+      "version": "0.83.0",
+      "description": "Unified LLM API with automatic model discovery and provider configuration",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [
+        "ai-gateway.vercel.sh",
+        "ai.google.dev",
+        "api.ant-ling.com",
+        "api.anthropic.com",
+        "api.cerebras.ai",
+        "api.cloudflare.com",
+        "api.deepseek.com",
+        "api.fireworks.ai"
+      ],
+      "downloads": 95
+    },
+    {
+      "name": "@openeryc/pi-coding-agent",
+      "version": "0.83.0",
+      "description": "Coding agent CLI with read, bash, edit, write tools and session management",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": true,
+      "hosts": [
+        "agentskills.io",
+        "ai.corp.com",
+        "api.anthropic.com",
+        "claude.ai",
+        "cloud.gitlab.com",
+        "console.anthropic.com",
+        "distro.ibiblio.org",
+        "feross.org"
+      ],
+      "downloads": 21
+    },
+    {
+      "name": "@openference/pi-provider",
+      "version": "0.1.1",
+      "description": "Official Openference provider for Pi — device-flow OAuth login, live model discovery, and plan-aware pacing",
+      "carriesTransport": false,
+      "declaresOAuth": true,
+      "envApiKey": true,
+      "hosts": [
+        "api.openference.com",
+        "openference.com"
+      ],
+      "downloads": null
+    },
+    {
+      "name": "@opperai/pi-provider",
+      "version": "1.0.3",
+      "description": "Opper AI gateway provider and tools for the pi coding agent",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "api.opper.ai",
+        "opper.ai"
+      ],
+      "downloads": 23
+    },
+    {
+      "name": "@pi-vault/pi-tools",
+      "version": "0.5.1",
+      "description": "Pi extension for web search, content extraction, documentation lookup, and deep research tools",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "accounts.google.com",
+        "api.exa.ai",
+        "api.fastcrw.com",
+        "api.fetch.tinyfish.ai",
+        "api.firecrawl.dev",
+        "api.langsearch.com",
+        "api.linkup.so",
+        "api.openai.com"
+      ],
+      "downloads": 183
+    },
+    {
+      "name": "@plannotator/pi-extension",
+      "version": "0.27.4",
+      "description": "Plannotator Pi extension - interactive plan review with annotations, annotate agent messages, and review code/PRs",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "evil.example",
+        "ghe.company.com",
+        "gitlab.com",
+        "gitlab.mycompany.com",
+        "guides.show",
+        "my-machine.tailnet.ts.net",
+        "plannotator.ai",
+        "r.jina.ai"
+      ],
+      "downloads": 11841
+    },
+    {
+      "name": "@rahularya01/pi-cursor",
+      "version": "1.4.20",
+      "description": "Native Cursor provider for Pi Coding Agent (OAuth + Connect/protobuf streamSimple)",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [
+        "agentn.us.api5.cursor.sh",
+        "api2.cursor.sh",
+        "cursor.com"
+      ],
+      "downloads": 1532
+    },
+    {
+      "name": "@realvendex/pi-token-router",
+      "version": "0.2.0",
+      "description": "TokenRouter.com unified API gateway as a native Pi provider for accessing 300+ LLM models via a single API key",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": true,
+      "hosts": [
+        "api.tokenrouter.com"
+      ],
+      "downloads": 33
+    },
+    {
+      "name": "@ribbons-digital/pi-advisor",
+      "version": "0.3.0",
+      "description": "Automatic isolated secondary review for Pi coding agent sessions",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [],
+      "downloads": 86
+    },
+    {
+      "name": "@rise-so/pi-grok-build",
+      "version": "0.4.0",
+      "description": "xAI Grok Build provider for pi: OAuth login (borrowed Grok CLI client) plus Grok chat models over the OpenAI Responses API. OAuth only. Usable as a pi extension or as a pi-ai library provider.",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [
+        "auth.x.ai",
+        "cli-chat-proxy.grok.com"
+      ],
+      "downloads": 153
+    },
+    {
+      "name": "@rkbkosp/pi-provider-clone",
+      "version": "0.2.1",
+      "description": "Clone Pi model providers under separate provider IDs and credential scopes",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [],
+      "downloads": 198
+    },
+    {
+      "name": "@robhowley/pi-openrouter",
+      "version": "0.13.0",
+      "description": "Live OpenRouter spend/account TUI overlays, user-scoped or free-only model sync, api key management, and session tagging for Pi.",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "api.anthropic.com",
+        "openrouter.ai",
+        "pi-userland.dev"
+      ],
+      "downloads": 2244
+    },
+    {
+      "name": "@router-for-me/pi-cliproxyapi-provider",
+      "version": "1.4.13",
+      "description": "Pi provider extension that auto-registers CLIProxyAPI models, plus TUI elapsed/TPS status",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "models.dev"
+      ],
+      "downloads": 310
+    },
+    {
+      "name": "@schovest/pi-coding-agent",
+      "version": "0.14.1",
+      "description": "Coding agent CLI with read, bash, edit, write tools and session management",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": true,
+      "hosts": [
+        "agentskills.io",
+        "ai.corp.com",
+        "api.anthropic.com",
+        "claude.ai",
+        "cloud.gitlab.com",
+        "console.anthropic.com",
+        "distro.ibiblio.org",
+        "feross.org"
+      ],
+      "downloads": 584
+    },
+    {
+      "name": "@shelken/pi-dynamic-models",
+      "version": "0.2.3",
+      "description": "从 models.dev 自动发现并补全 models.json 中的远端模型",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "models.dev"
+      ],
+      "downloads": 164
+    },
+    {
+      "name": "@sinamtz/pi-minimax-provider",
+      "version": "1.1.7",
+      "description": "Pi coding agent provider for MiniMax AI with M3, Anthropic-compatible streaming, and native MiniMax tools",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": true,
+      "hosts": [
+        "api.minimax.io",
+        "api.minimaxi.com"
+      ],
+      "downloads": 189
+    },
+    {
+      "name": "@sloppykebap/pi-provider-cc-sdk",
+      "version": "0.2.1",
+      "description": "Use your Claude subscription with pi using their official Claude Code SDK.",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [],
+      "downloads": 5
+    },
+    {
+      "name": "@sphcorp/pi-provider-agentrouter",
+      "version": "0.1.2",
+      "description": "Agent Router provider for pi coding agent",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "agentrouter.org",
+        "models.dev"
+      ],
+      "downloads": 217
+    },
+    {
+      "name": "@sphinxcorp/pi-provider-agentrouter",
+      "version": "0.1.3",
+      "description": "Agent Router provider for pi coding agent",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "agentrouter.org",
+        "models.dev"
+      ],
+      "downloads": 253
+    },
+    {
+      "name": "@traylinx/pi-switchai-provider",
+      "version": "0.3.3",
+      "description": "switchai provider for pi coding agent — routes completions through the switchAILocal gateway.",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [],
+      "downloads": 166
+    },
+    {
+      "name": "@tryinget/pi-workstation-inference-provider",
+      "version": "0.3.0",
+      "description": "Pi provider adapter for workstation inference with lifecycle-read-only text paths and scheduler-claimed one-shot audio dispatch.",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [],
+      "downloads": 166
+    },
+    {
+      "name": "@tsuuanmi/pi-ai",
+      "version": "0.2.3",
+      "description": "Provider and model API with automatic model discovery and provider configuration",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "api.anthropic.com",
+        "api.openai.com",
+        "auth.openai.com",
+        "chat.openai.com",
+        "chatgpt.com",
+        "claude.ai",
+        "models.dev",
+        "ollama.com"
+      ],
+      "downloads": 66
+    },
+    {
+      "name": "@twogiants/pi-anthropic-vertex",
+      "version": "0.1.13",
+      "description": "Anthropic Claude models on Google Cloud Vertex AI for pi",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "cchistory.mariozechner.at"
+      ],
+      "downloads": 2309
+    },
+    {
+      "name": "@vanillagreen/pi-claude-bridge",
+      "version": "2.0.0",
+      "description": "Pi provider bridge that runs Claude Code through the Claude Agent SDK, with opt-in forwarding for Pi prompt context.",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [
+        "api.anthropic.com",
+        "beacon.claude-ai.staging.ant.dev",
+        "claude-staging.fedstart.com",
+        "claude.ai",
+        "claude.com",
+        "claude.fedstart.com",
+        "code.claude.com",
+        "docs.anthropic.com"
+      ],
+      "downloads": 2266
+    },
+    {
+      "name": "@xamfoo/pi-openrouter-pin",
+      "version": "0.1.5",
+      "description": "Pi extension to pin an OpenRouter model to a provider.",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": true,
+      "hosts": [
+        "openrouter.ai",
+        "pi.dev"
+      ],
+      "downloads": 952
+    },
+    {
+      "name": "@yeliu84/pi-model-router",
+      "version": "0.4.4",
+      "description": "Smart per-turn model router for Pi that optimizes your AI budget and usage limits by dynamically switching LLM tiers based on task complexity, budget, and phase awareness.",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [],
+      "downloads": 227
+    },
+    {
+      "name": "@yofriadi/pi-provider-antigravity",
+      "version": "0.3.0",
+      "description": "Pi extension that restores the Antigravity (Gemini 3, Claude, GPT-OSS) OAuth provider.",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [
+        "accounts.google.com",
+        "ai.google.dev",
+        "autopush-cloudcode-pa.sandbox.googleapis.com",
+        "cloudcode-pa.googleapis.com",
+        "daily-cloudcode-pa.googleapis.com",
+        "daily-cloudcode-pa.sandbox.googleapis.com",
+        "oauth2.googleapis.com",
+        "www.googleapis.com"
+      ],
+      "downloads": 185
+    },
+    {
+      "name": "@yulong-me/pi-swarm",
+      "version": "0.84.1-piswarm.0.1.0",
+      "description": "Multi-agent coding runtime with a real-time collaboration WebUI, durable tasks, CLI, and SDK",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": true,
+      "hosts": [
+        "-asdf.com",
+        "2x.io",
+        "a.co",
+        "accounts.google.com",
+        "acme.com",
+        "agentskills.io",
+        "ai-gateway.vercel.sh",
+        "ai.corp.com"
+      ],
+      "downloads": 254
+    },
+    {
+      "name": "@zgltyq/pi-provider-claude",
+      "version": "1.3.3",
+      "description": "Claude (Anthropic OAuth/subscription) compatibility layer for pi-coding-agent — keeps ALL extension tools usable under the Claude subscription by mapping unknown flat tool names to mcp__pi__<name> on the wire instead of dropping them, plus optional multi-",
+      "carriesTransport": false,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [
+        "claude.ai",
+        "platform.claude.com"
+      ],
+      "downloads": 32
+    },
+    {
+      "name": "@zgltyq/pi-provider-kimi-code",
+      "version": "0.4.1",
+      "description": "Kimi Code models in pi-coding-agent with OAuth, K3, K2.7, and HighSpeed selection",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [
+        "api.kimi.com",
+        "auth.kimi.com"
+      ],
+      "downloads": 1364
+    },
+    {
+      "name": "@zhcsyncer/pi-extensions",
+      "version": "0.22.0",
+      "description": "A collection of Pi extensions by zhcsyncer.",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "agentskills.io",
+        "api.anthropic.com",
+        "api.exa.ai",
+        "api.fastcrw.com",
+        "api.firecrawl.dev",
+        "api.langsearch.com",
+        "api.linkup.so",
+        "api.openai.com"
+      ],
+      "downloads": 1172
+    },
+    {
+      "name": "pi-9router-ext",
+      "version": "0.2.3",
+      "description": "Pi Coding Agent extension for 9router — connect to your 9router AI routing proxy instance",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "models.dev"
+      ],
+      "downloads": 107
+    },
+    {
+      "name": "pi-aftc-toolset",
+      "version": "1.21.10",
+      "description": "Stats bar. Isolated SSH. Documentation generation (docx). Persistent self-educating cache-aware skills on demand (codex). Usage reports. Audio notifications. Shortcuts. Skills. Themes ++",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": true,
+      "hosts": [
+        "api.kimi.com",
+        "api.z.ai",
+        "chatgpt.com",
+        "dev.aftc.uk",
+        "open.bigmodel.cn",
+        "token-plan.ap-southeast-1.maas.aliyuncs.com",
+        "www.chartjs.org",
+        "www.jsdelivr.com"
+      ],
+      "downloads": 1052
+    },
+    {
+      "name": "pi-agent-extensions",
+      "version": "0.5.3",
+      "description": "17 extensions and four themes for the Pi coding agent",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [],
+      "downloads": 305
+    },
+    {
+      "name": "pi-agent-suite",
+      "version": "2.3.1",
+      "description": "Adds a configurable multi-agent layer to pi, with context management, Codex quota status, a custom footer, and more.",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "api.openai.com",
+        "chatgpt.com",
+        "example.invalid",
+        "invalid.example",
+        "pi.dev"
+      ],
+      "downloads": 688
+    },
+    {
+      "name": "pi-aiand",
+      "version": "1.0.1",
+      "description": "ai& inference provider for pi coding agent",
+      "carriesTransport": false,
+      "declaresOAuth": true,
+      "envApiKey": true,
+      "hosts": [
+        "aiand.com",
+        "api.aiand.com"
+      ],
+      "downloads": 18
+    },
+    {
+      "name": "pi-alibaba-models",
+      "version": "1.0.14",
+      "description": "The complete Alibaba provider for pi — Plan subscription + Cloud pay-per-token, International + China endpoints, Anthropic + OpenAI shapes, native thinking levels. Qwen 3.7 Max, Qwen 3.7 Plus, Qwen 3.6 Max, Qwen 3.6 Plus, DeepSeek V4 Pro, Kimi K2.6, GLM-5",
+      "carriesTransport": false,
+      "declaresOAuth": true,
+      "envApiKey": true,
+      "hosts": [
+        "fcskjxapefiqdclrvbtw.supabase.co",
+        "token-plan.ap-southeast-1.maas.aliyuncs.com"
+      ],
+      "downloads": 161
+    },
+    {
+      "name": "pi-antigravity",
+      "version": "0.3.0",
+      "description": "Personal Antigravity / Cloud Code Assist provider for Pi Coding Agent",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [
+        "accounts.google.com",
+        "cloudcode-pa.googleapis.com",
+        "daily-cloudcode-pa.sandbox.googleapis.com",
+        "oauth2.googleapis.com",
+        "www.googleapis.com"
+      ],
+      "downloads": 856
+    },
+    {
+      "name": "pi-anyrouter",
+      "version": "0.3.2",
+      "description": "Unofficial pi provider extension for AnyRouter Claude Code and Codex Responses Lite routes",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [],
+      "downloads": 36
+    },
+    {
+      "name": "pi-apfel",
+      "version": "0.1.0",
+      "description": "Pi provider extension for Apfel's local Apple FoundationModels server.",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [],
+      "downloads": 8
+    },
+    {
+      "name": "pi-apple-fm",
+      "version": "0.1.1",
+      "description": "Pi provider for Apple Foundation Models on macOS",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [],
+      "downloads": 6
+    },
+    {
+      "name": "pi-auto-permissions",
+      "version": "0.1.6",
+      "description": "A minimal Codex-style Auto/Unrestricted permission guardrail for Pi",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [],
+      "downloads": 44
+    },
+    {
+      "name": "pi-autofill-model-metadata",
+      "version": "0.2.2",
+      "description": "Pi extension: auto-fill model metadata from models.dev for custom providers",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "models.dev"
+      ],
+      "downloads": 62
+    },
+    {
+      "name": "pi-background-tasks",
+      "version": "2.4.2",
+      "description": "Pi extension for durable background shell tasks, read-only delegated agents, local attested Pi runs, and fixed-purpose Fusion workflows through child Pi processes.",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "api.anthropic.com",
+        "chatgpt.com"
+      ],
+      "downloads": 18992
+    },
+    {
+      "name": "pi-bansos",
+      "version": "0.4.6",
+      "description": "Free OpenAI-compatible model provider for pi via OpenCode Zen and KiloCode gateway",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "api.kilo.ai",
+        "api.vercel.com",
+        "kilo.ai",
+        "opencode.ai"
+      ],
+      "downloads": 148
+    },
+    {
+      "name": "pi-baseten-provider",
+      "version": "1.0.11",
+      "description": "Baseten provider extension for pi - Access DeepSeek, Kimi, GLM, MiniMax, Nemotron, and GPT-OSS models through the Baseten Model API",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": true,
+      "hosts": [
+        "inference.baseten.co"
+      ],
+      "downloads": 1512
+    },
+    {
+      "name": "pi-blackbytes",
+      "version": "3.0.0",
+      "description": "Pi coding-agent extension that provides local search tools, locally-managed HTTP clients for the websearch / context7 / grep.app surfaces (replacing Pi's MCP-plugin dependency for these services), hashline-based editing, and delegated sub-agents for explo",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "api.exa.ai",
+        "api.tavily.com",
+        "context7.com",
+        "mcp.grep.app"
+      ],
+      "downloads": 95
+    },
+    {
+      "name": "pi-bob",
+      "version": "0.2.0",
+      "description": "Pi provider extension for IBM Bob / IBM-approved compatible model endpoints.",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [
+        "api.us-east.bob.ibm.com",
+        "bob.ibm.com",
+        "public-dev.bob.ibm.com",
+        "qa.bob.ibm.com"
+      ],
+      "downloads": 19
+    },
+    {
+      "name": "pi-ccs",
+      "version": "0.3.4",
+      "description": "Pi package: switch providers/models from local cc-switch, with parameter overrides and short display labels",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "anyrouter.top",
+        "api.openai.com",
+        "generativelanguage.googleapis.com",
+        "glm.ddddddd.cyou",
+        "models.dev"
+      ],
+      "downloads": 555
+    },
+    {
+      "name": "pi-claude-agent-sdk",
+      "version": "0.8.1",
+      "description": "Pi extension that uses Claude Code (via Agent SDK) as a model provider.",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [],
+      "downloads": 130
+    },
+    {
+      "name": "pi-claude-bridge",
+      "version": "0.7.0",
+      "description": "Pi extension that uses Claude Code (via Agent SDK) as a model provider and adds an AskClaude tool.",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [],
+      "downloads": 2664
+    },
+    {
+      "name": "pi-claude-cli",
+      "version": "0.3.1",
+      "description": "Pi coding agent extension that routes LLM calls through the Claude Code CLI",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [],
+      "downloads": 138
+    },
+    {
+      "name": "pi-claude-code-provider",
+      "version": "0.1.2",
+      "description": "Use a Claude Code subscription as a model provider in Pi through the approved non-interactive mode and without Anthropic's Agents SDK.",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [],
+      "downloads": 218
+    },
+    {
+      "name": "pi-claude-plan",
+      "version": "1.8.1",
+      "description": "Unofficial Pi provider for attempting Claude Pro/Max plan routing without replacing Pi's built-in Anthropic provider.",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [
+        "api.anthropic.com",
+        "claude.ai",
+        "platform.claude.com"
+      ],
+      "downloads": 12
+    },
+    {
+      "name": "pi-clawbay",
+      "version": "0.4.0",
+      "description": "TheClawBay provider extension for Pi Coding Agent - access GPT-5, Codex, Claude, Gemini, DeepSeek, open-weight, and image models",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": true,
+      "hosts": [
+        "api.theclawbay.com",
+        "theclawbay.com"
+      ],
+      "downloads": 1789
+    },
+    {
+      "name": "pi-clinepass-provider",
+      "version": "1.2.0",
+      "description": "ClinePass provider for pi — access GLM-5.2, Kimi K2.7, DeepSeek V4 and more open-weight coding models through Cline's $9.99/mo subscription",
+      "carriesTransport": false,
+      "declaresOAuth": true,
+      "envApiKey": true,
+      "hosts": [
+        "api.cline.bot",
+        "app.cline.bot",
+        "docs.cline.bot",
+        "staging.cline.bot"
+      ],
+      "downloads": 1867
+    },
+    {
+      "name": "pi-cliproxyapi",
+      "version": "0.4.3",
+      "description": "Pi extension for corporate management of model providers via a single CliProxyAPI endpoint",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [],
+      "downloads": 408
+    },
+    {
+      "name": "pi-cliproxyapi-provider",
+      "version": "0.15.5",
+      "description": "Pi provider package for CLIProxyAPI with automatic model discovery and models.dev enrichment.",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "models.dev"
+      ],
+      "downloads": 1310
+    },
+    {
+      "name": "pi-codex-token",
+      "version": "1.1.2",
+      "description": "pi provider plugin: use gpt-5.5 on the OpenAI Codex backend via a personal access token (PAT), non-interactively.",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": true,
+      "hosts": [
+        "auth.openai.com",
+        "chatgpt.com",
+        "developers.openai.com"
+      ],
+      "downloads": 70
+    },
+    {
+      "name": "pi-commandcode-provider",
+      "version": "0.5.1",
+      "description": "pi custom provider for Command Code API (commandcode.ai)",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": true,
+      "hosts": [
+        "api.commandcode.ai",
+        "commandcode.ai",
+        "staging.commandcode.ai"
+      ],
+      "downloads": 397
+    },
+    {
+      "name": "pi-crof-provider",
+      "version": "1.0.12",
+      "description": "CrofAI provider extension for pi - Access Kimi, GLM, Qwen, DeepSeek, MiniMax, and Gemma models through the CrofAI API",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": true,
+      "hosts": [
+        "crof.ai"
+      ],
+      "downloads": 1242
+    },
+    {
+      "name": "pi-cursor-sdk",
+      "version": "0.2.0",
+      "description": "pi provider extension backed by @cursor/sdk local and cloud agents",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [
+        "-asdf.com",
+        "abc.com",
+        "ajv.js.org",
+        "aka.ms",
+        "allowed.com",
+        "anthropic.com",
+        "api.com",
+        "api.cursor.com"
+      ],
+      "downloads": 1315
+    },
+    {
+      "name": "pi-custom-openai-providers",
+      "version": "0.2.1",
+      "description": "Maintain multiple OpenAI-compatible providers in pi with /custom-providers; switch between them with /model.",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": true,
+      "hosts": [
+        "api.openai.com"
+      ],
+      "downloads": 48
+    },
+    {
+      "name": "pi-deepinfra",
+      "version": "0.1.3",
+      "description": "DeepInfra provider for pi: dynamic model catalog, reasoning-effort thinking levels, vision, session usage + monthly billing footer",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "api.deepinfra.com",
+        "deepinfra.com"
+      ],
+      "downloads": 133
+    },
+    {
+      "name": "pi-deepseek-provider",
+      "version": "2.0.7",
+      "description": "DeepSeek provider extension for pi - V4 Pro, V4 Flash & Reasoner with prefix cache optimization",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": true,
+      "hosts": [
+        "api.deepseek.com"
+      ],
+      "downloads": 812
+    },
+    {
+      "name": "pi-doppelclaude",
+      "version": "0.10.0",
+      "description": "Pi provider that runs your Claude Code subscription as pi models via the Claude Agent SDK.",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "pi.dev"
+      ],
+      "downloads": 51
+    },
+    {
+      "name": "pi-extensible-workflows",
+      "version": "5.5.0",
+      "description": "Deterministic multi-agent workflow orchestration for Pi",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [],
+      "downloads": 549
+    },
+    {
+      "name": "pi-extension-cloudflare-workers-ai",
+      "version": "0.1.2",
+      "description": "Cloudflare Workers AI model provider for pi",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": true,
+      "hosts": [
+        "api.cloudflare.com"
+      ],
+      "downloads": 25
+    },
+    {
+      "name": "pi-extension-nvidia-nim",
+      "version": "1.5.1",
+      "description": "Model-aware NVIDIA NIM reasoning compatibility for the pi coding agent",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "build.nvidia.com",
+        "docs.api.nvidia.com",
+        "docs.nvidia.com",
+        "docs.z.ai",
+        "huggingface.co",
+        "integrate.api.nvidia.com",
+        "models.dev",
+        "platform.stepfun.ai"
+      ],
+      "downloads": 1858
+    },
+    {
+      "name": "pi-fireworks-provider",
+      "version": "1.5.6",
+      "description": "Fireworks AI provider extension for pi - Access Kimi, MiniMax, GLM, DeepSeek, and GPT-OSS models through the Fireworks AI API",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": true,
+      "hosts": [
+        "api.fireworks.ai",
+        "docs.fireworks.ai"
+      ],
+      "downloads": 1771
+    },
+    {
+      "name": "pi-free",
+      "version": "2.5.1",
+      "description": "AI model providers for Pi with free model filtering and dynamic model fetching",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [
+        "ai.nahcrof.com",
+        "anyapi.ai",
+        "api.anyapi.ai",
+        "api.b.ai",
+        "api.cline.bot",
+        "api.deepinfra.com",
+        "api.fastrouter.ai",
+        "api.kilo.ai"
+      ],
+      "downloads": 613
+    },
+    {
+      "name": "pi-gmi-cloud",
+      "version": "0.1.0",
+      "description": "GMI Cloud provider for pi with dynamic model discovery",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": true,
+      "hosts": [
+        "api.gmi-serving.com"
+      ],
+      "downloads": 194
+    },
+    {
+      "name": "pi-hermes-memory",
+      "version": "0.9.6",
+      "description": "🧠 Persistent memory + 🔍 session search + 🛡️ secret scanning for Pi. Token-aware policy-only memory by default, SQLite FTS5 search, auto-consolidation, procedural skills. 732 tests. Ported from Hermes agent.",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [],
+      "downloads": 5627
+    },
+    {
+      "name": "pi-huggingface-oauth",
+      "version": "0.2.0",
+      "description": "Hugging Face OAuth and provider-specific model routes for Pi",
+      "carriesTransport": false,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [
+        "hf.co",
+        "huggingface.co",
+        "router.huggingface.co"
+      ],
+      "downloads": 357
+    },
+    {
+      "name": "pi-hypercharm-provider",
+      "version": "1.3.0",
+      "description": "HyperCharm provider extension for pi - Access DeepSeek, GLM, Kimi, Qwen, MiniMax, Gemma, and GPT-OSS models through the Charm Hyper API",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": true,
+      "hosts": [
+        "hyper.charm.land",
+        "rest.alpha.fal.ai"
+      ],
+      "downloads": 1426
+    },
+    {
+      "name": "pi-inception-provider",
+      "version": "0.1.0",
+      "description": "Pi provider plugin for Inception Labs (Mercury) — OpenAI-compatible chat completions with dynamic model discovery",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": true,
+      "hosts": [
+        "api.inceptionlabs.ai"
+      ],
+      "downloads": 10
+    },
+    {
+      "name": "pi-io-provider",
+      "version": "1.1.4",
+      "description": "IO Intelligence provider extension for pi - Access DeepSeek, Kimi, GLM, Llama, Qwen, Mistral, and more through the IO Intelligence API",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": true,
+      "hosts": [
+        "api.intelligence.io.solutions",
+        "io.net"
+      ],
+      "downloads": 945
+    },
+    {
+      "name": "pi-j3gb-provider",
+      "version": "3.5.0",
+      "description": "Pi provider for vip.j3gb.com's OpenAI Chat Completions and Anthropic Messages gateway",
+      "carriesTransport": false,
+      "declaresOAuth": true,
+      "envApiKey": true,
+      "hosts": [
+        "vip.j3gb.com"
+      ],
+      "downloads": 1199
+    },
+    {
+      "name": "pi-jetbrains-junie-bridge",
+      "version": "1.3.1",
+      "description": "Pi extension that connects Pi coding agent with JetBrains Junie as the AI backend",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "ingrazzio-cloud-prod.labs.jb.gg",
+        "junie.jetbrains.com",
+        "oauth.account.jetbrains.com"
+      ],
+      "downloads": 158
+    },
+    {
+      "name": "pi-kilocode",
+      "version": "0.1.2",
+      "description": "Kilo Code provider extension for pi",
+      "carriesTransport": false,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [
+        "api.kilo.ai"
+      ],
+      "downloads": 37
+    },
+    {
+      "name": "pi-kimi-coder",
+      "version": "1.1.1",
+      "description": "Pi extension for Kimi K2 Coding plan — OAuth-based provider with kimi-for-coding model",
+      "carriesTransport": false,
+      "declaresOAuth": true,
+      "envApiKey": true,
+      "hosts": [
+        "api.kimi.com",
+        "auth.kimi.com"
+      ],
+      "downloads": 831
+    },
+    {
+      "name": "pi-kiro-provider",
+      "version": "0.2.2",
+      "description": "Pi extension provider for Kiro's AWS CodeWhisperer streaming API.",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [
+        "app.kiro.dev",
+        "codewhisperer.us-east-1.amazonaws.com",
+        "identitycenter.amazonaws.com",
+        "prod.us-east-1.auth.desktop.kiro.dev",
+        "view.awsapps.com"
+      ],
+      "downloads": 34
+    },
+    {
+      "name": "pi-landstrip",
+      "version": "0.18.33",
+      "description": "Sandboxed Bash and process-backed agents for Pi",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [],
+      "downloads": 1581
+    },
+    {
+      "name": "pi-lens",
+      "version": "4.0.1",
+      "description": "Real-time code feedback for pi — LSP, linters, formatters, type-checking, structural analysis & booboo",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "api.nuget.org",
+        "biomejs.dev",
+        "detekt.dev",
+        "doc.rust-lang.org",
+        "docs.astral.sh",
+        "docs.zizmor.sh",
+        "feross.org",
+        "knip.dev"
+      ],
+      "downloads": 5082
+    },
+    {
+      "name": "pi-lilac-provider",
+      "version": "1.9.9",
+      "description": "Lilac provider extension for pi - Access Kimi K2.6, GLM 5.1, and Gemma 4 models through Lilac's OpenAI-compatible API on idle GPUs",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": true,
+      "hosts": [
+        "api.getlilac.com"
+      ],
+      "downloads": 2121
+    },
+    {
+      "name": "pi-llama-cpp",
+      "version": "0.9.1",
+      "description": "Pi extension for llama.cpp integration. Supports router, single and legacy models. Supports multiple servers.",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [],
+      "downloads": 938
+    },
+    {
+      "name": "pi-llm-bridge",
+      "version": "0.2.5",
+      "description": "bridge any raw llm stream to be used with pi",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "demo-bitnet-h0h8hcfqeqhrf5gf.canadacentral-01.azurewebsites.net",
+        "demos.exa.ai",
+        "notrack.ai",
+        "pi-llm-bridge.invalid"
+      ],
+      "downloads": 1781
+    },
+    {
+      "name": "pi-lmstudio",
+      "version": "1.5.0",
+      "description": "LM Studio model provider extension for Pi coding agent",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [],
+      "downloads": 2142
+    },
+    {
+      "name": "pi-maestro-flow",
+      "version": "0.21.6",
+      "description": "All-in-one multi-agent orchestration for the Pi coding agent — parallel teammate dispatch, goals, plans, knowledge system, MCP/LSP/browser, and cockpit visualization in a single install",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": true,
+      "hosts": [
+        "accounts.google.com",
+        "api.anthropic.com",
+        "api.anysearch.com",
+        "api.exa.ai",
+        "api.openai.com",
+        "api.osv.dev",
+        "api.parallel.ai",
+        "api.perplexity.ai"
+      ],
+      "downloads": 1958
+    },
+    {
+      "name": "pi-makora-provider",
+      "version": "1.12.9",
+      "description": "Makora provider extension for pi - Access DeepSeek V4, GLM 5.2, Kimi K2.7 Code, Llama 3.3, Qwen 3.6, and more through the Makora inference API",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": true,
+      "hosts": [
+        "inference.makora.com"
+      ],
+      "downloads": 1935
+    },
+    {
+      "name": "pi-moonshot-provider",
+      "version": "1.0.7",
+      "description": "Moonshot AI provider extension for pi - Access Kimi K2.6, K2.5, K2 Thinking, and Moonshot V1 models through the Moonshot API",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": true,
+      "hosts": [
+        "api.moonshot.ai"
+      ],
+      "downloads": 993
+    },
+    {
+      "name": "pi-multi-account",
+      "version": "1.17.0",
+      "description": "Automatic multi-account failover & rotation for Pi Agent across Anthropic (Claude), OpenAI/ChatGPT Codex, Qwen/Alibaba, and Ollama. Auto-discovers authenticated accounts, grows the rotation on login, and drops accounts on logout, expiry, or quota/rate-lim",
+      "carriesTransport": false,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [
+        "api.anthropic.com",
+        "api.openai.com",
+        "chatgpt.com",
+        "dashscope-intl.aliyuncs.com",
+        "ollama.com"
+      ],
+      "downloads": 522
+    },
+    {
+      "name": "pi-multi-orchestrator",
+      "version": "0.1.0-rc.17",
+      "description": "Pi control center for bounded 9Router model, pool, mission, quality, analytics, and safety workflows",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [],
+      "downloads": 1154
+    },
+    {
+      "name": "pi-multi-pass",
+      "version": "1.3.0",
+      "description": "Multi-subscription extension for pi -- use multiple OAuth accounts per provider (Anthropic, Codex, Copilot, Gemini, Antigravity)",
+      "carriesTransport": false,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [
+        "api.openai.com",
+        "chatgpt.com",
+        "cloudcode-pa.googleapis.com",
+        "daily-cloudcode-pa.sandbox.googleapis.com"
+      ],
+      "downloads": 158
+    },
+    {
+      "name": "pi-neuralwatt-provider",
+      "version": "1.17.0",
+      "description": "Neuralwatt provider extension for pi - Access Kimi, GLM, Qwen, GPT-OSS, Devstral, and MiniMax models through the Neuralwatt API",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": true,
+      "hosts": [
+        "api.neuralwatt.com",
+        "neuralwatt.com",
+        "portal.neuralwatt.com",
+        "unpkg.com"
+      ],
+      "downloads": 2813
+    },
+    {
+      "name": "pi-novita-ai",
+      "version": "2.2.0",
+      "description": "Pi extension that registers Novita AI as an OpenAI-compatible model provider.",
+      "carriesTransport": false,
+      "declaresOAuth": true,
+      "envApiKey": true,
+      "hosts": [
+        "api.novita.ai",
+        "novita.ai"
+      ],
+      "downloads": 51
+    },
+    {
+      "name": "pi-nvidia-nim",
+      "version": "1.1.23",
+      "description": "NVIDIA NIM API provider extension for pi coding agent — access 100+ models from build.nvidia.com",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "build.nvidia.com",
+        "integrate.api.nvidia.com"
+      ],
+      "downloads": 939
+    },
+    {
+      "name": "pi-olla-autodetect",
+      "version": "0.2.1",
+      "description": "Pi extension that auto-discovers models from an Olla gateway endpoint and registers them as a provider.",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [],
+      "downloads": 28
+    },
+    {
+      "name": "pi-ollama-cloud",
+      "version": "0.9.0",
+      "description": "Ollama Cloud provider plugin for the [Pi](https://pi.dev) coding agent.",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": true,
+      "hosts": [
+        "docs.ollama.com",
+        "ollama.com",
+        "ollama.com.evil.com"
+      ],
+      "downloads": 1415
+    },
+    {
+      "name": "pi-ollama-cloud-provider",
+      "version": "0.5.0",
+      "description": "Ollama Cloud provider extension for pi coding agent with dynamic model discovery",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": true,
+      "hosts": [
+        "models.dev",
+        "ollama.com"
+      ],
+      "downloads": 298
+    },
+    {
+      "name": "pi-omlx-picker",
+      "version": "0.3.6",
+      "description": "Pi extension that discovers models from a local OMLX server and registers them as a native Pi provider.",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [],
+      "downloads": 57
+    },
+    {
+      "name": "pi-omlx-provider",
+      "version": "1.0.6",
+      "description": "OMLX provider extension for pi - Access self-hosted Qwen models through a local MLX/OpenAI-compatible server",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": true,
+      "hosts": [
+        "toms-mac-mini.taild0936.ts.net"
+      ],
+      "downloads": 51
+    },
+    {
+      "name": "pi-openai-api-models-sync",
+      "version": "0.3.2",
+      "description": "Pi extension that syncs models from an OpenAI-compatible API and enriches them with pricing and capability metadata.",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [],
+      "downloads": 25
+    },
+    {
+      "name": "pi-openai-codex-compat",
+      "version": "0.0.9",
+      "description": "OpenAI Codex compatibility for Pi with native compaction, fast mode, and Codex-optimized capabilities",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "api.openai.com",
+        "chatgpt.com"
+      ],
+      "downloads": 312
+    },
+    {
+      "name": "pi-openai-codex-fast",
+      "version": "0.0.11",
+      "description": "Pi package that adds an openai-codex-fast provider backed by openai-codex with priority service tier",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "www.2h2d.co"
+      ],
+      "downloads": 1927
+    },
+    {
+      "name": "pi-openai-instructions-provider",
+      "version": "0.1.0",
+      "description": "Pi provider package for OpenAI-compatible Responses APIs that sends system prompts via instructions and uses a stable prompt_cache_key.",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "api.openai.com"
+      ],
+      "downloads": 7
+    },
+    {
+      "name": "pi-opencode-go-provider",
+      "version": "1.0.9",
+      "description": "Opencode Go provider extension for pi - Fast, efficient GLM, Kimi, and MiniMax models through the opencode.ai API",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": true,
+      "hosts": [
+        "models.dev",
+        "opencode.ai"
+      ],
+      "downloads": 1108
+    },
+    {
+      "name": "pi-opencode-provider",
+      "version": "0.7.3",
+      "description": "A pi provider extension that adds OpenCode Zen & OpenCode Go support.",
+      "carriesTransport": false,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [
+        "models.dev",
+        "opencode.ai"
+      ],
+      "downloads": 49
+    },
+    {
+      "name": "pi-openmodel-provider",
+      "version": "0.2.20",
+      "description": "pi custom provider for OpenModel.ai - Multi-model AI gateway",
+      "carriesTransport": false,
+      "declaresOAuth": true,
+      "envApiKey": true,
+      "hosts": [
+        "api.openmodel.ai",
+        "console.openmodel.ai",
+        "youtu.be"
+      ],
+      "downloads": 1362
+    },
+    {
+      "name": "pi-openrouter-realtime",
+      "version": "0.3.7",
+      "description": "OpenRouter extension for pi — real-time model sync, provider/quantization enrichment, endpoint health, credit balance, and interactive model picker",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "openrouter.ai"
+      ],
+      "downloads": 1284
+    },
+    {
+      "name": "pi-parasail-provider",
+      "version": "1.0.8",
+      "description": "Parasail provider extension for pi - Access top open-source models (DeepSeek, Qwen, GLM, Kimi, Llama, Gemma, Mistral) through the Parasail API",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": true,
+      "hosts": [
+        "api.parasail.io",
+        "www.saas.parasail.io"
+      ],
+      "downloads": 732
+    },
+    {
+      "name": "pi-privacy",
+      "version": "0.12.1",
+      "description": "Privacy posture + TEE attestation for Pi providers: cryptographically verified confidential-enclave (TEE) inference, enforced/labeled zero-data-retention (ZDR), and on-device detection — honestly graded so a verified guarantee never reads like a claimed o",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "api.fireworks.ai",
+        "api.privateer.pro",
+        "api.venice.ai",
+        "cloud-api.near.ai",
+        "drop.local",
+        "inference.tinfoil.sh",
+        "openrouter.ai"
+      ],
+      "downloads": 191
+    },
+    {
+      "name": "pi-provider-alibaba",
+      "version": "1.0.1",
+      "description": "Alibaba Cloud DashScope provider for pi (coding, token, and pay-as-you-go, both international and Chinese endpoints)",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "coding-intl.dashscope.aliyuncs.com",
+        "coding.dashscope.aliyuncs.com",
+        "dashscope-intl.aliyuncs.com",
+        "dashscope.aliyuncs.com",
+        "gitlab.com",
+        "token-plan.ap-southeast-1.maas.aliyuncs.com",
+        "token-plan.cn-beijing.maas.aliyuncs.com"
+      ],
+      "downloads": 54
+    },
+    {
+      "name": "pi-provider-alibaba-bailian",
+      "version": "0.2.0",
+      "description": "pi provider extension for Alibaba Bailian (DashScope, OpenAI-compatible mode)",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": true,
+      "hosts": [
+        "dashscope.aliyuncs.com",
+        "help.aliyun.com"
+      ],
+      "downloads": 169
+    },
+    {
+      "name": "pi-provider-bedrock",
+      "version": "0.1.1",
+      "description": "Bedrock provider for pi — routes to AWS Bedrock models via AWS profile auth",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [],
+      "downloads": 13
+    },
+    {
+      "name": "pi-provider-cc-sdk",
+      "version": "0.2.6",
+      "description": "Use your Claude subscription with pi using their official Claude Code SDK.",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [],
+      "downloads": 21
+    },
+    {
+      "name": "pi-provider-crofai",
+      "version": "0.1.1",
+      "description": "CrofAI model provider extension for the pi coding agent.",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "crof.ai"
+      ],
+      "downloads": 4
+    },
+    {
+      "name": "pi-provider-env",
+      "version": "1.0.5",
+      "description": "Pi extension: registers OpenAI-completions and/or Anthropic-messages providers from environment variables (OPENAI_ENV_*, ANTHROPIC_ENV_*)",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [],
+      "downloads": 9
+    },
+    {
+      "name": "pi-provider-friendli",
+      "version": "0.0.2",
+      "description": "FriendliAI model provider for Pi with live model discovery",
+      "carriesTransport": false,
+      "declaresOAuth": true,
+      "envApiKey": true,
+      "hosts": [
+        "api.friendli.ai"
+      ],
+      "downloads": 17
+    },
+    {
+      "name": "pi-provider-headers",
+      "version": "0.1.3",
+      "description": "Pi extension package that injects provider-specific default headers based on each provider API type.",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [],
+      "downloads": 19
+    },
+    {
+      "name": "pi-provider-kimi-code",
+      "version": "0.6.11",
+      "description": "Kimi Code models (K3, K2.7, HighSpeed) in Pi: OAuth shared login with kimi-code CLI, file uploads, and Kimi-native tools",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": true,
+      "hosts": [
+        "api.kimi.com",
+        "auth.kimi.com",
+        "www.kimi.com"
+      ],
+      "downloads": 2365
+    },
+    {
+      "name": "pi-provider-lemonade",
+      "version": "1.1.3",
+      "description": "Pi model provider that auto-discovers models from a Lemonade Server and integrates them into Pi via the server's OpenAI-compatible API",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [],
+      "downloads": 498
+    },
+    {
+      "name": "pi-provider-litellm",
+      "version": "2.0.6",
+      "description": "LiteLLM proxy provider extension for Pi",
+      "carriesTransport": false,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [
+        "models.dev",
+        "oauth2.googleapis.com"
+      ],
+      "downloads": 2107
+    },
+    {
+      "name": "pi-provider-mux",
+      "version": "0.1.3",
+      "description": "Create reusable Pi provider aliases for separate logins.",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [],
+      "downloads": 23
+    },
+    {
+      "name": "pi-provider-newapi",
+      "version": "0.5.0",
+      "description": "pi provider extension for self-hosted NewAPI AI gateway — dynamic model discovery with cost calculation from ratio_config",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "go.microsoft.com"
+      ],
+      "downloads": 130
+    },
+    {
+      "name": "pi-provider-ollama-cloud",
+      "version": "0.0.3",
+      "description": "Pi provider extension for Ollama Cloud (ollama.com), direct connection without a local server.",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "ollama.com"
+      ],
+      "downloads": 90
+    },
+    {
+      "name": "pi-provider-openference",
+      "version": "0.5.0",
+      "description": "Openference provider for pi — OpenAI-compatible endpoint with /login flow and live model discovery",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": true,
+      "hosts": [
+        "api.openference.com",
+        "openference.com"
+      ],
+      "downloads": 31
+    },
+    {
+      "name": "pi-provider-poolside",
+      "version": "0.1.2",
+      "description": "Lean Poolside AI model provider for Pi with live model discovery",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": true,
+      "hosts": [
+        "inference.poolside.ai"
+      ],
+      "downloads": null
+    },
+    {
+      "name": "pi-provider-qoder",
+      "version": "0.3.0",
+      "description": "Pi extension for Qoder AI — with OAuth authentication, COSY signatures and WAF bypass",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "api3.qoder.sh",
+        "center.qoder.sh",
+        "gateway.qoder.com.cn",
+        "openapi.qoder.com.cn",
+        "openapi.qoder.sh",
+        "qoder.com",
+        "qoder.com.cn"
+      ],
+      "downloads": null
+    },
+    {
+      "name": "pi-provider-swiss-ai-platform",
+      "version": "0.1.1",
+      "description": "Pi provider extension for Swiss AI Platform",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "api.swisscom.com",
+        "docs.cloud.swisscom.ch"
+      ],
+      "downloads": 31
+    },
+    {
+      "name": "pi-provider-tama",
+      "version": "0.17.1",
+      "description": "Pi agent extension for tama local AI server auto-discovery and model configuration",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [],
+      "downloads": 419
+    },
+    {
+      "name": "pi-provider-umans",
+      "version": "1.5.1",
+      "description": "Umans.ai provider for pi — Anthropic Messages-compatible endpoint with dynamic model discovery",
+      "carriesTransport": false,
+      "declaresOAuth": true,
+      "envApiKey": true,
+      "hosts": [
+        "api.code.umans.ai"
+      ],
+      "downloads": null
+    },
+    {
+      "name": "pi-provider-utils",
+      "version": "0.0.0",
+      "description": "Shared provider mirror, stream, and agent-path helpers for Pi extension packages",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "api.openai.com",
+        "api.test.com"
+      ],
+      "downloads": 27
+    },
+    {
+      "name": "pi-provider-vertex-anthropic",
+      "version": "0.1.3",
+      "description": "Pi agent extension for Claude models via Google Cloud Vertex AI",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [
+        "cloud.google.com",
+        "oauth2.googleapis.com",
+        "www.googleapis.com"
+      ],
+      "downloads": 20
+    },
+    {
+      "name": "pi-provider-volcengine-agent-plan",
+      "version": "0.2.0",
+      "description": "Unofficial Pi provider extension for Volcengine Ark Agent Plan.",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "ark.cn-beijing.volces.com"
+      ],
+      "downloads": 69
+    },
+    {
+      "name": "pi-provider-volcengine-ark",
+      "version": "0.2.0",
+      "description": "pi provider extension for Volcengine Ark (火山方舟, OpenAI-compatible coding endpoint)",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": true,
+      "hosts": [
+        "ark.cn-beijing.volces.com"
+      ],
+      "downloads": 141
+    },
+    {
+      "name": "pi-provider-volcengine-codingplan",
+      "version": "0.1.5",
+      "description": "Pi extension for Volcengine Coding Plan, registering Volcengine as a custom OpenAI-compatible provider for domestic coding models.",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": true,
+      "hosts": [
+        "ark.cn-beijing.volces.com"
+      ],
+      "downloads": null
+    },
+    {
+      "name": "pi-qwencloud-provider",
+      "version": "0.2.2",
+      "description": "QwenCloud provider for pi — access Qwen3.8, DeepSeek V4, GLM-5.2, Wan image generation, and HappyHorse video generation through QwenCloud's OpenAI-compatible API",
+      "carriesTransport": false,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [
+        "...token",
+        "home.qwencloud.com",
+        "token-plan.ap-southeast-1.maas.aliyuncs.com"
+      ],
+      "downloads": 54
+    },
+    {
+      "name": "pi-reactor",
+      "version": "0.2.3",
+      "description": "Self-hosted agent event loop for the pi coding agent: cron and webhook triggers, a durable queue with spend caps, and outbound notifications to Telegram/Slack.",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "api.telegram.org"
+      ],
+      "downloads": 205
+    },
+    {
+      "name": "pi-relay-models",
+      "version": "0.5.0",
+      "description": "Mixed-protocol relay model discovery and metadata matching for pi",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "api.any-router.com",
+        "clear.example",
+        "official.example",
+        "oversized.example",
+        "relay.example",
+        "remove.example"
+      ],
+      "downloads": 183
+    },
+    {
+      "name": "pi-safe-compact",
+      "version": "0.4.0",
+      "description": "Resilient context recovery for pi with overflow-safe agentic compaction and guarded continuation after auto-compaction or output-length stops.",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "pi.dev"
+      ],
+      "downloads": 70
+    },
+    {
+      "name": "pi-sap-aicore",
+      "version": "0.4.1",
+      "description": "SAP AI Core (orchestration + foundation) provider for the pi coding agent",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [
+        "models.dev",
+        "sap-aicore-handled-by-sdk.invalid"
+      ],
+      "downloads": 61
+    },
+    {
+      "name": "pi-sarvam-provider",
+      "version": "0.1.5",
+      "description": "Pi coding-agent extension that registers Sarvam AI as a model provider and adds the compatibility shims its OpenAI-compatible endpoint needs (role/content fixes, tool-argument remapping, 403 retry, and a 256KB request-size guard).",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": true,
+      "hosts": [
+        "api.sarvam.ai"
+      ],
+      "downloads": 190
+    },
+    {
+      "name": "pi-setup",
+      "version": "0.2.1",
+      "description": "Setup wizard + dashboard for pi — configure providers, models, and defaults via /setup command, monitor config via /dashboard",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "reactjs.org"
+      ],
+      "downloads": 53
+    },
+    {
+      "name": "pi-smart-router",
+      "version": "0.16.0",
+      "description": "Auto-model router middleware for the pi.dev coding agent",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "ai.google.dev",
+        "gorilla.cs.berkeley.edu",
+        "pi-smart-router.dev",
+        "smart-router.local",
+        "www.swebench.com",
+        "www.tbench.ai"
+      ],
+      "downloads": 115
+    },
+    {
+      "name": "pi-spark",
+      "version": "0.22.0",
+      "description": "Pi package that polishes your daily experience.",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "ai-gateway.vercel.sh",
+        "api.deepseek.com",
+        "api.frankfurter.dev",
+        "api.kimi.com",
+        "chatgpt.com",
+        "openrouter.ai"
+      ],
+      "downloads": 1956
+    },
+    {
+      "name": "pi-stable",
+      "version": "0.83.6",
+      "description": "Coding agent CLI with read, bash, edit, write tools and session management",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": true,
+      "hosts": [
+        "agentskills.io",
+        "ai.corp.com",
+        "api.anthropic.com",
+        "claude.ai",
+        "cloud.gitlab.com",
+        "console.anthropic.com",
+        "distro.ibiblio.org",
+        "git-scm.com"
+      ],
+      "downloads": 55
+    },
+    {
+      "name": "pi-stable-ai",
+      "version": "0.83.6",
+      "description": "Unified LLM API with automatic model discovery and provider configuration",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [
+        "ai-gateway.vercel.sh",
+        "ai.google.dev",
+        "api.ant-ling.com",
+        "api.anthropic.com",
+        "api.cerebras.ai",
+        "api.cloudflare.com",
+        "api.deepseek.com",
+        "api.fireworks.ai"
+      ],
+      "downloads": 73
+    },
+    {
+      "name": "pi-sub-aliases",
+      "version": "0.2.2",
+      "description": "Pi extension that adds named subscription-account aliases for the built-in Anthropic and OpenAI Codex OAuth providers.",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [
+        "api.anthropic.com",
+        "chatgpt.com"
+      ],
+      "downloads": 65
+    },
+    {
+      "name": "pi-sub2api",
+      "version": "0.2.4",
+      "description": "Pi extension for a sub2api gateway: dynamic model registration and a /usage command for balance and cost.",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [],
+      "downloads": 46
+    },
+    {
+      "name": "pi-sub2api-provider",
+      "version": "0.5.1",
+      "description": "Pi extension that auto-registers sub2api/OpenAI-compatible providers and displays quota usage.",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [],
+      "downloads": 37
+    },
+    {
+      "name": "pi-tensorix-provider",
+      "version": "1.0.8",
+      "description": "Tensorix provider extension for pi - Access DeepSeek, GLM, Kimi, Qwen, MiniMax, Llama, and more through the Tensorix API",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": true,
+      "hosts": [
+        "api.tensorix.ai",
+        "docs.tensorix.ai"
+      ],
+      "downloads": 932
+    },
+    {
+      "name": "pi-tokenrouter",
+      "version": "1.3.1",
+      "description": "TokenRouter provider extension for pi — dynamic model discovery with OpenRouter-compatible pricing",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "api.tokenrouter.com",
+        "models.dev",
+        "openrouter.ai"
+      ],
+      "downloads": 2706
+    },
+    {
+      "name": "pi-tokenrouter-provider",
+      "version": "0.1.0",
+      "description": "Pi extension + token-router fork that adds tokenrouter.com as a model provider for pi",
+      "carriesTransport": false,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [
+        "api.tokenrouter.com"
+      ],
+      "downloads": 11
+    },
+    {
+      "name": "pi-tsgw",
+      "version": "0.0.6",
+      "description": "Pi extension for the TOSSP AIH gateway: per-vendor model catalog and thinking operations for openai-completions, openai-responses, anthropic-messages, and google-generative-ai wire protocols.",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": true,
+      "hosts": [
+        "ai.google.dev",
+        "api-docs.deepseek.com",
+        "docs.claude.com",
+        "docs.x.ai",
+        "help.aliyun.com",
+        "longcat.chat",
+        "open.bigmodel.cn",
+        "platform.minimaxi.com"
+      ],
+      "downloads": 86
+    },
+    {
+      "name": "pi-ui-extend",
+      "version": "1.0.15",
+      "description": "Pix: a workspace-first terminal UI for Pi with tabs, readable tool activity, voice input, and bundled agent tools.",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [
+        "accounts.google.com",
+        "alphacephei.com",
+        "api.openai.com",
+        "api.tavily.com",
+        "api.telegram.org",
+        "api.z.ai",
+        "app.tavily.com",
+        "autopush-cloudcode-pa.sandbox.googleapis.com"
+      ],
+      "downloads": 608
+    },
+    {
+      "name": "pi-umans-provider",
+      "version": "1.0.9",
+      "description": "UMANS provider extension for pi - Access Kimi K2.6, GLM 5.1, Qwen 3.6, and coding-optimized models through the UMANS API",
+      "carriesTransport": false,
+      "declaresOAuth": true,
+      "envApiKey": true,
+      "hosts": [
+        "api.code.umans.ai",
+        "code.umans.ai"
+      ],
+      "downloads": 1102
+    },
+    {
+      "name": "pi-volcengine-agent-plan",
+      "version": "0.1.0",
+      "description": "Pi provider extension for Volcengine Ark Agent Plan (api/plan/v3).",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "ark.cn-beijing.volces.com"
+      ],
+      "downloads": 93
+    },
+    {
+      "name": "pi-volcengine-provider",
+      "version": "0.1.2",
+      "description": "Pi provider extension for Volcengine Ark Coding API models.",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": true,
+      "hosts": [
+        "ark.cn-beijing.volces.com"
+      ],
+      "downloads": 96
+    },
+    {
+      "name": "pi-wafer-provider",
+      "version": "1.1.6",
+      "description": "Wafer Serverless provider extension for pi - Access Qwen3.5-397B-A17B, GLM-5.1, Kimi K2.6, and DeepSeek-V4 through the Wafer Serverless API",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "pass.wafer.ai"
+      ],
+      "downloads": 837
+    },
+    {
+      "name": "pi-workspace",
+      "version": "0.6.2",
+      "description": "CLI-launched browser UI for pi-coding-agent sessions",
+      "carriesTransport": true,
+      "declaresOAuth": false,
+      "envApiKey": false,
+      "hosts": [
+        "api.commandcode.ai",
+        "react.dev"
+      ],
+      "downloads": 54
+    },
+    {
+      "name": "pi-xai",
+      "version": "0.18.0",
+      "description": "xAI / Grok extras for Pi — Grok Build protocol, Imagine tools, usage QoL, agentic APIs (provider transitional)",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [
+        "accounts.x.ai",
+        "api.x.ai",
+        "auth.x.ai",
+        "cli-chat-proxy.grok.com",
+        "grok.com",
+        "x.ai",
+        "x.com"
+      ],
+      "downloads": 335
+    },
+    {
+      "name": "pi-xai-oauth",
+      "version": "1.5.0",
+      "description": "xAI OAuth provider with an authenticated account-specific Grok model catalog for pi",
+      "carriesTransport": true,
+      "declaresOAuth": true,
+      "envApiKey": false,
+      "hosts": [
+        "accounts.x.ai",
+        "api.x.ai",
+        "attacker.invalid",
+        "auth.x.ai",
+        "cli-chat-proxy.grok.com",
+        "docs.x.ai",
+        "evil.example",
+        "evil.test"
+      ],
+      "downloads": 1321
+    },
+    {
+      "name": "pi-zenmux-provider",
+      "version": "0.1.1",
+      "description": "Pi extension that registers ZenMux AI as an OpenAI-compatible model provider.",
+      "carriesTransport": false,
+      "declaresOAuth": true,
+      "envApiKey": true,
+      "hosts": [
+        "zenmux.ai"
+      ],
+      "downloads": 22
+    },
+    {
+      "name": "pi-zyloo-provider",
+      "version": "1.0.2",
+      "description": "Zyloo provider extension for pi - Claude, GPT, Gemini, Grok, Kimi, GLM, DeepSeek, Qwen & MiniMax through the Zyloo OpenAI-compatible API",
+      "carriesTransport": false,
+      "declaresOAuth": false,
+      "envApiKey": true,
+      "hosts": [
+        "api.zyloo.io",
+        "zyloo.ai",
+        "zyloo.io"
+      ],
+      "downloads": 468
+    }
+  ],
+  "unreadable": []
+}
