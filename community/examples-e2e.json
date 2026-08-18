@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pi2dshCommit": "06c0ee1f146b925a71a1ac1b844d3fed1da23b08",
+  "pi2dshCommit": "1de5a4a1c577e9ce87fd6082a6a6e143948ea2ea",
   "dshCommit": "47f943859bef60e4160492346772ded9b24f765a",
   "results": {
     "visionBridge": {
@@ -12,29 +12,78 @@
       "reason": "no vision endpoint configured (VISION_BRIDGE_BASE_URL, VISION_BRIDGE_MODEL, VISION_BRIDGE_API_KEY)"
     },
     "gatewayCompat": {
-      "status": "failed",
-      "error": "Command failed: node --import tsx/esm /Users/developer/projj/workspace/deepseek-harness/apps/cli/src/bin.ts --profile headless Reply with exactly: gateway-compat-ok\n/Users/developer/projj/workspace/deepseek-harness/packages/boot/app-boot/src/index.ts:800\n    throw new Error(`${binName}: ${stage}: ${detail}${stack}`, { cause })\n          ^\n\nError: dsh: plugin tree failed to load: failed to apply loader entry include (cordis:include): failed to import loader entry pi2dsh (pi2dsh): Cannot find module '/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-ex-gateway-4SNpuk/dsh-home/profiles/headless/node_modules/pi2dsh/dist/index.mjs' imported from /var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-ex-gateway-4SNpuk/dsh-home/profiles/headless/\nError [ERR_MODULE_NOT_FOUND]: Cannot find module '/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-ex-gateway-4SNpuk/dsh-home/profiles/headless/node_modules/pi2dsh/dist/index.mjs' imported from /var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-ex-gateway-4SNpuk/dsh-home/profiles/headless/\n    at finalizeResolution (node:internal/modules/esm/resolve:274:11)\n    at moduleResolve (node:internal/modules/esm/resolve:859:10)\n    at defaultResolve (node:internal/modules/esm/resolve:983:11)\n    at nextResolve (node:internal/modules/esm/hooks:748:28)\n    at resolveBase (file:///Users/developer/projj/workspace/deepseek-harness/node_modules/.pnpm/tsx@4.22.4/node_modules/tsx/dist/register-CqMfTiWi.mjs:2:8141)\n    at resolveDirectory (file:///Users/developer/projj/workspace/deepseek-harness/node_modules/.pnpm/tsx@4.22.4/node_modules/tsx/dist/register-CqMfTiWi.mjs:2:9227)\n    at resolveTsPaths (file:///Users/developer/projj/workspace/deepseek-harness/node_modules/.pnpm/tsx@4.22.4/node_modules/tsx/dist/register-CqMfTiWi.mjs:2:10757)\n    at resolve2 (file:///Users/developer/projj/workspace/deepseek-harness/node_modules/.pnpm/tsx@4.22.4/node_modules/tsx/dist/register-CqMfTiWi.mjs:2:11938)\n    at nextResolve (node:internal/modules/esm/hooks:748:28)\n    at Hooks.resolve (node:internal/modules/esm/hooks:240:30)\n    at boot (/Users/developer/projj/workspace/deepseek-harness/packages/boot/app-boot/src/index.ts:800:11)\n    at async runProfile (/Users/developer/projj/workspace/deepseek-harness/apps/cli/src/profile-boot.ts:248:15)\n    at async <anonymous> (/Users/developer/projj/workspace/deepseek-harness/apps/cli/src/bin.ts:32:5) {\n  [cause]: Error: failed to apply loader entry include (cordis:include): failed to import loader entry pi2dsh (pi2dsh): Cannot find module '/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-ex-gateway-4SNpuk/dsh-home/profiles/headless/node_modules/pi2dsh/dist/index.mjs' imported from /var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-ex-gateway-4SNpuk/dsh-home/profiles/headless/\n      at updateError (/Users/developer/projj/workspace/deepseek-harness/vendor/loader/src/config/entry.ts:26:10)\n      at Entry._init (/Users/developer/projj/workspace/deepseek-harness/vendor/loader/src/config/entry.ts:287:13) {\n    [cause]: Error: failed to import loader entry pi2dsh (pi2dsh): Cannot find module '/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-ex-gateway-4SNpuk/dsh-home/profiles/headless/node_modules/pi2dsh/dist/index.mjs' imported from /var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-ex-gateway-4SNpuk/dsh-home/profiles/headless/\n        at updateError (/Users/developer/projj/workspace/deepseek-harness/vendor/loader/src/config/entry.ts:26:10)\n        at Entry._init (/Users/developer/projj/workspace/deepseek-harness/vendor/loader/src/config/entry.ts:282:13)\n        at async Entry.init (/Users/developer/projj/workspace/deepseek-harness/vendor/loader/src/config/entry.ts:261:7)\n        at async Entry.update (/Users/developer/projj/workspace/deepseek-harness/vendor/loader/src/config/entry.ts:172:41)\n        at async EntryGroup.create (/Users/developer/projj/workspace/deepseek-harness/vendor/loader/src/config/group.ts:30:7)\n        at async Promise.allSettled (index 81)\n        at async EntryGroup.update (/Users/developer/projj/workspace/deepseek-harness/vendor/loader/src/config/group.ts:71:24)\n        at async Include._apply (/Users/developer/projj/workspace/deepseek-harness/vendor/include/src/index.ts:317:5) {\n      [cause]: Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-ex-gateway-4SNpuk/dsh-home/profiles/headless/node_modules/pi2dsh/dist/index.mjs' imported from /var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-ex-gateway-4SNpuk/dsh-home/profiles/headless/\n          at finalizeResolution (node:internal/modules/esm/resolve:274:11)\n          at moduleResolve (node:internal/modules/esm/resolve:859:10)\n          at defaultResolve (node:internal/modules/esm/resolve:983:11)\n          at nextResolve (node:internal/modules/esm/hooks:748:28)\n          at resolveBase (file:///Users/developer/projj/workspace/deepseek-harness/node_modules/.pnpm/tsx@4.22.4/node_modules/tsx/dist/register-CqMfTiWi.mjs:2:8141)\n          at resolveDirectory (file:///Users/developer/projj/workspace/deepseek-harness/node_modules/.pnpm/tsx@4.22.4/node_modules/tsx/dist/register-CqMfTiWi.mjs:2:9227)\n          at resolveTsPaths (file:///Users/developer/projj/workspace/deepseek-harness/node_modules/.pnpm/tsx@4.22.4/node_modules/tsx/dist/register-CqMfTiWi.mjs:2:10757)\n          at resolve2 (file:///Users/developer/projj/workspace/deepseek-harness/node_modules/.pnpm/tsx@4.22.4/node_modules/tsx/dist/register-CqMfTiWi.mjs:2:11938)\n          at nextResolve (node:internal/modules/esm/hooks:748:28)\n          at Hooks.resolve (node:internal/modules/esm/hooks:240:30) {\n        code: 'ERR_MODULE_NOT_FOUND',\n        url: 'file:///var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-ex-gateway-4SNpuk/dsh-home/profiles/headless/node_modules/pi2dsh/dist/index.mjs'\n      }\n    }\n  }\n}\n\nNode.js v22.22.0\n"
+      "engine": {
+        "version": "0.12.4",
+        "from": "registry",
+        "spec": "pi2dsh@0.12.4"
+      },
+      "status": "passed",
+      "requests": 2,
+      "roles": [
+        "system",
+        "user",
+        "user",
+        "user",
+        "user"
+      ],
+      "maxTokensField": "max_tokens",
+      "store": null,
+      "reasoningEffort": null,
+      "bodyKeys": [
+        "max_tokens",
+        "messages",
+        "model",
+        "stream",
+        "stream_options",
+        "tools"
+      ],
+      "previews": [
+        "system: You are an AI agent powered by DeepSeek Harness. You are a ",
+        "user: Reply with exactly: gateway-compat-ok",
+        "user: <system-reminder> The following workspace instructions may b",
+        "user: Current runtime context. This snapshot supersedes earlier ru",
+        "user: <system-reminder> A skill is a reusable set of task-specific"
+      ]
+    },
+    "customGateways": {
+      "status": "passed",
+      "engine": {
+        "version": "0.12.4",
+        "from": "registry",
+        "spec": "pi2dsh@0.12.4"
+      },
+      "seenByPackage": {
+        "provider": "my-gateway",
+        "id": "deepseek-chat",
+        "api": "faux",
+        "contextWindow": 131072
+      }
     },
     "presentationSurfaces": {
       "status": "passed",
       "engine": {
-        "version": "0.12.3",
-        "from": "local",
-        "spec": "file:/Users/developer/projj/workspace/pi2dsh",
-        "commit": "06c0ee1f146b925a71a1ac1b844d3fed1da23b08",
-        "dirty": true
+        "version": "0.12.4",
+        "from": "registry",
+        "spec": "pi2dsh@0.12.4"
       },
       "screenshots": [
         "06-presentation-surfaces.png"
       ]
     },
-    "customGateways": {
-      "status": "failed",
-      "error": "Command failed: node --import tsx/esm /Users/developer/projj/workspace/deepseek-harness/apps/cli/src/bin.ts --profile headless call the pi_registry_probe tool once and repeat its output\ndsh: TRANSPORT: DeepSeek API request to https://api.deepseek.com failed\n"
-    },
     "sideConversation": {
-      "status": "failed",
-      "error": "Command failed: node /Users/developer/projj/workspace/pi2dsh/docs/posting-kit/capture-screenshots.mjs /var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-ex-side-u26LFi/shots --url http://127.0.0.1:5187\nnode:internal/modules/run_main:123\n    triggerUncaughtException(\n    ^\n\npage.waitForFunction: Timeout 120000ms exceeded.\n    at /Users/developer/projj/workspace/pi2dsh/docs/posting-kit/capture-screenshots.mjs:69:12 {\n  log: [],\n  name: 'TimeoutError'\n}\n\nNode.js v22.22.0\n"
+      "status": "passed",
+      "engine": {
+        "version": "0.12.4",
+        "from": "registry",
+        "spec": "pi2dsh@0.12.4"
+      },
+      "screenshots": [
+        "01-side-conversation-main-thread-clean.png",
+        "02-side-conversation-panel.png",
+        "03-side-conversation-host-catalog.png",
+        "04-side-conversation-injected-on-request.png",
+        "05-side-conversation-child-view.png"
+      ]
     }
   }
 }

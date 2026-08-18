@@ -64,12 +64,31 @@ function familyOf(name) {
   return `其它厂商（${hosts[0]}）`
 }
 
-const VERDICT = {
-  route: ['能用', '包自带传输，注册成 DSH 原生路由'],
-  'route-via-official': ['能用', '目录翻译成 DSH 官方适配器的配置'],
-  'mounted-no-provider': ['未知', '启动时不注册 provider，要走它自己的命令/配置'],
-  'not-served': ['不能用', ''],
-  'load-failed': ['不能用', ''],
+// The tier a reader can act on. `modelsInPicker` is what the host's own model
+// directory returned with NO credential configured — the same source the model
+// picker reads — so it separates "installed it and models are there" from
+// "installed it and the picker is empty until I supply something".
+const TIER = {
+  ready: '装完就有模型',
+  needsCredential: '要先给密钥/登录',
+  notRegistered: '启动时不注册',
+  failed: '不能用',
+}
+function tierOf(result) {
+  if (result.verdict === 'route' || result.verdict === 'route-via-official') {
+    return (result.modelsInPicker ?? 0) > 0 ? TIER.ready : TIER.needsCredential
+  }
+  if (result.verdict === 'mounted-no-provider') return TIER.notRegistered
+  return TIER.failed
+}
+const HOW = {
+  route: '包自带传输 → DSH 原生路由',
+  'route-via-official': '目录翻译成配置 → DSH 官方适配器',
+  'mounted-no-provider': '要走它自己的命令/配置才注册',
+  'not-served': '',
+  'load-failed': '包在运行时加载失败',
+  'install-failed': '装不上',
+  unknown: '启动日志里没有它的踪迹',
 }
 
 const rows = survey.results.map(result => ({
@@ -77,8 +96,9 @@ const rows = survey.results.map(result => ({
   name: result.name,
   downloads: meta.get(result.name)?.downloads ?? null,
   verdict: result.verdict,
-  usable: VERDICT[result.verdict]?.[0] ?? '未知',
-  how: VERDICT[result.verdict]?.[1] ?? '',
+  models: result.modelsInPicker ?? null,
+  usable: tierOf(result),
+  how: HOW[result.verdict] ?? '',
   reason: result.reason ?? '',
   oauth: meta.get(result.name)?.declaresOAuth === true,
 }))
@@ -89,19 +109,19 @@ for (const row of rows) {
   byFamily.get(row.family).push(row)
 }
 
-const counts = { 能用: 0, 未知: 0, 不能用: 0 }
-for (const row of rows) counts[row.usable] += 1
+const counts = {}
+for (const row of rows) counts[row.usable] = (counts[row.usable] ?? 0) + 1
 
 const lines = [
   '# 你手上有什么 → 装哪个包',
   '',
-  `实测 ${rows.length} 个包，覆盖 ${byFamily.size} 类服务。每个包装进独立的临时 profile、启动一次、读引擎为它打印的路由归属。`,
-  '**没有对任何一家真发过请求** —— 这张表说的是"路由建起来了、模型进得了选择器"，不是"那家服务今天通不通"。',
+  `实测 ${rows.length} 个包，覆盖 ${byFamily.size} 类服务。每个包装进独立的临时 profile、启动一次，然后问宿主自己的模型目录（模型选择器读的同一个源）。`,
+  '**全程没有配任何凭证，也没有对任何一家发过请求。**「装完就有模型」= 模型出现在选择器里；能不能调通取决于你自己的密钥和那家服务。',
   '',
-  `能用 ${counts.能用} · 未知 ${counts.未知} · 不能用 ${counts.不能用}`,
+  Object.entries(counts).map(([tier, n]) => `${tier} ${n}`).join(' · '),
   '',
-  '| 你有什么 | 装哪个 | 周下载 | 能用? | 怎么接进来的 |',
-  '|---|---|---|---|---|',
+  '| 你有什么 | 装哪个 | 周下载 | 装完 | 模型数 | 怎么接进来的 |',
+  '|---|---|---|---|---|---|',
 ]
 const order = [...byFamily.entries()].sort((a, b) => {
   const best = list => Math.max(...list.map(row => row.downloads ?? 0))
@@ -111,7 +131,7 @@ for (const [family, list] of order) {
   list.sort((a, b) => (b.downloads ?? 0) - (a.downloads ?? 0))
   for (const row of list) {
     const detail = row.usable === '不能用' ? row.reason.slice(0, 80) : row.how
-    lines.push(`| ${family}${row.oauth ? ' *(要登录)*' : ''} | \`${row.name}\` | ${row.downloads ?? '?'} | ${row.usable} | ${detail} |`)
+    lines.push(`| ${family}${row.oauth ? ' *(要登录)*' : ''} | \`${row.name}\` | ${row.downloads ?? '?'} | ${row.usable} | ${row.models ?? '-'} | ${detail} |`)
   }
 }
 await writeFile(outPath, `${lines.join('\n')}\n`)

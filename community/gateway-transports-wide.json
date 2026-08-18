@@ -4,35 +4,39 @@
   "counts": {
     "route": 27,
     "mounted-no-provider": 22,
-    "unknown": 4,
-    "route-via-official": 34,
+    "unknown": 5,
+    "route-via-official": 35,
     "load-failed": 5,
     "install-failed": 2,
-    "not-served": 4
+    "not-served": 2
   },
   "results": [
     {
       "name": "pi-background-tasks",
       "verdict": "route",
       "providerId": "anthropic",
+      "modelsInPicker": 0,
       "mountLine": "[pi2dsh] loaded pi-background-tasks: 11 tools, 12 commands, 0 skill roots"
     },
     {
       "name": "@plannotator/pi-extension",
       "neededBuildApproval": true,
       "verdict": "mounted-no-provider",
+      "modelsInPicker": 0,
       "mountLine": "[pi2dsh] loaded @plannotator/pi-extension: 1 tools, 5 commands, 0 skill roots"
     },
     {
       "name": "pi-hermes-memory",
       "neededBuildApproval": true,
       "verdict": "mounted-no-provider",
+      "modelsInPicker": 0,
       "mountLine": "[pi2dsh] loaded pi-hermes-memory: 6 tools, 11 commands, 0 skill roots"
     },
     {
       "name": "pi-lens",
       "neededBuildApproval": true,
       "verdict": "mounted-no-provider",
+      "modelsInPicker": 0,
       "mountLine": "[pi2dsh] loaded pi-lens: 14 tools, 10 commands, 0 skill roots"
     },
     {
@@ -40,35 +44,41 @@
       "neededBuildApproval": true,
       "verdict": "route",
       "providerId": "openai-codex",
+      "modelsInPicker": 9,
       "mountLine": "[pi2dsh] loaded @howaboua/pi-codex-conversion: 9 tools, 2 commands, 0 skill roots"
     },
     {
       "name": "@gotgenes/pi-anthropic-auth",
       "verdict": "route",
       "providerId": "anthropic",
+      "modelsInPicker": 0,
       "mountLine": "[pi2dsh] loaded @gotgenes/pi-anthropic-auth: 0 tools, 2 commands, 0 skill roots"
     },
     {
       "name": "@cortexkit/pi-openai-auth",
       "verdict": "route",
       "providerId": "openai-codex",
+      "modelsInPicker": 4,
       "mountLine": "[pi2dsh] loaded @cortexkit/pi-openai-auth: 0 tools, 1 commands, 0 skill roots"
     },
     {
       "name": "@caupulican/pi-adaptative",
       "neededBuildApproval": true,
       "verdict": "unknown",
+      "modelsInPicker": 0,
       "mountLine": ""
     },
     {
       "name": "@myka2003/pi-dpi",
       "verdict": "mounted-no-provider",
+      "modelsInPicker": 0,
       "mountLine": "[pi2dsh] loaded @myka2003/pi-dpi: 0 tools, 15 commands, 0 skill roots"
     },
     {
       "name": "pi-neuralwatt-provider",
       "verdict": "route",
       "providerId": "neuralwatt",
+      "modelsInPicker": 24,
       "reason": "llm-pi-ai: provider \"neuralwatt\" resolves no models; the installed catalog does not describe this route, so its models must be listed in configuration",
       "mountLine": "[pi2dsh] loaded pi-neuralwatt-provider: 0 tools, 2 commands, 0 skill roots"
     },
@@ -76,52 +86,61 @@
       "name": "pi-tokenrouter",
       "verdict": "route-via-official",
       "providerId": "tokenrouter",
+      "modelsInPicker": 96,
       "mountLine": "[pi2dsh] loaded pi-tokenrouter: 0 tools, 2 commands, 0 skill roots"
     },
     {
       "name": "pi-claude-bridge",
       "verdict": "route",
       "providerId": "claude-bridge",
+      "modelsInPicker": 0,
       "mountLine": "[pi2dsh] loaded pi-claude-bridge: 0 tools, 1 commands, 0 skill roots"
     },
     {
       "name": "pi-provider-kimi-code",
       "verdict": "route",
       "providerId": "kimi-coding",
+      "modelsInPicker": 3,
       "mountLine": "[pi2dsh] loaded pi-provider-kimi-code: 0 tools, 2 commands, 0 skill roots"
     },
     {
       "name": "@twogiants/pi-anthropic-vertex",
       "verdict": "mounted-no-provider",
+      "modelsInPicker": 0,
       "mountLine": "[pi2dsh] loaded @twogiants/pi-anthropic-vertex: 0 tools, 1 commands, 0 skill roots"
     },
     {
       "name": "@robhowley/pi-openrouter",
       "neededBuildApproval": true,
       "verdict": "mounted-no-provider",
+      "modelsInPicker": 0,
       "mountLine": "[pi2dsh] loaded @robhowley/pi-openrouter: 0 tools, 5 commands, 0 skill roots"
     },
     {
       "name": "@billjr99/pi-openai-compat",
       "verdict": "mounted-no-provider",
+      "modelsInPicker": 0,
       "mountLine": "[pi2dsh] loaded @billjr99/pi-openai-compat: 0 tools, 4 commands, 0 skill roots"
     },
     {
       "name": "pi-lilac-provider",
       "verdict": "route-via-official",
       "providerId": "lilac",
+      "modelsInPicker": 4,
       "mountLine": "[pi2dsh] loaded pi-lilac-provider: 0 tools, 2 commands, 0 skill roots"
     },
     {
       "name": "pi-provider-litellm",
       "verdict": "route",
       "providerId": "litellm",
+      "modelsInPicker": 0,
       "mountLine": "[pi2dsh] loaded pi-provider-litellm: 3 tools, 1 commands, 0 skill roots"
     },
     {
       "name": "pi-spark",
       "neededBuildApproval": true,
       "verdict": "mounted-no-provider",
+      "modelsInPicker": 0,
       "mountLine": "[pi2dsh] loaded pi-spark: 1 tools, 1 commands, 0 skill roots"
     },
     {
@@ -132,18 +151,21 @@
     {
       "name": "pi-openai-codex-fast",
       "verdict": "mounted-no-provider",
+      "modelsInPicker": 0,
       "mountLine": "[pi2dsh] loaded pi-openai-codex-fast: 0 tools, 1 commands, 0 skill roots"
     },
     {
       "name": "pi-clinepass-provider",
       "verdict": "route-via-official",
       "providerId": "clinepass",
+      "modelsInPicker": 11,
       "mountLine": "[pi2dsh] loaded pi-clinepass-provider: 0 tools, 1 commands, 0 skill roots"
     },
     {
       "name": "pi-extension-nvidia-nim",
       "verdict": "route-via-official",
       "providerId": "nvidia-nim",
+      "modelsInPicker": 31,
       "mountLine": "[pi2dsh] loaded pi-extension-nvidia-nim: 0 tools, 1 commands, 0 skill roots"
     },
     {
@@ -151,18 +173,20 @@
       "neededBuildApproval": true,
       "verdict": "route",
       "providerId": "theclawbay",
+      "modelsInPicker": 18,
       "mountLine": "[pi2dsh] loaded pi-clawbay: 0 tools, 4 commands, 0 skill roots"
     },
     {
       "name": "pi-llm-bridge",
       "verdict": "install-failed",
       "neededBuildApproval": true,
-      "detail": "(Use `node --trace-warnings ...` to show where the warning was created) | dsh: pnpm failed in profile directory /var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-gw-XAAGFV/dsh-home/profiles/web"
+      "detail": "(Use `node --trace-warnings ...` to show where the warning was created) | dsh: pnpm failed in profile directory /var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-gw-3ryn7f/dsh-home/profiles/web"
     },
     {
       "name": "pi-fireworks-provider",
       "verdict": "route-via-official",
       "providerId": "fireworks",
+      "modelsInPicker": 48,
       "mountLine": "[pi2dsh] loaded pi-fireworks-provider: 0 tools, 3 commands, 0 skill roots"
     },
     {
@@ -174,67 +198,75 @@
       "name": "@juvio15/pi-seek",
       "verdict": "route-via-official",
       "providerId": "deepseek-responses",
+      "modelsInPicker": 2,
       "mountLine": "[pi2dsh] loaded @juvio15/pi-seek: 6 tools, 5 commands, 1 skill roots"
     },
     {
       "name": "@rahularya01/pi-cursor",
       "verdict": "route",
       "providerId": "cursor",
+      "modelsInPicker": 42,
       "mountLine": "[pi2dsh] loaded @rahularya01/pi-cursor: 0 tools, 4 commands, 0 skill roots"
     },
     {
       "name": "pi-baseten-provider",
       "verdict": "route-via-official",
       "providerId": "baseten",
+      "modelsInPicker": 15,
       "mountLine": "[pi2dsh] loaded pi-baseten-provider: 0 tools, 1 commands, 0 skill roots"
     },
     {
       "name": "pi-hypercharm-provider",
       "verdict": "route",
       "providerId": "hypercharm",
+      "modelsInPicker": 26,
       "mountLine": "[pi2dsh] loaded pi-hypercharm-provider: 0 tools, 2 commands, 0 skill roots"
     },
     {
       "name": "pi-ollama-cloud",
-      "verdict": "route-via-official",
-      "providerId": "ollama-cloud",
-      "mountLine": "[pi2dsh] loaded pi-ollama-cloud: 0 tools, 4 commands, 0 skill roots"
+      "verdict": "unknown",
+      "mountLine": ""
     },
     {
       "name": "pi-openmodel-provider",
-      "verdict": "not-served",
+      "verdict": "route-via-official",
       "providerId": "openmodel",
-      "reason": "llm-pi-ai: provider \"openmodel\" model \"codex-auto-review\" sets compat reasoning switches, but its api is \"anthropic-messages\"; thinkingFormat and supportsReason",
+      "modelsInPicker": 49,
       "mountLine": "[pi2dsh] loaded pi-openmodel-provider: 0 tools, 3 commands, 1 skill roots"
     },
     {
       "name": "pi-xai-oauth",
       "verdict": "route",
       "providerId": "xai-auth",
+      "modelsInPicker": 1,
       "mountLine": "[pi2dsh] loaded pi-xai-oauth: 16 tools, 3 commands, 0 skill roots"
     },
     {
       "name": "pi-crof-provider",
       "verdict": "route-via-official",
       "providerId": "crofai",
+      "modelsInPicker": 26,
       "mountLine": "[pi2dsh] loaded pi-crof-provider: 0 tools, 1 commands, 0 skill roots"
     },
     {
       "name": "pi-j3gb-provider",
       "verdict": "route-via-official",
       "providerId": "j3gb",
+      "modelsInPicker": 1,
       "mountLine": "[pi2dsh] loaded pi-j3gb-provider: 0 tools, 1 commands, 0 skill roots"
     },
     {
       "name": "@monotykamary/pi-opencode-provider",
       "verdict": "route-via-official",
       "providerId": "opencode",
+      "modelsInPicker": 69,
       "mountLine": "[pi2dsh] loaded @monotykamary/pi-opencode-provider: 0 tools, 1 commands, 0 skill roots"
     },
     {
       "name": "pi-umans-provider",
       "verdict": "route-via-official",
       "providerId": "umans",
+      "modelsInPicker": 10,
       "mountLine": "[pi2dsh] loaded pi-umans-provider: 0 tools, 1 commands, 0 skill roots"
     },
     {
@@ -245,57 +277,65 @@
     },
     {
       "name": "@coreinfra/pi-plugin",
-      "verdict": "not-served",
+      "verdict": "route-via-official",
       "providerId": "coreinfra",
-      "reason": "llm-pi-ai: provider \"coreinfra\" model \"glm-4.7-flash\" sets compat reasoning switches, but its api is \"openai-responses\"; thinkingFormat and supportsReasoningEff",
+      "modelsInPicker": 1,
       "mountLine": "[pi2dsh] loaded @coreinfra/pi-plugin: 0 tools, 1 commands, 0 skill roots"
     },
     {
       "name": "pi-io-provider",
       "verdict": "route-via-official",
       "providerId": "io-intelligence",
+      "modelsInPicker": 32,
       "mountLine": "[pi2dsh] loaded pi-io-provider: 0 tools, 1 commands, 0 skill roots"
     },
     {
       "name": "@aliou/pi-neuralwatt",
       "verdict": "route",
       "providerId": "neuralwatt",
+      "modelsInPicker": 18,
       "mountLine": "[pi2dsh] loaded @aliou/pi-neuralwatt: 0 tools, 3 commands, 0 skill roots"
     },
     {
       "name": "pi-nvidia-nim",
       "verdict": "route",
       "providerId": "nvidia-nim",
+      "modelsInPicker": 44,
       "mountLine": "[pi2dsh] loaded pi-nvidia-nim: 0 tools, 1 commands, 0 skill roots"
     },
     {
       "name": "pi-tensorix-provider",
       "verdict": "route-via-official",
       "providerId": "tensorix",
+      "modelsInPicker": 21,
       "mountLine": "[pi2dsh] loaded pi-tensorix-provider: 0 tools, 1 commands, 0 skill roots"
     },
     {
       "name": "pi-antigravity",
       "verdict": "route",
       "providerId": "antigravity",
+      "modelsInPicker": 7,
       "mountLine": "[pi2dsh] loaded pi-antigravity: 0 tools, 4 commands, 0 skill roots"
     },
     {
       "name": "pi-wafer-provider",
       "verdict": "route-via-official",
       "providerId": "wafer-serverless",
+      "modelsInPicker": 9,
       "mountLine": "[pi2dsh] loaded pi-wafer-provider: 0 tools, 1 commands, 0 skill roots"
     },
     {
       "name": "pi-parasail-provider",
       "verdict": "route-via-official",
       "providerId": "parasail",
+      "modelsInPicker": 44,
       "mountLine": "[pi2dsh] loaded pi-parasail-provider: 0 tools, 1 commands, 0 skill roots"
     },
     {
       "name": "pi-free",
       "verdict": "route",
       "providerId": "kilo",
+      "modelsInPicker": 361,
       "mountLine": "[pi2dsh] loaded pi-free: 0 tools, 30 commands, 0 skill roots"
     },
     {
@@ -303,6 +343,7 @@
       "neededBuildApproval": true,
       "verdict": "route-via-official",
       "providerId": "anthropic-account-2",
+      "modelsInPicker": 6,
       "reason": "llm-pi-ai: provider \"openai-codex-account-2\" model \"gpt-5.5\" needs an api; the installed catalog does not describe it, so set the route's api to the wire protoc",
       "mountLine": "[pi2dsh] loaded pi-multi-account: 0 tools, 4 commands, 0 skill roots"
     },
@@ -310,39 +351,46 @@
       "name": "@aliou/pi-cohere",
       "verdict": "route-via-official",
       "providerId": "cohere",
+      "modelsInPicker": 7,
       "mountLine": "[pi2dsh] loaded @aliou/pi-cohere: 0 tools, 1 commands, 0 skill roots"
     },
     {
       "name": "pi-zyloo-provider",
       "verdict": "route-via-official",
       "providerId": "zyloo",
+      "modelsInPicker": 48,
       "mountLine": "[pi2dsh] loaded pi-zyloo-provider: 0 tools, 1 commands, 0 skill roots"
     },
     {
       "name": "pi-commandcode-provider",
       "verdict": "route",
       "providerId": "commandcode",
+      "modelsInPicker": 55,
       "mountLine": "[pi2dsh] loaded pi-commandcode-provider: 0 tools, 3 commands, 0 skill roots"
     },
     {
       "name": "@howaboua/pi-subagent-review",
       "verdict": "mounted-no-provider",
+      "modelsInPicker": 0,
       "mountLine": "[pi2dsh] loaded @howaboua/pi-subagent-review: 0 tools, 2 commands, 0 skill roots"
     },
     {
       "name": "pi-huggingface-oauth",
       "verdict": "mounted-no-provider",
+      "modelsInPicker": 0,
       "mountLine": "[pi2dsh] loaded pi-huggingface-oauth: 0 tools, 1 commands, 0 skill roots"
     },
     {
       "name": "@aliou/pi-ts-aperture",
       "verdict": "mounted-no-provider",
+      "modelsInPicker": 0,
       "mountLine": "[pi2dsh] loaded @aliou/pi-ts-aperture: 0 tools, 3 commands, 0 skill roots"
     },
     {
       "name": "@d3ara1n/pi-provider-sensenova",
       "verdict": "route-via-official",
       "providerId": "sensenova-plan",
+      "modelsInPicker": 3,
       "mountLine": "[pi2dsh] loaded @d3ara1n/pi-provider-sensenova: 0 tools, 1 commands, 0 skill roots"
     },
     {
@@ -354,123 +402,145 @@
       "name": "@earendil-works/pi-radius",
       "verdict": "route",
       "providerId": "radius",
+      "modelsInPicker": 0,
       "mountLine": "[pi2dsh] loaded @earendil-works/pi-radius: 1 tools, 2 commands, 6 skill roots"
     },
     {
       "name": "pi-ollama-cloud-provider",
       "verdict": "route-via-official",
       "providerId": "ollama-cloud",
+      "modelsInPicker": 19,
       "mountLine": "[pi2dsh] loaded pi-ollama-cloud-provider: 0 tools, 2 commands, 0 skill roots"
     },
     {
       "name": "@yulong-me/pi-swarm",
       "verdict": "unknown",
+      "modelsInPicker": 0,
       "mountLine": ""
     },
     {
       "name": "@sphinxcorp/pi-provider-agentrouter",
       "verdict": "mounted-no-provider",
+      "modelsInPicker": 0,
       "mountLine": "[pi2dsh] loaded @sphinxcorp/pi-provider-agentrouter: 0 tools, 2 commands, 0 skill roots"
     },
     {
       "name": "@benvargas/pi-synthetic-provider",
       "verdict": "route-via-official",
       "providerId": "synthetic",
+      "modelsInPicker": 10,
       "mountLine": "[pi2dsh] loaded @benvargas/pi-synthetic-provider: 0 tools, 3 commands, 0 skill roots"
     },
     {
       "name": "@bigking67/pi-67",
       "verdict": "unknown",
+      "modelsInPicker": 0,
       "mountLine": ""
     },
     {
       "name": "pi-reactor",
       "verdict": "mounted-no-provider",
+      "modelsInPicker": 0,
       "mountLine": "[pi2dsh] loaded pi-reactor: 6 tools, 2 commands, 1 skill roots"
     },
     {
       "name": "pi-gmi-cloud",
       "verdict": "not-served",
       "providerId": "gmi",
+      "modelsInPicker": 0,
       "reason": "llm-pi-ai: provider \"gmi\" resolves no models; the installed catalog does not describe this route, so its models must be listed in configuration",
       "mountLine": "[pi2dsh] loaded pi-gmi-cloud: 0 tools, 1 commands, 0 skill roots"
     },
     {
       "name": "pi-sarvam-provider",
       "verdict": "mounted-no-provider",
+      "modelsInPicker": 0,
       "mountLine": "[pi2dsh] loaded pi-sarvam-provider: 0 tools, 1 commands, 0 skill roots"
     },
     {
       "name": "@sinamtz/pi-minimax-provider",
       "verdict": "route",
       "providerId": "minimax",
+      "modelsInPicker": 8,
       "mountLine": "[pi2dsh] loaded @sinamtz/pi-minimax-provider: 8 tools, 1 commands, 0 skill roots"
     },
     {
       "name": "pi-relay-models",
       "verdict": "mounted-no-provider",
+      "modelsInPicker": 0,
       "mountLine": "[pi2dsh] loaded pi-relay-models: 1 tools, 5 commands, 0 skill roots"
     },
     {
       "name": "pi-provider-alibaba-bailian",
       "verdict": "route-via-official",
       "providerId": "alibaba-bailian",
+      "modelsInPicker": 9,
       "mountLine": "[pi2dsh] loaded pi-provider-alibaba-bailian: 0 tools, 1 commands, 0 skill roots"
     },
     {
       "name": "pi-jetbrains-junie-bridge",
       "verdict": "route-via-official",
       "providerId": "junie",
+      "modelsInPicker": 20,
       "mountLine": "[pi2dsh] loaded pi-jetbrains-junie-bridge: 0 tools, 2 commands, 0 skill roots"
     },
     {
       "name": "pi-bansos",
       "verdict": "route-via-official",
       "providerId": "bansos",
+      "modelsInPicker": 17,
       "mountLine": "[pi2dsh] loaded pi-bansos: 0 tools, 2 commands, 0 skill roots"
     },
     {
       "name": "pi-provider-volcengine-ark",
       "verdict": "route-via-official",
       "providerId": "volcengine-ark",
+      "modelsInPicker": 8,
       "mountLine": "[pi2dsh] loaded pi-provider-volcengine-ark: 0 tools, 1 commands, 0 skill roots"
     },
     {
       "name": "pi-deepinfra",
       "verdict": "route",
       "providerId": "deepinfra",
+      "modelsInPicker": 10,
       "mountLine": "[pi2dsh] loaded pi-deepinfra: 0 tools, 2 commands, 0 skill roots"
     },
     {
       "name": "pi-provider-newapi",
       "verdict": "mounted-no-provider",
+      "modelsInPicker": 0,
       "mountLine": "[pi2dsh] loaded pi-provider-newapi: 0 tools, 6 commands, 0 skill roots"
     },
     {
       "name": "pi-volcengine-provider",
       "verdict": "route-via-official",
       "providerId": "volcengine-plan",
+      "modelsInPicker": 13,
       "mountLine": "[pi2dsh] loaded pi-volcengine-provider: 0 tools, 1 commands, 0 skill roots"
     },
     {
       "name": "pi-blackbytes",
       "verdict": "mounted-no-provider",
+      "modelsInPicker": 0,
       "mountLine": "[pi2dsh] loaded pi-blackbytes: 0 tools, 7 commands, 0 skill roots"
     },
     {
       "name": "@cirthan/pi-cirthan-provider",
       "verdict": "route",
       "providerId": "cirthan",
+      "modelsInPicker": 3,
       "mountLine": "[pi2dsh] loaded @cirthan/pi-cirthan-provider: 0 tools, 1 commands, 0 skill roots"
     },
     {
       "name": "pi-safe-compact",
       "verdict": "mounted-no-provider",
+      "modelsInPicker": 0,
       "mountLine": "[pi2dsh] loaded pi-safe-compact: 0 tools, 1 commands, 0 skill roots"
     },
     {
       "name": "@mozilla-ai/pi-otari",
       "verdict": "mounted-no-provider",
+      "modelsInPicker": 0,
       "mountLine": "[pi2dsh] loaded @mozilla-ai/pi-otari: 0 tools, 1 commands, 0 skill roots"
     },
     {
@@ -482,11 +552,13 @@
       "name": "pi-sap-aicore",
       "verdict": "route",
       "providerId": "sap-aicore",
+      "modelsInPicker": 21,
       "mountLine": "[pi2dsh] loaded pi-sap-aicore: 0 tools, 2 commands, 0 skill roots"
     },
     {
       "name": "pi-setup",
       "verdict": "mounted-no-provider",
+      "modelsInPicker": 0,
       "mountLine": "[pi2dsh] loaded pi-setup: 0 tools, 4 commands, 0 skill roots"
     },
     {
@@ -498,35 +570,41 @@
       "name": "pi-novita-ai",
       "verdict": "route-via-official",
       "providerId": "novita",
+      "modelsInPicker": 148,
       "mountLine": "[pi2dsh] loaded pi-novita-ai: 0 tools, 2 commands, 0 skill roots"
     },
     {
       "name": "pi-omlx-provider",
       "verdict": "route-via-official",
       "providerId": "omlx",
+      "modelsInPicker": 2,
       "mountLine": "[pi2dsh] loaded pi-omlx-provider: 0 tools, 1 commands, 0 skill roots"
     },
     {
       "name": "@arvoretech/pi-kiro-provider",
       "verdict": "route",
       "providerId": "kiro",
+      "modelsInPicker": 19,
       "mountLine": "[pi2dsh] loaded @arvoretech/pi-kiro-provider: 0 tools, 1 commands, 0 skill roots"
     },
     {
       "name": "@d3ara1n/pi-provider-agnes",
       "verdict": "route-via-official",
       "providerId": "agnes",
+      "modelsInPicker": 2,
       "mountLine": "[pi2dsh] loaded @d3ara1n/pi-provider-agnes: 0 tools, 1 commands, 0 skill roots"
     },
     {
       "name": "@faks/pi-gateway",
       "verdict": "mounted-no-provider",
+      "modelsInPicker": 0,
       "mountLine": "[pi2dsh] loaded @faks/pi-gateway: 0 tools, 2 commands, 0 skill roots"
     },
     {
       "name": "@aliou/pi-edgee",
       "verdict": "not-served",
       "providerId": "edgee",
+      "modelsInPicker": 0,
       "reason": "llm-pi-ai: provider \"edgee\" resolves no models; the installed catalog does not describe this route, so its models must be listed in configuration",
       "mountLine": "[pi2dsh] loaded @aliou/pi-edgee: 0 tools, 1 commands, 0 skill roots"
     },
@@ -534,54 +612,62 @@
       "name": "pi-kiro-provider",
       "verdict": "install-failed",
       "neededBuildApproval": true,
-      "detail": "(Use `node --trace-warnings ...` to show where the warning was created) | dsh: pnpm failed in profile directory /var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-gw-heocR9/dsh-home/profiles/web"
+      "detail": "(Use `node --trace-warnings ...` to show where the warning was created) | dsh: pnpm failed in profile directory /var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-gw-972QAg/dsh-home/profiles/web"
     },
     {
       "name": "@realvendex/pi-token-router",
       "verdict": "route",
       "providerId": "tokenrouter",
+      "modelsInPicker": 22,
       "mountLine": "[pi2dsh] loaded @realvendex/pi-token-router: 0 tools, 1 commands, 0 skill roots"
     },
     {
       "name": "pi-provider-openference",
       "verdict": "route",
       "providerId": "openference",
+      "modelsInPicker": 3,
       "mountLine": "[pi2dsh] loaded pi-provider-openference: 0 tools, 1 commands, 0 skill roots"
     },
     {
       "name": "pi-provider-swiss-ai-platform",
       "verdict": "route",
       "providerId": "swiss-ai-platform",
+      "modelsInPicker": 0,
       "mountLine": "[pi2dsh] loaded pi-provider-swiss-ai-platform: 0 tools, 1 commands, 0 skill roots"
     },
     {
       "name": "@andersea/pi-scaleway-provider",
       "verdict": "route-via-official",
       "providerId": "scaleway",
+      "modelsInPicker": 15,
       "mountLine": "[pi2dsh] loaded @andersea/pi-scaleway-provider: 0 tools, 1 commands, 0 skill roots"
     },
     {
       "name": "pi-extension-cloudflare-workers-ai",
       "verdict": "route-via-official",
       "providerId": "cloudflare-workers-ai",
+      "modelsInPicker": 17,
       "mountLine": "[pi2dsh] loaded pi-extension-cloudflare-workers-ai: 0 tools, 1 commands, 0 skill roots"
     },
     {
       "name": "@d3ara1n/pi-provider-stepfun",
       "verdict": "route-via-official",
       "providerId": "stepfun",
+      "modelsInPicker": 4,
       "mountLine": "[pi2dsh] loaded @d3ara1n/pi-provider-stepfun: 0 tools, 1 commands, 0 skill roots"
     },
     {
       "name": "@opperai/pi-provider",
       "verdict": "route",
       "providerId": "opper",
+      "modelsInPicker": 8,
       "mountLine": "[pi2dsh] loaded @opperai/pi-provider: 0 tools, 1 commands, 0 skill roots"
     },
     {
       "name": "@h00w/pi-provider-aihubmix",
       "verdict": "route-via-official",
       "providerId": "aihubmix",
+      "modelsInPicker": 278,
       "mountLine": "[pi2dsh] loaded @h00w/pi-provider-aihubmix: 0 tools, 3 commands, 0 skill roots"
     }
   ]
