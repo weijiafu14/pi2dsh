@@ -21,6 +21,7 @@ gateways, hosts, or credentials appear in any of them.
 | `post-xiaohongshu.md` | Xiaohongshu title and ready-to-post Chinese body |
 | `updates-to-earlier-posts.md` | One short update comment per earlier thread (#14, #218, #421, #759, #1120, #1398) |
 | `replies-gateway-compat.md` | Replies for the four `developer`-role / gateway-compat threads (#472, #990, #1232, #1498) — one shared body, per-thread opener |
+| `post-model-providers.md` | Post about model accounts and gateways: `/login`, and which provider packages get a route |
 | `support-matrix.md` | What is supported today, what is deliberately not, with evidence |
 | `assets/` | Screenshots (see below) |
 | `archive-0.2.0/` | The superseded 0.2.0-era drafts, kept for reference — **do not post these** |
@@ -38,6 +39,8 @@ gateways, hosts, or credentials appear in any of them.
 | `assets/04-side-conversation-injected-on-request.png` | After `/btw-inject`: the thread enters the main conversation — the user's explicit action, and only then |
 | `assets/06-pi-surfaces-on-dsh.png` | Nine Pi presentation calls on screen at once, each in the host's own seat: header (top right), a package's own custom entry inside the conversation, widget lines beside the composer, footer / working message / indicator / thinking label below it, and title + status as pills |
 | `assets/05-side-conversation-child-view.png` | The side thread opened as its own session: its own breadcrumb, its own composer, the answer inside it |
+| `assets/10-login-dialog.png` | `/login` in the command palette: DSH's own question dialog listing the accounts the engine can log in to |
+| `assets/11-model-picker-after-login.png` | The model picker after a completed login: the account's own group (`OpenAI (ChatGPT Plus/Pro)`) beside the routes that were already there |
 | `assets/xiaohongshu-cover-v2.png` | 3:4 Xiaohongshu cover: give DeepSeek Harness visual capabilities through the Pi ecosystem |
 
 Reproduce the side-conversation set against a DSH web instance with the engine

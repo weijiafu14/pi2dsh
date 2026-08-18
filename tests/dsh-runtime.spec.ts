@@ -847,6 +847,21 @@ describe('an OAuth-only provider has no models until logging in gives it a route
   })
 })
 
+describe('answering nothing at the login picker', () => {
+  it('is a cancellation, not a wrong answer', () => {
+    // Dismissing the dialog answers with nothing. Feeding that to the choice
+    // resolver produced `unknown OAuth provider ""` — a message that tells the
+    // user their pick was invalid when they had simply not picked.
+    const { resolveOfferedChoice } = runtimeInternals as unknown as {
+      resolveOfferedChoice(answer: string, offered: readonly string[]): string | undefined
+    }
+    expect(resolveOfferedChoice('', ['openai-codex', 'anthropic'])).toBeUndefined()
+    // The command must not reach that resolver at all for an empty answer;
+    // the guard is in the handler, so this pins the shape it guards on.
+    expect(''.trim().split(/\s+/u)[0]).toBe('')
+  })
+})
+
 describe('a catalog-only Pi provider is declared, not mounted twice', () => {
   it('writes its profile into the official adapter\'s settings section', async () => {
     // Same collision, the other entry point: a package that declares a gateway

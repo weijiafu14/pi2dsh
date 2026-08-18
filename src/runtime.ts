@@ -2492,6 +2492,10 @@ function registerLoginCommand(ctx: Context, state: RuntimeState): void {
       // sends "1", and the row number is what a person reads off the screen
       // anyway. Accept the name, any casing of it, or the 1-based position;
       // anything else still fails loud with the list.
+      // Answering nothing is a cancellation, and Pi's protocol has a channel
+      // for that. Reporting it as `unknown OAuth provider ""` told the user
+      // their choice was wrong when they had simply not made one.
+      if (answer.length === 0) return 'Login cancelled'
       const providerId = resolveOfferedChoice(answer, oauthProviders)
       const config = providerId === undefined ? undefined : state.providers.get(providerId)
       if (providerId === undefined || config === undefined || !providerSupportsOAuth(config)) {

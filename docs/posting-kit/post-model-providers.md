@@ -93,7 +93,45 @@ and its per-model compatibility flags reach the request. That is the path Kimi
 Coding takes through `pi-provider-kimi-code`, and it is the same path every
 gateway package takes — nothing in the engine is keyed on a package name.
 
-<!-- TABLE:gateway-survey -->
+### What 12 gateway packages do on a clean install
+
+Each package installed into its own throwaway profile, the runtime booted once,
+and the line the engine prints for that provider read back
+(`node scripts/survey-gateway-transports.mjs`, results in
+`community/gateway-transports.json`). **No model turn is sent** — this says a
+route exists and where it came from, not that a turn was run against that
+vendor.
+
+| Package | At mount | Route |
+|---|---|---|
+| [`pi-provider-kimi-code`](https://www.npmjs.com/package/pi-provider-kimi-code) | **Native route** (own transport) | kimi-coding |
+| [`pi-provider-litellm`](https://www.npmjs.com/package/pi-provider-litellm) | **Native route** (own transport) | litellm |
+| [`pi-provider-ollama-cloud`](https://www.npmjs.com/package/pi-provider-ollama-cloud) | **Native route** (own transport) | ollama-cloud |
+| [`pi-baseten-provider`](https://www.npmjs.com/package/pi-baseten-provider) | Route via DSH's official adapter (translated config) | baseten |
+| [`pi-cliproxyapi-provider`](https://www.npmjs.com/package/pi-cliproxyapi-provider) | Route via DSH's official adapter (translated config) | cpa |
+| [`pi-fireworks-provider`](https://www.npmjs.com/package/pi-fireworks-provider) | Route via DSH's official adapter (translated config) | fireworks |
+| [`pi-moonshot-provider`](https://www.npmjs.com/package/pi-moonshot-provider) | Route via DSH's official adapter (translated config) | moonshot |
+| [`pi-provider-alibaba-bailian`](https://www.npmjs.com/package/pi-provider-alibaba-bailian) | Route via DSH's official adapter (translated config) | alibaba-bailian |
+| [`pi-qwencloud-provider`](https://www.npmjs.com/package/pi-qwencloud-provider) | Route via DSH's official adapter (translated config) | qw |
+| [`pi-volcengine-provider`](https://www.npmjs.com/package/pi-volcengine-provider) | Route via DSH's official adapter (translated config) | volcengine-plan |
+| [`@indexyz/pi-provider-sub2api`](https://www.npmjs.com/package/@indexyz/pi-provider-sub2api) | Mounts, registers no provider at startup |  |
+| [`pi-provider-newapi`](https://www.npmjs.com/package/pi-provider-newapi) | Mounts, registers no provider at startup |  |
+
+*Native route* means the package brought its own transport: its credential
+chain runs as the package wrote it, and its per-model dialect flags reach the
+request. *Via DSH's official adapter* means the package only declares a
+catalog, so the engine translates that declaration into a provider profile —
+protocol, endpoint, models, and the credential reference the package names with
+Pi's `$ENV_VAR` convention — and DSH's own adapter serves it. The two packages
+that register nothing at startup do their registration later (behind a command
+or their own configuration step); nothing is wrong with them, there is simply
+no route to report at boot.
+
+One translation loss worth stating: a catalog-only package's **gateway dialect
+flags** (Pi's `compat.maxTokensField` and friends) have no slot in a DSH route
+profile, so they do not survive that path. Packages that carry their own
+transport are unaffected — theirs reach the request. If your gateway needs one
+of those flags, prefer a package that brings its transport.
 
 ## What this does not do
 
