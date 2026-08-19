@@ -3,9 +3,9 @@
 This page is the accounting note behind the generated per-surface tables. It no
 longer claims that a successful runtime mapping proves architectural equivalence;
 each row is now a leaf in the
-[architecture mapping standard](architecture-mapping-standard.md), with its
-capability contract and theoretical DSH mapping generated from the single
-[architecture ledger](architecture-ledger.json).
+[architecture mapping standard](architecture-mapping-standard.md). Its capability
+contract and theoretical DSH mapping are maintained in the expandable Markdown
+[architecture matrix](architecture-mapping-matrix.md), not generated from this count.
 
 ## Pinned upstream inventory
 
@@ -33,16 +33,15 @@ by the bridge: 111 from `pi-coding-agent`, 74 from `pi-tui`, and 17 from `pi-ai`
 Those imports are a separate compatibility surface; they are not three extra ABI
 items and must not be mixed into the 111 denominator.
 
-## Known accounting mismatch
+## Bridge-only extensions
 
-The generated capability table currently says **112** because
-`src/compatibility.ts` includes `unregisterTool`. The bridge may keep that method as
-a compatibility extension, but Pi 0.84.1 does not declare it on `ExtensionAPI`.
-Until the generator separates upstream members from bridge extensions, use these
-two numbers deliberately:
+`src/compatibility.ts` also includes `unregisterTool`. The bridge keeps that method
+as a compatibility extension, but Pi 0.84.1 does not declare it on `ExtensionAPI`.
+The generator now documents it separately and excludes it from the upstream
+denominator:
 
 - **111** — the pinned upstream Pi runtime ABI;
-- **112** — the bridge's current rule rows, including one bridge-only extension.
+- **1 bridge-only extension** — tracked separately from the upstream snapshot.
 
 After removing that extra row from the upstream denominator, the present runtime
 labels are **23 same semantics · 83 mapped with a stated difference · 5 not
@@ -63,8 +62,8 @@ architecture score.
 | **Total** | **111** | **23 same · 83 mapped · 5 unavailable** |
 
 The generated, implementation-facing details remain in
-[`docs/capabilities/`](capabilities/README.md). They include the extra
-`unregisterTool` row until the generator's upstream drift check is implemented.
+[`docs/capabilities/`](capabilities/README.md). The tools page shows the extra
+`unregisterTool` row while keeping it outside upstream totals.
 
 ## Why the old “only three gaps” verdict was wrong
 
@@ -93,15 +92,19 @@ DSH's token meter, Pi session-tree lifecycle events do not all fire, and several
 TUI component factories intentionally become Web-native text or slots rather than
 executing a terminal component in the browser.
 
-## Completeness rule
+## What this snapshot can and cannot prove
 
-Do not say “Pi is fully covered” until all three statements are true:
+Do not say “Pi is fully covered” from these totals. A defensible conclusion still
+requires all of the following kinds of evidence:
 
-1. an automated drift check proves that every member of the pinned upstream Pi
-   declarations has exactly one rule and bridge-only extensions are outside the
-   denominator;
-2. every runtime row has an architecture verdict with its authoritative DSH
+1. the pinned upstream declarations, including nested callables, have been reviewed
+   and bridge-only extensions remain outside that versioned snapshot;
+2. every discovered runtime leaf has an architecture verdict with its authoritative DSH
    service, state owner, lifecycle, and evidence;
-3. the 45 DSH subsystems and Cordis lifecycle promises have their own explicit
+3. the discovered DSH subsystems and Cordis lifecycle promises have their own explicit
    coverage status, including unload, provider replacement, isolation, and failed
    reload rollback.
+
+The inventory is open-ended: a newly discovered Pi interface or DSH module is added
+under the relevant Markdown architecture branch. CI must not hard-code 111 or 45 as
+permanent completeness boundaries.

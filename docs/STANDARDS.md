@@ -217,19 +217,20 @@ undefined——被"别让我看见跨层的东西，跨层就会导致不一致�
 ### 3.5 把兼容层当作 DSH 架构检验装置
 
 本项目的唯一映射标准是
-[`architecture-mapping-standard.md`](architecture-mapping-standard.md)，结构化事实只维护在
-[`architecture-ledger.json`](architecture-ledger.json)。它用一份总账生成三种视图：
+[`architecture-mapping-standard.md`](architecture-mapping-standard.md)。架构事实与判断只用
+普通 Markdown 按分支维护：
 
-1. [`architecture-mapping-matrix.md`](architecture-mapping-matrix.md)：Pi 完整接口经能力
-   契约到 DSH 承载机制与具体 seam 的理论模型；
-2. [`plugin-validation-matrix.md`](plugin-validation-matrix.md)：真实插件引用理论映射，
+1. [`architecture-mapping-matrix.md`](architecture-mapping-matrix.md)：Pi 已知接口经能力
+   契约到 DSH 承载机制与具体 seam 的可扩展 Markdown 知识树；
+2. [`plugin-validation-matrix.md`](plugin-validation-matrix.md)：按真实插件分块引用架构分支，
    记录五层流转与五级结果；
 3. [`dsh-architecture-conformance.md`](dsh-architecture-conformance.md)：从理论、实现和验证
-   推导出的已成立、桥欠账、DSH 缺口、宿主差异和尚未实证结论。
+   总结已成立、桥欠账、DSH 缺口、宿主差异和尚未实证。
 
-旧 compatibility matrix 只是 Pi 叶子接口的当前运行时行为，不得直接当架构得分；111 条
-Pi surface 与 45 个 DSH subsystem 也不是附录数字，而是理论模型必须无遗漏归类的完整性
-边界。抽象必须能下钻到每个接口，接口也必须能向上归入抽象。
+旧 compatibility matrix 只是 Pi 叶子接口的当前运行时行为，不得直接当架构得分。111 条
+Pi 规则与 45 个 DSH subsystem 只是特定版本和扫描口径下的快照，不是永恒总量，更不能
+靠数字相等证明完整。抽象必须能下钻到已发现接口，接口也必须能向上归入抽象；发现新叶子
+就追加，现有抽象装不下就允许拆分。
 
 **事故档案（2026-08-19，架构总审）**：能力总表把 83 项统一写成“已映射并写明
 差异”。这个运行时分类本身没有错，但拿它回答架构问题会严重失真：
@@ -270,18 +271,20 @@ Pi 0.84.1 declarations 逐项对照后，当前规则的上游形状行应是 11
                               真实插件五层验证与五级结论
 ```
 
-生成检查必须同时拒绝：没有能力契约的 Pi 接口、没有理论映射的能力契约、没有承载机制的
-DSH subsystem、引用不存在 mapping 的验证记录，以及新增实现后仍陈旧的生成视图。Cordis
-卸载、重绑、隔离和失败回滚属于相关映射的生命周期维度，不再另起一张与映射脱节的成绩单。
+这次也明确否决“JSON 架构总账 + 生成器 + 固定数量校验”的做法：它会把尚未穷举的调查
+对象伪装成封闭 schema，新增接口时被迫先迁移程序，最后架构判断反而服务于生成器。
+自动化只允许生成 `src/compatibility.ts` 可直接推导的运行时能力页；能力契约、理论映射、
+插件等级和 DSH 归因必须由证据驱动、人工维护。Cordis 卸载、重绑、隔离和失败回滚属于
+相关映射的生命周期维度，不另起一张与映射脱节的成绩单。
 
 现有五个 `DSH-ARCH-*` 只是证据闭环的缺口，不是穷举完成。像 `input`、message replacement、
 原生工具 update、宿主发起的 session tree 生命周期等，未完成数据流倒推前记“待判级”；
 找到公开 seam 就归桥，证明权威时机不开放才新增上游编号。
 
-以后每补一项能力，同一变更必须更新唯一结构化总账：给叶子接口归能力契约，补或复用
-理论映射，记录真实消费者、五层流转、五级判定、单一权威位置、契约/E2E 证据与问题
-归属。若归属 DSH，建稳定 `DSH-ARCH-*` 编号，给最小复现和上游链接；修复后保留记录
-并改状态，不删除历史证据。
+以后每补一项能力，同一变更必须更新对应 Markdown 架构分支：给叶子接口归能力契约，
+补或复用理论映射，记录真实消费者、五层流转、五级判定、单一权威位置、契约/E2E 证据
+与问题归属。若归属 DSH，建稳定 `DSH-ARCH-*` 编号，给最小复现和上游链接；修复后保留
+记录并改状态，不删除历史证据。
 
 ---
 

@@ -157,19 +157,18 @@ pi2dsh：通用 Pi Host ABI 兼容层，让 Pi 生态插件原样跑在 DeepSeek
 ## 三点五、DSH 架构适配度积累标准（铁律）
 
 唯一标准是
-[`docs/architecture-mapping-standard.md`](docs/architecture-mapping-standard.md)。结构化事实只
-维护在 [`docs/architecture-ledger.json`](docs/architecture-ledger.json)，不得再另写一套
-平行分类。旧 compatibility matrix 继续存在，但只表示具体 Pi surface 的当前运行时行为，
-不直接等于架构结论。
+[`docs/architecture-mapping-standard.md`](docs/architecture-mapping-standard.md)。架构知识只用
+普通 Markdown 按分支维护，不建 JSON 架构总账，不让生成器或固定数量替人做架构判断。
+旧 compatibility matrix 只表示具体 Pi surface 的当前运行时行为，不直接等于架构结论。
 
-**理论模型必须同时有抽象和穷举：**
+**理论模型必须同时有抽象和可下钻叶子：**
 
-- 每条固定上游 Pi surface 恰好归入一个“能力域 → 能力契约”；桥扩展和 import symbols
-  单列。当前 111 条只是形状规则，嵌套对象仍需继续下钻。
-- 官方 45 个 DSH subsystem 恰好归入一个“架构域 → 承载机制”，并列出仓外插件能用的
-  service/provider/waterfall/event/client slot；只有模块名不算可映射。
-- 每个 Pi 能力契约恰好有一条理论映射，按用户目标、介入时机、权威状态、生命周期、
-  原生呈现五个维度判断为直接承接、组合承接、宿主语义翻译或缺公开 seam。
+- Pi 按“能力域 → 能力契约 → 具体接口”组织；DSH 按“架构域 → 承载机制 → 公开 seam”
+  组织。发现新接口或模块就追加叶子；现有分支装不下时允许修正、拆分抽象。
+- 111 条 Pi 规则和 45 个 DSH subsystem 只是在特定版本、特定扫描口径下的快照，不是
+  永久总量或完整性前提；嵌套 callable、动态注册面和客户端能力仍需继续发现。
+- 每项映射按用户目标、介入时机、权威状态、生命周期、原生呈现判断为直接承接、组合
+  承接、宿主语义翻译或缺公开 seam。只有模块名、没有仓外公开插口不算可映射。
 
 **实践验证不得脱离理论映射另起炉灶：**每个真实插件场景引用 mapping ID，沿“Pi 调用 →
 pi2dsh 翻译 → DSH 公开 seam → DSH 权威状态 → 用户结果”五层取证，再分别判为：
@@ -181,9 +180,10 @@ pi2dsh 翻译 → DSH 公开 seam → DSH 权威状态 → 用户结果”五层
 真实插件验证的映射只能写“理论可行、尚未实证”。第二份权威 store/sidecar 自动降为
 旁路完成；绕通另一条 adapter 不能写成原 seam 已修复。
 
-每次能力变更必须同步 `src/compatibility.ts`、`docs/architecture-ledger.json` 和对应验证
-证据，再生成理论矩阵、插件验证矩阵与架构结论。`pnpm check:docs` 必须对 Pi 叶子接口、
-能力契约、理论映射、DSH 45 个 subsystem 和验证引用做无遗漏、无重复、无陈旧校验。
+每次能力变更按需要同步：`src/compatibility.ts` 的运行时事实、
+`docs/architecture-mapping-matrix.md` 的理论分支、`docs/plugin-validation-matrix.md` 的真实
+插件记录和 `docs/dsh-architecture-conformance.md` 的总体结论。运行时目录可以从代码生成；
+架构分类、理论映射、五级判定和责任归因禁止自动生成或写死数量。
 
 ## 四、完成判据（铁律）
 

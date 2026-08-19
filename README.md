@@ -332,17 +332,16 @@ native DSH route with its full compatibility profile, while the hand-configured
 `llm-pi-ai` schema still drops some wire-compatibility fields.
 
 The project follows one **[Pi → DSH architecture mapping standard](docs/architecture-mapping-standard.md)**.
-All 111 Pi surfaces belong to capability contracts, all 45 DSH subsystems belong
-to carrying mechanisms, and each capability contract maps to concrete public
-DSH seams. Real plugin runs reference those mappings and record the five-layer
-trace and five-grade result. The structured source of truth is
-[`architecture-ledger.json`](docs/architecture-ledger.json); it produces the
-**[theoretical architecture matrix](docs/architecture-mapping-matrix.md)**,
-**[real-plugin validation matrix](docs/plugin-validation-matrix.md)** and
-**[current architecture conclusions](docs/dsh-architecture-conformance.md)**.
-That makes both top-down status and per-plugin drill-down answerable from the
-same ledger. The current five DSH gap IDs are confirmed findings, not a claim
-of complete coverage. Current
+It is a reasoning method, not another runtime layer: concrete Pi interface →
+Pi capability contract → DSH carrying mechanism → public seam → real plugin
+run → five-grade result. The evolving branches live in the handwritten
+**[architecture model](docs/architecture-mapping-matrix.md)**, real runs in
+**[per-plugin validation records](docs/plugin-validation-matrix.md)**, and the
+three result classes in **[architecture conclusions](docs/dsh-architecture-conformance.md)**.
+Architecture classifications are deliberately not generated from a JSON ledger.
+The previously observed 111 Pi rule rows and 45 DSH subsystems are versioned
+snapshots, not fixed totals or proof of completeness. The current five DSH gap
+IDs are confirmed findings, not a claim of complete coverage. Current
 upstream reports include
 [#2708 — durable events for out-of-repo plugins](https://github.com/deepseek-ai/deepseek-harness/discussions/2708)
 and
@@ -365,11 +364,11 @@ audit states this boundary explicitly.
 | Area | Pi surfaces | Status |
 |---|---|---|
 | [Tools](docs/capabilities/tools.md) | 11 | 2 same semantics · 9 mapped, difference stated |
-| [Commands, flags, editor input](docs/capabilities/commands.md) | 6 | 6 mapped, difference stated |
+| [Commands, flags, editor input](docs/capabilities/commands.md) | 13 | 13 mapped, difference stated |
 | [Messages, context, agent loop](docs/capabilities/conversation.md) | 20 | 9 same semantics · 11 mapped, difference stated |
-| [Sessions & side conversations](docs/capabilities/sessions.md) | 23 | 5 same semantics · 18 mapped, difference stated |
+| [Sessions & side conversations](docs/capabilities/sessions.md) | 24 | 6 same semantics · 18 mapped, difference stated |
 | [Models, providers, credentials](docs/capabilities/models.md) | 15 | 1 same semantics · 11 mapped, difference stated · 3 not available |
-| [Asking the user, rendering](docs/capabilities/interaction.md) | 32 | 5 same semantics · 27 mapped, difference stated |
+| [Asking the user, rendering](docs/capabilities/interaction.md) | 24 | 4 same semantics · 20 mapped, difference stated |
 | [Project environment & resources](docs/capabilities/environment.md) | 4 | 1 same semantics · 1 mapped, difference stated · 2 not available |
 | **Total** | **111** | **23 same semantics · 83 mapped, difference stated · 5 not available** |
 <!-- capability-table:end -->

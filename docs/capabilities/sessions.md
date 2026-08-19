@@ -13,33 +13,34 @@ listed, named after the package, opened in its own view and continuable. This
 does not exercise the separate `ctx.subagents` provider seam. See
 [`examples/side-conversation`](../../examples/side-conversation/).
 
-**23 upstream-shaped Pi rule rows** — 5 same semantics · 18 mapped, difference stated.
+**24 upstream-shaped Pi rule rows** — 6 same semantics · 18 mapped, difference stated.
 
-| Pi surface | Capability contract | Kind | Status | What it does on DSH |
-|---|---|---|---|---|
-| [`appendEntry`](#appendentry-pi) | `pi.sessions.metadata` | `pi.*` | Mapped, difference stated | Persisted in a pi2dsh sidecar next to the DSH session and replayed on session start; DSH's main log stays untouched because it has no out-of-repo plugin-event channel yet. |
-| [`setSessionName`](#setsessionname-pi) | `pi.sessions.metadata` | `pi.*` | Same semantics | Renames the DSH session through ctx.sessionTitle, so every DSH surface shows it and the title is pinned against automatic regeneration, and announces it through session_info_changed. A composition that mounts no title service falls back to the pi2dsh sidecar, as does a blank name (DSH requires visible characters in a title; Pi does not). |
-| [`getSessionName`](#getsessionname-pi) | `pi.sessions.metadata` | `pi.*` | Same semantics | Reads DSH's own session title, so it agrees with what DSH displays and sees titles DSH generated itself; falls back to the sidecar when no title service is mounted. |
-| [`setLabel`](#setlabel-pi) | `pi.sessions.metadata` | `pi.*` | Mapped, difference stated | Persisted in the pi2dsh sidecar and reflected by the sessionManager projection. |
-| [`session_start`](#session_start-event) | `pi.sessions.metadata` | `event` | Same semantics | Mapped to agent/session-start. |
-| [`session_shutdown`](#session_shutdown-event) | `pi.sessions.metadata` | `event` | Same semantics | Mapped to agent disposal and plugin teardown with duplicate suppression. |
-| [`session_info_changed`](#session_info_changed-event) | `pi.sessions.metadata` | `event` | Mapped, difference stated | Fired by setSessionName() and projected from DSH session/title events. |
-| [`session_before_compact`](#session_before_compact-event) | `pi.sessions.compaction` | `event` | Mapped, difference stated | Projected from DSH compaction/start as a notification; cancel/replace cannot reach DSH's compactor. |
-| [`session_compact`](#session_compact-event) | `pi.sessions.compaction` | `event` | Mapped, difference stated | Fires once per SUCCESSFUL compaction, from DSH's summary event, with the summary rendered to the string Pi's CompactionEntry declares. A manual compaction is identified as manual; DSH does not record which automatic trigger fired, so automatic ones report "threshold" and willRetry is always false. |
-| [`session_before_switch`](#session_before_switch-event) | `pi.sessions.navigation` | `event` | Mapped, difference stated | Registration is accepted; Pi session switching never occurs on DSH surfaces, so the handler never fires. Loading is unaffected. |
-| [`session_before_fork`](#session_before_fork-event) | `pi.sessions.navigation` | `event` | Mapped, difference stated | Registration is accepted; Pi tree forking never occurs on DSH surfaces, so the handler never fires. Loading is unaffected. |
-| [`session_before_tree`](#session_before_tree-event) | `pi.sessions.navigation` | `event` | Mapped, difference stated | Registration is accepted; Pi session-tree navigation never occurs on DSH surfaces, so the handler never fires. Loading is unaffected. |
-| [`session_tree`](#session_tree-event) | `pi.sessions.navigation` | `event` | Mapped, difference stated | Registration is accepted; Pi session-tree navigation never occurs on DSH surfaces, so the handler never fires. Loading is unaffected. |
-| [`cwd`](#cwd-ctx) | `pi.sessions.host-context` | `ctx.*` | Same semantics | Mapped to the active DSH agent session working directory. |
-| [`mode`](#mode-ctx) | `pi.sessions.host-context` | `ctx.*` | Mapped, difference stated | Reports rpc mode so Pi extensions can choose their documented headless fallback. |
-| [`sessionManager`](#sessionmanager-ctx) | `pi.sessions.host-context` | `ctx.*` | Mapped, difference stated | A real read-only projection: DSH durable messages plus pi2dsh sidecar entries, exposed through Pi's exact 14-method surface as a single-branch tree. buildContextEntries is compaction-aware — entries a compaction summarized away are gone, exactly as they are for the model — while getEntries stays the append-only log, which is the same split Pi makes. |
-| [`shutdown`](#shutdown-ctx) | `pi.sessions.host-context` | `ctx.*` | Mapped, difference stated | Pi defines shutdown behavior as host-provided (runner.ts bindExtensions); this host absorbs the request — the user owns DSH process exit — and informs the user once. The package keeps running. |
-| [`compact`](#compact-ctx) | `pi.sessions.compaction` | `ctx.*` | Mapped, difference stated | Pi's fire-and-forget trigger, translated to DSH's official manual compaction (ctx.compaction.compactNow on the live agent). onComplete receives the real summary text and the shadowed-content token estimate as tokensBefore; firstKeptEntryId is empty because the DSH log has no Pi entry ids. Without a compaction service the gap flows through Pi's onError callback and the capability ledger. |
-| [`newSession`](#newsession-ctx) | `pi.sessions.navigation` | `ctx.*` | Mapped, difference stated | Really creates a DSH session (ctx.sessions.create) with parent lineage; withSession runs against a projection context bound to it, whose sendMessage/sendUserMessage/appendEntry write into THAT session rather than the one the call came from. DSH has no host-level "current session pointer" a plugin could move — which session the surface shows stays a host choice, announced once. |
-| [`fork`](#fork-ctx) | `pi.sessions.navigation` | `ctx.*` | Mapped, difference stated | Really forks on DSH's official prefix-fork surface (ctx.sessions.fork with lineage metadata). Anchors are durable-log entries (projected ids "dsh-<seq>"); Pi's default position "before" is honored, and the boundary shrinks to the nearest completed-turn edge because DSH seeds must not split an open turn. Sidecar entries cannot anchor a fork. |
-| [`navigateTree`](#navigatetree-ctx) | `pi.sessions.navigation` | `ctx.*` | Mapped, difference stated | Expressed through DSH's session model: the DSH tree lives BETWEEN sessions (fork lineage), not inside one log, so navigation forks at the target boundary. summarize runs Pi's vendored branch summarizer over the abandoned durable slice (model call on the DSH llm bridge) and lands the summary as a branch_summary entry in the new session's projection; label lands as a label entry. |
-| [`switchSession`](#switchsession-ctx) | `pi.sessions.navigation` | `ctx.*` | Mapped, difference stated | Targets a LIVE DSH session by id (or a Pi-style path whose basename is "<id>.jsonl"); withSession runs against its projection. Switching to persisted sessions is host-owned — resume them from the DSH surface first. Which session the surface shows stays a host choice. |
-| [`reload`](#reload-ctx) | `pi.sessions.host-context` | `ctx.*` | Mapped, difference stated | Really remounts every mounted package's extension entries through a fresh loader (registrations replaced via the same-name path, event handlers reset), so edited plugin code takes effect. Skills, prompts, and themes are host-managed and reload with dsh itself. |
+| Pi surface | Kind | Status | What it does on DSH |
+|---|---|---|---|
+| [`appendEntry`](#appendentry-pi) | `pi.*` | Mapped, difference stated | Persisted in a pi2dsh sidecar next to the DSH session and replayed on session start; DSH's main log stays untouched because it has no out-of-repo plugin-event channel yet. |
+| [`setSessionName`](#setsessionname-pi) | `pi.*` | Same semantics | Renames the DSH session through ctx.sessionTitle, so every DSH surface shows it and the title is pinned against automatic regeneration, and announces it through session_info_changed. A composition that mounts no title service falls back to the pi2dsh sidecar, as does a blank name (DSH requires visible characters in a title; Pi does not). |
+| [`getSessionName`](#getsessionname-pi) | `pi.*` | Same semantics | Reads DSH's own session title, so it agrees with what DSH displays and sees titles DSH generated itself; falls back to the sidecar when no title service is mounted. |
+| [`setLabel`](#setlabel-pi) | `pi.*` | Mapped, difference stated | Persisted in the pi2dsh sidecar and reflected by the sessionManager projection. |
+| [`session_start`](#session_start-event) | `event` | Same semantics | Mapped to agent/session-start. |
+| [`session_shutdown`](#session_shutdown-event) | `event` | Same semantics | Mapped to agent disposal and plugin teardown with duplicate suppression. |
+| [`session_info_changed`](#session_info_changed-event) | `event` | Mapped, difference stated | Fired by setSessionName() and projected from DSH session/title events. |
+| [`session_before_compact`](#session_before_compact-event) | `event` | Mapped, difference stated | Projected from DSH compaction/start as a notification; cancel/replace cannot reach DSH's compactor. |
+| [`session_compact`](#session_compact-event) | `event` | Mapped, difference stated | Fires once per SUCCESSFUL compaction, from DSH's summary event, with the summary rendered to the string Pi's CompactionEntry declares. A manual compaction is identified as manual; DSH does not record which automatic trigger fired, so automatic ones report "threshold" and willRetry is always false. |
+| [`session_before_switch`](#session_before_switch-event) | `event` | Mapped, difference stated | Registration is accepted; Pi session switching never occurs on DSH surfaces, so the handler never fires. Loading is unaffected. |
+| [`session_before_fork`](#session_before_fork-event) | `event` | Mapped, difference stated | Registration is accepted; Pi tree forking never occurs on DSH surfaces, so the handler never fires. Loading is unaffected. |
+| [`session_before_tree`](#session_before_tree-event) | `event` | Mapped, difference stated | Registration is accepted; Pi session-tree navigation never occurs on DSH surfaces, so the handler never fires. Loading is unaffected. |
+| [`session_tree`](#session_tree-event) | `event` | Mapped, difference stated | Registration is accepted; Pi session-tree navigation never occurs on DSH surfaces, so the handler never fires. Loading is unaffected. |
+| [`cwd`](#cwd-ctx) | `ctx.*` | Same semantics | Mapped to the active DSH agent session working directory. |
+| [`hasUI`](#hasui-ctx) | `ctx.*` | Same semantics | Reports whether a human can actually answer: false when no questions service is mounted, false when the service is mounted with no provider registered (the headless posture), and false inside a child agent, which DSH refuses to let ask. |
+| [`mode`](#mode-ctx) | `ctx.*` | Mapped, difference stated | Reports rpc mode so Pi extensions can choose their documented headless fallback. |
+| [`sessionManager`](#sessionmanager-ctx) | `ctx.*` | Mapped, difference stated | A real read-only projection: DSH durable messages plus pi2dsh sidecar entries, exposed through Pi's exact 14-method surface as a single-branch tree. buildContextEntries is compaction-aware — entries a compaction summarized away are gone, exactly as they are for the model — while getEntries stays the append-only log, which is the same split Pi makes. |
+| [`shutdown`](#shutdown-ctx) | `ctx.*` | Mapped, difference stated | Pi defines shutdown behavior as host-provided (runner.ts bindExtensions); this host absorbs the request — the user owns DSH process exit — and informs the user once. The package keeps running. |
+| [`compact`](#compact-ctx) | `ctx.*` | Mapped, difference stated | Pi's fire-and-forget trigger, translated to DSH's official manual compaction (ctx.compaction.compactNow on the live agent). onComplete receives the real summary text and the shadowed-content token estimate as tokensBefore; firstKeptEntryId is empty because the DSH log has no Pi entry ids. Without a compaction service the gap flows through Pi's onError callback and the capability ledger. |
+| [`newSession`](#newsession-ctx) | `ctx.*` | Mapped, difference stated | Really creates a DSH session (ctx.sessions.create) with parent lineage; withSession runs against a projection context bound to it, whose sendMessage/sendUserMessage/appendEntry write into THAT session rather than the one the call came from. DSH has no host-level "current session pointer" a plugin could move — which session the surface shows stays a host choice, announced once. |
+| [`fork`](#fork-ctx) | `ctx.*` | Mapped, difference stated | Really forks on DSH's official prefix-fork surface (ctx.sessions.fork with lineage metadata). Anchors are durable-log entries (projected ids "dsh-<seq>"); Pi's default position "before" is honored, and the boundary shrinks to the nearest completed-turn edge because DSH seeds must not split an open turn. Sidecar entries cannot anchor a fork. |
+| [`navigateTree`](#navigatetree-ctx) | `ctx.*` | Mapped, difference stated | Expressed through DSH's session model: the DSH tree lives BETWEEN sessions (fork lineage), not inside one log, so navigation forks at the target boundary. summarize runs Pi's vendored branch summarizer over the abandoned durable slice (model call on the DSH llm bridge) and lands the summary as a branch_summary entry in the new session's projection; label lands as a label entry. |
+| [`switchSession`](#switchsession-ctx) | `ctx.*` | Mapped, difference stated | Targets a LIVE DSH session by id (or a Pi-style path whose basename is "<id>.jsonl"); withSession runs against its projection. Switching to persisted sessions is host-owned — resume them from the DSH surface first. Which session the surface shows stays a host choice. |
+| [`reload`](#reload-ctx) | `ctx.*` | Mapped, difference stated | Really remounts every mounted package's extension entries through a fresh loader (registrations replaced via the same-name path, event handlers reset), so edited plugin code takes effect. Skills, prompts, and themes are host-managed and reload with dsh itself. |
 
 ## How each one is built
 
@@ -49,254 +50,145 @@ taken on trust.
 
 ### `appendEntry` <a id="appendentry-pi"></a>
 
-`pi.*` · `pi.sessions.metadata` · Mapped, difference stated
-
-**Theoretical DSH mapping:** `dsh.agent-session` + `dsh.client` through
-`namespaced durable session facts and native projection`.
-
-**Current implementation:**
+`pi.*` · Mapped, difference stated
 
 A pi2dsh sidecar file beside the DSH session, replayed at session start. DSH's own log has no channel for event types declared outside the harness, and writing unknown types into it corrupts the session for every other reader.
 
 ### `setSessionName` <a id="setsessionname-pi"></a>
 
-`pi.*` · `pi.sessions.metadata` · Same semantics
-
-**Theoretical DSH mapping:** `dsh.agent-session` + `dsh.client` through
-`namespaced durable session facts and native projection`.
-
-**Current implementation:**
+`pi.*` · Same semantics
 
 ctx.sessionTitle.rename, which is also what pins the title against DSH's automatic regeneration, followed by a session_info_changed dispatch. A composition with no title service — or a blank name, which DSH refuses and Pi allows — falls back to the sidecar.
 
 ### `getSessionName` <a id="getsessionname-pi"></a>
 
-`pi.*` · `pi.sessions.metadata` · Same semantics
-
-**Theoretical DSH mapping:** `dsh.agent-session` + `dsh.client` through
-`namespaced durable session facts and native projection`.
-
-**Current implementation:**
+`pi.*` · Same semantics
 
 ctx.sessionTitle.get, so the answer agrees with what DSH displays and includes titles DSH generated itself; sidecar fallback when no title service is mounted.
 
 ### `setLabel` <a id="setlabel-pi"></a>
 
-`pi.*` · `pi.sessions.metadata` · Mapped, difference stated
-
-**Theoretical DSH mapping:** `dsh.agent-session` + `dsh.client` through
-`namespaced durable session facts and native projection`.
-
-**Current implementation:**
+`pi.*` · Mapped, difference stated
 
 Stored in the pi2dsh sidecar and read back through the sessionManager projection.
 
 ### `session_start` <a id="session_start-event"></a>
 
-`event` · `pi.sessions.metadata` · Same semantics
-
-**Theoretical DSH mapping:** `dsh.agent-session` + `dsh.client` through
-`namespaced durable session facts and native projection`.
-
-**Current implementation:**
+`event` · Same semantics
 
 Dispatched from the cordis agent/session-start notification.
 
 ### `session_shutdown` <a id="session_shutdown-event"></a>
 
-`event` · `pi.sessions.metadata` · Same semantics
-
-**Theoretical DSH mapping:** `dsh.agent-session` + `dsh.client` through
-`namespaced durable session facts and native projection`.
-
-**Current implementation:**
+`event` · Same semantics
 
 Dispatched from agent/disposed and from plugin teardown, with duplicate suppression so a package that sees both gets one event.
 
 ### `session_info_changed` <a id="session_info_changed-event"></a>
 
-`event` · `pi.sessions.metadata` · Mapped, difference stated
-
-**Theoretical DSH mapping:** `dsh.agent-session` + `dsh.client` through
-`namespaced durable session facts and native projection`.
-
-**Current implementation:**
+`event` · Mapped, difference stated
 
 Two sources, one event: the bridge's own setSessionName, and DSH's durable session title event projected into Pi's shape.
 
 ### `session_before_compact` <a id="session_before_compact-event"></a>
 
-`event` · `pi.sessions.compaction` · Mapped, difference stated
-
-**Theoretical DSH mapping:** `dsh.agent-session` + `dsh.plugin-composition` through
-`pre-compaction decision waterfall plus durable result events`.
-
-**Current implementation:**
+`event` · Mapped, difference stated
 
 Projected from DSH's compaction/start as a notification. It is an emit, not a waterfall, so a cancel or a replacement has no channel to reach DSH's compactor and is not pretended.
 
 ### `session_compact` <a id="session_compact-event"></a>
 
-`event` · `pi.sessions.compaction` · Mapped, difference stated
-
-**Theoretical DSH mapping:** `dsh.agent-session` + `dsh.plugin-composition` through
-`pre-compaction decision waterfall plus durable result events`.
-
-**Current implementation:**
+`event` · Mapped, difference stated
 
 Projected from DSH's compaction summary event, rendered to the exact string Pi's CompactionEntry declares. Manual compactions are identifiable; DSH does not record which automatic trigger fired, so automatic ones report Pi's threshold reason.
 
 ### `session_before_switch` <a id="session_before_switch-event"></a>
 
-`event` · `pi.sessions.navigation` · Mapped, difference stated
-
-**Theoretical DSH mapping:** `dsh.agent-session` + `dsh.orchestration` through
-`ctx.sessions create/fork and host-wide navigation lifecycle`.
-
-**Current implementation:**
+`event` · Mapped, difference stated
 
 The handler goes into the bridge's handler map like any other, and nothing dispatches it: no DSH seam produces Pi session switching. Registration is kept rather than refused so a package that subscribes at load time still loads.
 
 ### `session_before_fork` <a id="session_before_fork-event"></a>
 
-`event` · `pi.sessions.navigation` · Mapped, difference stated
-
-**Theoretical DSH mapping:** `dsh.agent-session` + `dsh.orchestration` through
-`ctx.sessions create/fork and host-wide navigation lifecycle`.
-
-**Current implementation:**
+`event` · Mapped, difference stated
 
 The handler goes into the bridge's handler map like any other, and nothing dispatches it: no DSH seam produces Pi tree forking. Registration is kept rather than refused so a package that subscribes at load time still loads.
 
 ### `session_before_tree` <a id="session_before_tree-event"></a>
 
-`event` · `pi.sessions.navigation` · Mapped, difference stated
-
-**Theoretical DSH mapping:** `dsh.agent-session` + `dsh.orchestration` through
-`ctx.sessions create/fork and host-wide navigation lifecycle`.
-
-**Current implementation:**
+`event` · Mapped, difference stated
 
 The handler goes into the bridge's handler map like any other, and nothing dispatches it: no DSH seam produces Pi session-tree navigation. Registration is kept rather than refused so a package that subscribes at load time still loads.
 
 ### `session_tree` <a id="session_tree-event"></a>
 
-`event` · `pi.sessions.navigation` · Mapped, difference stated
-
-**Theoretical DSH mapping:** `dsh.agent-session` + `dsh.orchestration` through
-`ctx.sessions create/fork and host-wide navigation lifecycle`.
-
-**Current implementation:**
+`event` · Mapped, difference stated
 
 The handler goes into the bridge's handler map like any other, and nothing dispatches it: no DSH seam produces Pi session-tree navigation. Registration is kept rather than refused so a package that subscribes at load time still loads.
 
 ### `cwd` <a id="cwd-ctx"></a>
 
-`ctx.*` · `pi.sessions.host-context` · Same semantics
-
-**Theoretical DSH mapping:** `dsh.agent-session` + `dsh.plugin-composition` through
-`session service, workspace scope and Cordis reload`.
-
-**Current implementation:**
+`ctx.*` · Same semantics
 
 Read off the live DSH agent's session; the bridge keeps no working directory of its own.
 
+### `hasUI` <a id="hasui-ctx"></a>
+
+`ctx.*` · Same semantics
+
+Probed rather than guessed. The bridge registers a throwaway provider on DSH's UserQuestionService and reads the documented DUPLICATE_PROVIDER rejection as "a real provider is already there", then disposes it. Inside a child agent the answer is false without probing, because DSH refuses to let child agents ask.
+
 ### `mode` <a id="mode-ctx"></a>
 
-`ctx.*` · `pi.sessions.host-context` · Mapped, difference stated
-
-**Theoretical DSH mapping:** `dsh.agent-session` + `dsh.plugin-composition` through
-`session service, workspace scope and Cordis reload`.
-
-**Current implementation:**
+`ctx.*` · Mapped, difference stated
 
 A constant. The bridge is an rpc host, and this is the value Pi packages branch on to take their own documented headless path.
 
 ### `sessionManager` <a id="sessionmanager-ctx"></a>
 
-`ctx.*` · `pi.sessions.host-context` · Mapped, difference stated
-
-**Theoretical DSH mapping:** `dsh.agent-session` + `dsh.plugin-composition` through
-`session service, workspace scope and Cordis reload`.
-
-**Current implementation:**
+`ctx.*` · Mapped, difference stated
 
 A read-only projection folded from two ordered sources — DSH's durable session log and the pi2dsh sidecar — into the single chain Pi's 14-method surface walks. Compaction awareness comes from the same fold: entries a compaction summarized away are dropped from the context view and kept in the log view.
 
 ### `shutdown` <a id="shutdown-ctx"></a>
 
-`ctx.*` · `pi.sessions.host-context` · Mapped, difference stated
-
-**Theoretical DSH mapping:** `dsh.agent-session` + `dsh.plugin-composition` through
-`session service, workspace scope and Cordis reload`.
-
-**Current implementation:**
+`ctx.*` · Mapped, difference stated
 
 Pi defines shutdown as host-provided, so this host absorbs it: the request is recorded in the capability ledger and surfaced to the user once. Nothing calls process.exit — the DSH process belongs to the user.
 
 ### `compact` <a id="compact-ctx"></a>
 
-`ctx.*` · `pi.sessions.compaction` · Mapped, difference stated
-
-**Theoretical DSH mapping:** `dsh.agent-session` + `dsh.plugin-composition` through
-`pre-compaction decision waterfall plus durable result events`.
-
-**Current implementation:**
+`ctx.*` · Mapped, difference stated
 
 Calls DSH's official compaction.compactNow on the live agent and adapts the outcome onto Pi's onComplete/onError callbacks. With no compaction service mounted the gap flows through onError rather than an exception.
 
 ### `newSession` <a id="newsession-ctx"></a>
 
-`ctx.*` · `pi.sessions.navigation` · Mapped, difference stated
-
-**Theoretical DSH mapping:** `dsh.agent-session` + `dsh.orchestration` through
-`ctx.sessions create/fork and host-wide navigation lifecycle`.
-
-**Current implementation:**
+`ctx.*` · Mapped, difference stated
 
 ctx.sessions.create with parent lineage, then a projection context bound to the new session so everything inside withSession (sendMessage, appendEntry, ...) writes into THAT session.
 
 ### `fork` <a id="fork-ctx"></a>
 
-`ctx.*` · `pi.sessions.navigation` · Mapped, difference stated
-
-**Theoretical DSH mapping:** `dsh.agent-session` + `dsh.orchestration` through
-`ctx.sessions create/fork and host-wide navigation lifecycle`.
-
-**Current implementation:**
+`ctx.*` · Mapped, difference stated
 
 ctx.sessions.fork at a durable sequence number decoded from the projected entry id (dsh-<seq>), snapped to the nearest completed-turn edge because a DSH seed must not split an open turn.
 
 ### `navigateTree` <a id="navigatetree-ctx"></a>
 
-`ctx.*` · `pi.sessions.navigation` · Mapped, difference stated
-
-**Theoretical DSH mapping:** `dsh.agent-session` + `dsh.orchestration` through
-`ctx.sessions create/fork and host-wide navigation lifecycle`.
-
-**Current implementation:**
+`ctx.*` · Mapped, difference stated
 
 A fork at the target boundary, plus — when the caller asks for one — Pi's vendored branch summarizer run over the abandoned slice with the DSH llm bridge filling Pi's own streamFn injection point.
 
 ### `switchSession` <a id="switchsession-ctx"></a>
 
-`ctx.*` · `pi.sessions.navigation` · Mapped, difference stated
-
-**Theoretical DSH mapping:** `dsh.agent-session` + `dsh.orchestration` through
-`ctx.sessions create/fork and host-wide navigation lifecycle`.
-
-**Current implementation:**
+`ctx.*` · Mapped, difference stated
 
 Resolves the id (or the basename of a Pi-style <id>.jsonl path) against live DSH sessions and binds a projection context to it.
 
 ### `reload` <a id="reload-ctx"></a>
 
-`ctx.*` · `pi.sessions.host-context` · Mapped, difference stated
-
-**Theoretical DSH mapping:** `dsh.agent-session` + `dsh.plugin-composition` through
-`session service, workspace scope and Cordis reload`.
-
-**Current implementation:**
+`ctx.*` · Mapped, difference stated
 
 Remounts every mounted package's extension entries through a fresh jiti loader: registrations are replaced through the same-name path and handler lists reset, so edited plugin code takes effect without restarting DSH.
 

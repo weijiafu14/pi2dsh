@@ -24,11 +24,11 @@ it is built** — the DSH seam, service or waterfall behind it.
 | Area | Surfaces | Status |
 |---|---|---|
 | [Tools](tools.md) | 11 | 2 same semantics · 9 mapped, difference stated |
-| [Commands, flags and editor input](commands.md) | 6 | 6 mapped, difference stated |
+| [Commands, flags and editor input](commands.md) | 13 | 13 mapped, difference stated |
 | [Messages, context and the agent loop](conversation.md) | 20 | 9 same semantics · 11 mapped, difference stated |
-| [Sessions, branching and side conversations](sessions.md) | 23 | 5 same semantics · 18 mapped, difference stated |
+| [Sessions, branching and side conversations](sessions.md) | 24 | 6 same semantics · 18 mapped, difference stated |
 | [Models, providers and credentials](models.md) | 15 | 1 same semantics · 11 mapped, difference stated · 3 not available |
-| [Asking the user, and rendering](interaction.md) | 32 | 5 same semantics · 27 mapped, difference stated |
+| [Asking the user, and rendering](interaction.md) | 24 | 4 same semantics · 20 mapped, difference stated |
 | [Project environment, skills and resources](environment.md) | 4 | 1 same semantics · 1 mapped, difference stated · 2 not available |
 
 ## What the statuses mean

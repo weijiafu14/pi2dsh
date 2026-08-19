@@ -2,17 +2,18 @@
 
 本页保存 [`architecture-mapping-standard.md`](architecture-mapping-standard.md) 与
 [`dsh-architecture-conformance.md`](dsh-architecture-conformance.md) 的历史复现、边界说明和
-Cordis 生命周期待测项。当前结构化接口归属、理论映射和插件验证以
-[`architecture-ledger.json`](architecture-ledger.json) 为准；本页用于复核，不另建分类。
+Cordis 生命周期待测项。当前接口归属与理论映射见
+[`architecture-mapping-matrix.md`](architecture-mapping-matrix.md)，插件实证见
+[`plugin-validation-matrix.md`](plugin-validation-matrix.md)；本页用于复核，不另建分类。
 
-当前基线：2026-08-19，pi2dsh 0.12.x、Pi 0.84.1、DSH 0.1.0-rc.6。
+当前基线：2026-08-19，pi2dsh 0.13.x、Pi 0.84.1、DSH 0.1.0-rc.6。
 
-## 架构总账的三个完整性边界
+## 当前调查的三个快照边界
 
 | 完整性边界 | 当前事实 | 不能扩大成什么 |
 |---|---|---|
-| Pi 公共 ABI | 111 条上游形状规则；另有 202 个可 import 符号 | 111 不是把嵌套对象每个 callable 都拆开的语义全覆盖 |
-| DSH 官方子系统 | 官方索引共 45 个；全部在下表列名 | Pi 插件能运行不等于 45 个模块都被验证 |
+| Pi 公共 ABI | 当前扫描到 111 条上游形状规则；另有 202 个可 import 符号 | 111 不是固定总量，也不是把嵌套对象每个 callable 都拆开的语义全覆盖 |
+| DSH 官方子系统 | 当时官方索引观察到 45 个 | 45 不是固定总量；Pi 插件能运行也不等于这些模块都被验证 |
 | Cordis 生命周期 | 已覆盖部分注册清理和包内 reload | 不能据此声称依赖重绑、隔离和失败回滚都成立 |
 
 111 条上游规则由 25 个非事件 API、33 个事件、24 个非 UI context、28 个 UI 面和
@@ -20,24 +21,17 @@ Cordis 生命周期待测项。当前结构化接口归属、理论映射和插�
 公共 API，不计入分母。具体逐项矩阵见 [`capabilities/`](capabilities/README.md) 和
 [`pi-abi-coverage.md`](pi-abi-coverage.md)。
 
-## DSH 45 个子系统全表
+## DSH 模块完整性
 
-这里的状态只回答“pi2dsh 当前有没有资格评价该模块”，不是模块质量评分。
+当前已知 subsystem 到承载机制的归属，以及每个机制对仓外插件开放的 seam，维护在
+[`architecture-mapping-matrix.md`](architecture-mapping-matrix.md)。它是可以继续追加和
+拆分的 Markdown 架构树，不靠固定 45 个模块或生成器证明完整。本页不再维护另一张
+“明确落点 / 随链经过”平行表，避免模块覆盖状态与插件验证矩阵发生漂移。
 
-| 状态 | 数量 | DSH 子系统 | 含义 |
-|---|---:|---|---|
-| **明确落点** | 19 | `approval`、`attachment`、`client-modules`、`commands`、`compaction`、`core`、`credentials`、`llm-streaming`、`persistence`、`scope`、`session`、`session-title`、`settings`、`skills`、`subprocess`、`system-prompt`、`tools`、`user-questions`、`web-server` | 至少一项 Pi 能力直接使用了公开 seam |
-| **随链经过** | 8 | `extensions`、`invariants`、`permission-presets`、`sandbox`、`session-projection`、`spill`、`storage`、`workspace` | 默认链路会用到，但没有独立验证替换、故障、卸载或恢复 |
-| **有相邻能力，但没走原生模块** | 12 | `filesystem`、`goal`、`jobs`、`lsp`、`plan`、`schedule`、`shell`、`subagent`、`terminal`、`token-meter`、`web`、`workflow` | Pi 插件可能自己实现了相似用户功能，不能给 DSH 专用模块记成功 |
-| **尚无验证** | 6 | `code-runtime`、`feedback`、`session-query`、`session-reference`、`session-telemetry`、`typert` | 当前没有自然消费者或针对性测试，不下结论 |
-
-容易误记的边界：
-
-- pi-btw 使用 `ctx.agents` 和 session，证明的是 `core/session`，不是 `subagent` provider。
-- Pi 网页插件自行发 HTTP，不等于走了 DSH `web`。
-- `ctx.exec` 走 DSH subprocess；Pi 原版工具直接调用 Node 文件系统或 child process 时，
-  不会自动继承 DSH sandbox。
-- Pi 插件自己保存 goal/plan/job，只证明通用插件能工作，不证明 DSH 的同名子系统。
+仍需记住的边界是：pi-btw 使用 `ctx.agents` 不等于验证 `subagent` provider；Pi 插件自己
+联网不等于验证 DSH `web`；Pi 工具直接调用 Node 不自动继承 DSH sandbox；插件自己保存
+goal/plan/job 也不等于验证 DSH 的同名 subsystem。这些结论应作为具体映射或验证记录，
+不能重新长成一套平行分类。
 
 ## 五个已确认缺口的证据
 

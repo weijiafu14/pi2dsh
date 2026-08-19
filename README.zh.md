@@ -288,13 +288,14 @@ DSH 所说的“能力由插件自由组合”，到底走到了哪一步。
 wire 兼容字段仍会被 schema 丢掉。
 
 项目采用一套统一的 **[Pi → DSH 架构映射标准](docs/architecture-mapping-standard.md)**：
-111 条 Pi 接口先归入能力契约，DSH 的 45 个模块归入承载机制，再建立到具体公开 seam
-的理论映射；真实插件只引用这些映射，记录五层流转和五级结果。结构化事实保存在
-[`architecture-ledger.json`](docs/architecture-ledger.json)，由同一份总账生成
-**[理论架构矩阵](docs/architecture-mapping-matrix.md)**、
-**[真实插件验证矩阵](docs/plugin-validation-matrix.md)** 和
-**[当前架构结论](docs/dsh-architecture-conformance.md)**。这样既能从总体看到已经适配的
-能力，也能从任一插件下钻到它用了哪些 Pi 能力、落到哪些 DSH 机制、实际达到哪一级。
+具体 Pi 接口 → Pi 能力契约 → DSH 承载机制 → 公开 seam → 真实插件验证 → 五级结论。
+这是一条统一推理路线，不是额外的运行时层。可扩展的分支维护在手写的
+**[架构模型知识树](docs/architecture-mapping-matrix.md)**，真实场景维护在
+**[逐插件验证记录](docs/plugin-validation-matrix.md)**，三类总体判断维护在
+**[架构结论](docs/dsh-architecture-conformance.md)**。架构分类不再由 JSON 总账或生成器
+产生；曾经观察到的 111 条 Pi 规则和 45 个 DSH 子系统只是带版本的调查快照，不是固定
+总量或完整性证明。这样既能从总体看到已经适配的能力，也能从任一插件下钻到它用了哪些
+Pi 能力、落到哪些 DSH 机制、实际达到哪一级。
 当前 5 个 DSH 缺口是已经坐实的发现，**不是已经完成全覆盖**。
 当前已向上游提交的实证包括
 [#2708：让仓外插件安全写持久事件](https://github.com/deepseek-ai/deepseek-harness/discussions/2708)
@@ -314,11 +315,11 @@ Pi 包能碰到的每一个面，以及它落到 DSH 的什么位置。下面这
 | 能力域 | Pi 面数 | 状态 |
 |---|---|---|
 | [工具](docs/capabilities/tools.md) | 11 | 2 语义一致 · 9 已映射并写明差异 |
-| [命令、flag、编辑器输入](docs/capabilities/commands.md) | 6 | 6 已映射并写明差异 |
+| [命令、flag、编辑器输入](docs/capabilities/commands.md) | 13 | 13 已映射并写明差异 |
 | [消息、上下文、agent 循环](docs/capabilities/conversation.md) | 20 | 9 语义一致 · 11 已映射并写明差异 |
-| [会话与侧边对话](docs/capabilities/sessions.md) | 23 | 5 语义一致 · 18 已映射并写明差异 |
+| [会话与侧边对话](docs/capabilities/sessions.md) | 24 | 6 语义一致 · 18 已映射并写明差异 |
 | [模型、provider、凭证](docs/capabilities/models.md) | 15 | 1 语义一致 · 11 已映射并写明差异 · 3 不提供 |
-| [向用户提问与渲染](docs/capabilities/interaction.md) | 32 | 5 语义一致 · 27 已映射并写明差异 |
+| [向用户提问与渲染](docs/capabilities/interaction.md) | 24 | 4 语义一致 · 20 已映射并写明差异 |
 | [项目环境与资源](docs/capabilities/environment.md) | 4 | 1 语义一致 · 1 已映射并写明差异 · 2 不提供 |
 | **合计** | **111** | **23 语义一致 · 83 已映射并写明差异 · 5 不提供** |
 <!-- capability-table:end -->

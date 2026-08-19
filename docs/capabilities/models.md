@@ -18,23 +18,23 @@ DSH-native interaction and persist with Pi's `auth.json` semantics.
 
 **15 upstream-shaped Pi rule rows** — 1 same semantics · 11 mapped, difference stated · 3 not available.
 
-| Pi surface | Capability contract | Kind | Status | What it does on DSH |
-|---|---|---|---|---|
-| [`registerProvider`](#registerprovider-pi) | `pi.models.providers` | `pi.*` | Mapped, difference stated | Two outcomes, by whether the provider carries its own transport. WITH a transport (pi-ai createProvider and friends): it becomes a real DSH llm route through llm.registerAdapter, and from then on the package's own HTTP client carries the turn — its API key or OAuth token is resolved by Pi's credential chain and persisted in the bridge's auth.json, not by DSH credentials. WITHOUT one (catalog-only): the declaration is recorded and introspectable, no bridge transport is synthesized, and model calls stay on native DSH llm adapters and credentials. |
-| [`unregisterProvider`](#unregisterprovider-pi) | `pi.models.providers` | `pi.*` | Mapped, difference stated | Removes the recorded provider declaration. |
-| [`setModel`](#setmodel-pi) | `pi.models.selection` | `pi.*` | Mapped, difference stated | Recorded as a per-agent override applied through the agent/request waterfall on the next model call; DSH remains authoritative for provider routing. |
-| [`getThinkingLevel`](#getthinkinglevel-pi) | `pi.models.selection` | `pi.*` | Mapped, difference stated | Returns the level recorded by setThinkingLevel (default off). |
-| [`setThinkingLevel`](#setthinkinglevel-pi) | `pi.models.selection` | `pi.*` | Mapped, difference stated | Recorded per agent and applied as reasoningEffort through the agent/request waterfall; DSH validates the effort id at the request boundary. |
-| [`model_select`](#model_select-event) | `pi.models.selection` | `event` | Mapped, difference stated | Fired by setModel() and projected from request/header model changes in the durable log. |
-| [`thinking_level_select`](#thinking_level_select-event) | `pi.models.selection` | `event` | Mapped, difference stated | Fired by setThinkingLevel(); DSH-side reasoning changes surface through request/header projection. |
-| [`before_provider_request`](#before_provider_request-event) | `pi.models.wire` | `event` | Not available | Provider payload mutation belongs in a native DSH LLM adapter; the handler is accepted but never fires. |
-| [`before_provider_headers`](#before_provider_headers-event) | `pi.models.wire` | `event` | Not available | Provider header mutation belongs in a native DSH LLM adapter; the handler is accepted but never fires. |
-| [`after_provider_response`](#after_provider_response-event) | `pi.models.wire` | `event` | Not available | Provider response interception belongs in a native DSH LLM adapter; the handler is accepted but never fires. |
-| [`modelRegistry`](#modelregistry-ctx) | `pi.models.providers` | `ctx.*` | Mapped, difference stated | A live registry over the ONE model directory — the DSH llm directory — projected exactly into Pi vocabulary; package-registered Pi-native routes keep api/baseUrl and the full Model shape through the round trip. DSH describes one model across two seams (a listing for directory membership, an exact per-route resolve for capacity) while Pi puts everything on one Model object read synchronously, so the projection joins them when the directory is read: entries carry contextWindow, maxTokens and reasoning, and a settings change re-reads them rather than serving the retired numbers. Custom gateways are HOST configuration (the official llm-pi-ai adapter's settings), never a Pi-side file: Pi's ~/.pi/agent/models.json is deliberately NOT read — user-facing configuration is DSH-shaped only. getProviderAuth/getApiKeyAndHeaders run Pi's full credential chain for package-registered providers and the host's configurable-provider + credentials seams for DSH routes. Host configuration may declare "<route>-vision" image-admission companions: real DSH routes that admit images, replace image blocks with explicit path-carrying notices (materialized attachment files any path-taking tool can read), and forward text-only to the original route; Pi's ctx.model reports the original route for a companion selection. |
-| [`model`](#model-ctx) | `pi.models.providers` | `ctx.*` | Mapped, difference stated | The agent's real provider/model route (a setModel() override wins), enriched from the projected catalog. When the selected route is an image-admission companion, ctx.model reports the ORIGINAL route with its true modalities — the generating model is the original text-only one, which is the truth extensions branching on input modalities (a vision bridge's activation check) need. |
-| [`scopedModels`](#scopedmodels-ctx) | `pi.models.providers` | `ctx.*` | Same semantics | Empty, carrying Pi's own meaning for empty: no model scope is configured, so every available model is usable. DSH has no model-scope concept to narrow it. |
-| [`hasConfiguredAuth`](#hasconfiguredauth-ctx) | `pi.models.providers` | `ctx.*` | Mapped, difference stated | Configuration check on the projected registry: true when the model's provider has a live route or package registration (not a key-liveness probe). |
-| [`thinkingLevel`](#thinkinglevel-ctx) | `pi.models.selection` | `ctx.*` | Mapped, difference stated | Reflects the level recorded by setThinkingLevel(); applied as reasoningEffort on the next request. |
+| Pi surface | Kind | Status | What it does on DSH |
+|---|---|---|---|
+| [`registerProvider`](#registerprovider-pi) | `pi.*` | Mapped, difference stated | Two outcomes, by whether the provider carries its own transport. WITH a transport (pi-ai createProvider and friends): it becomes a real DSH llm route through llm.registerAdapter, and from then on the package's own HTTP client carries the turn — its API key or OAuth token is resolved by Pi's credential chain and persisted in the bridge's auth.json, not by DSH credentials. WITHOUT one (catalog-only): the declaration is recorded and introspectable, no bridge transport is synthesized, and model calls stay on native DSH llm adapters and credentials. |
+| [`unregisterProvider`](#unregisterprovider-pi) | `pi.*` | Mapped, difference stated | Removes the recorded provider declaration. |
+| [`setModel`](#setmodel-pi) | `pi.*` | Mapped, difference stated | Recorded as a per-agent override applied through the agent/request waterfall on the next model call; DSH remains authoritative for provider routing. |
+| [`getThinkingLevel`](#getthinkinglevel-pi) | `pi.*` | Mapped, difference stated | Returns the level recorded by setThinkingLevel (default off). |
+| [`setThinkingLevel`](#setthinkinglevel-pi) | `pi.*` | Mapped, difference stated | Recorded per agent and applied as reasoningEffort through the agent/request waterfall; DSH validates the effort id at the request boundary. |
+| [`model_select`](#model_select-event) | `event` | Mapped, difference stated | Fired by setModel() and projected from request/header model changes in the durable log. |
+| [`thinking_level_select`](#thinking_level_select-event) | `event` | Mapped, difference stated | Fired by setThinkingLevel(); DSH-side reasoning changes surface through request/header projection. |
+| [`before_provider_request`](#before_provider_request-event) | `event` | Not available | Provider payload mutation belongs in a native DSH LLM adapter; the handler is accepted but never fires. |
+| [`before_provider_headers`](#before_provider_headers-event) | `event` | Not available | Provider header mutation belongs in a native DSH LLM adapter; the handler is accepted but never fires. |
+| [`after_provider_response`](#after_provider_response-event) | `event` | Not available | Provider response interception belongs in a native DSH LLM adapter; the handler is accepted but never fires. |
+| [`modelRegistry`](#modelregistry-ctx) | `ctx.*` | Mapped, difference stated | A live registry over the ONE model directory — the DSH llm directory — projected exactly into Pi vocabulary; package-registered Pi-native routes keep api/baseUrl and the full Model shape through the round trip. DSH describes one model across two seams (a listing for directory membership, an exact per-route resolve for capacity) while Pi puts everything on one Model object read synchronously, so the projection joins them when the directory is read: entries carry contextWindow, maxTokens and reasoning, and a settings change re-reads them rather than serving the retired numbers. Custom gateways are HOST configuration (the official llm-pi-ai adapter's settings), never a Pi-side file: Pi's ~/.pi/agent/models.json is deliberately NOT read — user-facing configuration is DSH-shaped only. getProviderAuth/getApiKeyAndHeaders run Pi's full credential chain for package-registered providers and the host's configurable-provider + credentials seams for DSH routes. Host configuration may declare "<route>-vision" image-admission companions: real DSH routes that admit images, replace image blocks with explicit path-carrying notices (materialized attachment files any path-taking tool can read), and forward text-only to the original route; Pi's ctx.model reports the original route for a companion selection. |
+| [`model`](#model-ctx) | `ctx.*` | Mapped, difference stated | The agent's real provider/model route (a setModel() override wins), enriched from the projected catalog. When the selected route is an image-admission companion, ctx.model reports the ORIGINAL route with its true modalities — the generating model is the original text-only one, which is the truth extensions branching on input modalities (a vision bridge's activation check) need. |
+| [`scopedModels`](#scopedmodels-ctx) | `ctx.*` | Same semantics | Empty, carrying Pi's own meaning for empty: no model scope is configured, so every available model is usable. DSH has no model-scope concept to narrow it. |
+| [`hasConfiguredAuth`](#hasconfiguredauth-ctx) | `ctx.*` | Mapped, difference stated | Configuration check on the projected registry: true when the model's provider has a live route or package registration (not a key-liveness probe). |
+| [`thinkingLevel`](#thinkinglevel-ctx) | `ctx.*` | Mapped, difference stated | Reflects the level recorded by setThinkingLevel(); applied as reasoningEffort on the next request. |
 
 ## How each one is built
 
@@ -44,166 +44,91 @@ taken on trust.
 
 ### `registerProvider` <a id="registerprovider-pi"></a>
 
-`pi.*` · `pi.models.providers` · Mapped, difference stated
-
-**Theoretical DSH mapping:** `dsh.model-runtime` + `dsh.plugin-composition` through
-`llm catalog, llm.registerAdapter, credentials and settings`.
-
-**Current implementation:**
+`pi.*` · Mapped, difference stated
 
 Two mechanisms behind one call. A provider carrying its own transport becomes a real DSH route through llm.registerAdapter, and the package's own HTTP client then carries the turn with its key resolved by Pi's credential chain into the bridge's auth.json. A catalog-only declaration registers no transport at all: those models are served by the host's adapters and DSH credentials, and the declaration only contributes directory entries.
 
 ### `unregisterProvider` <a id="unregisterprovider-pi"></a>
 
-`pi.*` · `pi.models.providers` · Mapped, difference stated
-
-**Theoretical DSH mapping:** `dsh.model-runtime` + `dsh.plugin-composition` through
-`llm catalog, llm.registerAdapter, credentials and settings`.
-
-**Current implementation:**
+`pi.*` · Mapped, difference stated
 
 Disposes the route registration when one was made and drops the recorded declaration.
 
 ### `setModel` <a id="setmodel-pi"></a>
 
-`pi.*` · `pi.models.selection` · Mapped, difference stated
-
-**Theoretical DSH mapping:** `dsh.model-runtime` + `dsh.client` through
-`authoritative model catalog and request-level reasoning options`.
-
-**Current implementation:**
+`pi.*` · Mapped, difference stated
 
 Recorded as a per-agent override and applied on the agent/request waterfall, so the next model call carries it while DSH stays authoritative for routing.
 
 ### `getThinkingLevel` <a id="getthinkinglevel-pi"></a>
 
-`pi.*` · `pi.models.selection` · Mapped, difference stated
-
-**Theoretical DSH mapping:** `dsh.model-runtime` + `dsh.client` through
-`authoritative model catalog and request-level reasoning options`.
-
-**Current implementation:**
+`pi.*` · Mapped, difference stated
 
 Reads the per-agent level the bridge recorded.
 
 ### `setThinkingLevel` <a id="setthinkinglevel-pi"></a>
 
-`pi.*` · `pi.models.selection` · Mapped, difference stated
-
-**Theoretical DSH mapping:** `dsh.model-runtime` + `dsh.client` through
-`authoritative model catalog and request-level reasoning options`.
-
-**Current implementation:**
+`pi.*` · Mapped, difference stated
 
 Recorded per agent and applied as reasoningEffort on the agent/request waterfall; DSH validates the effort id at the request boundary.
 
 ### `model_select` <a id="model_select-event"></a>
 
-`event` · `pi.models.selection` · Mapped, difference stated
-
-**Theoretical DSH mapping:** `dsh.model-runtime` + `dsh.client` through
-`authoritative model catalog and request-level reasoning options`.
-
-**Current implementation:**
+`event` · Mapped, difference stated
 
 Fired by the bridge's own setModel, and projected from model changes in the durable request/header record — which is the call configuration DSH logs, not the HTTP body.
 
 ### `thinking_level_select` <a id="thinking_level_select-event"></a>
 
-`event` · `pi.models.selection` · Mapped, difference stated
-
-**Theoretical DSH mapping:** `dsh.model-runtime` + `dsh.client` through
-`authoritative model catalog and request-level reasoning options`.
-
-**Current implementation:**
+`event` · Mapped, difference stated
 
 Fired by the bridge's own setThinkingLevel; host-side reasoning changes arrive through the same request/header projection.
 
 ### `before_provider_request` <a id="before_provider_request-event"></a>
 
-`event` · `pi.models.wire` · Not available
-
-**Theoretical DSH mapping:** `dsh.model-runtime` + `dsh.plugin-composition` through
-`adapter transport request/response middleware`.
-
-**Current implementation:**
+`event` · Not available
 
 Deliberately not wired. The request body is built inside a DSH llm adapter, and a package that needs to shape it should be one (or register its own provider, which this bridge does support). Faking the moment on the bridge side would let a handler edit a body that is not the one sent.
 
 ### `before_provider_headers` <a id="before_provider_headers-event"></a>
 
-`event` · `pi.models.wire` · Not available
-
-**Theoretical DSH mapping:** `dsh.model-runtime` + `dsh.plugin-composition` through
-`adapter transport request/response middleware`.
-
-**Current implementation:**
+`event` · Not available
 
 Deliberately not wired, for the same reason as before_provider_request: headers belong to the adapter that owns the transport.
 
 ### `after_provider_response` <a id="after_provider_response-event"></a>
 
-`event` · `pi.models.wire` · Not available
-
-**Theoretical DSH mapping:** `dsh.model-runtime` + `dsh.plugin-composition` through
-`adapter transport request/response middleware`.
-
-**Current implementation:**
+`event` · Not available
 
 Deliberately not wired: the response is consumed inside the adapter, and interception there is an adapter concern.
 
 ### `modelRegistry` <a id="modelregistry-ctx"></a>
 
-`ctx.*` · `pi.models.providers` · Mapped, difference stated
-
-**Theoretical DSH mapping:** `dsh.model-runtime` + `dsh.plugin-composition` through
-`llm catalog, llm.registerAdapter, credentials and settings`.
-
-**Current implementation:**
+`ctx.*` · Mapped, difference stated
 
 A ModelCatalog over llm.listProviders() x listModels(), joined per route with llm.resolveModelInfo() for capacity, refreshed on the llm/adapters-updated notification and cached so reads stay synchronous — Pi's getAll() is not async. Package-registered routes have their exact Pi Model restored from the registration on the way out.
 
 ### `model` <a id="model-ctx"></a>
 
-`ctx.*` · `pi.models.providers` · Mapped, difference stated
-
-**Theoretical DSH mapping:** `dsh.model-runtime` + `dsh.plugin-composition` through
-`llm catalog, llm.registerAdapter, credentials and settings`.
-
-**Current implementation:**
+`ctx.*` · Mapped, difference stated
 
 Reads the live agent's own options.provider/model (a setModel override wins) and enriches it through the same catalog projection, so a package reads one Model shape everywhere.
 
 ### `scopedModels` <a id="scopedmodels-ctx"></a>
 
-`ctx.*` · `pi.models.providers` · Same semantics
-
-**Theoretical DSH mapping:** `dsh.model-runtime` + `dsh.plugin-composition` through
-`llm catalog, llm.registerAdapter, credentials and settings`.
-
-**Current implementation:**
+`ctx.*` · Same semantics
 
 Nothing to compute. DSH has no model-scope concept, and Pi's empty array already carries exactly that meaning.
 
 ### `hasConfiguredAuth` <a id="hasconfiguredauth-ctx"></a>
 
-`ctx.*` · `pi.models.providers` · Mapped, difference stated
-
-**Theoretical DSH mapping:** `dsh.model-runtime` + `dsh.plugin-composition` through
-`llm catalog, llm.registerAdapter, credentials and settings`.
-
-**Current implementation:**
+`ctx.*` · Mapped, difference stated
 
 Answered from configuration alone — the package-provider map plus the live catalog — and never opens a connection, which is also what Pi's own check does.
 
 ### `thinkingLevel` <a id="thinkinglevel-ctx"></a>
 
-`ctx.*` · `pi.models.selection` · Mapped, difference stated
-
-**Theoretical DSH mapping:** `dsh.model-runtime` + `dsh.client` through
-`authoritative model catalog and request-level reasoning options`.
-
-**Current implementation:**
+`ctx.*` · Mapped, difference stated
 
 Bridge state written by setThinkingLevel, applied to the request on the agent/request waterfall.
 

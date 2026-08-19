@@ -1,54 +1,52 @@
 小红书发帖素材：Codex 订阅生图 / 改图
 
 标题
-DeepSeek Harness 接上 Codex 订阅后，连生图改图都能用了
+我的 DeepSeek Harness 能生图了！Codex 订阅直接用
 
 封面大字
+我的
 DeepSeek Harness
-用 Codex 订阅生图、改图
-
-封面散点词
-ChatGPT Plus / Pro
-OAuth 登录
-不用另买图片 API
-原图编辑
-上传前确认
-Web 直接看结果
+能生图了
 
 正文（1000 字以内，发布时直接复制）
 
+我的 DeepSeek Harness 现在真的能生图、改图了，而且直接使用 ChatGPT Plus/Pro 的 Codex 登录，不用再单独买图片 API。
+
 项目先放前面：GitHub 搜索 weijiafu14/pi2dsh，欢迎 Star ⭐
 
-DeepSeek Harness 现在可以直接复用 Codex OAuth 登录做生图和改图了。
+这次把 Pi 生态的 @crazygit/pi-codex-image-gen 原包接进了 DeepSeek Harness。
 
-这次接入的是 Pi 生态里的 @crazygit/pi-codex-image-gen。插件原包不改，由 pi2dsh 把它需要的 OAuth、工具、审批、附件和 Web 展示能力接进 DeepSeek Harness。
-
-安装只要两条：
+第一步，安装兼容引擎和图片插件：
 dsh plugin --profile web add pi2dsh
 dsh plugin --profile web add @crazygit/pi-codex-image-gen
 
-重启后，在对话框输入 /login，选择 OpenAI (ChatGPT Plus/Pro) 完成登录，再选择 OpenAI 分组里的 Codex 模型。之后直接说“生成一张……”就会调用 codex_generate_image；也可以给本地图片的绝对路径，让它按要求编辑。
+只要这两个包，不需要第三个 OAuth provider 插件：openai-codex 登录已内置在 pi2dsh，标准 Web profile 直接使用 DSH 自带的 llm-pi-ai。
 
-编辑本地图片时，DeepSeek Harness 会先弹出确认框，明确告诉你将上传哪张图；同意后才发送。生成或编辑完成后，图片不是一段 JSON，也不用自己翻文件夹，会直接显示在 Web 工具卡里。
+第二步，重启 DeepSeek Harness，必须先在对话框输入：
+/login openai-codex
 
-我已经用真实 Codex OAuth 账号跑通完整链路：模型决定调用工具 → 图片生成 → DSH 原生附件落库 → Web 显示；改图链路还跑了本地文件审批和真实参考图编辑。
+按提示完成 ChatGPT Plus/Pro 浏览器授权。主会话可以继续用 DeepSeek，也可以选 Codex；图片工具只复用这份登录态。没登录会报 AUTH_MISSING。不要求安装 Codex CLI。
 
-不用单独配置图片模型，不用额外填写图片 API Key。图像请求由插件使用同一份 Codex OAuth 登录完成。
+第三步，直接说“再来一张龙珠图”或者“把这张图改成……”。Agent 会调用 codex_generate_image，结果直接显示在 Web 工具卡里。
+
+编辑本地图片时会先弹出确认框，列出要上传的图片，同意后才发送。结果直接显示在 Web 工具卡里，不再是一段 JSON。
+
+我已经用真实 Codex OAuth 账号跑通完整链路：模型调用工具 → 图片生成 → DSH 原生附件落库 → Web 显示；改图链路也跑通了本地文件审批和真实参考图编辑。
 
 #DeepSeek #DeepSeekHarness #Codex #ChatGPT #AI生图 #AI编程 #开源项目 #Agent
 
 建议配图顺序
 
-1. 封面：assets/xiaohongshu-cover-codex-image-v1.png
-2. Web 工具卡直接显示编辑结果
-3. 实际生成的 DSH 蓝色图标
-4. 原始蓝图与编辑后的橙色星形图对比
+1. 封面：assets/xiaohongshu-cover-codex-image-v3.png（真实 DeepSeek Harness 生图会话二次排版）
+2. 真实效果：assets/codex-image-gen/dragonball-dsh-result-v2.png（DSH 工具卡直接显示龙珠结果）
+3. 原图：assets/codex-image-gen/dragonball-generated.png（Codex 实际生成的 1254×1254 PNG）
+4. 登录后模型选择器：assets/11-model-picker-after-login.png
 
 可公开证据
 
-- codex-image-gen/codex-image-edit-result.png
-- codex-image-gen/codex-generated.png
-- codex-image-gen/codex-edited.png
+- codex-image-gen/dragonball-dsh-result-v2.png
+- codex-image-gen/dragonball-generated.png
+- 11-model-picker-after-login.png
 
 宣传边界
 
