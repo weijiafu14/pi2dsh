@@ -83,6 +83,21 @@ export class BrowserSurfaces {
   readonly #draftRequests = new Map<string, DraftRequest>()
   readonly #liveDrafts = new Map<string, string>()
   readonly #completionSources = new Map<string, CompletionSource>()
+  // A keyed DSH tool view has to be registered under the exact wire name.
+  // The runtime adds only tools from explicitly supported image packages at
+  // package mount, before any call executes; every other tool keeps DSH's own
+  // row unchanged.
+  readonly #imageToolNames = new Set<string>()
+
+  /** Register one known image tool's exact DSH wire name. */
+  registerImageTool(name: string): void {
+    if (name.length > 0) this.#imageToolNames.add(name)
+  }
+
+  /** Exact wire names needing the generic Pi image-result browser view. */
+  imageToolNames(): string[] {
+    return [...this.#imageToolNames]
+  }
 
   /**
    * Track one child session under its parent.
@@ -578,6 +593,11 @@ export function registerBrowserSurfaceRoute(ctx: Context, registry: BrowserSurfa
         )
         response.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
         response.end(JSON.stringify({ items }))
+        return
+      }
+      if (url.pathname === '/pi2dsh/image-tool-names') {
+        response.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+        response.end(method === 'HEAD' ? undefined : JSON.stringify({ names: registry.imageToolNames() }))
         return
       }
       if (url.pathname !== '/pi2dsh/browser-state') {

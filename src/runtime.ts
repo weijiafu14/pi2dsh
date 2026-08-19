@@ -45,6 +45,18 @@ import { oauthCredentialRef } from './credentials-oauth.js'
 type UnknownRecord = Record<string, unknown>
 type PiHandler = (event: UnknownRecord, context: UnknownRecord) => unknown | Promise<unknown>
 
+// DSH's browser tool-view slot is keyed by exact wire tool name. Pi has no
+// output-schema flag for image results, so support only packages whose image
+// tool contract we have verified. This is intentionally small and explicit:
+// mounting an unrelated Pi package must never replace its existing DSH card.
+const KNOWN_IMAGE_TOOLS_BY_PACKAGE: ReadonlyMap<string, ReadonlySet<string>> = new Map([
+  ['@crazygit/pi-codex-image-gen', new Set(['codex_generate_image'])],
+])
+
+function isKnownImageTool(packageName: string, toolName: string): boolean {
+  return KNOWN_IMAGE_TOOLS_BY_PACKAGE.get(packageName)?.has(toolName) === true
+}
+
 interface RuntimeOptions {
   rootUrl: URL
   manifest: GeneratedRuntimeManifest
@@ -2277,17 +2289,14 @@ async function ensureLoggedInProviderRoute(
   // own, better, route — this is only for a provider whose sole capability is
   // logging in.
   if (providerCarriesTransport(config) || state.providerRouteDisposers.has(name)) return false
-  // Already routed (this profile was written by an earlier session, and the
-  // official adapter registered it at boot): nothing to write, and writing
-  // anyway would rewrite the user's settings file on every start.
-  if (llmOf(ctx)?.listProviders().some(provider => provider.id === name) === true) return false
+  // A route written by an earlier session may already be registered when this
+  // package mounts. That only means its SETTINGS survived; it says nothing
+  // about the credential behind apiKeyEnv (a copied profile, a cleared host
+  // store, or a rotated OAuth token can all leave it missing/stale). Publish
+  // and arm refresh first, then skip only the redundant settings write.
+  const alreadyRouted = llmOf(ctx)?.listProviders().some(provider => provider.id === name) === true
   const credential = await storedOAuthCredential(oauthStoreOf(state), name).catch(() => undefined)
   if (credential === undefined) return false
-  const settings = optionalService<{ update(ns: string, patch: object): Promise<void> }>(ctx, 'settings')
-  if (settings === undefined) {
-    logger(ctx).warn(`[pi2dsh] logged in to ${JSON.stringify(name)}, but this composition has no settings service to declare its model route in`)
-    return false
-  }
   // The route is CONFIGURATION, not transport: the official llm-pi-ai adapter
   // is already mounted and owns this namespace, so the profile goes into its
   // settings section — mounting a second copy of that plugin collides on the
@@ -2303,6 +2312,12 @@ async function ensureLoggedInProviderRoute(
   const published = await publishOAuthCredential(ctx, state, name, config)
   if (!published.ok) return false
   keepOAuthCredentialFresh(ctx, state)
+  if (alreadyRouted) return false
+  const settings = optionalService<{ update(ns: string, patch: object): Promise<void> }>(ctx, 'settings')
+  if (settings === undefined) {
+    logger(ctx).warn(`[pi2dsh] logged in to ${JSON.stringify(name)}, but this composition has no settings service to declare its model route in`)
+    return false
+  }
   await settings.update('llm-pi-ai', {
     providers: {
       [name]: {
@@ -2640,6 +2655,12 @@ function registerTool(ctx: Context, state: RuntimeState, tool: PiTool): void {
   }
   const dispose = (ctx as unknown as { tools: { register(toolDefinition: ToolDefinition): () => void } }).tools.register(definition)
   state.toolDisposers.set(tool.name, dispose)
+  // Register the browser card at package mount, not after the first result.
+  // The package and tool name must both match the verified contract, so no
+  // unrelated tool presentation is replaced.
+  if (isKnownImageTool(state.packageName, tool.name)) {
+    state.shared.browserSurfaces?.registerImageTool(tool.name)
+  }
 }
 
 function unregisterTool(state: RuntimeState, name: string): boolean {
@@ -3551,9 +3572,16 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
   // A credential stored by an EARLIER session must still produce a route:
   // otherwise the models a user logged in for vanish on the next restart and
   // they are told to log in again to something they are already logged in to.
+  // This is part of mount readiness, not a background convenience. A one-shot
+  // profile can start its first model call as soon as applyPiPackage returns;
+  // publishing beside that call loses the race and the host reports
+  // MISSING_CREDENTIAL even though auth.json already contains a valid login.
   for (const [name, config] of [...state.providers]) {
-    void ensureLoggedInProviderRoute(ctx, state, name, config)
-      .catch(error => logger(ctx).warn(`[pi2dsh] could not restore the route for logged-in provider ${JSON.stringify(name)}: ${error instanceof Error ? error.message : String(error)}`))
+    try {
+      await ensureLoggedInProviderRoute(ctx, state, name, config)
+    } catch (error) {
+      logger(ctx).warn(`[pi2dsh] could not restore the route for logged-in provider ${JSON.stringify(name)}: ${error instanceof Error ? error.message : String(error)}`)
+    }
   }
   if (options.manifest.skillDirs.length > 0) {
     const skills = (ctx as unknown as { get(name: string): unknown }).get('skills')
@@ -3768,6 +3796,7 @@ export const runtimeInternals = {
   resolveOfferedChoice,
   dshToPiContent,
   expandPrompt,
+  isKnownImageTool,
   isSubagentOrigin,
   normalizeToolResult,
   splitArguments,

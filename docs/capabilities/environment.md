@@ -7,14 +7,14 @@ package are loaded through DSH's own skill filesystem; MCP servers declared in
 Pi config are translated into official `dsh-mcp-client` entries by
 `pi2dsh mcp-config` (the Pi MCP adapter's code never runs).
 
-**4 Pi surfaces** — 1 same semantics · 1 mapped, difference stated · 2 not available.
+**4 upstream-shaped Pi rule rows** — 1 same semantics · 1 mapped, difference stated · 2 not available.
 
-| Pi surface | Kind | Status | What it does on DSH |
-|---|---|---|---|
-| [`events`](#events-pi) | `pi.*` | Same semantics | Package-local Pi extension event-bus emit/on semantics are preserved for migrated extensions in the same bundle. |
-| [`project_trust`](#project_trust-event) | `event` | Not available | Project trust must remain owned by the DSH host; the handler is accepted but never consulted. |
-| [`resources_discover`](#resources_discover-event) | `event` | Not available | Dynamic resource discovery must be converted into DSH providers; the handler is accepted but never fires. |
-| [`isProjectTrusted`](#isprojecttrusted-ctx) | `ctx.*` | Mapped, difference stated | Fails closed as untrusted because DSH does not expose Pi project-trust state. |
+| Pi surface | Capability contract | Kind | Status | What it does on DSH |
+|---|---|---|---|---|
+| [`events`](#events-pi) | `pi.events.bus` | `pi.*` | Same semantics | Package-local Pi extension event-bus emit/on semantics are preserved for migrated extensions in the same bundle. |
+| [`project_trust`](#project_trust-event) | `pi.project.trust` | `event` | Not available | Project trust must remain owned by the DSH host; the handler is accepted but never consulted. |
+| [`resources_discover`](#resources_discover-event) | `pi.resources.discovery` | `event` | Not available | Dynamic resource discovery must be converted into DSH providers; the handler is accepted but never fires. |
+| [`isProjectTrusted`](#isprojecttrusted-ctx) | `pi.project.trust` | `ctx.*` | Mapped, difference stated | Fails closed as untrusted because DSH does not expose Pi project-trust state. |
 
 ## How each one is built
 
@@ -24,25 +24,45 @@ taken on trust.
 
 ### `events` <a id="events-pi"></a>
 
-`pi.*` · Same semantics
+`pi.*` · `pi.events.bus` · Same semantics
+
+**Theoretical DSH mapping:** `dsh.plugin-composition` through
+`package-scoped event bus disposed with the plugin fiber`.
+
+**Current implementation:**
 
 A package-local emitter inside the bridge, so extensions bundled together talk to each other exactly as they do under Pi.
 
 ### `project_trust` <a id="project_trust-event"></a>
 
-`event` · Not available
+`event` · `pi.project.trust` · Not available
+
+**Theoretical DSH mapping:** `dsh.plugin-composition` + `dsh.resources` through
+`host-owned trust policy before project resource loading`.
+
+**Current implementation:**
 
 Accepted and never consulted. Trust is a host decision in DSH, and letting a package answer it would move the decision to the code being trusted.
 
 ### `resources_discover` <a id="resources_discover-event"></a>
 
-`event` · Not available
+`event` · `pi.resources.discovery` · Not available
+
+**Theoretical DSH mapping:** `dsh.resources` + `dsh.plugin-composition` through
+`lifecycle-bound skill/MCP/resource providers`.
+
+**Current implementation:**
 
 Accepted and never fired. Dynamic resource discovery in DSH is a provider registration, which is a different (and official) seam.
 
 ### `isProjectTrusted` <a id="isprojecttrusted-ctx"></a>
 
-`ctx.*` · Mapped, difference stated
+`ctx.*` · `pi.project.trust` · Mapped, difference stated
+
+**Theoretical DSH mapping:** `dsh.plugin-composition` + `dsh.resources` through
+`host-owned trust policy before project resource loading`.
+
+**Current implementation:**
 
 No DSH seam carries Pi's project-trust state, so the bridge returns the safe constant instead of inventing one. Pi's own ProjectTrustStore is vendored and available to packages that manage their own.
 

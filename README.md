@@ -170,6 +170,7 @@ it work. **This is the list to trust.**
 | Plugin | What was exercised | Where | Example |
 |---|---|---|---|
 | [`@kassing/pi-vision`](https://www.npmjs.com/package/@kassing/pi-vision) | Image analysis delegated to a vision model; image-admission companion route; analysis injected into a text-only model's turn | CLI + web | [`vision-bridge`](examples/vision-bridge/) |
+| [`@crazygit/pi-codex-image-gen`](https://www.npmjs.com/package/@crazygit/pi-codex-image-gen) | ChatGPT/Codex OAuth → `gpt-image-2` generation; local reference-image upload through DSH approval; image edit; native attachment storage and inline Web rendering | CLI + web | [`codex-image-gen`](examples/codex-image-gen/) |
 | [`pi-btw`](https://www.npmjs.com/package/pi-btw) | `/btw <question>` as a real child session in DSH's subagent UI; `/btw-inject`; `/btw --save`; main thread stays clean | CLI + web | [`side-conversation`](examples/side-conversation/) |
 | [`pi-powerline-footer`](https://www.npmjs.com/package/pi-powerline-footer) | A terminal status line — model, thinking level, project, context usage — drawn into DSH's widget dock, colour included | web | [`presentation-surfaces`](examples/presentation-surfaces/) |
 | [`pi-vision-tool`](https://www.npmjs.com/package/pi-vision-tool) | Tool registration through a JSON-Schema shape DSH had to convert (`anyOf` → `oneOf`) | CLI + web | — |
@@ -306,23 +307,71 @@ The rules that keep it honest:
 - **Verified, not asserted.** Every capability has a public-API contract test,
   and ships only after running end to end on a real DSH loop — CLI *and* web.
 
+## What this is teaching us about DSH
+
+pi2dsh is also an executable stress test of DSH's plugin architecture. Pi gives
+that test a useful workload: a large, already-used public plugin ABI rather than
+a set of examples invented to fit the host.
+
+The result so far is specific, not a thumbs-up/thumbs-down verdict:
+
+- DSH's public seams successfully carry whole capabilities: tools, commands,
+  model adapters, user questions, native child sessions and browser slots.
+- The pressure points appear when an out-of-repo plugin needs to extend an
+  existing capability *from the inside*: add a durable session-event type,
+  intercept the real provider request/response, control compaction before it
+  happens, or participate in trust before project resources load.
+- A working pi2dsh sidecar or alternate adapter is useful product behaviour,
+  but it is **not** counted as proof that the native DSH seam is complete.
+
+For example, a `pi-btw` answer is a real DSH child session — visible, resumable
+and continuable by the host. Pi custom entries are different: they still need a
+pi2dsh sidecar because an out-of-repo plugin cannot safely add a new event type
+to DSH's durable log. Likewise, a transport-owning Pi provider can register a
+native DSH route with its full compatibility profile, while the hand-configured
+`llm-pi-ai` schema still drops some wire-compatibility fields.
+
+The project follows one **[Pi → DSH architecture mapping standard](docs/architecture-mapping-standard.md)**.
+All 111 Pi surfaces belong to capability contracts, all 45 DSH subsystems belong
+to carrying mechanisms, and each capability contract maps to concrete public
+DSH seams. Real plugin runs reference those mappings and record the five-layer
+trace and five-grade result. The structured source of truth is
+[`architecture-ledger.json`](docs/architecture-ledger.json); it produces the
+**[theoretical architecture matrix](docs/architecture-mapping-matrix.md)**,
+**[real-plugin validation matrix](docs/plugin-validation-matrix.md)** and
+**[current architecture conclusions](docs/dsh-architecture-conformance.md)**.
+That makes both top-down status and per-plugin drill-down answerable from the
+same ledger. The current five DSH gap IDs are confirmed findings, not a claim
+of complete coverage. Current
+upstream reports include
+[#2708 — durable events for out-of-repo plugins](https://github.com/deepseek-ai/deepseek-harness/discussions/2708)
+and
+[#3076 — provider compat fields dropped by `llm-pi-ai`](https://github.com/deepseek-ai/deepseek-harness/discussions/3076).
+
 ## Pi capabilities on DSH
 
 Every surface a Pi package can touch, and what it maps onto. These tables are
 generated from the rules the bridge consults at runtime, so they cannot drift
 from the code.
 
+For pinned Pi 0.84.1, the generated catalog has **111 upstream-shaped rule
+rows**. The bridge also keeps one
+documented compatibility extension, `unregisterTool`; it appears on the tools
+detail page but is deliberately outside that total. Nested objects such as the
+session manager can expose several methods behind one row; the architecture
+audit states this boundary explicitly.
+
 <!-- capability-table:start -->
 | Area | Pi surfaces | Status |
 |---|---|---|
-| [Tools](docs/capabilities/tools.md) | 12 | 3 same semantics · 9 mapped, difference stated |
-| [Commands, flags, editor input](docs/capabilities/commands.md) | 13 | 13 mapped, difference stated |
+| [Tools](docs/capabilities/tools.md) | 11 | 2 same semantics · 9 mapped, difference stated |
+| [Commands, flags, editor input](docs/capabilities/commands.md) | 6 | 6 mapped, difference stated |
 | [Messages, context, agent loop](docs/capabilities/conversation.md) | 20 | 9 same semantics · 11 mapped, difference stated |
-| [Sessions & side conversations](docs/capabilities/sessions.md) | 24 | 6 same semantics · 18 mapped, difference stated |
+| [Sessions & side conversations](docs/capabilities/sessions.md) | 23 | 5 same semantics · 18 mapped, difference stated |
 | [Models, providers, credentials](docs/capabilities/models.md) | 15 | 1 same semantics · 11 mapped, difference stated · 3 not available |
-| [Asking the user, rendering](docs/capabilities/interaction.md) | 24 | 4 same semantics · 20 mapped, difference stated |
+| [Asking the user, rendering](docs/capabilities/interaction.md) | 32 | 5 same semantics · 27 mapped, difference stated |
 | [Project environment & resources](docs/capabilities/environment.md) | 4 | 1 same semantics · 1 mapped, difference stated · 2 not available |
-| **Total** | **112** | **24 same semantics · 83 mapped, difference stated · 5 not available** |
+| **Total** | **111** | **23 same semantics · 83 mapped, difference stated · 5 not available** |
 <!-- capability-table:end -->
 
 Plus **202 imported symbols** from Pi's three runtime packages
@@ -330,9 +379,10 @@ Plus **202 imported symbols** from Pi's three runtime packages
 shims — so a plugin's own Pi version pins never load. They are listed in
 [Imported Pi runtime symbols](docs/capabilities/imports.md).
 
-Each area page states two things for every surface: what it does on DSH, and
-**how it is built** — the DSH seam, service or waterfall the mapping runs on,
-so a claim here can be checked against the harness instead of trusted.
+Each area page states the Pi capability contract, the theoretical DSH mechanism
+and public seam, and the current implementation for every surface. Adding a
+surface without a capability assignment or theoretical mapping fails the docs
+check.
 
 Start at the [capability index](docs/capabilities/README.md). Machine-readable:
 `pi2dsh matrix --json`.
@@ -369,6 +419,7 @@ in one has actually been executed against a real DSH loop before landing.
 | Example | What you get |
 |---|---|
 | [`vision-bridge`](examples/vision-bridge/) | A text-only model answers questions about images — CLI and web, probe images included |
+| [`codex-image-gen`](examples/codex-image-gen/) | Generate and edit images with a ChatGPT/Codex subscription; DSH approval and inline result included |
 | [`side-conversation`](examples/side-conversation/) | `/btw <question>` runs a side thread in DSH's native subagent UI; your main conversation stays clean |
 | [`presentation-surfaces`](examples/presentation-surfaces/) | A real plugin's terminal chrome (`pi-powerline-footer`) in DSH's web seats, plus which of the top-50 Pi plugins draw at all |
 | [`subscription-login`](examples/subscription-login/) | Use a ChatGPT / Claude / Copilot / Kimi subscription as a DSH model: `/login`, then the route and credential appear on their own |
@@ -392,6 +443,7 @@ pnpm verify                 # typecheck + contract tests + packaging
 pnpm audit:community        # static screening over the top-50 corpus
 pnpm test:community         # deep runtime + official plugin-manager + e2e
 DEEPSEEK_API_KEY=… pnpm test:live    # real-model acceptance (key from env only)
+CODEX_AUTH_FILE=… pnpm test:codex-image # real OAuth generation + reference edit + Web pixels
 ```
 
 Acceptance evidence per capability: [docs/acceptance.md](docs/acceptance.md).

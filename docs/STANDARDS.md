@@ -214,6 +214,75 @@ undefined——被"别让我看见跨层的东西，跨层就会导致不一致�
   并告知用户。
 - 兜底：绝不伪装成功；`?.` 不许吞真实失败（吞错曾让排查多绕三轮）。
 
+### 3.5 把兼容层当作 DSH 架构检验装置
+
+本项目的唯一映射标准是
+[`architecture-mapping-standard.md`](architecture-mapping-standard.md)，结构化事实只维护在
+[`architecture-ledger.json`](architecture-ledger.json)。它用一份总账生成三种视图：
+
+1. [`architecture-mapping-matrix.md`](architecture-mapping-matrix.md)：Pi 完整接口经能力
+   契约到 DSH 承载机制与具体 seam 的理论模型；
+2. [`plugin-validation-matrix.md`](plugin-validation-matrix.md)：真实插件引用理论映射，
+   记录五层流转与五级结果；
+3. [`dsh-architecture-conformance.md`](dsh-architecture-conformance.md)：从理论、实现和验证
+   推导出的已成立、桥欠账、DSH 缺口、宿主差异和尚未实证结论。
+
+旧 compatibility matrix 只是 Pi 叶子接口的当前运行时行为，不得直接当架构得分；111 条
+Pi surface 与 45 个 DSH subsystem 也不是附录数字，而是理论模型必须无遗漏归类的完整性
+边界。抽象必须能下钻到每个接口，接口也必须能向上归入抽象。
+
+**事故档案（2026-08-19，架构总审）**：能力总表把 83 项统一写成“已映射并写明
+差异”。这个运行时分类本身没有错，但拿它回答架构问题会严重失真：
+
+- `appendEntry` 写 sidecar，和 `ctx.sessions.create` 创建原生 DSH session，都叫 mapped；
+- `session_before_compact` 只能收到事后事实通知，和真正可修改权威请求的
+  `system-prompt/assemble` waterfall，都叫 mapped；
+- 注册后永不触发的 Pi tree 事件、桥内保存的 thinkingLevel、DSH 原生 tools seam，
+  也全被塞在同一栏。
+
+结果是数字会随着兼容层兜底越来越漂亮，DSH 真正缺的 seam 反而越来越看不见。由此
+立下三条硬标准：
+
+1. **运行时矩阵和架构判定分账**：matrix 回答插件拿到什么行为；架构账本回答 DSH
+   是否原生承接。不得用前者的 mapped 数量给后者背书。
+2. **第二份权威状态自动降级**：只要模型、凭证、会话、资源或 UI 事实需要 sidecar/
+   bridge-local store 才活得下来，就标“旁路完成”，并写明宿主导出、回放、原生界面
+   会失去什么。
+3. **绕通和修好分开说**：替换整个 adapter 绕开官方 profile schema，只证明 adapter
+   seam 能用；它不等于 profile schema 修好。桥能把动态资源翻成 DSH provider 而还没
+   做，则是桥欠账，不得反过来说 DSH 无法支持。
+
+**第二次总账事故（2026-08-19，覆盖口径）**：生成表宣称 112 个 Pi surface，但对固定的
+Pi 0.84.1 declarations 逐项对照后，当前规则的上游形状行应是 111 个：25 个非事件 API、
+33 个事件、24 个非 UI context、28 个 UI，再加单列的
+`modelRegistry.hasConfiguredAuth`。多出来的 `unregisterTool` 是桥自己的兼容扩展，Pi 源码没有；
+旧 `pi-abi-coverage.md` 还把 202 个 import symbol 压成“3 个 host 包”混入总数，并得出
+“只缺 3 项”。这证明“每条规则都被生成进文档”仍不等于“规则全集等于上游全集”。
+
+同时，111 不是“每个嵌套 callable 都拆开”的数：`sessionManager`、`modelRegistry` 等对象
+仍有一行代表多方法合同。后续 drift check 必须深入这些对象，不能只盯总数相等。
+
+从此完整性由一条可追踪链保证，而不是三张并列表：
+
+```text
+每条 Pi 接口 → Pi 能力契约 → 理论映射 → DSH 承载机制 → 具体公开 seam
+                                      ↓
+                              真实插件五层验证与五级结论
+```
+
+生成检查必须同时拒绝：没有能力契约的 Pi 接口、没有理论映射的能力契约、没有承载机制的
+DSH subsystem、引用不存在 mapping 的验证记录，以及新增实现后仍陈旧的生成视图。Cordis
+卸载、重绑、隔离和失败回滚属于相关映射的生命周期维度，不再另起一张与映射脱节的成绩单。
+
+现有五个 `DSH-ARCH-*` 只是证据闭环的缺口，不是穷举完成。像 `input`、message replacement、
+原生工具 update、宿主发起的 session tree 生命周期等，未完成数据流倒推前记“待判级”；
+找到公开 seam 就归桥，证明权威时机不开放才新增上游编号。
+
+以后每补一项能力，同一变更必须更新唯一结构化总账：给叶子接口归能力契约，补或复用
+理论映射，记录真实消费者、五层流转、五级判定、单一权威位置、契约/E2E 证据与问题
+归属。若归属 DSH，建稳定 `DSH-ARCH-*` 编号，给最小复现和上游链接；修复后保留记录
+并改状态，不删除历史证据。
+
 ---
 
 ## 四、完成判据

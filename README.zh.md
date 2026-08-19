@@ -152,6 +152,7 @@ Web 里**直接粘图**——哪怕你的主模型是纯文本的。DSH 正常�
 | 插件 | 验证了什么 | 在哪验的 | 示例 |
 |---|---|---|---|
 | [`@kassing/pi-vision`](https://www.npmjs.com/package/@kassing/pi-vision) | 图片委托给视觉模型；贴图伴生路由；分析结果注入纯文本模型的这一轮 | CLI + Web | [`vision-bridge`](examples/vision-bridge/) |
+| [`@crazygit/pi-codex-image-gen`](https://www.npmjs.com/package/@crazygit/pi-codex-image-gen) | ChatGPT/Codex OAuth 调 `gpt-image-2` 生图；本地参考图走 DSH 审批后上传；编辑图片；原生附件存储并在 Web 内直接显示 | CLI + Web | [`codex-image-gen`](examples/codex-image-gen/) |
 | [`pi-btw`](https://www.npmjs.com/package/pi-btw) | `/btw <问题>` 跑成 DSH 子代理界面里的真子会话；`/btw-inject`；`/btw --save`；主会话保持干净 | CLI + Web | [`side-conversation`](examples/side-conversation/) |
 | [`pi-powerline-footer`](https://www.npmjs.com/package/pi-powerline-footer) | 终端状态条（模型、思考档位、项目、上下文用量）画进 DSH 的 widget dock，带颜色 | Web | [`presentation-surfaces`](examples/presentation-surfaces/) |
 | [`pi-vision-tool`](https://www.npmjs.com/package/pi-vision-tool) | 工具注册，且带一个 DSH 需要转换的 JSON Schema 形状（`anyOf` → `oneOf`） | CLI + Web | — |
@@ -265,31 +266,70 @@ footer、title、working/thinking 类），都画在宿主自己的 slot 座位�
 - **验证过才算数。** 每项能力都有公开 API 契约测试，并且必须在真实 DSH loop 上
   端到端跑通——CLI **和** Web 双端——才会发布。
 
+## 这件事正在检验 DSH 什么
+
+pi2dsh 同时也是一套会执行的 DSH 插件架构压力测试。Pi 提供的不是为了迎合 DSH
+现编的几个 demo，而是一套已经被大量真实插件用过的公开 ABI，所以它很适合回答：
+DSH 所说的“能力由插件自由组合”，到底走到了哪一步。
+
+目前的结论不是简单的“好”或“不好”，而是边界已经很清楚：
+
+- DSH 对**替换一整项能力**的公开 seam 是成立的：工具、命令、模型 adapter、用户
+  提问、原生子会话和浏览器 slot 都已经承接住真实 Pi 能力。
+- 压力集中在**从内部扩展已有能力**：仓外插件新增一种持久会话事件、拦截真正发出的
+  provider 请求/响应、在压缩发生前改变决定、在项目资源加载前参与 trust。
+- pi2dsh 用 sidecar 或另一条 adapter 把功能绕通，对用户有价值，但**不能算 DSH
+  原生架构已经承接成功**。我们会把“功能可用”和“宿主 seam 完整”分开记。
+
+一个容易说错的例子：`pi-btw` 的回答已经是真正的 DSH child session，宿主能打开、
+续聊和恢复；sidecar 存的是 Pi 自定义 entry 等 DSH 仓外插件目前无法写进原生日志的
+事实，不是把整个子会话伪造了一遍。模型侧也一样：自带 transport 的 Pi provider
+可以注册成原生 DSH route，并保留完整 compat；但手写 `llm-pi-ai` 配置时，部分
+wire 兼容字段仍会被 schema 丢掉。
+
+项目采用一套统一的 **[Pi → DSH 架构映射标准](docs/architecture-mapping-standard.md)**：
+111 条 Pi 接口先归入能力契约，DSH 的 45 个模块归入承载机制，再建立到具体公开 seam
+的理论映射；真实插件只引用这些映射，记录五层流转和五级结果。结构化事实保存在
+[`architecture-ledger.json`](docs/architecture-ledger.json)，由同一份总账生成
+**[理论架构矩阵](docs/architecture-mapping-matrix.md)**、
+**[真实插件验证矩阵](docs/plugin-validation-matrix.md)** 和
+**[当前架构结论](docs/dsh-architecture-conformance.md)**。这样既能从总体看到已经适配的
+能力，也能从任一插件下钻到它用了哪些 Pi 能力、落到哪些 DSH 机制、实际达到哪一级。
+当前 5 个 DSH 缺口是已经坐实的发现，**不是已经完成全覆盖**。
+当前已向上游提交的实证包括
+[#2708：让仓外插件安全写持久事件](https://github.com/deepseek-ai/deepseek-harness/discussions/2708)
+和
+[#3076：`llm-pi-ai` 丢 provider compat 字段](https://github.com/deepseek-ai/deepseek-harness/discussions/3076)。
+
 ## Pi 的开放能力在 DSH 上怎么落
 
 Pi 包能碰到的每一个面，以及它落到 DSH 的什么位置。下面这些表是从桥在运行时真正
 查的那份规则生成的，所以不会和代码脱节。
 
+针对固定的 Pi 0.84.1，当前生成目录有 **111** 条上游形状的规则行。桥另外保留了一个
+兼容扩展 `unregisterTool`；它会出现在工具细表中，但明确不计入这个总数。
+`sessionManager` 等嵌套对象仍可能用一行代表多个方法，架构审计会明确写出这层边界。
+
 <!-- capability-table:start -->
 | 能力域 | Pi 面数 | 状态 |
 |---|---|---|
-| [工具](docs/capabilities/tools.md) | 12 | 3 语义一致 · 9 已映射并写明差异 |
-| [命令、flag、编辑器输入](docs/capabilities/commands.md) | 13 | 13 已映射并写明差异 |
+| [工具](docs/capabilities/tools.md) | 11 | 2 语义一致 · 9 已映射并写明差异 |
+| [命令、flag、编辑器输入](docs/capabilities/commands.md) | 6 | 6 已映射并写明差异 |
 | [消息、上下文、agent 循环](docs/capabilities/conversation.md) | 20 | 9 语义一致 · 11 已映射并写明差异 |
-| [会话与侧边对话](docs/capabilities/sessions.md) | 24 | 6 语义一致 · 18 已映射并写明差异 |
+| [会话与侧边对话](docs/capabilities/sessions.md) | 23 | 5 语义一致 · 18 已映射并写明差异 |
 | [模型、provider、凭证](docs/capabilities/models.md) | 15 | 1 语义一致 · 11 已映射并写明差异 · 3 不提供 |
-| [向用户提问与渲染](docs/capabilities/interaction.md) | 24 | 4 语义一致 · 20 已映射并写明差异 |
+| [向用户提问与渲染](docs/capabilities/interaction.md) | 32 | 5 语义一致 · 27 已映射并写明差异 |
 | [项目环境与资源](docs/capabilities/environment.md) | 4 | 1 语义一致 · 1 已映射并写明差异 · 2 不提供 |
-| **合计** | **112** | **24 语义一致 · 83 已映射并写明差异 · 5 不提供** |
+| **合计** | **111** | **23 语义一致 · 83 已映射并写明差异 · 5 不提供** |
 <!-- capability-table:end -->
 
 另外还有 Pi 三个运行时包（`pi-coding-agent`、`pi-tui`、`pi-ai`）的 **202 个
 导入符号**，由 vendored 或 headless shim 提供——所以插件自己钉的 Pi 版本永远不会
 被加载，清单见[导入的 Pi 运行时符号](docs/capabilities/imports.md)。
 
-每个能力域页面对每一个面都写两件事：它在 DSH 上做什么，以及**它是怎么实现的**
-——这条映射落在哪个 DSH seam、服务或 waterfall 上，好让读者能对着 harness 核实，
-而不是只能选择相信。
+每个能力域页面对每一个面都写清它属于哪个 Pi 能力契约、理论上应落到哪个 DSH 承载
+机制与公开 seam、当前代码实际上如何实现。新增接口如果没有能力归属或理论映射，文档
+检查会直接失败。
 
 从[能力索引](docs/capabilities/README.md)开始看。机器可读版：`pi2dsh matrix --json`。
 
@@ -318,6 +358,7 @@ loop 上实际跑过才会进来。
 | 示例 | 你能得到什么 |
 |---|---|
 | [`vision-bridge`](examples/vision-bridge/) | 纯文本模型回答图片问题——CLI 与 Web 双端，附探针图 |
+| [`codex-image-gen`](examples/codex-image-gen/) | 用 ChatGPT/Codex 订阅生图和改图，包含 DSH 上传审批与 Web 内直接显示结果 |
 | [`side-conversation`](examples/side-conversation/) | `/btw <问题>` 在 DSH 原生子代理界面里开一条侧边线程，主会话保持干净 |
 | [`presentation-surfaces`](examples/presentation-surfaces/) | 真插件（`pi-powerline-footer`）的终端界面画进 DSH Web 座位，附 top50 里哪些 Pi 插件会画界面 |
 | [`subscription-login`](examples/subscription-login/) | 用 ChatGPT / Claude / Copilot / Kimi 订阅账号当 DSH 的模型：`/login`、登录后自动建路由与凭证 |
@@ -341,6 +382,7 @@ pnpm verify                 # 类型检查 + 契约测试 + 打包检查
 pnpm audit:community        # 前 50 静态筛查
 pnpm test:community         # 深度运行时 + 官方插件管理器 + e2e
 DEEPSEEK_API_KEY=… pnpm test:live    # 真实模型验收（key 只从环境读）
+CODEX_AUTH_FILE=… pnpm test:codex-image # 真 OAuth 生图 + 参考图编辑 + Web 像素显示
 ```
 
 逐项能力的验收证据：[docs/acceptance.md](docs/acceptance.md)。

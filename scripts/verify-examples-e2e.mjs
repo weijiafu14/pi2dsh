@@ -22,6 +22,9 @@
 //   vision-bridge-web  the same vision example again, but through `dsh web` in a
 //                    real browser: headless proves the bridge, this proves the
 //                    surface, and the bar for done is both.
+//   codex-image-gen  a real ChatGPT/Codex OAuth account drives the published
+//                    image plugin through generation and reference-image edit;
+//                    needs CODEX_AUTH_FILE because the account is the fixture.
 //
 // Usage: node scripts/verify-examples-e2e.mjs [outfile]
 //        DEEPSEEK_API_KEY=… to include the live half; without it that half
@@ -695,6 +698,37 @@ async function runSubscriptionLogin() {
   }
 }
 
+// ---------------------------------------------------------------------------
+// examples/codex-image-gen — real subscription image generation + Web edit
+// ---------------------------------------------------------------------------
+async function runCodexImageGen() {
+  const authFile = process.env.CODEX_AUTH_FILE
+  if (authFile === undefined || authFile.length === 0) {
+    results.codexImageGen = { status: 'skipped', reason: 'CODEX_AUTH_FILE not set' }
+    return
+  }
+  const scratch = await mkdtemp(join(tmpdir(), 'pi2dsh-ex-codex-image-'))
+  const report = join(scratch, 'report.json')
+  try {
+    await execFile('node', [join(projectRoot, 'scripts/verify-codex-image-gen-e2e.mjs'), report], {
+      cwd: projectRoot,
+      env: {
+        ...process.env,
+        CODEX_AUTH_FILE: authFile,
+        PI2DSH_DSH_ROOT: dshRoot,
+        PI2DSH_ENGINE_SPEC: engineSpec,
+      },
+      timeout: 900_000,
+      maxBuffer: 32 * 1024 * 1024,
+    })
+    const evidence = JSON.parse(await readFile(report, 'utf8'))
+    assert.equal(evidence.status, 'passed')
+    results.codexImageGen = evidence
+  } finally {
+    await rm(scratch, { recursive: true, force: true })
+  }
+}
+
 const SCENARIOS = [
   ['gateway-compat', runGatewayCompat, 'gatewayCompat'],
   ['vision-bridge', runVisionBridge, 'visionBridge'],
@@ -703,6 +737,7 @@ const SCENARIOS = [
   ['custom-gateways', runCustomGateways, 'customGateways'],
   ['presentation-surfaces', runPresentationSurfaces, 'presentationSurfaces'],
   ['subscription-login', runSubscriptionLogin, 'subscriptionLogin'],
+  ['codex-image-gen', runCodexImageGen, 'codexImageGen'],
 ]
 const selected = SCENARIOS.filter(([name]) => only === undefined || only === name)
 if (selected.length === 0) {

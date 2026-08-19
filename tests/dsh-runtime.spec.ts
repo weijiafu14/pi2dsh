@@ -847,6 +847,92 @@ describe('an OAuth-only provider has no models until logging in gives it a route
   })
 })
 
+describe('a stored OAuth login is ready when a restarted host finishes mounting', () => {
+  it('publishes the credential and route before applyPiPackage returns', async () => {
+    // A headless profile starts its one and only model call immediately after
+    // plugin mount. Restoring auth.json in a detached promise races that call:
+    // the route exists in settings, but its credential still reads missing.
+    // No settle() is allowed in this test — mount returning is the contract.
+    const scratch = await mkdtemp(join(tmpdir(), 'pi2dsh-oauth-restore-ready-'))
+    cleanup.push(scratch)
+    await mkdir(join(scratch, 'pkg'), { recursive: true })
+    await writeFile(join(scratch, 'pkg', 'extension.js'), 'export default function () {}\n', 'utf8')
+    const agentDir = join(scratch, 'agent')
+    await mkdir(agentDir, { recursive: true })
+    await writeFile(join(agentDir, 'auth.json'), JSON.stringify({
+      'openai-codex': {
+        type: 'oauth',
+        access: 'stored-access-token',
+        refresh: 'stored-refresh-token',
+        expires: Date.now() + 3_600_000,
+        accountId: 'account-1',
+      },
+    }), 'utf8')
+
+    const stored = new Map<string, string>()
+    const written: Array<{ ns: string, patch: unknown }> = []
+    const ctx = new Context()
+    await ctx.plugin(SessionStore)
+    await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
+    await ctx.plugin(ToolRuntime)
+    await ctx.plugin(CommandRuntime)
+    await ctx.plugin(SkillRegistry)
+    await ctx.plugin(AgentRegistry)
+    await ctx.plugin(LlmRuntime as never, {} as never)
+    // Actual restart shape: settings loaded before pi2dsh, so the adapter
+    // route is already present. The credential still has to be republished —
+    // route presence is not proof that its apiKeyEnv currently resolves.
+    ;(ctx as unknown as { llm: { registerAdapter(providers: string[], adapter: unknown): unknown } })
+      .llm.registerAdapter(['openai-codex'], {
+        providerInfo: (provider: string) => ({ id: provider, name: 'OpenAI (ChatGPT Plus/Pro)' }),
+        providerRetryPolicy: () => undefined,
+        listModels: async () => [],
+        resolveModel: async (provider: string, id: string) => ({ provider, id, name: id }),
+        async *stream() { yield { type: 'finish', reason: { kind: 'stop' } } },
+      })
+    ;(ctx as unknown as { provide(name: string, value: unknown): void }).provide('settings', {
+      update: async (ns: string, patch: unknown) => {
+        await new Promise(done => setTimeout(done, 5))
+        written.push({ ns, patch })
+      },
+    })
+    ;(ctx as unknown as { provide(name: string, value: unknown): void }).provide('credentials', {
+      set: async (ref: string, value: string) => {
+        await new Promise(done => setTimeout(done, 5))
+        stored.set(ref, value)
+      },
+      describe: async () => ({ configured: false, writable: true }),
+    })
+
+    process.env.PI_CODING_AGENT_DIR = agentDir
+    try {
+      await ctx.plugin({
+        name: 'pi2dsh:oauth-restore-ready-test',
+        inject: ['tools', 'systemPrompt', 'commands', 'skills'],
+        async apply(inner: Context) {
+          await applyPiPackage(inner, {
+            rootUrl: pathToFileURL(`${join(scratch, 'pkg')}/`),
+            manifest: {
+              schemaVersion: 1,
+              package: { name: '@pi2dsh-fixtures/oauth-restore-ready', version: '0.0.0' },
+              extensions: ['extension.js'],
+              skillDirs: [],
+              prompts: [],
+            } as never,
+          })
+        },
+      } as Plugin.Object)
+
+      expect(stored.get('PI2DSH_OAUTH_OPENAI_CODEX')).toBe('stored-access-token')
+      // Existing route: no redundant settings rewrite, but credential ready.
+      expect(written).toEqual([])
+      expect(JSON.stringify(written)).not.toContain('stored-access-token')
+    } finally {
+      delete process.env.PI_CODING_AGENT_DIR
+    }
+  })
+})
+
 describe('answering nothing at the login picker', () => {
   it('is a cancellation, not a wrong answer', () => {
     // Dismissing the dialog answers with nothing. Feeding that to the choice

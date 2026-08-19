@@ -154,6 +154,37 @@ pi2dsh：通用 Pi Host ABI 兼容层，让 Pi 生态插件原样跑在 DeepSeek
      必须告诉用户**（用户明令）。
 - 兜底纪律不变：绝不伪装成功；`?.` 不许吞真实失败。
 
+## 三点五、DSH 架构适配度积累标准（铁律）
+
+唯一标准是
+[`docs/architecture-mapping-standard.md`](docs/architecture-mapping-standard.md)。结构化事实只
+维护在 [`docs/architecture-ledger.json`](docs/architecture-ledger.json)，不得再另写一套
+平行分类。旧 compatibility matrix 继续存在，但只表示具体 Pi surface 的当前运行时行为，
+不直接等于架构结论。
+
+**理论模型必须同时有抽象和穷举：**
+
+- 每条固定上游 Pi surface 恰好归入一个“能力域 → 能力契约”；桥扩展和 import symbols
+  单列。当前 111 条只是形状规则，嵌套对象仍需继续下钻。
+- 官方 45 个 DSH subsystem 恰好归入一个“架构域 → 承载机制”，并列出仓外插件能用的
+  service/provider/waterfall/event/client slot；只有模块名不算可映射。
+- 每个 Pi 能力契约恰好有一条理论映射，按用户目标、介入时机、权威状态、生命周期、
+  原生呈现五个维度判断为直接承接、组合承接、宿主语义翻译或缺公开 seam。
+
+**实践验证不得脱离理论映射另起炉灶：**每个真实插件场景引用 mapping ID，沿“Pi 调用 →
+pi2dsh 翻译 → DSH 公开 seam → DSH 权威状态 → 用户结果”五层取证，再分别判为：
+1 原生承接、2 可靠翻译、3 旁路完成、4 降级/缺失、5 宿主专属不计分。一个插件触碰多个
+能力时逐项判级，禁止整包写一个“通过”。
+
+**结论只按固定规则推导：**有合理 seam 但桥没接是 pi2dsh 欠账；理论缺 seam 且有真实
+消费者、五层证据和最小复现，才建 `DSH-ARCH-*`；终端/CLI 等宿主实现记宿主差异；没有
+真实插件验证的映射只能写“理论可行、尚未实证”。第二份权威 store/sidecar 自动降为
+旁路完成；绕通另一条 adapter 不能写成原 seam 已修复。
+
+每次能力变更必须同步 `src/compatibility.ts`、`docs/architecture-ledger.json` 和对应验证
+证据，再生成理论矩阵、插件验证矩阵与架构结论。`pnpm check:docs` 必须对 Pi 叶子接口、
+能力契约、理论映射、DSH 45 个 subsystem 和验证引用做无遗漏、无重复、无陈旧校验。
+
 ## 四、完成判据（铁律）
 
 - 每项能力必须有**公共 API 契约测试**（tests/，不以某个插件能加载为

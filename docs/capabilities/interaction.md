@@ -3,38 +3,48 @@
 
 Asking the user something, and drawing. Questions
 (`select` / `confirm` / `input`) become real DSH user questions that
-genuinely block the turn. Terminal decoration (footer, statusline, themes,
-shortcuts) registers and never fires — exactly as in Pi's own non-terminal
-modes. Plugin-drawn cards are the one Pi UI surface pi2dsh does not draw yet.
+genuinely block the turn. pi2dsh also ships a DSH client module that redraws
+portable presentation intent — status, widgets, headers, footers, editor text
+and side conversations — in native Web slots. A Pi terminal component itself
+is not mounted in the browser; terminal-only factories and raw key handling
+remain headless or become an explicit Web-native projection.
 
-**24 Pi surfaces** — 4 same semantics · 20 mapped, difference stated.
+**32 upstream-shaped Pi rule rows** — 5 same semantics · 27 mapped, difference stated.
 
-| Pi surface | Kind | Status | What it does on DSH |
-|---|---|---|---|
-| [`registerMessageRenderer`](#registermessagerenderer-pi) | `pi.*` | Mapped, difference stated | The renderer really runs: a custom message the package sent is drawn by the package's own code and shown in the DSH web conversation. What reaches the browser is the component's rendered text, not a mounted Pi component. |
-| [`registerEntryRenderer`](#registerentryrenderer-pi) | `pi.*` | Mapped, difference stated | The renderer really runs: entries the package appended are drawn by the package's own code and shown in the DSH web conversation. What reaches the browser is the component's rendered text, not a mounted Pi component. |
-| [`registerMarkdownTransformer`](#registermarkdowntransformer-pi) | `pi.*` | Mapped, difference stated | Registration is accepted; DSH owns presentation, so the transformer is never invoked — matching Pi's non-TUI surfaces. |
-| [`notify`](#notify-ctxui) | `ctx.ui.*` | Same semantics | Captured as a command result when applicable and emitted through DSH logging at the severity the caller passed (warning and error log as warnings). |
-| [`setStatus`](#setstatus-ctxui) | `ctx.ui.*` | Mapped, difference stated | Pi's keyed status entries render as pills in the bridge's own browser half (Pi's status bar is a terminal-footer surface; DSH's equivalent is the frame-wide pill stack). setStatus(key, undefined) removes exactly one entry, Pi's clear shape. |
-| [`setWidget`](#setwidget-ctxui) | `ctx.ui.*` | Mapped, difference stated | String-array widgets render as a strip in DSH's conversation.input.dock seat (a full-width row of its own above the composer card). setWidget(key, undefined) removes one widget. Component factories are ignored, exactly like Pi's own rpc mode, where widgets travel to a host as lines. |
-| [`select`](#select-ctxui) | `ctx.ui.*` | Same semantics | Mapped to one native DSH userQuestions single-select request. |
-| [`confirm`](#confirm-ctxui) | `ctx.ui.*` | Same semantics | Mapped to one native DSH userQuestions Yes/No request. |
-| [`input`](#input-ctxui) | `ctx.ui.*` | Same semantics | Mapped to one native DSH userQuestions free-text request. |
-| [`editor`](#editor-ctxui) | `ctx.ui.*` | Mapped, difference stated | Mapped to one DSH userQuestions free-text request. The prefill is shown as context but is NOT editable text: the caller receives what the user typed fresh, not an edit of the prefill. |
-| [`custom`](#custom-ctxui) | `ctx.ui.*` | Mapped, difference stated | Resolves undefined, exactly like Pi's own rpc mode; guarded fallbacks keep working. A Pi component cannot be forwarded to a browser — but the SHAPE packages use this for (a focused side panel over the conversation) is drawn natively by the bridge's own browser half. |
-| [`setWorkingMessage`](#setworkingmessage-ctxui) | `ctx.ui.*` | Mapped, difference stated | A live working message, drawn in DSH's conversation.composer.dock band (under the composer card — the host's ambient-readout seat, where its own stats line sits). Calling with no argument restores the default, i.e. clears it. |
-| [`setWorkingVisible`](#setworkingvisible-ctxui) | `ctx.ui.*` | Mapped, difference stated | Hides or shows the working chrome (message, indicator, hidden-thinking label) without clearing it — Pi's exact semantics. |
-| [`setWorkingIndicator`](#setworkingindicator-ctxui) | `ctx.ui.*` | Mapped, difference stated | WorkingIndicatorOptions ({frames?: string[]}) project to the frames' text in the same composer-dock working chrome. An empty array hides the indicator and frames: undefined restores the default (clears it); animated frames render as their static concatenation — the honest still of the package's own frames. |
-| [`setHiddenThinkingLabel`](#sethiddenthinkinglabel-ctxui) | `ctx.ui.*` | Mapped, difference stated | The label shows in the same working chrome; calling with no argument restores the default, i.e. clears it. DSH owns the thinking block's own presentation, so the label is informational chrome, not a re-render of the block. |
-| [`setFooter`](#setfooter-ctxui) | `ctx.ui.*` | Mapped, difference stated | A custom footer factory renders when it can build its component without Pi's TUI, into the conversation.composer.dock band; otherwise the surface stays empty — the same shape as Pi's rpc mode, where no footer factory runs at all. The factory receives the bridge's headless theme. |
-| [`setHeader`](#setheader-ctxui) | `ctx.ui.*` | Mapped, difference stated | A custom header factory renders when it can build its component without Pi's TUI, into DSH's conversation.session.header.utilities seat; otherwise the surface stays empty — the same shape as Pi's rpc mode. |
-| [`setTitle`](#settitle-ctxui) | `ctx.ui.*` | Mapped, difference stated | Pi's transient window title shows as a frame-wide pill in the bridge's browser half. It deliberately does NOT rename the DSH session: a session title is durable, user-owned and shown in the session list, and quietly rewriting it would outlive the turn that asked. |
-| [`theme`](#theme-ctxui) | `ctx.ui.*` | Mapped, difference stated | A headless theme whose styling calls return unstyled text. |
-| [`getAllThemes`](#getallthemes-ctxui) | `ctx.ui.*` | Mapped, difference stated | Lists the single headless theme. |
-| [`getTheme`](#gettheme-ctxui) | `ctx.ui.*` | Mapped, difference stated | Resolves only the headless theme. |
-| [`setTheme`](#settheme-ctxui) | `ctx.ui.*` | Mapped, difference stated | Accepts the headless theme; other names report an explicit error result. |
-| [`getToolsExpanded`](#gettoolsexpanded-ctxui) | `ctx.ui.*` | Mapped, difference stated | A bridge-local presentation flag. |
-| [`setToolsExpanded`](#settoolsexpanded-ctxui) | `ctx.ui.*` | Mapped, difference stated | A bridge-local presentation flag. |
+| Pi surface | Capability contract | Kind | Status | What it does on DSH |
+|---|---|---|---|---|
+| [`registerMessageRenderer`](#registermessagerenderer-pi) | `pi.ui.rendering` | `pi.*` | Mapped, difference stated | The renderer really runs: a custom message the package sent is drawn by the package's own code and shown in the DSH web conversation. What reaches the browser is the component's rendered text, not a mounted Pi component. |
+| [`registerEntryRenderer`](#registerentryrenderer-pi) | `pi.ui.rendering` | `pi.*` | Mapped, difference stated | The renderer really runs: entries the package appended are drawn by the package's own code and shown in the DSH web conversation. What reaches the browser is the component's rendered text, not a mounted Pi component. |
+| [`registerMarkdownTransformer`](#registermarkdowntransformer-pi) | `pi.ui.rendering` | `pi.*` | Mapped, difference stated | Registration is accepted; DSH owns presentation, so the transformer is never invoked — matching Pi's non-TUI surfaces. |
+| [`hasUI`](#hasui-ctx) | `pi.ui.rendering` | `ctx.*` | Same semantics | Reports whether a human can actually answer: false when no questions service is mounted, false when the service is mounted with no provider registered (the headless posture), and false inside a child agent, which DSH refuses to let ask. |
+| [`notify`](#notify-ctxui) | `pi.ui.notifications` | `ctx.ui.*` | Same semantics | Captured as a command result when applicable and emitted through DSH logging at the severity the caller passed (warning and error log as warnings). |
+| [`setStatus`](#setstatus-ctxui) | `pi.ui.notifications` | `ctx.ui.*` | Mapped, difference stated | Pi's keyed status entries render as pills in the bridge's own browser half (Pi's status bar is a terminal-footer surface; DSH's equivalent is the frame-wide pill stack). setStatus(key, undefined) removes exactly one entry, Pi's clear shape. |
+| [`setWidget`](#setwidget-ctxui) | `pi.ui.notifications` | `ctx.ui.*` | Mapped, difference stated | String-array widgets render as a strip in DSH's conversation.input.dock seat (a full-width row of its own above the composer card). setWidget(key, undefined) removes one widget. Component factories are ignored, exactly like Pi's own rpc mode, where widgets travel to a host as lines. |
+| [`select`](#select-ctxui) | `pi.ui.questions` | `ctx.ui.*` | Same semantics | Mapped to one native DSH userQuestions single-select request. |
+| [`confirm`](#confirm-ctxui) | `pi.ui.questions` | `ctx.ui.*` | Same semantics | Mapped to one native DSH userQuestions Yes/No request. |
+| [`input`](#input-ctxui) | `pi.ui.questions` | `ctx.ui.*` | Same semantics | Mapped to one native DSH userQuestions free-text request. |
+| [`editor`](#editor-ctxui) | `pi.ui.questions` | `ctx.ui.*` | Mapped, difference stated | Mapped to one DSH userQuestions free-text request. The prefill is shown as context but is NOT editable text: the caller receives what the user typed fresh, not an edit of the prefill. |
+| [`custom`](#custom-ctxui) | `pi.ui.questions` | `ctx.ui.*` | Mapped, difference stated | Resolves undefined, exactly like Pi's own rpc mode; guarded fallbacks keep working. A Pi component cannot be forwarded to a browser — but the SHAPE packages use this for (a focused side panel over the conversation) is drawn natively by the bridge's own browser half. |
+| [`onTerminalInput`](#onterminalinput-ctxui) | `pi.ui.editor` | `ctx.ui.*` | Mapped, difference stated | Raw terminal input is absent; feature-detected listeners remain disabled. |
+| [`setWorkingMessage`](#setworkingmessage-ctxui) | `pi.ui.notifications` | `ctx.ui.*` | Mapped, difference stated | A live working message, drawn in DSH's conversation.composer.dock band (under the composer card — the host's ambient-readout seat, where its own stats line sits). Calling with no argument restores the default, i.e. clears it. |
+| [`setWorkingVisible`](#setworkingvisible-ctxui) | `pi.ui.notifications` | `ctx.ui.*` | Mapped, difference stated | Hides or shows the working chrome (message, indicator, hidden-thinking label) without clearing it — Pi's exact semantics. |
+| [`setWorkingIndicator`](#setworkingindicator-ctxui) | `pi.ui.notifications` | `ctx.ui.*` | Mapped, difference stated | WorkingIndicatorOptions ({frames?: string[]}) project to the frames' text in the same composer-dock working chrome. An empty array hides the indicator and frames: undefined restores the default (clears it); animated frames render as their static concatenation — the honest still of the package's own frames. |
+| [`setHiddenThinkingLabel`](#sethiddenthinkinglabel-ctxui) | `pi.ui.notifications` | `ctx.ui.*` | Mapped, difference stated | The label shows in the same working chrome; calling with no argument restores the default, i.e. clears it. DSH owns the thinking block's own presentation, so the label is informational chrome, not a re-render of the block. |
+| [`setFooter`](#setfooter-ctxui) | `pi.ui.chrome` | `ctx.ui.*` | Mapped, difference stated | A custom footer factory renders when it can build its component without Pi's TUI, into the conversation.composer.dock band; otherwise the surface stays empty — the same shape as Pi's rpc mode, where no footer factory runs at all. The factory receives the bridge's headless theme. |
+| [`setHeader`](#setheader-ctxui) | `pi.ui.chrome` | `ctx.ui.*` | Mapped, difference stated | A custom header factory renders when it can build its component without Pi's TUI, into DSH's conversation.session.header.utilities seat; otherwise the surface stays empty — the same shape as Pi's rpc mode. |
+| [`setTitle`](#settitle-ctxui) | `pi.ui.chrome` | `ctx.ui.*` | Mapped, difference stated | Pi's transient window title shows as a frame-wide pill in the bridge's browser half. It deliberately does NOT rename the DSH session: a session title is durable, user-owned and shown in the session list, and quietly rewriting it would outlive the turn that asked. |
+| [`pasteToEditor`](#pastetoeditor-ctxui) | `pi.ui.editor` | `ctx.ui.*` | Mapped, difference stated | Appends to a per-agent editor buffer readable through getEditorText(). |
+| [`setEditorText`](#seteditortext-ctxui) | `pi.ui.editor` | `ctx.ui.*` | Mapped, difference stated | Stored in a per-agent editor buffer readable through getEditorText(). |
+| [`getEditorText`](#geteditortext-ctxui) | `pi.ui.editor` | `ctx.ui.*` | Mapped, difference stated | Reads the per-agent editor buffer maintained by the bridge. |
+| [`addAutocompleteProvider`](#addautocompleteprovider-ctxui) | `pi.ui.editor` | `ctx.ui.*` | Mapped, difference stated | The provider really runs: its completions appear as rows in DSH's own `@` trigger menu, and picking one inserts the value it chose. Providers anchored on a trigger character map exactly; one that completes bare words mid-sentence has no moment to fire in. |
+| [`setEditorComponent`](#seteditorcomponent-ctxui) | `pi.ui.editor` | `ctx.ui.*` | Mapped, difference stated | Registration is recorded; no DSH surface mounts a Pi editor component. |
+| [`getEditorComponent`](#geteditorcomponent-ctxui) | `pi.ui.editor` | `ctx.ui.*` | Mapped, difference stated | Returns the recorded factory. |
+| [`theme`](#theme-ctxui) | `pi.ui.rendering` | `ctx.ui.*` | Mapped, difference stated | A headless theme whose styling calls return unstyled text. |
+| [`getAllThemes`](#getallthemes-ctxui) | `pi.ui.rendering` | `ctx.ui.*` | Mapped, difference stated | Lists the single headless theme. |
+| [`getTheme`](#gettheme-ctxui) | `pi.ui.rendering` | `ctx.ui.*` | Mapped, difference stated | Resolves only the headless theme. |
+| [`setTheme`](#settheme-ctxui) | `pi.ui.rendering` | `ctx.ui.*` | Mapped, difference stated | Accepts the headless theme; other names report an explicit error result. |
+| [`getToolsExpanded`](#gettoolsexpanded-ctxui) | `pi.ui.chrome` | `ctx.ui.*` | Mapped, difference stated | A bridge-local presentation flag. |
+| [`setToolsExpanded`](#settoolsexpanded-ctxui) | `pi.ui.chrome` | `ctx.ui.*` | Mapped, difference stated | A bridge-local presentation flag. |
 
 ## How each one is built
 
@@ -44,145 +54,353 @@ taken on trust.
 
 ### `registerMessageRenderer` <a id="registermessagerenderer-pi"></a>
 
-`pi.*` · Mapped, difference stated
+`pi.*` · `pi.ui.rendering` · Mapped, difference stated
+
+**Theoretical DSH mapping:** `dsh.client` through
+`Web-native client modules and slots`.
+
+**Current implementation:**
 
 A custom message is a durable DSH log entry carrying Pi's role:"custom" marker (source.piCustomType), so the projection reads it back from the session through ctx.sessions.get(id) rather than from a cache — the renderer keeps working after a restart. The returned component is projected through its own render(width), and the text takes a seat in the conversation flow.
 
 ### `registerEntryRenderer` <a id="registerentryrenderer-pi"></a>
 
-`pi.*` · Mapped, difference stated
+`pi.*` · `pi.ui.rendering` · Mapped, difference stated
+
+**Theoretical DSH mapping:** `dsh.client` through
+`Web-native client modules and slots`.
+
+**Current implementation:**
 
 Custom entries live in the pi2dsh sidecar (DSH's durable log has no channel for event types declared outside the harness, so the host's own conversation view can never show them). The registered EntryRenderer runs per entry, its component is projected through render(width), and the text is seated in the conversation flow. A renderer that throws contributes nothing and leaves every other package's entries — and the request — intact.
 
 ### `registerMarkdownTransformer` <a id="registermarkdowntransformer-pi"></a>
 
-`pi.*` · Mapped, difference stated
+`pi.*` · `pi.ui.rendering` · Mapped, difference stated
+
+**Theoretical DSH mapping:** `dsh.client` through
+`Web-native client modules and slots`.
+
+**Current implementation:**
 
 Kept in bridge state and readable back; no DSH surface consumes it.
 
+### `hasUI` <a id="hasui-ctx"></a>
+
+`ctx.*` · `pi.ui.rendering` · Same semantics
+
+**Theoretical DSH mapping:** `dsh.client` through
+`Web-native client modules and slots`.
+
+**Current implementation:**
+
+Probed rather than guessed. The bridge registers a throwaway provider on DSH's UserQuestionService and reads the documented DUPLICATE_PROVIDER rejection as "a real provider is already there", then disposes it. Inside a child agent the answer is false without probing, because DSH refuses to let child agents ask.
+
 ### `notify` <a id="notify-ctxui"></a>
 
-`ctx.ui.*` · Same semantics
+`ctx.ui.*` · `pi.ui.notifications` · Same semantics
+
+**Theoretical DSH mapping:** `dsh.client` through
+`client module and shell slots`.
+
+**Current implementation:**
 
 Written to the DSH logger at the severity the caller passed, and returned as the command result when the call happens inside one.
 
 ### `setStatus` <a id="setstatus-ctxui"></a>
 
-`ctx.ui.*` · Mapped, difference stated
+`ctx.ui.*` · `pi.ui.notifications` · Mapped, difference stated
+
+**Theoretical DSH mapping:** `dsh.client` through
+`client module and shell slots`.
+
+**Current implementation:**
 
 BrowserSurfaces.setStatus keys entries by (session, package, status key); the client half polls the bridge's own /pi2dsh/browser-state route and draws them in its shell.overlay seat. Pi's rpc mode transmits setStatus to a host too — this is one of the surfaces rpc genuinely wires.
 
 ### `setWidget` <a id="setwidget-ctxui"></a>
 
-`ctx.ui.*` · Mapped, difference stated
+`ctx.ui.*` · `pi.ui.notifications` · Mapped, difference stated
+
+**Theoretical DSH mapping:** `dsh.client` through
+`client module and shell slots`.
+
+**Current implementation:**
 
 BrowserSurfaces.setWidget keeps the lines per widget key; the client half draws them in the conversation.input.dock slot. The factory branch is dropped at the ui seam, mirroring rpc-mode.ts's "Only support string arrays in RPC mode".
 
 ### `select` <a id="select-ctxui"></a>
 
-`ctx.ui.*` · Same semantics
+`ctx.ui.*` · `pi.ui.questions` · Same semantics
+
+**Theoretical DSH mapping:** `dsh.interaction` + `dsh.client` through
+`ctx.userQuestions with native client rendering`.
+
+**Current implementation:**
 
 One native DSH UserQuestionService request carrying Pi's options as the choices. The turn really blocks until a human answers.
 
 ### `confirm` <a id="confirm-ctxui"></a>
 
-`ctx.ui.*` · Same semantics
+`ctx.ui.*` · `pi.ui.questions` · Same semantics
+
+**Theoretical DSH mapping:** `dsh.interaction` + `dsh.client` through
+`ctx.userQuestions with native client rendering`.
+
+**Current implementation:**
 
 One native DSH UserQuestionService request with two choices.
 
 ### `input` <a id="input-ctxui"></a>
 
-`ctx.ui.*` · Same semantics
+`ctx.ui.*` · `pi.ui.questions` · Same semantics
+
+**Theoretical DSH mapping:** `dsh.interaction` + `dsh.client` through
+`ctx.userQuestions with native client rendering`.
+
+**Current implementation:**
 
 One native DSH UserQuestionService free-text request.
 
 ### `editor` <a id="editor-ctxui"></a>
 
-`ctx.ui.*` · Mapped, difference stated
+`ctx.ui.*` · `pi.ui.questions` · Mapped, difference stated
+
+**Theoretical DSH mapping:** `dsh.interaction` + `dsh.client` through
+`ctx.userQuestions with native client rendering`.
+
+**Current implementation:**
 
 One native DSH UserQuestionService free-text request. DSH has no editable-prefill question type, so the prefill is shown in the question body and the answer comes back as fresh text.
 
 ### `custom` <a id="custom-ctxui"></a>
 
-`ctx.ui.*` · Mapped, difference stated
+`ctx.ui.*` · `pi.ui.questions` · Mapped, difference stated
+
+**Theoretical DSH mapping:** `dsh.interaction` + `dsh.client` through
+`ctx.userQuestions with native client rendering`.
+
+**Current implementation:**
 
 Two halves. The call itself resolves undefined, matching Pi's rpc mode, because a Pi TUI component has no meaning in a browser. Separately, pi2dsh ships a client half (`dsh.client` + `exports["./client"]`) that takes DSH's frame-wide `shell.overlay` seat and renders a side conversation as a floating panel plus the presentation surfaces, fed by this package's own route (`/pi2dsh/browser-state`). So the capability lands as a native DSH surface rather than as a relayed Pi component.
 
+### `onTerminalInput` <a id="onterminalinput-ctxui"></a>
+
+`ctx.ui.*` · `pi.ui.editor` · Mapped, difference stated
+
+**Theoretical DSH mapping:** `dsh.client` + `dsh.interaction` through
+`client editor slots and command/input bridge`.
+
+**Current implementation:**
+
+Recorded; no DSH surface produces raw terminal input, and feature-detecting packages keep the listener disabled.
+
 ### `setWorkingMessage` <a id="setworkingmessage-ctxui"></a>
 
-`ctx.ui.*` · Mapped, difference stated
+`ctx.ui.*` · `pi.ui.notifications` · Mapped, difference stated
+
+**Theoretical DSH mapping:** `dsh.client` through
+`client module and shell slots`.
+
+**Current implementation:**
 
 Recorded per session per package and drawn by the client half's composer-dock seat. Pi's rpc mode is a no-op here (it has no TUI loader); a browser host genuinely can show the text, so the bridge supersedes it.
 
 ### `setWorkingVisible` <a id="setworkingvisible-ctxui"></a>
 
-`ctx.ui.*` · Mapped, difference stated
+`ctx.ui.*` · `pi.ui.notifications` · Mapped, difference stated
+
+**Theoretical DSH mapping:** `dsh.client` through
+`client module and shell slots`.
+
+**Current implementation:**
 
 A flag on the per-package surface view; the client half skips working keys while it is false. Supersedes Pi's rpc-mode no-op with a real visibility switch.
 
 ### `setWorkingIndicator` <a id="setworkingindicator-ctxui"></a>
 
-`ctx.ui.*` · Mapped, difference stated
+`ctx.ui.*` · `pi.ui.notifications` · Mapped, difference stated
+
+**Theoretical DSH mapping:** `dsh.client` through
+`client module and shell slots`.
+
+**Current implementation:**
 
 surfaceText projects the frames object to text, recorded like the other working surfaces. Pi's rpc mode ignores the call; the browser host draws the static projection instead.
 
 ### `setHiddenThinkingLabel` <a id="sethiddenthinkinglabel-ctxui"></a>
 
-`ctx.ui.*` · Mapped, difference stated
+`ctx.ui.*` · `pi.ui.notifications` · Mapped, difference stated
+
+**Theoretical DSH mapping:** `dsh.client` through
+`client module and shell slots`.
+
+**Current implementation:**
 
 Recorded per session per package like the other working surfaces. Pi's rpc mode is a no-op here; the browser host shows the text.
 
 ### `setFooter` <a id="setfooter-ctxui"></a>
 
-`ctx.ui.*` · Mapped, difference stated
+`ctx.ui.*` · `pi.ui.chrome` · Mapped, difference stated
+
+**Theoretical DSH mapping:** `dsh.client` through
+`client slot registry and host-owned presentation state`.
+
+**Current implementation:**
 
 surfaceText calls the factory with the headless theme (and no TUI) and renders the returned component's render(80) output; a factory that needs the TUI throws and degrades to an empty surface.
 
 ### `setHeader` <a id="setheader-ctxui"></a>
 
-`ctx.ui.*` · Mapped, difference stated
+`ctx.ui.*` · `pi.ui.chrome` · Mapped, difference stated
+
+**Theoretical DSH mapping:** `dsh.client` through
+`client slot registry and host-owned presentation state`.
+
+**Current implementation:**
 
 surfaceText calls the factory with the headless theme (and no TUI) and renders the component; failures degrade to empty. Drawn by the client half's header-utilities seat.
 
 ### `setTitle` <a id="settitle-ctxui"></a>
 
-`ctx.ui.*` · Mapped, difference stated
+`ctx.ui.*` · `pi.ui.chrome` · Mapped, difference stated
+
+**Theoretical DSH mapping:** `dsh.client` through
+`client slot registry and host-owned presentation state`.
+
+**Current implementation:**
 
 Recorded per session per package and drawn as a pill in the shell.overlay seat, next to the status pills.
 
+### `pasteToEditor` <a id="pastetoeditor-ctxui"></a>
+
+`ctx.ui.*` · `pi.ui.editor` · Mapped, difference stated
+
+**Theoretical DSH mapping:** `dsh.client` + `dsh.interaction` through
+`client editor slots and command/input bridge`.
+
+**Current implementation:**
+
+Appends to the live composer text and writes it back through the same path as setEditorText — the append is against what the user actually has, not against the package's last write.
+
+### `setEditorText` <a id="seteditortext-ctxui"></a>
+
+`ctx.ui.*` · `pi.ui.editor` · Mapped, difference stated
+
+**Theoretical DSH mapping:** `dsh.client` + `dsh.interaction` through
+`client editor slots and command/input bridge`.
+
+**Current implementation:**
+
+Writes the DSH composer for real. `inputActions.setDraft` is part of the session standard kit every session-scoped slot component receives, so the bridge's own browser half performs the write; the request carries a revision so a repeated call is a new write rather than a no-op. Without a browser (the CLI profile) it falls back to the per-agent buffer, which is what Pi's own non-interactive modes do.
+
+### `getEditorText` <a id="geteditortext-ctxui"></a>
+
+`ctx.ui.*` · `pi.ui.editor` · Mapped, difference stated
+
+**Theoretical DSH mapping:** `dsh.client` + `dsh.interaction` through
+`client editor slots and command/input bridge`.
+
+**Current implementation:**
+
+Reads what the composer actually holds: the browser half reports the live draft back to the bridge, so a package sees the user's typing and not only its own writes. With no browser watching, it answers with the last text this package wrote.
+
+### `addAutocompleteProvider` <a id="addautocompleteprovider-ctxui"></a>
+
+`ctx.ui.*` · `pi.ui.editor` · Mapped, difference stated
+
+**Theoretical DSH mapping:** `dsh.client` + `dsh.interaction` through
+`client editor slots and command/input bridge`.
+
+**Current implementation:**
+
+Pi asks a provider at the cursor on every edit; DSH asks a source after `/` or `@`. The two agree exactly for a provider ANCHORED on a trigger character — an @-mention provider, which is what the ecosystem's provider is — so the bridge builds Pi's provider chain, asks it with the token being typed, and offers the result as rows in DSH's own trigger menu; picking one inserts the value the provider chose. A provider that completes bare words mid-sentence has no DSH moment to fire in and contributes nothing, rather than being given an interaction its author never designed.
+
+### `setEditorComponent` <a id="seteditorcomponent-ctxui"></a>
+
+`ctx.ui.*` · `pi.ui.editor` · Mapped, difference stated
+
+**Theoretical DSH mapping:** `dsh.client` + `dsh.interaction` through
+`client editor slots and command/input bridge`.
+
+**Current implementation:**
+
+Kept in bridge state and readable back; no DSH surface consumes it.
+
+### `getEditorComponent` <a id="geteditorcomponent-ctxui"></a>
+
+`ctx.ui.*` · `pi.ui.editor` · Mapped, difference stated
+
+**Theoretical DSH mapping:** `dsh.client` + `dsh.interaction` through
+`client editor slots and command/input bridge`.
+
+**Current implementation:**
+
+Returns the factory setEditorComponent recorded.
+
 ### `theme` <a id="theme-ctxui"></a>
 
-`ctx.ui.*` · Mapped, difference stated
+`ctx.ui.*` · `pi.ui.rendering` · Mapped, difference stated
+
+**Theoretical DSH mapping:** `dsh.client` through
+`Web-native client modules and slots`.
+
+**Current implementation:**
 
 A single headless Theme object whose styling functions return their input unchanged; DSH does the rendering.
 
 ### `getAllThemes` <a id="getallthemes-ctxui"></a>
 
-`ctx.ui.*` · Mapped, difference stated
+`ctx.ui.*` · `pi.ui.rendering` · Mapped, difference stated
+
+**Theoretical DSH mapping:** `dsh.client` through
+`Web-native client modules and slots`.
+
+**Current implementation:**
 
 Lists the one headless theme the bridge owns.
 
 ### `getTheme` <a id="gettheme-ctxui"></a>
 
-`ctx.ui.*` · Mapped, difference stated
+`ctx.ui.*` · `pi.ui.rendering` · Mapped, difference stated
+
+**Theoretical DSH mapping:** `dsh.client` through
+`Web-native client modules and slots`.
+
+**Current implementation:**
 
 Resolves the one headless theme by name.
 
 ### `setTheme` <a id="settheme-ctxui"></a>
 
-`ctx.ui.*` · Mapped, difference stated
+`ctx.ui.*` · `pi.ui.rendering` · Mapped, difference stated
+
+**Theoretical DSH mapping:** `dsh.client` through
+`Web-native client modules and slots`.
+
+**Current implementation:**
 
 Accepts the headless theme and returns Pi's explicit error result for any other name, rather than pretending a switch happened.
 
 ### `getToolsExpanded` <a id="gettoolsexpanded-ctxui"></a>
 
-`ctx.ui.*` · Mapped, difference stated
+`ctx.ui.*` · `pi.ui.chrome` · Mapped, difference stated
+
+**Theoretical DSH mapping:** `dsh.client` through
+`client slot registry and host-owned presentation state`.
+
+**Current implementation:**
 
 A bridge-local flag; nothing renders from it.
 
 ### `setToolsExpanded` <a id="settoolsexpanded-ctxui"></a>
 
-`ctx.ui.*` · Mapped, difference stated
+`ctx.ui.*` · `pi.ui.chrome` · Mapped, difference stated
+
+**Theoretical DSH mapping:** `dsh.client` through
+`client slot registry and host-owned presentation state`.
+
+**Current implementation:**
 
 A bridge-local flag; nothing renders from it.
 

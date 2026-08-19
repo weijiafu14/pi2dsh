@@ -15,7 +15,7 @@ import { runtimeInternals } from '../src/runtime.js'
  * here as bytes — status, headers, body — rather than through a browser.
  * @returns `get(path)` returning the status, headers and body the route wrote.
  */
-function captureRoute() {
+function captureRoute(registry = new BrowserSurfaces()) {
   let handler: ((req: UnknownRecord, res: UnknownRecord) => Promise<void>) | undefined
   const ctx = {
     get: (name: string) => (name === 'webServer'
@@ -23,7 +23,7 @@ function captureRoute() {
       : undefined),
     effect: (apply: () => unknown) => { apply() },
   }
-  registerBrowserSurfaceRoute(ctx as never, new BrowserSurfaces())
+  registerBrowserSurfaceRoute(ctx as never, registry)
   return {
     async get(path: string) {
       let status = 0
@@ -128,6 +128,19 @@ describe('side panel registry', () => {
 })
 
 describe('presentation surfaces', () => {
+  it('publishes only exact image-tool names registered at package mount', async () => {
+    const registry = new BrowserSurfaces()
+    registry.registerImageTool('draw_image')
+    registry.registerImageTool('draw_image')
+    registry.registerImageTool('edit_image')
+    registry.registerImageTool('')
+
+    expect(registry.imageToolNames()).toEqual(['draw_image', 'edit_image'])
+    const answer = await captureRoute(registry).get('/pi2dsh/image-tool-names')
+    expect(answer.status).toBe(200)
+    expect(JSON.parse(answer.body)).toEqual({ names: ['draw_image', 'edit_image'] })
+  })
+
   it('records setStatus keyed entries per session and package, and clears by key', () => {
     const registry = new BrowserSurfaces()
     registry.setStatus('session-1', 'pi-btw', 'model', 'gpt-4o')

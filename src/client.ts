@@ -36,12 +36,13 @@
 import { createElement, useEffect, useState, type ReactNode } from 'react'
 import { hasAnsi, parseAnsi } from './ansi.js'
 
-interface SlotRegistration { name: string, id: string, order?: number, select?: (...args: unknown[]) => unknown }
+interface SlotRegistration { name: string, id?: string, key?: string, order?: number, select?: (...args: unknown[]) => unknown }
 interface SlotScope {
   slots: {
     inject(name: string, apply: () => unknown): void
     register(registration: SlotRegistration, component: unknown): () => void
   }
+  effect?(apply: () => (() => void) | void, label?: string): void
 }
 interface TriggerCandidate { name: string, description?: string }
 interface TriggerSource {
@@ -86,6 +87,33 @@ interface BrowserState {
   surfaces: SurfaceView[]
   entries: RenderedEntry[]
   draft?: DraftRequest
+}
+
+interface NativeImageAttachment {
+  attachmentId: string
+  mediaType: string
+  bytes?: number
+  width?: number
+  height?: number
+  name?: string
+}
+interface ToolContentBlock {
+  type?: string
+  text?: string
+  attachment?: NativeImageAttachment
+}
+interface PiToolCallBlock {
+  kind?: string
+  name?: string
+  argsRaw?: string
+  call?: { name?: string, argsRaw?: string } | null
+  content?: readonly ToolContentBlock[]
+  isError?: boolean
+}
+interface PiImageToolViewProps {
+  toolName: string
+  block: PiToolCallBlock
+  sessionId?: string
 }
 
 /** Services this half needs before it can take a seat. */
@@ -238,7 +266,163 @@ const styles = {
   },
   inline: { font: monospace, whiteSpace: 'pre-wrap', opacity: 0.85 },
   strip: { display: 'flex', flexDirection: 'column', gap: '4px', padding: '4px 2px' },
+  imageTool: {
+    margin: '4px 0', overflow: 'hidden', borderRadius: '8px',
+    border: '1px solid rgba(120,120,130,0.22)',
+    background: 'var(--dsh-color-bg-subtle, rgba(120,120,130,0.06))',
+    color: 'var(--dsh-color-text, inherit)', font: '400 12px/1.5 system-ui, sans-serif',
+  },
+  imageToolToggle: {
+    width: '100%', display: 'flex', alignItems: 'center', gap: '8px',
+    padding: '8px 10px', cursor: 'pointer', border: 'none', background: 'transparent',
+    color: 'inherit', textAlign: 'left', font: '500 12px/1.5 system-ui, sans-serif',
+  },
+  imageToolStatus: { color: '#2FBC44', fontSize: '10px' },
+  imageToolSummary: { opacity: 0.62, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  imageToolBody: {
+    display: 'flex', flexDirection: 'column', gap: '8px', padding: '0 10px 10px',
+    borderTop: '1px solid rgba(120,120,130,0.14)',
+  },
+  imageToolText: { margin: '8px 0 0', whiteSpace: 'pre-wrap', wordBreak: 'break-word', opacity: 0.82 },
+  imageGrid: { display: 'flex', flexWrap: 'wrap', gap: '8px' },
+  imageFrame: {
+    display: 'block', maxWidth: 'min(320px, 100%)', maxHeight: '320px',
+    borderRadius: '8px', objectFit: 'contain', background: 'rgba(0,0,0,0.08)',
+  },
+  imageError: { padding: '12px', color: '#F63218' },
 } as const
+
+/** Pull one image through DSH's own session-authorized attachment RPC. */
+function AuthorizedToolImage({ sessionId, attachment }: {
+  sessionId: string
+  attachment: NativeImageAttachment
+}) {
+  const [url, setUrl] = useState<string | undefined>(undefined)
+  const [failed, setFailed] = useState(false)
+  useEffect(() => {
+    const controller = new AbortController()
+    let objectUrl: string | undefined
+    void (async () => {
+      try {
+        const response = await fetch('/api/session.attachment', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          signal: controller.signal,
+          body: JSON.stringify({
+            type: 'client-request',
+            rpcId: `pi2dsh-image-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+            method: 'session.attachment',
+            payload: { sessionId, attachmentId: attachment.attachmentId },
+          }),
+        })
+        const envelope = await response.json() as {
+          result?: { ok?: boolean, value?: { data?: string, attachment?: NativeImageAttachment } }
+        }
+        const data = envelope.result?.ok === true ? envelope.result.value?.data : undefined
+        if (!response.ok || typeof data !== 'string') throw new Error('attachment unavailable')
+        const binary = atob(data)
+        const bytes = Uint8Array.from(binary, char => char.charCodeAt(0))
+        objectUrl = URL.createObjectURL(new Blob([bytes], { type: attachment.mediaType }))
+        if (!controller.signal.aborted) setUrl(objectUrl)
+      } catch {
+        if (!controller.signal.aborted) setFailed(true)
+      }
+    })()
+    return () => {
+      controller.abort()
+      if (objectUrl !== undefined) URL.revokeObjectURL(objectUrl)
+    }
+  }, [sessionId, attachment.attachmentId, attachment.mediaType])
+  if (failed) return createElement('div', { style: styles.imageError }, 'Image attachment could not be loaded.')
+  if (url === undefined) return createElement('div', { style: styles.imageToolText }, 'Loading image…')
+  return createElement('img', {
+    src: url,
+    alt: attachment.name ?? 'Image returned by Pi tool',
+    style: styles.imageFrame,
+    'data-pi2dsh': 'tool-image',
+  })
+}
+
+function firstArgumentSummary(raw: string): string {
+  try {
+    const parsed = JSON.parse(raw) as Record<string, unknown>
+    const preferred = parsed.prompt ?? parsed.description
+    if (typeof preferred === 'string') return preferred
+    const first = Object.values(parsed).find(value => typeof value === 'string')
+    return typeof first === 'string' ? first : ''
+  } catch {
+    return raw
+  }
+}
+
+/** Browser row shared by the explicitly supported Pi image tools. */
+function PiImageToolView({ toolName, block, sessionId }: PiImageToolViewProps) {
+  const [expanded, setExpanded] = useState(true)
+  const settled = block.kind === 'tool-result'
+  const argsRaw = settled ? block.call?.argsRaw ?? '' : block.argsRaw ?? ''
+  const content = settled && Array.isArray(block.content) ? block.content : []
+  const images = content.flatMap(item => item.type === 'image' && item.attachment !== undefined ? [item.attachment] : [])
+  const text = content.filter(item => item.type === 'text' && typeof item.text === 'string').map(item => item.text).join('\n')
+  const summary = firstArgumentSummary(argsRaw)
+  return createElement('div', {
+    style: styles.imageTool,
+    'data-pi2dsh': 'image-tool-result',
+    'data-tool': toolName,
+  },
+  createElement('button', {
+    type: 'button', style: styles.imageToolToggle,
+    'aria-expanded': expanded,
+    onClick: () => setExpanded(value => !value),
+  },
+  createElement('span', { style: styles.imageToolStatus }, block.isError === true ? '●' : settled ? '●' : '◌'),
+  createElement('span', null, toolName),
+  summary === '' ? null : createElement('span', { style: styles.imageToolSummary }, `· ${summary}`)),
+  !expanded ? null : createElement('div', { style: styles.imageToolBody },
+    text === '' ? null : createElement('div', { style: styles.imageToolText }, text),
+    sessionId === undefined || images.length === 0
+      ? null
+      : createElement('div', { style: styles.imageGrid },
+        ...images.map(attachment => createElement(AuthorizedToolImage, {
+          key: attachment.attachmentId, sessionId, attachment,
+        })),
+      ),
+  ))
+}
+
+/**
+ * Register the image row under exact tool names published at package mount.
+ * Only known image tools appear in that list, so text-only and native tools
+ * retain DSH's existing cards.
+ */
+function installImageToolViews(scope: SlotScope): void {
+  const installed = new Set<string>()
+  const start = () => {
+    let live = true
+    const sync = async () => {
+      try {
+        const response = await fetch('/pi2dsh/image-tool-names')
+        if (!response.ok || !live) return
+        const payload = await response.json() as { names?: unknown }
+        if (!Array.isArray(payload.names)) return
+        for (const value of payload.names) {
+          if (typeof value !== 'string' || value === '' || installed.has(value)) continue
+          installed.add(value)
+          scope.slots.inject('tool.call.toolview', () => scope.slots.register({
+            name: 'tool.call.toolview', key: value,
+          }, PiImageToolView))
+        }
+      } catch {
+        // A missed poll only delays richer presentation; the durable result and
+        // DSH's generic fallback remain visible.
+      }
+    }
+    void sync()
+    const timer = window.setInterval(() => { void sync() }, POLL_MS)
+    return () => { live = false; window.clearInterval(timer) }
+  }
+  if (scope.effect !== undefined) scope.effect(start, 'pi2dsh: image tool views')
+  else start()
+}
 
 /**
  * The frame-wide seat: the side-conversation panel, plus whatever packages
@@ -434,6 +618,7 @@ export function apply(ctx: ClientContext): void {
     })
   })
   ctx.inject(['slots'], (scope) => {
+    installImageToolViews(scope)
     scope.slots.inject('shell.overlay', () => scope.slots.register({
       name: 'shell.overlay', id: 'pi2dsh-overlay', order: 1,
     }, OverlaySurfaces))

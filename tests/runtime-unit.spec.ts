@@ -2,6 +2,12 @@ import { describe, expect, it } from 'vitest'
 import { normalizeToolSchema, runtimeInternals } from '../src/runtime.js'
 
 describe('compatibility runtime primitives', () => {
+  it('selects only the verified tool from the known image package', () => {
+    expect(runtimeInternals.isKnownImageTool('@crazygit/pi-codex-image-gen', 'codex_generate_image')).toBe(true)
+    expect(runtimeInternals.isKnownImageTool('@crazygit/pi-codex-image-gen', 'read')).toBe(false)
+    expect(runtimeInternals.isKnownImageTool('some-other-package', 'codex_generate_image')).toBe(false)
+  })
+
   it('normalizes the supported JSON Schema subset and reports dropped constraints', () => {
     const result = normalizeToolSchema({
       type: 'object',

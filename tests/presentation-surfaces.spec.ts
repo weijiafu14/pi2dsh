@@ -30,6 +30,18 @@ import { resolvePiPackage } from '../src/source.js'
 // (an argued command needs an `input` descriptor — tested elsewhere).
 const EXTENSION = `
 export default function (pi) {
+  pi.registerTool({
+    name: 'codex_generate_image',
+    description: 'Verified image tool fixture.',
+    parameters: { type: 'object', properties: {} },
+    async execute() { return { content: [{ type: 'text', text: 'unused' }] } },
+  })
+  pi.registerTool({
+    name: 'ordinary_tool',
+    description: 'A non-image tool from the same package.',
+    parameters: { type: 'object', properties: {} },
+    async execute() { return { content: [{ type: 'text', text: 'unused' }] } },
+  })
   pi.registerMessageRenderer('probe-msg', message => ({
     render: () => ['message drawn by the package'],
   }))
@@ -191,7 +203,7 @@ beforeAll(async () => {
   const pkgDir = join(scratch, 'pi-surface-fixture')
   await mkdir(pkgDir, { recursive: true })
   await writeFile(join(pkgDir, 'package.json'), JSON.stringify({
-    name: 'pi-surface-fixture', version: '0.0.0', type: 'module', pi: { extensions: ['index.mjs'] },
+    name: '@crazygit/pi-codex-image-gen', version: '0.0.0', type: 'module', pi: { extensions: ['index.mjs'] },
   }))
   await writeFile(join(pkgDir, 'index.mjs'), EXTENSION)
 
@@ -252,6 +264,10 @@ describe('the route exists at all', () => {
   it('registers on the host web server and answers an unknown session with empty state', async () => {
     expect(handler, 'the bridge registered no route on the host web server').toBeTypeOf('function')
     expect(await get('/pi2dsh/browser-state?session=nobody')).toEqual({ threads: [], surfaces: [], entries: [] })
+  })
+
+  it('publishes the verified image tool at mount without touching another tool from the package', async () => {
+    expect(await get('/pi2dsh/image-tool-names')).toEqual({ names: ['codex_generate_image'] })
   })
 })
 
