@@ -26,10 +26,15 @@ top of DSH's native services, so a Pi package runs on DSH **as published** —
 no fork, no patch, no per-package adapter. You install a Pi plugin the same
 way you install anything else in DSH, and it works.
 
-This is deliberately a bridge, not a destination. Every capability you reach
-through pi2dsh is a capability DSH's own ecosystem will eventually offer
-natively — and when a better native plugin shows up for something you use
-here, you should switch to it. That would be the bridge doing its job.
+At the same time, pi2dsh is an ongoing, full-surface, real-world test of DSH's
+architecture. Instead of patching individual plugins, it asks whether the
+models, tools, sessions, interaction, resources and client capabilities that Pi
+plugins rely on can preserve their logic and lifecycle using only DSH's public
+services and extension seams. If they can, that is strong evidence that DSH's
+architectural goals for building agents and an agent-plugin ecosystem have been
+achieved, at least along this dimension. Wherever the bridge must bypass,
+degrade or cannot express a capability, it pinpoints an architectural gap that
+remains.
 
 ## Install
 
