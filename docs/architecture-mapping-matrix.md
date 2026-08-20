@@ -388,7 +388,9 @@ provider 或 waterfall 参与。DSH 官方引用的 Cordis 论文
   `permission-presets`。
 - 当前公开 seam：Cordis service/provider、`ctx.effect`、`ctx.inject`、waterfall、
   scope/isolate/intercept。
-- 负责：插件依赖、启停清理、策略组合、配置与权限。
+- 负责：插件依赖、启停清理、策略组合、配置与权限。引擎拥有的 host 级 service
+  不能以“发现到社区插件”为生存条件：零个 Pi 包时也要挂 provider 目录、`/login`、
+  凭证恢复等宿主能力；发现清单只决定包级 extension 是否挂载。
 
 <a id="dsh-session"></a>
 ### 会话与持久化

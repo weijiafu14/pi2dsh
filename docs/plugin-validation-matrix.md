@@ -200,6 +200,19 @@ Pi OAuth 流程发起登录并获得可刷新凭证
 结论：证明 Pi OAuth provider 可以接入 DSH 原生模型调用链；不是只把 token 存下来，也
 不是在 DSH 外另起一条聊天链路。
 
+2026-08-20 在 DSH `0.1.0-rc.8`（`141eb6f`）做了严格冷启动复跑：全新
+`DSH_HOME`、只安装 pi2dsh、确认没有 `auth.json` 和宿主 credentials 后，从 Web
+执行 `/login openai-codex`，选择 Browser login，经 DSH 短链接进入 OpenAI 授权并完成
+localhost 回调。登录结果写入 0600 的内部 auth store、DSH credentials 与 settings；
+模型选择器立即出现 7 个 ChatGPT Plus/Pro 模型。选择 GPT-5.6 Sol 后，DSH session log
+记录 `provider=openai-codex`、`model=gpt-5.6-sol`，真实返回验收标记；同一新凭证在
+headless profile 重启恢复后也完成真实回复。
+
+这次复跑同时确认一项 pi2dsh 欠账并当场修复：零社区插件时 engine 曾提前返回，导致
+内建 `/login` 没有挂载。DSH 的 commands/settings/credentials/llm seam 都在，问题不
+属于 DSH 架构缺口；修复是在空清单分支仍挂一个无包级资源的 host runtime，并用 engine
+契约测试锁住“零社区包也有 login”。
+
 证据：[`examples/subscription-login`](../examples/subscription-login/)、
 [`scripts/verify-oauth-llm-e2e.mjs`](../scripts/verify-oauth-llm-e2e.mjs)。
 

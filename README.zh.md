@@ -344,7 +344,8 @@ Pi 包能碰到的每一个面，以及它落到 DSH 的什么位置。下面这
 **用订阅登录**也能用：DSH 本身只提供静态 HTTP header，桥补上了 Pi 生态的交互式
 OAuth 层。任何声明了 `oauth` 块的 Pi provider 包都会得到一条可用的
 `/login <provider>`，跑的是这个包自己的协议代码——Pi 官方的四条流程（OpenAI
-Codex、Anthropic、GitHub Copilot、Kimi Code）内置。凭证按 Pi 的 `auth.json`
+Codex、Anthropic、GitHub Copilot、Kimi Code）内置；只装好引擎、还没装第一个社区
+Pi 包时也能直接使用。凭证按 Pi 的 `auth.json`
 语义持久化，并通过标准的 `dsh-credentials` provider 按请求解析，所以你的订阅能
 驱动 DSH 原生 llm 路径上的真实调用。细节见[模型](docs/capabilities/models.md)。
 

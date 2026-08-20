@@ -21,7 +21,9 @@ pi2dsh：通用 Pi Host ABI 兼容层，让 Pi 生态插件原样跑在 DeepSeek
 - **一份引擎实例挂所有插件**：一个模型目录、一个 /login、一个凭证存储、
   一个升级单元。禁止多份桥拷贝各自为政（事故：/login-2 自撞）。host 级
   资源（provider 目录/catalog/伴生映射/登录/凭证存储）经 SharedHostState
-  跨包单份共享；包级资源（tools/commands/events）各归各。
+  跨包单份共享；包级资源（tools/commands/events）各归各。**零个社区 Pi 包
+  也必须挂 host 级运行时**：内建 OAuth provider、`/login`、凭证恢复和伴生路由
+  属于引擎，不得因插件发现结果为空而跳过。
 - 升级解耦：升引擎不动插件、升插件不动引擎；lockfile 锁死，只有显式
   `add <pkg>@latest` 才动；`pi2dsh inspect <pkg>@<版本>` 是升级预检门。
 - 发现机制 = 读 profile 依赖清单（每项都是用户显式 add 的）+ Pi 官方

@@ -24,7 +24,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { Context } from '@deepseek-ai/cordis'
 import { applyPiHost } from './host.js'
-import { registerVisionCompanions } from './runtime.js'
+import { applyPiPackage } from './runtime.js'
 import { resolvePiPackage } from './source.js'
 
 export interface EngineConfig {
@@ -145,9 +145,25 @@ export async function apply(ctx: Context, config: EngineConfig = {}): Promise<vo
         warn,
       })
   if (packages.length === 0) {
-    // Companion routes are the bridge's own capability — they work with
-    // zero Pi packages installed.
-    registerVisionCompanions(ctx, config.visionCompanions)
+    // The host itself owns Pi's built-in provider directory and `/login`.
+    // Mount an empty internal package so those host-level capabilities exist
+    // even before the user installs their first community Pi package. Calling
+    // registerVisionCompanions alone here left a fresh engine unable to run
+    // `/login openai-codex`: DSH treated the unknown slash line as a model
+    // prompt and failed on the unrelated default provider credential.
+    await applyPiPackage(ctx, {
+      rootUrl: new URL('.', import.meta.url),
+      manifest: {
+        schemaVersion: 1,
+        package: { name: 'pi2dsh-builtins', version: '0.0.0', source: 'engine' },
+        extensions: [],
+        skillDirs: [],
+        prompts: [],
+      },
+      config: {
+        ...(config.visionCompanions === undefined ? {} : { visionCompanions: config.visionCompanions }),
+      },
+    })
     info('[pi2dsh engine] no Pi packages installed in this profile yet — add one with: dsh plugin --profile <p> add <pi-package>')
     return
   }

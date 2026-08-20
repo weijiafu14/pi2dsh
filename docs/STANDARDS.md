@@ -43,6 +43,13 @@ Claude Code）无一家让用户"先转换再装自制品"。
 资源（tools/commands/events/runner）各归各。旧的独立 bundle 形态各带
 模块图，天然各持一份，行为不变。
 
+**发现到零个社区包，不等于不需要 host 运行时。** 内建 OAuth provider、
+`/login`、已存凭证恢复和伴生路由都是引擎自己的能力；只安装 `pi2dsh` 时也必须
+挂载。2026-08-20 的 rc.8 冷启动实测抓到过反例：engine 的空清单分支只注册伴生
+路由就提前返回，导致 `/login openai-codex` 未注册，被 DSH 当普通 prompt 送给默认
+模型。修复后的判据是：全新 DSH_HOME、profile 只有 pi2dsh 依赖时，命令目录必须已有
+`login`；从 Web 授权得到的凭证必须立刻进入 DSH settings、credentials 和模型目录。
+
 ### 1.3 发现 = 清单驱动 + 官方标记，绝不扫目录
 
 引擎读 profile package.json 的**直接依赖**（每一项都是用户显式

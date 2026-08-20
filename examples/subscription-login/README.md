@@ -157,10 +157,13 @@ Removing the package from the scenario makes it fail, which is the point.
 The rest is covered where it belongs rather than claimed here: the credential
 behaviour (stored under the reference, rotated per request, renewed *before* a
 request once expired) is pinned by contract tests in `tests/dsh-runtime.spec.ts`
-with mutation checks. And a real subscription login cannot be automated — that
-is what OAuth is for — so the live end-to-end run is this file's step 4, done
-by hand. It was done for `openai-codex` on 2026-08-18: login, seven models in
-the picker, a turn answered by GPT-5.6 Sol.
+with mutation checks. Account consent cannot run unattended in CI, so the live
+browser leg is performed as an explicit end-to-end check. It was rerun for
+`openai-codex` on DSH `0.1.0-rc.8` on 2026-08-20 from an empty DSH home with
+only pi2dsh installed: `/login` → browser authorization → localhost callback →
+0600 auth and host credential stores → seven models in the picker → a real
+GPT-5.6 Sol reply. The same newly created credential also survived profile
+startup and produced a real headless reply.
 
 The SuperGrok path was checked on 2026-08-20 with the unmodified
 `stnly/pi-grok` v0.10.1 package through a clean DSH Web profile: provider mount,

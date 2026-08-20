@@ -400,7 +400,8 @@ only, and the bridge adds the Pi ecosystem's interactive OAuth layer. Any Pi
 provider package that declares an `oauth` block gets a working
 `/login <provider>`, driven by the package's own protocol code — Pi's four
 official flows (OpenAI Codex, Anthropic, GitHub Copilot, Kimi Code) ship built
-in. Credentials persist with Pi's `auth.json` semantics and resolve per
+in and are available immediately after installing the engine, even before the
+first community Pi package. Credentials persist with Pi's `auth.json` semantics and resolve per
 request through a standard `dsh-credentials` provider, so your subscription
 drives real calls on DSH's native llm path. Details in
 [models](docs/capabilities/models.md).

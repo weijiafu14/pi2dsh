@@ -173,6 +173,31 @@ describe('engine mounting on a real DSH composition', () => {
 
   const settle = async (): Promise<void> => new Promise(resolve => setTimeout(resolve, 25))
 
+  it('mounts the built-in OAuth login command before any community Pi package is installed', async () => {
+    const root = await makeProfile({})
+    const ctx = new Context()
+    await ctx.plugin(SessionStore)
+    await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
+    await ctx.plugin(ToolRuntime)
+    await ctx.plugin(CommandRuntime)
+    await ctx.plugin(SkillRegistry)
+    ;(ctx as unknown as { baseUrl: string }).baseUrl = `file://${root}/cordis.yml`
+
+    await apply(ctx, {})
+    await settle()
+
+    const typedCtx = ctx as unknown as {
+      sessions: { create(id: unknown, options: Record<string, unknown>): { id: unknown } }
+      commands: { list(agent: unknown): Array<{ name: string }> }
+    }
+    const session = typedCtx.sessions.create(SessionId('pi2dsh-engine-builtins'), {
+      meta: { createdAt: Date.now(), cwd: root },
+    })
+    const agent = { id: session.id, session, steer() {}, inject() {}, followup() {}, whenIdle: () => Promise.resolve() }
+
+    expect(typedCtx.commands.list(agent).map(command => command.name)).toContain('login')
+  })
+
   it('auto-registers a -vision companion for every text-only route, skipping image-capable routes (zero config)', async () => {
     const root = await makeProfile({})
     const { ctx, llm, TextAdapter } = await makeLlmContext(root)
