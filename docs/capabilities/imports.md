@@ -232,7 +232,7 @@ through `llm.registerAdapter`.
 | Symbol | Status | How it is served |
 |---|---|---|
 | `StringEnum` | Same semantics | Preserves Pi flat string-enum JSON Schema generation without loading provider SDKs. |
-| `registerProvider` | Mapped, difference stated | Recorded in a bridge-local registry; DSH llm adapters own real routing. |
+| `registerProvider` | Mapped, difference stated | Recorded in the Pi-facing registry, then exposed as a DSH route: a transport-owning provider uses llm.registerAdapter; a catalog-only provider is translated into the official llm-pi-ai profile schema. |
 | `getProviders` | Mapped, difference stated | Returns the bridge-local registry contents. |
 | `getProvider` | Mapped, difference stated | Reads the bridge-local registry. |
 | `getModel` | Mapped, difference stated | Resolves no Pi model objects; DSH owns model routing. |

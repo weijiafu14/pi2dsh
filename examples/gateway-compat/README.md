@@ -1,154 +1,105 @@
-# Gateways that reject `developer`, and reasoning that stays on
+# Private-gateway compatibility through DSH's official adapter
 
-If your OpenAI-compatible gateway is a private/corporate deployment, a
-domestic Chinese endpoint, or a local proxy, turning on reasoning may fail
-every request with something like:
+Private, domestic and local OpenAI-compatible gateways often reject a request
+as soon as reasoning is enabled:
 
-```
-400  invalid value: `developer`
-400  Unexpected role 'developer'
-```
-
-This example shows why it happens, and how installing a Pi provider plugin
-through pi2dsh gets you past it — **without a local rewriting proxy**, and
-with the reasoning effort selector still working.
-
-## Why it happens
-
-The request has to put the system prompt under some role. `developer` is the
-newer OpenAI spelling, and many gateways only accept `system`. Whether to use
-`developer` is one flag: `supportsDeveloperRole`.
-
-When nothing declares it, the flag is guessed **from the hostname**. Public
-vendor hosts are on the list; your private gateway is not — so it is assumed
-to accept `developer`, and every reasoning request 400s.
-
-The flag can be declared explicitly in a Pi model's `compat`. What matters is
-whether your declaration reaches the request assembler.
-
-## What this example does
-
-Install a Pi provider plugin for your gateway. The plugin builds its own model
-descriptors — `compat` included — and pi2dsh registers it as a **native DSH
-llm route** through the host's own `llm.registerAdapter` seam. The request is
-then assembled from the plugin's descriptor, so the flag it declares is the
-flag that ships.
-
-Everything else stays DSH's: the loop, the session log, retries, the model
-picker, subagents. Only the adapter differs.
-
-```sh
-dsh plugin --profile web add pi2dsh
-dsh plugin --profile web add <the Pi provider plugin for your gateway>
+```text
+400 invalid value: `developer`
+400 Unexpected role 'developer'
 ```
 
-Then configure the plugin the way its README says (usually environment
-variables, or its own `/login` command in the DSH command palette), and
-restart dsh. Its models appear in DSH's own model picker.
+The common cause is a wire-dialect fact such as `supportsDeveloperRole`. When
+it is absent, pi-ai guesses from the hostname. A private hostname says nothing
+about the implementation behind it, so that guess can be wrong.
 
-Pi provider plugins that exist today include `pi-provider-litellm` (LiteLLM
-proxies, with model auto-discovery and enterprise SSO), plus per-vendor ones
-for Volcengine, Kimi and others. If your gateway is a plain OpenAI-compatible
-endpoint with a fixed model list and no compat quirks, you do **not** need any
-of this — configure it directly in DSH settings, see
-[`custom-gateways`](../custom-gateways/).
+DSH rc.8 gives its official `llm-pi-ai` provider profile a protocol-aware
+`compat` schema. pi2dsh uses that seam for a Pi plugin that declares a provider
+catalog but no transport:
 
-
-## Which plugins can actually do this
-
-Only a plugin that **brings its own transport** — one whose provider has a
-`stream` of its own — becomes a DSH llm route. A plugin that merely declares a
-model catalog stays on the host's llm configuration, so it hits the exact same
-dropped-field problem this example is about.
-
-You do not have to guess. Install it, start dsh, and read one line:
-
-```
-[pi2dsh] Pi provider "<name>" registered as a native DSH llm route
-   → its own requests, so your compat declarations ship
-
-[pi2dsh] Pi provider "<name>" declares a model catalog but no transport;
-         it was not added as a DSH llm route
-   → falls back to host llm settings; this example does NOT help
+```text
+Pi provider declaration
+  → pi2dsh translates configuration field by field
+  → DSH settings / credentials / model directory
+  → official llm-pi-ai adapter
+  → real gateway request
 ```
 
-Checked so far: `pi-provider-litellm` carries a transport (works);
-`pi-ollama-cloud` is catalog-only (does not); `pi-llama-cpp` registers no
-provider at all (not applicable).
+The bridge does not implement HTTP on this path. DSH owns the credential and
+the request; pi2dsh only translates the declaration.
 
-## What pi2dsh had to fix for this to work
+## What is translated
 
-Three gaps, all general — no per-package code:
+- protocol, base URL and `$ENV_VAR` credential reference;
+- model name, context/output limits and text/image input modalities;
+- Pi's `reasoning` + `thinkingLevelMap` into DSH `reasoningEfforts`;
+- every compat field rc.8 offers for the selected protocol, including
+  `supportsDeveloperRole`, `maxTokensField`, `thinkingFormat`, cache switches,
+  tool-result switches and the Anthropic-specific switches.
 
-1. **Reasoning efforts were not offered at all.** Pi describes reasoning with
-   a boolean plus a `thinkingLevelMap`; DSH asks an adapter for selectable
-   efforts. The bridge translated neither, so every package-registered route
-   reported no effort and any reasoning request was rejected outright with
-   `UNSUPPORTED_REASONING_EFFORT`. The bridge now derives the efforts exactly
-   as DSH's own pi-ai adapter does.
+The translation is a whitelist. Unknown keys and catalog-vendor-owned fields
+such as OpenRouter routing, session affinity, grammar tools and tool search are
+not copied into a generic route: DSH deliberately keeps those on the installed
+vendor catalog. One invalid key would otherwise reject the whole settings
+section.
 
-2. **The chosen effort never reached the request.** With efforts finally
-   offered, picking one still did nothing: the bridge did not forward
-   `reasoningEffort` into the package's stream call, so the selector was
-   decorative.
+Providers that bring their own `stream` still use the other supported path:
+pi2dsh registers their transport through `llm.registerAdapter`. Both paths
+enter the same DSH model directory.
 
-3. **Declared image input was lost on the resolve path.** A model declaring
-   `input: ['text','image']` advertised it in the catalog listing but not in
-   the exact-route resolve — which is what the host consults before a request,
-   so the model silently degraded to text-only exactly when it mattered.
+## Verify the real wire
 
-All three are fixed in 0.12.0, and each unlocks every Pi provider plugin at
-once, not just one vendor's.
+`probe/` contains two small pieces:
 
-## Verify it yourself, without a real gateway
+- `pi-probe-provider`: a **catalog-only** Pi provider — no stream, no HTTP
+  client — declaring the non-default compat values;
+- `recording-proxy.mjs`: a passthrough recorder. It forwards every request to
+  your real upstream and streams the real response back, while saving the
+  request shape locally.
 
-`probe/` contains a recording proxy and a minimal Pi provider. The provider
-declares `supportsDeveloperRole: false`, `maxTokensField:
-'max_completion_tokens'`, `supportsStore: false`, a `thinkingLevelMap` that
-removes `minimal` and adds `xhigh`, and `input: ['text','image']` — none of
-which DSH settings can carry.
-
-The proxy is **not** a stand-in endpoint: it forwards every request to the
-real upstream and streams the real response back. It only writes down what
-was sent, because that is the only way to see whether a compat declaration
-actually reached the wire. Point it at your own gateway to check yours.
+Start the recorder:
 
 ```sh
 PROXY_UPSTREAM=https://api.deepseek.com \
-  node examples/gateway-compat/probe/recording-proxy.mjs   # terminal 1
-dsh plugin --profile web add file:examples/gateway-compat/probe/pi-probe-provider
-# point agent-default-model at provider `probe`, then:
-dsh --profile web --port 5184                              # terminal 2
+  node examples/gateway-compat/probe/recording-proxy.mjs
 ```
 
-Send any message — the model really answers — and read what was recorded:
+In another terminal, expose the real upstream key under the reference used by
+the fixture, install the engine and fixture, then start DSH:
+
+```sh
+export PROBE_API_KEY="$DEEPSEEK_API_KEY"
+export PROBE_BASE_URL=http://127.0.0.1:4599/v1
+
+dsh plugin --profile web add pi2dsh
+dsh plugin --profile web add file:examples/gateway-compat/probe/pi-probe-provider
+dsh --profile web --port 5184
+```
+
+Select `Probe Gateway / Probe Model` and send a message. The real model should
+answer. `probe/requests.jsonl` should show evidence like:
 
 ```json
-{"roles":["system","user",…],
- "maxTokensField":"max_completion_tokens",
- "reasoningEffort":"xhigh",
- "store":null,
- "bodyKeys":["max_completion_tokens","messages","model","reasoning_effort","stream","stream_options","tools"]}
+{"roles":["system","user"],
+ "maxTokensField":"max_tokens",
+ "reasoningEffort":"high",
+ "store":null}
 ```
 
-Every one of those is a declaration surviving the trip: `system` instead of
-`developer`; the model's own spelling of the max-tokens field; the effort you
-picked, after the model's own level map; and no `store` field, because the
-model said the gateway rejects it.
+Those values are deliberately falsifiable:
 
-Two more, visible outside the request body:
+- `system`, not `developer`, proves `supportsDeveloperRole: false` reached the
+  assembler;
+- `max_tokens` is the non-default spelling declared by the plugin;
+- no `store` proves `supportsStore: false` survived;
+- selecting canonical `xhigh` produces the model's mapped wire spelling `high`;
+- the DSH selector offers `Off / Low / Medium / High / Xhigh`, omits `Minimal`,
+  and accepts images because those facts came from the Pi model declaration.
 
-- The effort selector lists `Off / Low / Medium / High / Xhigh` — `Minimal` is
-  gone because the map marks it unsupported, and `Xhigh` is there because the
-  map declares it. Neither is the default set.
-- No `probe-vision` companion route is registered at startup, because the
-  model declares image input. (A text-only route still gets one — check the
-  log for `deepseek-official-vision`.)
+## Scope
 
-## Honest scope
-
-This does **not** fix DSH's own configuration path. If you configure a gateway
-directly in DSH settings, `supportsDeveloperRole` is still dropped there, and
-the hostname guess still applies. What pi2dsh gives you is a second, fully
-supported route into the same model directory — one where the plugin's compat
-declaration is what ships.
+This example proves the configuration-owned route fixed in DSH rc.8. It does
+not claim a generic final-wire middleware: enhancing an already registered
+adapter's final headers/body/response is a separate DSH seam that still does
+not exist. It also does not turn a command-only package such as a llama.cpp
+launcher into a model provider; the package must actually register a provider
+declaration.

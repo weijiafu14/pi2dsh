@@ -333,8 +333,10 @@ For example, a `pi-btw` answer is a real DSH child session — visible, resumabl
 and continuable by the host. Pi custom entries are different: they still need a
 pi2dsh sidecar because an out-of-repo plugin cannot safely add a new event type
 to DSH's durable log. Likewise, a transport-owning Pi provider can register a
-native DSH route with its full compatibility profile, while the hand-configured
-`llm-pi-ai` schema still drops some wire-compatibility fields.
+native DSH route. Since DSH rc.8, a catalog-only provider also has a faithful
+official path: pi2dsh translates its endpoint, modalities, reasoning levels and
+the protocol-specific compat fields DSH offers into an `llm-pi-ai` profile, and
+DSH owns the request.
 
 The project follows one **[Pi → DSH architecture mapping standard](docs/architecture-mapping-standard.md)**.
 It is a reasoning method, not another runtime layer: concrete Pi interface →
@@ -345,12 +347,14 @@ run → five-grade result. The evolving branches live in the handwritten
 three result classes in **[architecture conclusions](docs/dsh-architecture-conformance.md)**.
 Architecture classifications are deliberately not generated from a JSON ledger.
 The previously observed 111 Pi rule rows and 45 DSH subsystems are versioned
-snapshots, not fixed totals or proof of completeness. The current five DSH gap
-IDs are confirmed findings, not a claim of complete coverage. Current
+snapshots, not fixed totals or proof of completeness. Four DSH gap IDs remain
+active; a fifth historical finding (`DSH-ARCH-002`) was fixed upstream in rc.8.
+These are confirmed findings, not a claim of complete coverage. Current
 upstream reports include
 [#2708 — durable events for out-of-repo plugins](https://github.com/deepseek-ai/deepseek-harness/discussions/2708)
 and
-[#3076 — provider compat fields dropped by `llm-pi-ai`](https://github.com/deepseek-ai/deepseek-harness/discussions/3076).
+[#3076 — provider compat fields dropped by `llm-pi-ai`](https://github.com/deepseek-ai/deepseek-harness/discussions/3076),
+now resolved by the rc.8 profile schema.
 
 ## Pi capabilities on DSH
 
@@ -427,7 +431,7 @@ in one has actually been executed against a real DSH loop before landing.
 | [`side-conversation`](examples/side-conversation/) | `/btw <question>` runs a side thread in DSH's native subagent UI; your main conversation stays clean |
 | [`presentation-surfaces`](examples/presentation-surfaces/) | A real plugin's terminal chrome (`pi-powerline-footer`) in DSH's web seats, plus which of the top-50 Pi plugins draw at all |
 | [`subscription-login`](examples/subscription-login/) | Use a ChatGPT / Claude / Copilot / Kimi subscription as a DSH model: `/login`, then the route and credential appear on their own |
-| [`gateway-compat`](examples/gateway-compat/) | Private / domestic / proxy gateways that reject the `developer` role: why reasoning 400s, and how a Pi provider plugin gets past it (recording proxy included, so you can read the exact request body we send) |
+| [`gateway-compat`](examples/gateway-compat/) | Private / domestic / proxy gateways that reject the `developer` role: how rc.8's official profile carries Pi compat declarations to the wire (passthrough recorder included) |
 | [`custom-gateways`](examples/custom-gateways/) | Add any OpenAI-compatible gateway the official DSH way, and every Pi plugin sees it |
 
 ## Other tools

@@ -104,7 +104,7 @@ async function mountedContext() {
   const typedCtx = ctx as unknown as {
     sessions: { create(id: unknown, options: Record<string, unknown>): { id: unknown } }
     agents: { register(agent: Record<string, unknown>): () => void }
-    commands: { execute(agent: never, input: string, signal: AbortSignal): Promise<{ result: { kind: string } } | undefined> }
+    commands: { execute(agent: never, input: string, images: readonly never[], signal: AbortSignal): Promise<{ result: { kind: string } } | undefined> }
     systemPrompt: { assemble(input?: Record<string, unknown>): Promise<Record<string, unknown>> }
     tools: { execute(input: Record<string, unknown>): Promise<{ isError: boolean }> }
   }
@@ -218,7 +218,7 @@ describe('input/context bridge in the real DSH runtime', () => {
   it("keeps Pi's same-name registerCommand replacement: the second handler wins without aborting the package", async () => {
     const { typedCtx, agent } = await mountedContext()
     const signal = new AbortController().signal
-    const outcome = await typedCtx.commands.execute(agent as never, '/icb-dup', signal)
+    const outcome = await typedCtx.commands.execute(agent as never, '/icb-dup', [], signal)
     expect(outcome?.result.kind).toBe('success')
     const record = (globalThis as Record<string, unknown>).__icb as { command?: string }
     expect(record.command).toBe('second')

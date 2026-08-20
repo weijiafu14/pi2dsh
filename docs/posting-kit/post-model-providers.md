@@ -9,6 +9,9 @@ for pi2dsh 0.12.4 (`pnpm verify` green — 208 tests / 19 files), on a real DSH
 web instance. Rows marked *not exercised* say so because no account was
 available, not because anything is expected to differ. No internal endpoint,
 host, or credential appears anywhere in this post or its screenshots.
+The catalog-only gateway section was reverified on 2026-08-20 against DSH rc.8:
+214 contract tests passed and the passthrough recorder completed a real model
+turn through the official adapter.
 
 ---
 
@@ -127,11 +130,13 @@ that register nothing at startup do their registration later (behind a command
 or their own configuration step); nothing is wrong with them, there is simply
 no route to report at boot.
 
-One translation loss worth stating: a catalog-only package's **gateway dialect
-flags** (Pi's `compat.maxTokensField` and friends) have no slot in a DSH route
-profile, so they do not survive that path. Packages that carry their own
-transport are unaffected — theirs reach the request. If your gateway needs one
-of those flags, prefer a package that brings its transport.
+Since DSH rc.8, a catalog-only package's **gateway dialect flags** do have an
+official route-profile slot. pi2dsh translates the protocol, input modalities,
+reasoning levels and every compat field that `llm-pi-ai` offers for that
+protocol; the official adapter still owns the request. The remaining boundary
+is deliberate: vendor-owned catalog switches (routing/session affinity,
+grammar/tool-search and similar fields) are not copied into a generic gateway
+profile, and unknown keys are dropped before they can invalidate the section.
 
 ## What this does not do
 

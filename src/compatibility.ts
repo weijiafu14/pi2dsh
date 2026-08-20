@@ -236,7 +236,7 @@ export const HOST_IMPORT_RULES: Readonly<Record<string, Readonly<Record<string, 
   }),
   'pi-ai': Object.freeze({
     StringEnum: rule('full', 'Preserves Pi flat string-enum JSON Schema generation without loading provider SDKs.'),
-    registerProvider: rule('partial', 'Recorded in a bridge-local registry; DSH llm adapters own real routing.'),
+    registerProvider: rule('partial', 'Recorded in the Pi-facing registry, then exposed as a DSH route: a transport-owning provider uses llm.registerAdapter; a catalog-only provider is translated into the official llm-pi-ai profile schema.'),
     getProviders: rule('partial', 'Returns the bridge-local registry contents.'),
     getProvider: rule('partial', 'Reads the bridge-local registry.'),
     getModel: rule('partial', 'Resolves no Pi model objects; DSH owns model routing.'),
@@ -349,8 +349,8 @@ export const API_RULES: Readonly<Record<string, SurfaceRule>> = Object.freeze({
     level: 'partial',
     detail: 'Two outcomes, by whether the provider carries its own transport. '
       + 'WITH a transport (pi-ai createProvider and friends): it becomes a real DSH llm route through llm.registerAdapter, and from then on the package\'s own HTTP client carries the turn — its API key or OAuth token is resolved by Pi\'s credential chain and persisted in the bridge\'s auth.json, not by DSH credentials. '
-      + 'WITHOUT one (catalog-only): the declaration is recorded and introspectable, no bridge transport is synthesized, and model calls stay on native DSH llm adapters and credentials.',
-    design: 'Two mechanisms behind one call. A provider carrying its own transport becomes a real DSH route through llm.registerAdapter, and the package\'s own HTTP client then carries the turn with its key resolved by Pi\'s credential chain into the bridge\'s auth.json. A catalog-only declaration registers no transport at all: those models are served by the host\'s adapters and DSH credentials, and the declaration only contributes directory entries.',
+      + 'WITHOUT one (catalog-only): protocol, endpoint, credential reference, model capabilities, reasoning levels and the compat fields offered by DSH are translated into the official llm-pi-ai profile; no bridge transport is synthesized.',
+    design: 'Two mechanisms behind one call. A provider carrying its own transport becomes a real DSH route through llm.registerAdapter, and the package\'s own HTTP client then carries the turn with its key resolved by Pi\'s credential chain into the bridge\'s auth.json. A catalog-only declaration becomes configuration for DSH\'s official llm-pi-ai adapter, which owns credentials and the real HTTP request. Both enter the one DSH model directory.',
   },
   unregisterProvider: {
     level: 'partial',

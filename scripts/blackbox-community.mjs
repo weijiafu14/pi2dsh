@@ -325,7 +325,7 @@ async function exerciseSurface(ctx, agent, assembly, commands) {
     const name = commands.find(candidate => !isUnsafeName(candidate))
     if (name !== undefined) {
       try {
-        await ctx.commands.execute(agent, name, new AbortController().signal)
+        await ctx.commands.execute(agent, name, [], new AbortController().signal)
         attempts.push({ kind: 'command', name, outcome: 'working', evidence: 'command handler completed' })
       } catch (error) {
         const message = String(error?.message ?? error)

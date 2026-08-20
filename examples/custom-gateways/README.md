@@ -26,11 +26,24 @@ llm-pi-ai:
         - id: qwen/qwen2.5-vl-72b-instruct
           name: Qwen2.5-VL 72B
           contextWindow: 131072
+          input: [text, image]
+          reasoningEfforts:
+            off:
+            low: low
+            high: high
+          compat:
+            supportsDeveloperRole: false
+            maxTokensField: max_tokens
 ```
 
 `apiKeyEnv` names an environment variable (or a `ctx.credentials`
 reference); the key itself never enters the file. Settings hot-reload:
 the route serves on the next request, no restart needed.
+
+`input`, `reasoningEfforts` and `compat` are official rc.8 profile fields.
+Declare only what the endpoint actually supports. Compat is protocol-aware:
+an OpenAI-completions-only switch on an Anthropic route is rejected with the
+route and model named, rather than silently ignored.
 
 ## 2. Use it
 

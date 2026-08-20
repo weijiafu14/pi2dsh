@@ -176,8 +176,9 @@ DSH 看到的只是普通 cordis 插件与普通 llm adapter。
   （DSH 自家 adapter 也如此）。
 - 包注册 provider 的投影存在性由路由归属裁决：路由名没拿到（冲突/
   无 llm）＝不在投影里，绝不让别人路由的模型穿这份注册的 baseUrl。
-- 只声明目录、不带自有 stream 的包注册 provider：fails loud，指引配
-  宿主 llm settings（不给桥合成传输）。
+- 只声明目录、不带自有 stream 的包注册 provider：翻译成官方 `llm-pi-ai`
+  profile（协议、端点、凭证引用、模型容量/模态/推理档位、官方开放的 compat），
+  不给桥合成传输；真实请求由 DSH 官方 adapter 发出。
 
 **事故档案**：跨层调用曾出现三处——getProvider 携带 wire 传输绕过
 DSH llm、registry.complete 缺失、DSH 原生路由 getProvider 返回
@@ -277,7 +278,7 @@ Pi 0.84.1 declarations 逐项对照后，当前规则的上游形状行应是 11
 插件等级和 DSH 归因必须由证据驱动、人工维护。Cordis 卸载、重绑、隔离和失败回滚属于
 相关映射的生命周期维度，不另起一张与映射脱节的成绩单。
 
-现有五个 `DSH-ARCH-*` 只是证据闭环的缺口，不是穷举完成。像 `input`、message replacement、
+当前四个 active `DSH-ARCH-*` 和一个上游已修复的历史编号只是证据闭环的发现，不是穷举完成。像 `input`、message replacement、
 原生工具 update、宿主发起的 session tree 生命周期等，未完成数据流倒推前记“待判级”；
 找到公开 seam 就归桥，证明权威时机不开放才新增上游编号。
 

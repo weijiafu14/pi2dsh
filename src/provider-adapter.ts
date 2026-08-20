@@ -6,11 +6,12 @@
 // registry is a projection of that same directory. Credentials resolve per
 // request through Pi's own chain; the key rides the provider's stream
 // options and never enters logs. A provider that only declares a catalog
-// (no stream of its own) is not given a bridge transport: model transports
-// belong to the host — configure the gateway in the host's llm settings
-// (the official llm-pi-ai adapter) instead.
+// (no stream of its own) is translated into the official llm-pi-ai profile
+// schema, so its protocol, model capabilities and offered compat switches
+// still run through DSH's own transport.
 
 import { LlmError } from '@deepseek-ai/dsh-llm'
+import type { PiAiCompatProfile } from '@deepseek-ai/dsh-llm-pi-ai'
 import { blocksContainImage, dshRequestToPiContext, piEventsToDshChunks, type DshAttachmentsLike, type DshLlmLike } from './model-bridge.js'
 import { getSupportedThinkingLevels } from './compat/pi-ai.js'
 
@@ -406,7 +407,118 @@ const DSH_PROTOCOLS = new Set(['openai-completions', 'openai-responses', 'anthro
 // A Pi model may carry others; a value outside the set is dropped rather than
 // forwarded, because one unknown spelling rejects the entire section.
 const DSH_MODALITIES = new Set(['text', 'image'])
-const DSH_THINKING_FORMATS = new Set(['openai', 'deepseek', 'openrouter', 'together', 'zai', 'qwen', 'string-thinking', 'ant-ling'])
+const DSH_THINKING_FORMATS = new Set([
+  'openai', 'deepseek', 'openrouter', 'together', 'zai', 'qwen',
+  'chat-template', 'qwen-chat-template', 'string-thinking', 'ant-ling',
+])
+const DSH_MAX_TOKENS_FIELDS = new Set(['max_completion_tokens', 'max_tokens'])
+const DSH_CACHE_CONTROL_FORMATS = new Set(['anthropic'])
+const DSH_CHAT_TEMPLATE_VARS = new Set(['thinking.enabled', 'thinking.effort'])
+
+const COMPLETIONS = new Set(['openai-completions'])
+const RESPONSES = new Set(['openai-responses'])
+const ANTHROPIC = new Set(['anthropic-messages'])
+const COMPLETIONS_AND_RESPONSES = new Set(['openai-completions', 'openai-responses'])
+const ALL_DSH_PROTOCOLS = new Set(DSH_PROTOCOLS)
+
+// `satisfies Record<keyof ...>` is the drift gate. A later DSH release that
+// offers another profile field makes this build fail until the field is
+// deliberately assigned to the protocols that may consume it.
+const DSH_COMPAT_FIELD_PROTOCOLS = {
+  supportsStore: COMPLETIONS,
+  supportsDeveloperRole: COMPLETIONS_AND_RESPONSES,
+  supportsReasoningEffort: COMPLETIONS,
+  supportsUsageInStreaming: COMPLETIONS,
+  maxTokensField: COMPLETIONS,
+  requiresToolResultName: COMPLETIONS,
+  requiresAssistantAfterToolResult: COMPLETIONS,
+  requiresThinkingAsText: COMPLETIONS,
+  requiresReasoningContentOnAssistantMessages: COMPLETIONS,
+  thinkingFormat: COMPLETIONS,
+  chatTemplateKwargs: COMPLETIONS,
+  supportsStrictMode: COMPLETIONS_AND_RESPONSES,
+  cacheControlFormat: COMPLETIONS,
+  supportsLongCacheRetention: ALL_DSH_PROTOCOLS,
+  supportsEagerToolInputStreaming: ANTHROPIC,
+  supportsCacheControlOnTools: ANTHROPIC,
+  supportsTemperature: ANTHROPIC,
+  forceAdaptiveThinking: ANTHROPIC,
+  allowEmptySignature: ANTHROPIC,
+  supportsStrictTools: ANTHROPIC,
+} satisfies Record<keyof PiAiCompatProfile, ReadonlySet<string>>
+
+function recordOf(value: unknown): UnknownRecord | undefined {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+    ? value as UnknownRecord
+    : undefined
+}
+
+function chatTemplateKwargsOf(value: unknown): UnknownRecord | undefined {
+  const input = recordOf(value)
+  if (input === undefined) return undefined
+  const output: UnknownRecord = {}
+  for (const [key, candidate] of Object.entries(input)) {
+    if (candidate === null || typeof candidate === 'string' || typeof candidate === 'boolean'
+      || (typeof candidate === 'number' && Number.isFinite(candidate))) {
+      output[key] = candidate
+      continue
+    }
+    const placeholder = recordOf(candidate)
+    if (placeholder === undefined || typeof placeholder.$var !== 'string'
+      || !DSH_CHAT_TEMPLATE_VARS.has(placeholder.$var)
+      || (placeholder.omitWhenOff !== undefined && typeof placeholder.omitWhenOff !== 'boolean')) continue
+    output[key] = {
+      $var: placeholder.$var,
+      ...(typeof placeholder.omitWhenOff === 'boolean' ? { omitWhenOff: placeholder.omitWhenOff } : {}),
+    }
+  }
+  return Object.keys(output).length === 0 ? undefined : output
+}
+
+/**
+ * The part of Pi's model compat that rc.8's official adapter deliberately
+ * offers for this protocol. Vendor-owned catalog switches remain withheld:
+ * forwarding one unknown key rejects the entire settings section, so this is
+ * an explicit field gate rather than a spread.
+ */
+function compatProfileOf(value: unknown, api: string | undefined): UnknownRecord {
+  const compat = recordOf(value)
+  if (compat === undefined || api === undefined) return {}
+  const output: UnknownRecord = {}
+  const fields = Object.entries(DSH_COMPAT_FIELD_PROTOCOLS) as Array<[
+    keyof PiAiCompatProfile,
+    ReadonlySet<string>,
+  ]>
+  for (const [field, protocols] of fields) {
+    if (!protocols.has(api)) continue
+    const candidate = compat[field]
+    if (field === 'maxTokensField') {
+      if (typeof candidate === 'string' && DSH_MAX_TOKENS_FIELDS.has(candidate)) output[field] = candidate
+    } else if (field === 'thinkingFormat') {
+      if (typeof candidate === 'string' && DSH_THINKING_FORMATS.has(candidate)) output[field] = candidate
+    } else if (field === 'chatTemplateKwargs') {
+      const kwargs = chatTemplateKwargsOf(candidate)
+      if (kwargs !== undefined) output[field] = kwargs
+    } else if (field === 'cacheControlFormat') {
+      if (typeof candidate === 'string' && DSH_CACHE_CONTROL_FORMATS.has(candidate)) output[field] = candidate
+    } else if (typeof candidate === 'boolean') {
+      output[field] = candidate
+    }
+  }
+  return output
+}
+
+function reasoningEffortsOf(model: UnknownRecord): false | UnknownRecord | undefined {
+  if (model.reasoning === false) return false
+  if (model.reasoning !== true) return undefined
+  const levelMap = recordOf(model.thinkingLevelMap)
+  const efforts: UnknownRecord = {}
+  for (const level of getSupportedThinkingLevels(model as never)) {
+    const wire = levelMap?.[level]
+    efforts[level] = level === 'off' && wire === undefined ? null : (wire ?? level)
+  }
+  return Object.keys(efforts).some(level => level !== 'off') ? efforts : undefined
+}
 
 /** A positive whole number, or undefined — the profile schema rejects 0 and fractions. */
 function wholeAbove(value: unknown): number | undefined {
@@ -418,28 +530,17 @@ function wholeAbove(value: unknown): number | undefined {
  *
  * Field by field on purpose. The two vocabularies overlap but do not match:
  * Pi's `maxTokens` is routinely 0 for "unstated" while DSH requires at least 1,
- * Pi's `compat` carries gateway dialect flags DSH's profile has no slot for,
  * and Pi's `reasoning` is a boolean where DSH's `reasoningEfforts` is a map of
- * offered levels. Forwarding any of those verbatim rejects the whole settings
- * section — one bad key takes down every route in it.
+ * offered levels. rc.8 gives compat a real profile slot, but only for a gated
+ * protocol-specific subset. Forwarding these objects verbatim still rejects
+ * the whole settings section — one bad key takes down every route in it.
  * @param model - the Pi model descriptor as its package declared it.
- * @param api - the wire protocol this route resolved to, which decides whether
- *   the reasoning compat switches are even a legal thing to state.
+ * @param api - the wire protocol this route resolved to, which decides which
+ *   compat fields are legal to state.
  */
 function modelProfileOf(model: UnknownRecord, api: string | undefined): UnknownRecord {
-  const compat = model.compat as UnknownRecord | undefined
-  // Both switches exist ONLY on openai-completions, and stating them on any
-  // other protocol is refused with the whole settings section. Pi puts them on
-  // the model whatever it speaks, so the protocol decides whether they travel.
-  const reasoningCompatAllowed = api === 'openai-completions'
-  const thinkingFormat = reasoningCompatAllowed
-    && typeof compat?.thinkingFormat === 'string' && DSH_THINKING_FORMATS.has(compat.thinkingFormat)
-    ? { thinkingFormat: compat.thinkingFormat }
-    : {}
-  const supportsReasoningEffort = reasoningCompatAllowed && typeof compat?.supportsReasoningEffort === 'boolean'
-    ? { supportsReasoningEffort: compat.supportsReasoningEffort }
-    : {}
-  const carriedCompat = { ...thinkingFormat, ...supportsReasoningEffort }
+  const carriedCompat = compatProfileOf(model.compat, api)
+  const reasoningEfforts = reasoningEffortsOf(model)
   const input = Array.isArray(model.input)
     ? (model.input as unknown[]).filter(entry => typeof entry === 'string' && DSH_MODALITIES.has(entry))
     : []
@@ -451,6 +552,7 @@ function modelProfileOf(model: UnknownRecord, api: string | undefined): UnknownR
     ...(contextWindow === undefined ? {} : { contextWindow }),
     ...(maxTokens === undefined ? {} : { maxTokens }),
     ...(input.length === 0 ? {} : { input }),
+    ...(reasoningEfforts === undefined ? {} : { reasoningEfforts }),
     ...(Object.keys(carriedCompat).length === 0 ? {} : { compat: carriedCompat }),
   }
 }
@@ -495,12 +597,18 @@ function registerCatalogOnlyRoute(options: RegisterPiProviderRouteOptions): PiRo
     const api = protocolOf(provider.api) ?? protocolOf(first.api)
     const baseURL = typeof provider.baseUrl === 'string' ? provider.baseUrl
       : typeof first.baseUrl === 'string' ? first.baseUrl : undefined
+    const providerCompat = compatProfileOf(provider.compat, api)
     return {
       displayName: typeof provider.name === 'string' ? provider.name : providerId,
       ...(apiKeyEnv === undefined ? {} : { apiKeyEnv }),
       ...(api === undefined ? {} : { api }),
       ...(baseURL === undefined ? {} : { baseURL }),
-      ...(models.length === 0 ? {} : { models: models.map(model => modelProfileOf(model, api)) }),
+      ...(Object.keys(providerCompat).length === 0
+        ? {}
+        : { compat: providerCompat }),
+      ...(models.length === 0
+        ? {}
+        : { models: models.map(model => modelProfileOf(model, api ?? protocolOf(model.api))) }),
     }
   }, `[pi2dsh] Pi provider ${JSON.stringify(providerId)} declares a catalog only; DSH's official llm-pi-ai adapter now serves it as a native route`)
 }

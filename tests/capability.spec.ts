@@ -65,7 +65,7 @@ interface TypedHost {
     list(): Array<{ id: unknown; header: Record<string, unknown> }>
     get(id: unknown): unknown
   }
-  commands: { execute(agent: never, input: string, signal: AbortSignal): Promise<{ result?: unknown } | undefined> }
+  commands: { execute(agent: never, input: string, images: readonly never[], signal: AbortSignal): Promise<{ result?: unknown } | undefined> }
 }
 
 function makeAgent(ctx: Context, root: string): Record<string, unknown> {
@@ -183,7 +183,7 @@ describe('session control on a real DSH composition', () => {
     const typed = ctx as unknown as TypedHost
     const before = typed.sessions!.list().length
 
-    const outcome = await typed.commands.execute(agent as never, '/cap-sessions', new AbortController().signal)
+    const outcome = await typed.commands.execute(agent as never, '/cap-sessions', [], new AbortController().signal)
     const parsed = JSON.parse(resultText(outcome)) as Record<string, unknown>
     expect(parsed.newSession).toEqual({ cancelled: false })
     expect(parsed.replacedSeen).toBe(true)
@@ -219,7 +219,7 @@ describe('session control on a real DSH composition', () => {
     expect(lineage.length).toBe(3)
 
     // The command survived its own reload-remount and still executes.
-    const again = await typed.commands.execute(agent as never, '/cap-sessions', new AbortController().signal)
+    const again = await typed.commands.execute(agent as never, '/cap-sessions', [], new AbortController().signal)
     expect((JSON.parse(resultText(again)) as Record<string, unknown>).newSession).toEqual({ cancelled: false })
 
     // The user learned about the host-surface boundary once per capability.
@@ -235,10 +235,10 @@ describe('session control on a real DSH composition', () => {
     typed.sessions!.create(SessionId('other-live-session'), { meta: { createdAt: Date.now(), cwd: root } })
     const agent = makeAgent(ctx, root)
 
-    const byPath = await typed.commands.execute(agent as never, '/cap-switch /somewhere/other-live-session.jsonl', new AbortController().signal)
+    const byPath = await typed.commands.execute(agent as never, '/cap-switch /somewhere/other-live-session.jsonl', [], new AbortController().signal)
     expect(JSON.parse(resultText(byPath))).toEqual({ cancelled: false })
 
-    const missing = await typed.commands.execute(agent as never, '/cap-switch nope.jsonl', new AbortController().signal)
+    const missing = await typed.commands.execute(agent as never, '/cap-switch nope.jsonl', [], new AbortController().signal)
     expect((JSON.parse(resultText(missing)) as { threw: string }).threw).toContain('no live DSH session')
   })
 
@@ -248,7 +248,7 @@ describe('session control on a real DSH composition', () => {
     const { ctx, root } = await mountProbe({ 'probe.ts': SESSION_PROBE }, { withSessions: false })
     const agent = makeAgent(ctx, root)
     const typed = ctx as unknown as TypedHost
-    const outcome = await typed.commands.execute(agent as never, '/cap-sessions', new AbortController().signal)
+    const outcome = await typed.commands.execute(agent as never, '/cap-sessions', [], new AbortController().signal)
     const parsed = JSON.parse(resultText(outcome)) as Record<string, unknown>
     expect(parsed.newSession).toEqual({ cancelled: true })
     expect(parsed.fork).toEqual({ cancelled: true })
@@ -280,7 +280,7 @@ describe('compact translation', () => {
     })
     const agent = makeAgent(ctx, root)
     const typed = ctx as unknown as TypedHost
-    const outcome = await typed.commands.execute(agent as never, '/cap-compact', new AbortController().signal)
+    const outcome = await typed.commands.execute(agent as never, '/cap-compact', [], new AbortController().signal)
     expect(JSON.parse(resultText(outcome) || '[]')).toEqual(['error:PiCapabilityError'])
   })
 
@@ -324,7 +324,7 @@ describe('compact translation', () => {
       name === 'compaction' ? mockCompaction : realGet(name)
     const agent = makeAgent(ctx, root)
     const typed = ctx as unknown as TypedHost
-    const outcome = await typed.commands.execute(agent as never, '/cap-compact-now', new AbortController().signal)
+    const outcome = await typed.commands.execute(agent as never, '/cap-compact-now', [], new AbortController().signal)
     expect(JSON.parse(resultText(outcome) || '{}')).toEqual({
       summary: 'the compacted summary',
       firstKeptEntryId: '',
@@ -365,7 +365,7 @@ describe('host-owned capabilities', () => {
     expect(startupNotices[0]).toContain('ModelRuntime')
 
     // Pi's per-entry isolation: the healthy entry still works.
-    const alive = await typed.commands.execute(agent as never, '/cap-alive', new AbortController().signal)
+    const alive = await typed.commands.execute(agent as never, '/cap-alive', [], new AbortController().signal)
     expect(resultText(alive)).toBe('alive')
 
     // The user got the unusable verdict with the removal instruction.

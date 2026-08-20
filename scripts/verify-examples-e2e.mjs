@@ -50,7 +50,7 @@ const outputPath = resolve(process.argv[2] ?? 'community/examples-e2e.json')
 const apiKey = process.env.DEEPSEEK_API_KEY
 // Which pi2dsh a run installs. The default is this working tree, because that
 // is what you want while developing. Point it at a published spec
-// (`PI2DSH_ENGINE_SPEC=pi2dsh@0.12.2`) for the bare-environment check after a
+// (`PI2DSH_ENGINE_SPEC=pi2dsh@<published-version>`) for the bare-environment check after a
 // release: same fresh DSH_HOME, same README commands, but the engine comes off
 // the registry — which is the only way to catch what the tarball left out.
 const engineSpec = process.env.PI2DSH_ENGINE_SPEC ?? `file:${projectRoot}`
@@ -89,7 +89,7 @@ async function installedEngineVersion(home, profile) {
  * is cut, so a local `file:` install and the published release of the same
  * number are the same string in the evidence and mean entirely different code.
  * A dirty tree is not any commit at all, so that is recorded too: without it,
- * "0.12.3, commit abc" reads as reproducible when it is not.
+ * "the release version, commit abc" reads as reproducible when it is not.
  */
 let engineOriginOnce
 function engineOrigin() {
@@ -100,7 +100,10 @@ function engineOrigin() {
       execFile('git', ['rev-parse', 'HEAD'], { cwd: at }).then(r => r.stdout.trim()).catch(() => null),
       execFile('git', ['status', '--porcelain'], { cwd: at }).then(r => r.stdout.trim()).catch(() => ''),
     ])
-    return { from: 'local', spec: engineSpec, commit, dirty: status.length > 0 }
+    // Evidence is committed publicly. The commit + dirty bit identify the
+    // build; an absolute checkout path only leaks a developer workstation and
+    // adds no reproducibility value.
+    return { from: 'local', spec: 'file:<working-tree>', commit, dirty: status.length > 0 }
   })()
   return engineOriginOnce
 }
@@ -165,11 +168,12 @@ async function useJsonlSessions(home, profile) {
  * Route the profile's default model, the way the example's README does — the
  * CLI has no --model flag; the selection is settings.
  */
-async function useDefaultModel(home, provider, model) {
+async function useDefaultModel(home, provider, model, reasoningEffort) {
   await writeFile(join(home, 'settings.yaml'), [
     'agent-default-model:',
     `  provider: ${provider}`,
     `  model: ${model}`,
+    ...(reasoningEffort === undefined ? [] : [`  reasoningEffort: ${reasoningEffort}`]),
     '',
   ].join('\n'))
 }
@@ -218,7 +222,7 @@ function assertVisionReallyRead(records, transcript) {
 }
 
 // ---------------------------------------------------------------------------
-// examples/gateway-compat — offline, and the example's whole point is the wire
+// examples/gateway-compat — real upstream; the example's point is the wire
 // ---------------------------------------------------------------------------
 async function runGatewayCompat() {
   if (apiKey === undefined || apiKey.length === 0) {
@@ -266,13 +270,16 @@ async function runGatewayCompat() {
       await new Promise(done => setTimeout(done, 200))
     }
 
-    const { home, runDsh } = await makeHome(scratch, { PROBE_BASE_URL: `http://127.0.0.1:${port}/v1` })
+    const { home, runDsh } = await makeHome(scratch, {
+      PROBE_BASE_URL: `http://127.0.0.1:${port}/v1`,
+      PROBE_API_KEY: apiKey,
+    })
     // Exactly what the README tells the reader to install.
     await runDsh(['plugin', '--profile', 'headless', 'add', engineSpec])
     await runDsh(['plugin', '--profile', 'headless', 'add',
       `file:${join(projectRoot, 'examples/gateway-compat/probe/pi-probe-provider')}`])
     await useJsonlSessions(home, 'headless')
-    await useDefaultModel(home, 'probe', 'deepseek-chat')
+    await useDefaultModel(home, 'probe', 'deepseek-chat', 'xhigh')
 
     const run = await runDsh(['--profile', 'headless', 'Reply with exactly: gateway-compat-ok'])
     const recorded = (await readFile(recordPath, 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line))
@@ -283,8 +290,8 @@ async function runGatewayCompat() {
       `the gateway received ${recorded.length} request(s) but no completion:\n${run.stdout}\n${run.stderr}`)
     const first = completions[0]
 
-    // The three compat quirks the example exists to demonstrate. DSH's own
-    // settings path cannot express any of them; the Pi provider declares them.
+    // The three compat quirks the example exists to demonstrate. The Pi
+    // provider declares them and rc.8's official profile must carry them.
     assert(!first.roles.includes('developer'),
       `supportsDeveloperRole:false was ignored — the request used a developer role: ${JSON.stringify(first.roles)}`)
     // The declared spelling must WIN over the default. Asserting the default
@@ -293,11 +300,11 @@ async function runGatewayCompat() {
     assert.equal(first.maxTokensField, 'max_tokens',
       `the declared maxTokensField was ignored (saw ${first.maxTokensField})`)
     assert.equal(first.store, null, 'supportsStore:false was ignored — `store` was sent')
-    // No effort was selected, so nothing should be on the wire: sending the
-    // 'off' level as a string reads as truthy on this API and switches
-    // thinking ON — the inversion the provider path was fixed for.
-    assert.equal(first.reasoningEffort, null,
-      `an unselected reasoning effort reached the wire as ${JSON.stringify(first.reasoningEffort)}`)
+    // DSH selected the canonical `xhigh`; the Pi declaration deliberately
+    // maps it to wire-level `high`. Seeing `high` proves the profile carried
+    // the map rather than merely accepting a same-named default level.
+    assert.equal(first.reasoningEffort, 'high',
+      `the selected xhigh effort did not map to wire-level high (saw ${JSON.stringify(first.reasoningEffort)})`)
     // And the real model really answered through the compat-declared route —
     // recording the request proves nothing if the turn never completed.
     assert.match(`${run.stdout}`, /gateway-compat-ok/iu,

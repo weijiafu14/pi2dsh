@@ -185,7 +185,7 @@ async function reportDraft(draft: string): Promise<void> {
 
 /** Run one of the fixture's commands, as a user picking it from the palette. */
 async function run(name: string): Promise<void> {
-  const outcome = await ctx.commands.execute(agent as never, `/${name}`, new AbortController().signal)
+  const outcome = await ctx.commands.execute(agent as never, `/${name}`, [], new AbortController().signal)
   // A command that did not claim would silently do nothing and every assertion
   // below would read as "the surface is broken", which is the wrong diagnosis.
   expect(outcome, `/${name} was not claimed by the Pi package`).toBeDefined()

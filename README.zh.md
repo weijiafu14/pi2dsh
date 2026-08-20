@@ -288,8 +288,9 @@ DSH 所说的“能力由插件自由组合”，到底走到了哪一步。
 一个容易说错的例子：`pi-btw` 的回答已经是真正的 DSH child session，宿主能打开、
 续聊和恢复；sidecar 存的是 Pi 自定义 entry 等 DSH 仓外插件目前无法写进原生日志的
 事实，不是把整个子会话伪造了一遍。模型侧也一样：自带 transport 的 Pi provider
-可以注册成原生 DSH route，并保留完整 compat；但手写 `llm-pi-ai` 配置时，部分
-wire 兼容字段仍会被 schema 丢掉。
+可以注册成原生 DSH route；从 DSH rc.8 开始，只声明目录的 provider 也有了完整的官方
+路径——pi2dsh 把端点、输入模态、推理档位和 DSH 已开放的协议 compat 翻译成
+`llm-pi-ai` profile，真正请求仍由 DSH 发出。
 
 项目采用一套统一的 **[Pi → DSH 架构映射标准](docs/architecture-mapping-standard.md)**：
 具体 Pi 接口 → Pi 能力契约 → DSH 承载机制 → 公开 seam → 真实插件验证 → 五级结论。
@@ -300,11 +301,13 @@ wire 兼容字段仍会被 schema 丢掉。
 产生；曾经观察到的 111 条 Pi 规则和 45 个 DSH 子系统只是带版本的调查快照，不是固定
 总量或完整性证明。这样既能从总体看到已经适配的能力，也能从任一插件下钻到它用了哪些
 Pi 能力、落到哪些 DSH 机制、实际达到哪一级。
-当前 5 个 DSH 缺口是已经坐实的发现，**不是已经完成全覆盖**。
+当前仍有 4 个 DSH 缺口；第 5 个历史缺口 `DSH-ARCH-002` 已由 rc.8 上游修复。
+这些是已经坐实的发现，**不是已经完成全覆盖**。
 当前已向上游提交的实证包括
 [#2708：让仓外插件安全写持久事件](https://github.com/deepseek-ai/deepseek-harness/discussions/2708)
 和
-[#3076：`llm-pi-ai` 丢 provider compat 字段](https://github.com/deepseek-ai/deepseek-harness/discussions/3076)。
+[#3076：`llm-pi-ai` 丢 provider compat 字段](https://github.com/deepseek-ai/deepseek-harness/discussions/3076)；
+后者已在 rc.8 的 profile schema 中解决。
 
 ## Pi 的开放能力在 DSH 上怎么落
 
@@ -367,7 +370,7 @@ loop 上实际跑过才会进来。
 | [`side-conversation`](examples/side-conversation/) | `/btw <问题>` 在 DSH 原生子代理界面里开一条侧边线程，主会话保持干净 |
 | [`presentation-surfaces`](examples/presentation-surfaces/) | 真插件（`pi-powerline-footer`）的终端界面画进 DSH Web 座位，附 top50 里哪些 Pi 插件会画界面 |
 | [`subscription-login`](examples/subscription-login/) | 用 ChatGPT / Claude / Copilot / Kimi 订阅账号当 DSH 的模型：`/login`、登录后自动建路由与凭证 |
-| [`gateway-compat`](examples/gateway-compat/) | 私有 / 国内 / 代理网关拒收 `developer` 角色：为什么一开推理就 400，以及用 Pi provider 插件怎么绕过去（附透传录制代理，能看到我们真正发出去的请求体） |
+| [`gateway-compat`](examples/gateway-compat/) | 私有 / 国内 / 代理网关拒收 `developer` 角色：rc.8 官方 profile 如何把 Pi compat 声明送到真实请求（附透传录制代理） |
 | [`custom-gateways`](examples/custom-gateways/) | 按 DSH 官方方式接任何 OpenAI 兼容网关，每个 Pi 插件都能看到它 |
 
 ## 其它工具

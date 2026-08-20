@@ -103,7 +103,9 @@ pi2dsh：通用 Pi Host ABI 兼容层，让 Pi 生态插件原样跑在 DeepSeek
   路由；插件面永远拿不到直连传输；wire 层只属于路由供应商内部。
 - 包注册 provider 的投影存在性由路由归属裁决：路由名没拿到（冲突/无
   llm）＝不在投影里，绝不让别人路由的模型穿这份注册的 baseUrl。只声明
-  目录不带传输的包注册 provider fails loud，指引配宿主 llm settings。
+  目录不带传输的包注册 provider 翻译为官方 `llm-pi-ai` profile：协议、端点、
+  凭证引用、模型容量/模态/推理档位及官方开放的 compat 都进 DSH settings；桥不合成
+  transport，真实请求仍由官方 adapter 发出。
 - 零 patch、零 hacky、零私有 API：一切经中间层转换 Pi 的**公开**透出。
   核心转换器禁止 `if (packageName === ...)` 逐包特判——修一个公共 ABI
   缺口，同类包一起解锁。
@@ -292,6 +294,9 @@ DSH 有两半，桥也必须有两半。凡是"形态"类的 Pi 能力（浮层�
   `client-modules` 用 `require.resolve('<pkg>/package.json')` 找清单，没导出就抛
   `ERR_PACKAGE_PATH_NOT_EXPORTED`，异常被吞掉并**永久缓存成"不是 client 行"**，
   表现是浏览器里什么都没有、控制台没报错。
+- rc.8 起要把两个 `inject` 分清：`package.json` 的 `dsh.client.inject` 是**客户端包名
+  依赖边**，不是 Cordis service 列表；客户端源码导出的 `inject` 才是 `slots`、
+  `inputTriggers` 这类运行时 service 依赖。两者混写会让动态模块图产生假的包依赖。
 - 产物格式：cjs + `platform: 'browser'` + banner/footer 包成
   `window.__ModuleLoader__.load({id, factory})` + `intro` 里自己声明
   `module`/`exports`（少了就 `exports is not defined`）。官方 preset 不发布，

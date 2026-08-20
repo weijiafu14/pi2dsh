@@ -6,7 +6,7 @@ Cordis 生命周期待测项。当前接口归属与理论映射见
 [`architecture-mapping-matrix.md`](architecture-mapping-matrix.md)，插件实证见
 [`plugin-validation-matrix.md`](plugin-validation-matrix.md)；本页用于复核，不另建分类。
 
-当前基线：2026-08-19，pi2dsh 0.13.x、Pi 0.84.1、DSH 0.1.0-rc.6。
+当前基线：2026-08-20，pi2dsh 0.13.x、Pi 0.84.1、DSH 0.1.0-rc.8。
 
 ## 当前调查的三个快照边界
 
@@ -21,6 +21,19 @@ Cordis 生命周期待测项。当前接口归属与理论映射见
 公共 API，不计入分母。具体逐项矩阵见 [`capabilities/`](capabilities/README.md) 和
 [`pi-abi-coverage.md`](pi-abi-coverage.md)。
 
+## rc.8 升级对架构映射的影响
+
+| 变化 | 兼容性质 | pi2dsh 的处理 |
+|---|---|---|
+| `CommandRuntime.execute(agent, line, images, signal)` | 调用 ABI 不兼容；第三参从 signal 前插入图片数组 | 所有低层调用显式传 `[]`；命令附件成为 DSH 交互分支的正式 seam |
+| `llm-pi-ai` profile 增加 input、`reasoningEfforts`、协议 compat | 新公开能力 | catalog-only Pi provider 逐字段翻译到官方 adapter；`DSH-ARCH-002` 关闭 |
+| LLM finish 可带 `ReplayEnvelope`，取消后的部分回答可记 interrupted | 加法能力 | 当前桥不伪造 replay state；把它记入会话/持久化分支，等真实 Pi 消费者再验证 |
+| client dynamic module graph；manifest `dsh.client.inject` 表示包依赖 | 声明语义收紧 | 清掉把 `slots` 当包名的旧声明；Cordis service 仍由客户端源码 `inject` 声明 |
+| SQLite persistence schema 17 | 选择该 provider 时的数据格式不兼容 | 默认组合不受影响；把物理存储迁移与逻辑 session ABI 分开记录，不替用户迁库 |
+
+这张表只回答“新版本改变了哪条既有映射”。新增叶子仍归入上面的架构模型，真实插件
+结果仍归入验证矩阵，不另建一套 rc.8 分类。
+
 ## DSH 模块完整性
 
 当前已知 subsystem 到承载机制的归属，以及每个机制对仓外插件开放的 seam，维护在
@@ -33,7 +46,7 @@ Cordis 生命周期待测项。当前接口归属与理论映射见
 goal/plan/job 也不等于验证 DSH 的同名 subsystem。这些结论应作为具体映射或验证记录，
 不能重新长成一套平行分类。
 
-## 五个已确认缺口的证据
+## 当前四个缺口与一个已修复历史缺口的证据
 
 ### DSH-ARCH-001：仓外自定义持久事件
 
@@ -45,12 +58,17 @@ goal/plan/job 也不等于验证 DSH 的同名 subsystem。这些结论应作为
 - **证据**：[`verify-out-of-repo-event-type.mjs`](../scripts/verify-out-of-repo-event-type.mjs)、
   [DSH Discussion #2708](https://github.com/deepseek-ai/deepseek-harness/discussions/2708)。
 
-### DSH-ARCH-002：模型 compat schema 丢字段
+### DSH-ARCH-002：模型 compat schema 丢字段（rc.8 已修复）
 
 - **Pi 消费面**：`supportsDeveloperRole`、`maxTokensField` 等 model compat。
-- **卡点**：官方 `llm-pi-ai` 使用 pi-ai，但 settings schema 没有把完整 compat 传进去。
-- **当前旁路**：自带 transport 的 Pi provider 注册为 DSH adapter。
-- **最小上游能力**：开放 provider-neutral compat 字段并传进真实 model descriptor。
+- **历史卡点**：rc.6 的官方 `llm-pi-ai` 使用 pi-ai，但 settings schema 没有把完整
+  compat 传进去。
+- **rc.8 结论**：官方 profile 已开放按协议校验的 compat、输入模态和
+  `reasoningEfforts`，并明确拒绝 vendor-owned/未知字段。pi2dsh 将 catalog-only Pi
+  provider 逐字段翻译到这条官方路径，桥不再需要用“必须自带 transport”绕过该缺口。
+- **仍有边界**：`openRouterRouting`、session affinity、grammar/tool-search 等厂商目录
+  自有字段不属于通用 profile；任意最终 wire middleware 是另一个问题
+  `DSH-ARCH-003`，不能混算成 compat schema 未修。
 - **证据**：[`examples/gateway-compat`](../examples/gateway-compat/)、
   [DSH Discussion #3076](https://github.com/deepseek-ai/deepseek-harness/discussions/3076)。
 

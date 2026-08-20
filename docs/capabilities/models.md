@@ -20,7 +20,7 @@ DSH-native interaction and persist with Pi's `auth.json` semantics.
 
 | Pi surface | Kind | Status | What it does on DSH |
 |---|---|---|---|
-| [`registerProvider`](#registerprovider-pi) | `pi.*` | Mapped, difference stated | Two outcomes, by whether the provider carries its own transport. WITH a transport (pi-ai createProvider and friends): it becomes a real DSH llm route through llm.registerAdapter, and from then on the package's own HTTP client carries the turn — its API key or OAuth token is resolved by Pi's credential chain and persisted in the bridge's auth.json, not by DSH credentials. WITHOUT one (catalog-only): the declaration is recorded and introspectable, no bridge transport is synthesized, and model calls stay on native DSH llm adapters and credentials. |
+| [`registerProvider`](#registerprovider-pi) | `pi.*` | Mapped, difference stated | Two outcomes, by whether the provider carries its own transport. WITH a transport (pi-ai createProvider and friends): it becomes a real DSH llm route through llm.registerAdapter, and from then on the package's own HTTP client carries the turn — its API key or OAuth token is resolved by Pi's credential chain and persisted in the bridge's auth.json, not by DSH credentials. WITHOUT one (catalog-only): protocol, endpoint, credential reference, model capabilities, reasoning levels and the compat fields offered by DSH are translated into the official llm-pi-ai profile; no bridge transport is synthesized. |
 | [`unregisterProvider`](#unregisterprovider-pi) | `pi.*` | Mapped, difference stated | Removes the recorded provider declaration. |
 | [`setModel`](#setmodel-pi) | `pi.*` | Mapped, difference stated | Recorded as a per-agent override applied through the agent/request waterfall on the next model call; DSH remains authoritative for provider routing. |
 | [`getThinkingLevel`](#getthinkinglevel-pi) | `pi.*` | Mapped, difference stated | Returns the level recorded by setThinkingLevel (default off). |
@@ -46,7 +46,7 @@ taken on trust.
 
 `pi.*` · Mapped, difference stated
 
-Two mechanisms behind one call. A provider carrying its own transport becomes a real DSH route through llm.registerAdapter, and the package's own HTTP client then carries the turn with its key resolved by Pi's credential chain into the bridge's auth.json. A catalog-only declaration registers no transport at all: those models are served by the host's adapters and DSH credentials, and the declaration only contributes directory entries.
+Two mechanisms behind one call. A provider carrying its own transport becomes a real DSH route through llm.registerAdapter, and the package's own HTTP client then carries the turn with its key resolved by Pi's credential chain into the bridge's auth.json. A catalog-only declaration becomes configuration for DSH's official llm-pi-ai adapter, which owns credentials and the real HTTP request. Both enter the one DSH model directory.
 
 ### `unregisterProvider` <a id="unregisterprovider-pi"></a>
 

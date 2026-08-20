@@ -281,7 +281,7 @@ describe('an installed Pi package in the real DSH runtime', () => {
       expect(delivered).toMatchObject({ source: { kind: 'plugin', plugin: 'pi2dsh:@pi2dsh-fixtures/complete' } })
     }
 
-    const command = await ctx.commands.execute(agent as never, '/pi-hello Ada', signal)
+    const command = await ctx.commands.execute(agent as never, '/pi-hello Ada', [], signal)
     expect(command?.result).toEqual({ kind: 'success', text: 'Pi command says hello to Ada' })
 
     // Session-control operations are REAL now (official ctx.sessions
@@ -289,13 +289,13 @@ describe('an installed Pi package in the real DSH runtime', () => {
     // succeeds, and the no-argument fork()/navigateTree()/switchSession()
     // calls fail with ordinary argument errors — exactly like real Pi —
     // rather than "needs a native DSH port".
-    const contextCommand = await ctx.commands.execute(agent as never, '/pi-context-probe Ada', signal)
+    const contextCommand = await ctx.commands.execute(agent as never, '/pi-context-probe Ada', [], signal)
     expect(contextCommand?.result).toMatchObject({
       kind: 'success',
       text: expect.stringContaining('"unavailable":[]'),
     })
 
-    const prompt = await ctx.commands.execute(agent as never, '/pi-review src/index.ts "focus errors"', signal)
+    const prompt = await ctx.commands.execute(agent as never, '/pi-review src/index.ts "focus errors"', [], signal)
     expect(prompt?.result.kind).toBe('success')
     expect(steered).toHaveLength(2)
     expect(steered[1]).toMatchObject({
@@ -736,7 +736,7 @@ describe('logging in is what makes a gateway\'s models selectable', () => {
         meta: { createdAt: Date.now(), cwd: scratch },
       })
       const agent = { id: session.id, session, ctx: undefined as unknown, options: {}, inbox: {}, status: 'idle' }
-      const result = await ctx.commands.execute(agent as never, '/login fixgw', new AbortController().signal)
+      const result = await ctx.commands.execute(agent as never, '/login fixgw', [], new AbortController().signal)
       expect(result?.result.kind).toBe('success')
       await settle()
 
@@ -829,7 +829,7 @@ describe('an OAuth-only provider has no models until logging in gives it a route
         meta: { createdAt: Date.now(), cwd: scratch },
       })
       const agent = { id: session.id, session, ctx: undefined as unknown, options: {}, inbox: {}, status: 'idle' }
-      const result = await ctx.commands.execute(agent as never, '/login fixauth', new AbortController().signal)
+      const result = await ctx.commands.execute(agent as never, '/login fixauth', [], new AbortController().signal)
       expect(result?.result.kind).toBe('success')
       await settle()
 
@@ -963,6 +963,7 @@ describe('a catalog-only Pi provider is declared, not mounted twice', () => {
       "  pi.registerProvider('fixcat', {",
       "    id: 'fixcat',",
       "    name: 'Fixture Catalog Gateway',",
+      "    compat: { supportsDeveloperRole: false, openRouterRouting: { only: ['x'] } },",
       // Pi's env-reference convention, which is what DSH's apiKeyEnv says too.
       "    apiKey: '$FIXCAT_API_KEY',",
       // A plain `models` array, the shape every vendor package actually uses —
@@ -973,8 +974,19 @@ describe('a catalog-only Pi provider is declared, not mounted twice', () => {
       "      api: 'openai-completions', baseUrl: 'https://gw.fixture.test/v1',",
       // A compat block mixing what DSH's profile knows with what it does not,
       // and a maxTokens of 0 — the "unstated" every vendor package writes.
-      "      contextWindow: 64000, maxTokens: 0,",
-      "      compat: { thinkingFormat: 'deepseek', maxTokensField: 'max_tokens' },",
+      "      contextWindow: 64000, maxTokens: 0, reasoning: true,",
+      "      thinkingLevelMap: { off: null, minimal: null, low: 'economy', xhigh: 'ultra' },",
+      "      input: ['text', 'image', 'audio'],",
+      "      compat: {",
+      "        supportsStore: false, supportsDeveloperRole: false, supportsReasoningEffort: true,",
+      "        supportsUsageInStreaming: false, maxTokensField: 'max_tokens',",
+      "        requiresToolResultName: true, requiresAssistantAfterToolResult: true,",
+      "        requiresThinkingAsText: false, requiresReasoningContentOnAssistantMessages: true,",
+      "        thinkingFormat: 'chat-template',",
+      "        chatTemplateKwargs: { enable_thinking: { $var: 'thinking.enabled', omitWhenOff: true }, effort: { $var: 'thinking.effort' }, fixed: 7, bad: { $var: 'request.secret' } },",
+      "        supportsStrictMode: false, cacheControlFormat: 'anthropic', supportsLongCacheRetention: true,",
+      "        openRouterRouting: { only: ['x'] }, unknownSwitch: true,",
+      "      },",
       '    }],',
       '  })',
       '}',
@@ -1020,28 +1032,57 @@ describe('a catalog-only Pi provider is declared, not mounted twice', () => {
           apiKeyEnv: 'FIXCAT_API_KEY',
           api: 'openai-completions',
           baseURL: 'https://gw.fixture.test/v1',
-          models: [{ id: 'fixcat-1', contextWindow: 64000, compat: { thinkingFormat: 'deepseek' } }],
+          compat: { supportsDeveloperRole: false },
+          models: [{
+            id: 'fixcat-1',
+            contextWindow: 64000,
+            input: ['text', 'image'],
+            reasoningEfforts: { low: 'economy', medium: 'medium', high: 'high', xhigh: 'ultra' },
+            compat: {
+              supportsStore: false,
+              supportsDeveloperRole: false,
+              supportsReasoningEffort: true,
+              supportsUsageInStreaming: false,
+              maxTokensField: 'max_tokens',
+              requiresToolResultName: true,
+              requiresAssistantAfterToolResult: true,
+              requiresThinkingAsText: false,
+              requiresReasoningContentOnAssistantMessages: true,
+              thinkingFormat: 'chat-template',
+              chatTemplateKwargs: {
+                enable_thinking: { $var: 'thinking.enabled', omitWhenOff: true },
+                effort: { $var: 'thinking.effort' },
+                fixed: 7,
+              },
+              supportsStrictMode: false,
+              cacheControlFormat: 'anthropic',
+              supportsLongCacheRetention: true,
+            },
+          }],
         },
       },
     })
     // Field by field, because the two vocabularies overlap without matching.
     // One key DSH's schema does not know rejects the WHOLE settings section —
-    // every route in it, not just this one — so an unknown compat key is
-    // dropped rather than forwarded, and `maxTokens: 0` (Pi's "unstated",
-    // below DSH's minimum of 1) never becomes a number DSH refuses.
+    // every route in it, not just this one — so vendor-owned, unknown and
+    // malformed compat values are dropped rather than forwarded. `maxTokens:
+    // 0` (Pi's "unstated", below DSH's minimum of 1) also never becomes a
+    // number DSH refuses.
     const patch = written[0]?.patch as { providers: { fixcat: { models: Array<Record<string, unknown>> } } }
     const model = patch.providers.fixcat.models[0] as Record<string, unknown>
     expect(model).not.toHaveProperty('maxTokens')
-    expect(model.compat).toEqual({ thinkingFormat: 'deepseek' })
+    expect(model.compat).not.toHaveProperty('openRouterRouting')
+    expect(model.compat).not.toHaveProperty('unknownSwitch')
+    expect((model.compat as Record<string, unknown>).chatTemplateKwargs).not.toHaveProperty('bad')
   })
 })
 
 describe('a compat switch that only exists on one protocol', () => {
   it('does not travel with a route that speaks another', async () => {
-    // `thinkingFormat` / `supportsReasoningEffort` exist only on
-    // openai-completions. Pi puts them on the model whatever it speaks, and
-    // stating them on an anthropic-messages route is refused — with the WHOLE
-    // settings section, every other route in it included.
+    // The two protocol families expose different compat shapes. Pi puts one
+    // object on the model whatever it speaks; the bridge must carry the
+    // Anthropic switches and remove the OpenAI-only ones, or the whole settings
+    // section is refused.
     const scratch = await mkdtemp(join(tmpdir(), 'pi2dsh-compat-protocol-'))
     cleanup.push(scratch)
     await mkdir(join(scratch, 'pkg'), { recursive: true })
@@ -1050,7 +1091,20 @@ describe('a compat switch that only exists on one protocol', () => {
       "  pi.registerProvider('fixproto', {",
       "    id: 'fixproto', name: 'Fixture Anthropic-Protocol Gateway',",
       "    api: 'anthropic-messages', baseUrl: 'https://gw.fixture.test',",
-      "    models: [{ id: 'fixproto-1', compat: { thinkingFormat: 'deepseek', supportsReasoningEffort: true } }],",
+      "    models: [{ id: 'fixproto-1', compat: {",
+      "      thinkingFormat: 'deepseek', supportsReasoningEffort: true,",
+      "      supportsEagerToolInputStreaming: false, supportsLongCacheRetention: true,",
+      "      supportsCacheControlOnTools: false, supportsTemperature: false,",
+      "      forceAdaptiveThinking: true, allowEmptySignature: true, supportsStrictTools: false,",
+      "    } }],",
+      '  })',
+      "  pi.registerProvider('fixresponses', {",
+      "    id: 'fixresponses', name: 'Fixture Responses Gateway',",
+      "    api: 'openai-responses', baseUrl: 'https://responses.fixture.test',",
+      "    models: [{ id: 'fixresponses-1', compat: {",
+      "      supportsDeveloperRole: false, supportsStrictMode: true, supportsLongCacheRetention: true,",
+      "      supportsStore: false, thinkingFormat: 'deepseek', supportsTemperature: false,",
+      "    } }],",
       '  })',
       '}',
     ].join('\n'), 'utf8')
@@ -1085,9 +1139,32 @@ describe('a compat switch that only exists on one protocol', () => {
     } as Plugin.Object)
     await settle()
 
-    const patch = written[0]?.patch as { providers: { fixproto: { api: string, models: Array<Record<string, unknown>> } } }
-    expect(patch.providers.fixproto.api).toBe('anthropic-messages')
-    expect(patch.providers.fixproto.models[0]).not.toHaveProperty('compat')
+    const anthropicPatch = written.find(entry => (
+      entry.patch as { providers?: Record<string, unknown> }
+    ).providers?.fixproto !== undefined)?.patch as {
+      providers: { fixproto: { api: string, models: Array<Record<string, unknown>> } }
+    }
+    expect(anthropicPatch.providers.fixproto.api).toBe('anthropic-messages')
+    expect(anthropicPatch.providers.fixproto.models[0]?.compat).toEqual({
+      supportsEagerToolInputStreaming: false,
+      supportsLongCacheRetention: true,
+      supportsCacheControlOnTools: false,
+      supportsTemperature: false,
+      forceAdaptiveThinking: true,
+      allowEmptySignature: true,
+      supportsStrictTools: false,
+    })
+    const responsesPatch = written.find(entry => (
+      entry.patch as { providers?: Record<string, unknown> }
+    ).providers?.fixresponses !== undefined)?.patch as {
+      providers: { fixresponses: { api: string, models: Array<Record<string, unknown>> } }
+    }
+    expect(responsesPatch.providers.fixresponses.api).toBe('openai-responses')
+    expect(responsesPatch.providers.fixresponses.models[0]?.compat).toEqual({
+      supportsDeveloperRole: false,
+      supportsStrictMode: true,
+      supportsLongCacheRetention: true,
+    })
   })
 })
 
@@ -1163,7 +1240,7 @@ describe('the credential behind the reference the profile names', () => {
         meta: { createdAt: Date.now(), cwd: scratch },
       })
       const agent = { id: session.id, session, ctx: undefined as unknown, options: {}, inbox: {}, status: 'idle' }
-      await ctx.commands.execute(agent as never, '/login fixcred', new AbortController().signal)
+      await ctx.commands.execute(agent as never, '/login fixcred', [], new AbortController().signal)
       await settle()
 
       // The key the package's own getApiKey produced, under the reference the

@@ -115,11 +115,45 @@ Pi provider 声明模型并拥有 HTTP transport
 - Provider 注册：**1 级，原生承接**。
 - 模型与推理档位选择：**2 级，可靠翻译**。
 
-结论：证明“插件拥有完整 transport”时 DSH adapter seam 足够；它不证明官方配置型
-provider 会保留完整 compat schema，后者仍是 `DSH-ARCH-002`。
+结论：证明“插件拥有完整 transport”时 DSH adapter seam 足够；它本身不证明官方配置型
+provider。后者由下一条 rc.8 场景单独验证。
 
 证据：[`examples/gateway-compat`](../examples/gateway-compat/)、
 [`scripts/verify-community-scenarios.mjs`](../scripts/verify-community-scenarios.mjs)。
+
+## catalog-only Pi provider / gateway compat
+
+场景：Pi 插件只声明 provider 目录，不带自己的 stream；其中包含私有网关需要的
+`supportsDeveloperRole`、`maxTokensField`、推理档位和图片输入能力。
+
+使用的 Pi 架构分支：
+
+- [Provider 注册](architecture-mapping-matrix.md#pi-model-provider-registration)
+- [模型与推理档位选择](architecture-mapping-matrix.md#pi-model-selection)
+
+理论对应：
+
+- DSH rc.8 `llm-pi-ai` provider profile
+- DSH settings / credentials / model directory
+
+实际五层：
+
+```text
+Pi provider 声明目录、协议、能力与 compat
+→ pi2dsh 按协议白名单翻译 profile，不实现 HTTP
+→ 官方 llm-pi-ai 从 settings 解析 route
+→ DSH 权威模型目录与官方 adapter 组装真实请求
+→ 用户在 DSH 选择模型；录制代理观察到 system role、max_tokens 与推理档位
+```
+
+实际结果：
+
+- Provider 配置翻译：**2 级，可靠翻译**。
+- 模型输入模态与推理档位：**2 级，可靠翻译**。
+- `DSH-ARCH-002`：**上游 rc.8 已修复**；vendor-owned compat 仍按官方边界不透传。
+
+证据：[`examples/gateway-compat`](../examples/gateway-compat/)、
+[`tests/dsh-runtime.spec.ts`](../tests/dsh-runtime.spec.ts)。
 
 ## Pi 内建 openai-codex OAuth 流程
 

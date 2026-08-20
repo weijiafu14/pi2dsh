@@ -3,7 +3,7 @@
 这是可扩展的 Markdown 知识树，不是接口总表，也不是 `Pi × DSH` 的机械矩阵。每个稳定
 标题代表一条架构分支；接口、模块和 seam 是可以继续增长的叶子。
 
-当前盘点快照：**2026-08-19，Pi 0.84.1，DSH 0.1.0-rc.6**。当时从 Pi 声明和运行时
+当前盘点快照：**2026-08-20，Pi 0.84.1，DSH 0.1.0-rc.8**。最初从 Pi 声明和运行时
 规则中盘到 111 条上游形状规则，从 DSH 官方 subsystem 索引中看到 45 个模块。111 尚未
 把所有嵌套对象拆成 callable，45 也不包含以后发现的全部 service、waterfall、event 和
 client seam；两个数字都不表示“已经完整”。
@@ -380,16 +380,22 @@ provider 或 waterfall 参与。DSH 官方引用的 Cordis 论文
 - 当前模块叶子：`compaction`、`persistence`、`session-projection`、`session-query`、
   `session-reference`、`session-telemetry`、`session-title`、`session`、`spill`、`storage`。
 - 当前公开 seam：`ctx.sessions`、`Session.append`、durable session events、compaction、
-  session projection。
-- 负责：权威会话事实、恢复、分支、压缩、查询和展示投影。
+  session projection；rc.8 的 LLM 完成包可携带 `ReplayEnvelope`，被取消的部分 assistant
+  输出可用 `assistant/message.interrupted` 留作持久事实。
+- 负责：权威会话事实、恢复、分支、压缩、查询和展示投影。物理存储格式不是逻辑事件
+  ABI：选择 SQLite persistence 时 rc.8 schema 17 与旧库不兼容，属于 provider 迁移边界，
+  不改变默认 session log 的理论映射。
 
 <a id="dsh-model-runtime"></a>
 ### 模型运行时
 
 - 当前模块叶子：`credentials`、`llm-streaming`、`token-meter`、`system-prompt`。
 - 当前公开 seam：`llm.registerAdapter`、`llm/stream`、credentials provider、
-  `system-prompt/assemble`、`agent/request`。
-- 负责：模型目录、路由、凭证、调用、token 与提示词装配。
+  `system-prompt/assemble`、`agent/request`；rc.8 的官方 `llm-pi-ai` profile 可声明模型
+  输入模态、推理档位，以及按协议开放的 provider compat。
+- 负责：模型目录、路由、凭证、调用、token 与提示词装配。配置型 Pi provider 应翻译
+  到官方 profile；只有插件自带 transport 时才注册 adapter。catalog 厂商专属 compat
+  仍由其已安装目录掌管，不能当通用网关开关透传。
 
 <a id="dsh-execution"></a>
 ### 工具、执行与隔离
@@ -418,15 +424,20 @@ provider 或 waterfall 参与。DSH 官方引用的 Cordis 论文
 ### 命令与人机交互
 
 - 当前模块叶子：`commands`、`feedback`、`user-questions`。
-- 当前公开 seam：`ctx.commands`、`ctx.userQuestions`、feedback provider。
-- 负责：命令入口、阻塞提问和用户反馈。
+- 当前公开 seam：`ctx.commands`、`ctx.userQuestions`、feedback provider。rc.8 的命令
+  执行 ABI 是 `execute(agent, line, images, signal)`；命令可以声明接收图片，handler 从
+  attachments 读取，而不是把取消信号错当图片数组。
+- 负责：文本/图片命令入口、阻塞提问和用户反馈。
 
 <a id="dsh-client"></a>
 ### 客户端与 Web
 
 - 当前模块叶子：`client-modules`、`typert`、`web-server`。
-- 当前公开 seam：client module、slot registry、web route、typert remote surface。
-- 负责：浏览器呈现、插件客户端代码和宿主界面扩展。
+- 当前公开 seam：client module、slot registry、web route、typert remote surface，以及
+  rc.8 动态 client module graph。
+- 负责：浏览器呈现、插件客户端代码和宿主界面扩展。`dsh.client.inject` 声明的是客户
+  端**包依赖**，客户端源码导出的 `inject` 才声明 `slots` 等 Cordis 运行时 service；
+  `dsh.client.external` 只用于动态模块图中的外部包，不能拿 service 名来填。
 
 ### 当前尚未归类 / 待继续审计
 
