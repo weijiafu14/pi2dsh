@@ -162,6 +162,43 @@ describe('interactive OAuth host seam', () => {
     expect(await interaction.prompt({ type: 'manual_code', message: 'Paste the authorization code' })).toBe('typed-answer')
   })
 
+  it('shows a device code immediately and turns dismissing it into flow cancellation', async () => {
+    const shown: Array<{ title: string, detail: string, signal?: AbortSignal }> = []
+    let dismiss!: () => void
+    let cancellations = 0
+    const ui = {
+      input: async () => undefined,
+      select: async () => undefined,
+      notify: () => undefined,
+      deviceCode: (title: unknown, detail: unknown, signal?: AbortSignal) => new Promise<void>((resolve) => {
+        shown.push({ title: String(title), detail: String(detail), ...(signal === undefined ? {} : { signal }) })
+        dismiss = resolve
+      }),
+    }
+    const login = new AbortController()
+    const interaction = oauthInteraction(ui, login.signal, undefined, undefined, () => {
+      cancellations += 1
+      login.abort()
+    })
+
+    interaction.notify({
+      type: 'device_code',
+      verificationUri: 'https://x.test/device',
+      userCode: 'WXYZ-7777',
+      expiresInSeconds: 1_800,
+    })
+
+    expect(shown).toHaveLength(1)
+    expect(shown[0]).toMatchObject({ title: 'Complete login in your browser' })
+    expect(shown[0]?.detail).toContain('https://x.test/device')
+    expect(shown[0]?.detail).toContain('WXYZ-7777')
+    expect(shown[0]?.detail).toContain('30 min')
+    dismiss()
+    await Promise.resolve()
+    expect(cancellations).toBe(1)
+    expect(login.signal.aborted).toBe(true)
+  })
+
   it('resolves pi-ai provider objects through the FULL Pi auth chain, not OAuth only', async () => {
     const path = await tempAuthPath()
     const store = new FileCredentialStore(path)

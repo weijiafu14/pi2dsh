@@ -140,6 +140,16 @@ export { createProvider, ModelsError } from './vendor/pi-ai-provider.js'
 export { lazyApi, lazyStream } from './vendor/pi-ai-lazy.js'
 export { AssistantMessageEventStream } from './vendor/pi-ai-event-stream.js'
 
+// A transport-owning provider package is different from a package merely
+// asking Pi to call a model: it deliberately builds its own wire client and
+// hands that transport to registerProvider(). pi-grok is one such package —
+// its stream wrapper delegates to Pi's standard Responses implementation and
+// relies on that implementation's onPayload seam. Export the REAL helper so
+// the package keeps owning the request body while pi2dsh wraps the finished
+// provider as a native DSH llm adapter. This dependency is bundled into the
+// shim artifact; the installed package does not need its own pi-ai runtime.
+export { streamSimple as streamSimpleOpenAIResponses } from '@earendil-works/pi-ai/api/openai-responses'
+
 
 // Pi's official OAuth flows, vendored byte-identical: OpenAI Codex
 // (PKCE + localhost:1455 callback server, device-code fallback), Anthropic,

@@ -325,13 +325,13 @@ Pi 包能碰到的每一个面，以及它落到 DSH 的什么位置。下面这
 | [命令、flag、编辑器输入](docs/capabilities/commands.md) | 13 | 13 已映射并写明差异 |
 | [消息、上下文、agent 循环](docs/capabilities/conversation.md) | 20 | 9 语义一致 · 11 已映射并写明差异 |
 | [会话与侧边对话](docs/capabilities/sessions.md) | 24 | 6 语义一致 · 18 已映射并写明差异 |
-| [模型、provider、凭证](docs/capabilities/models.md) | 15 | 1 语义一致 · 11 已映射并写明差异 · 3 不提供 |
+| [模型、provider、凭证](docs/capabilities/models.md) | 15 | 1 语义一致 · 12 已映射并写明差异 · 2 不提供 |
 | [向用户提问与渲染](docs/capabilities/interaction.md) | 24 | 4 语义一致 · 20 已映射并写明差异 |
 | [项目环境与资源](docs/capabilities/environment.md) | 4 | 1 语义一致 · 1 已映射并写明差异 · 2 不提供 |
-| **合计** | **111** | **23 语义一致 · 83 已映射并写明差异 · 5 不提供** |
+| **合计** | **111** | **23 语义一致 · 84 已映射并写明差异 · 4 不提供** |
 <!-- capability-table:end -->
 
-另外还有 Pi 三个运行时包（`pi-coding-agent`、`pi-tui`、`pi-ai`）的 **202 个
+另外还有 Pi 三个运行时包（`pi-coding-agent`、`pi-tui`、`pi-ai`）的 **203 个
 导入符号**，由 vendored 或 headless shim 提供——所以插件自己钉的 Pi 版本永远不会
 被加载，清单见[导入的 Pi 运行时符号](docs/capabilities/imports.md)。
 

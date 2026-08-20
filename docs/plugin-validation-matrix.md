@@ -55,6 +55,7 @@ pi-btw 注册命令并创建侧边会话
 
 - [Agent 与轮次生命周期](architecture-mapping-matrix.md#pi-agent-lifecycle)
 - [模型目录视图](architecture-mapping-matrix.md#pi-model-registry)
+- [目录模型的指定调用](architecture-mapping-matrix.md#pi-model-designated-call)
 - [消息注入](architecture-mapping-matrix.md#pi-messages-injection)
 
 理论对应：
@@ -78,9 +79,15 @@ Pi vision 插件读取图片并请求视觉模型
 - Agent 生命周期：**2 级，可靠翻译**。
 - 模型目录与伴生路由：**2 级，可靠翻译**。
 - 消息注入：**2 级，可靠翻译**。
+- 外部 OpenAI-compatible 视觉端点：**2 级，可靠翻译**；既有 CLI/Web 实证仍成立。
+- `pi-registry` 复用 DSH 已登录的 `openai-codex` 视觉模型：**4 级，当前缺失**。
+  2026-08-20 在 DSH rc.8 上真实运行时，模型可由 `modelRegistry.find()` 找到，但
+  `getProvider("openai-codex")` 没有可用 `stream`，插件无法发出识图请求。这是
+  pi2dsh 尚未把“目录可见”接成“指定模型可带图调用”的欠账，不是 DSH 缺公开 seam。
 
-结论：证明 Pi 插件可以组合 DSH 模型 route 与 pre-step，为 DSH 文本模型增加识图能力，
-没有引入第二个 Agent runtime。
+结论：证明 Pi 插件可以组合外部视觉 route 与 pre-step，为 DSH 文本模型增加识图能力，
+没有引入第二个 Agent runtime；同时证明模型目录投影不能等同于完整 Provider ABI，
+`pi-registry` 分支在补齐 route stream 与图片 attachment 转换前不得宣传为已通过。
 
 证据：[`examples/vision-bridge`](../examples/vision-bridge/)、
 [`scripts/verify-examples-e2e.mjs`](../scripts/verify-examples-e2e.mjs)。
@@ -195,6 +202,53 @@ Pi OAuth 流程发起登录并获得可刷新凭证
 
 证据：[`examples/subscription-login`](../examples/subscription-login/)、
 [`scripts/verify-oauth-llm-e2e.mjs`](../scripts/verify-oauth-llm-e2e.mjs)。
+
+## stnly/pi-grok
+
+场景：原版社区插件把 SuperGrok 订阅注册成 DSH 模型 route，运行 xAI 设备码登录，并在
+它自己拥有的 transport 发请求前清洗最终 payload。
+
+使用的 Pi 架构分支：
+
+- [Provider 注册](architecture-mapping-matrix.md#pi-model-provider-registration)
+- [Provider 网络请求生命周期](architecture-mapping-matrix.md#pi-model-wire)
+- [模型目录视图](architecture-mapping-matrix.md#pi-model-registry)
+- [阻塞式用户提问](architecture-mapping-matrix.md#pi-ui-questions)
+
+理论对应：
+
+- DSH `llm.registerAdapter` 与权威模型目录
+- Pi transport `onPayload` → pi2dsh waterfall
+- DSH `ctx.userQuestions` 与命令取消信号
+
+实际五层：
+
+```text
+pi-grok 注册 xai-oauth、设备码 OAuth 与 before_provider_request
+→ pi2dsh 提供旧版真实 transport export，包装 package-owned transport，投影事件与问题框
+→ DSH llm.registerAdapter + model catalog + userQuestions
+→ xai-oauth route 进入 DSH 目录，设备码进入当前命令的实时问题状态
+→ 用户能打开 xAI 登录页、看到 30 分钟有效码，并从面板取消轮询
+```
+
+实际结果：
+
+- 原包加载与 Provider route：**1 级，原生承接**。
+- 设备码登录到用户授权前：**2 级，可靠翻译**；2026-08-20 真机完成 OIDC discovery、
+  设备码签发、Web 实时呈现与取消，未使用伪造端点。
+- `before_provider_request` 通用桥：**2 级，可靠翻译**；真实 DSH `llm.stream` 契约已证明
+  handler 收到并改写 package-owned transport 的最终 payload。
+- SuperGrok 授权完成、刷新、模型目录与真实回复：**尚未分级**；当前没有该订阅，不能用
+  “插件挂载成功”替代账户闭环。
+
+结论：这不是把 xAI 写死进 pi2dsh。原包仍拥有协议、OAuth、目录、transport 与 sanitizer；
+pi2dsh 补的是所有 transport-owning Pi provider 共用的 legacy helper、payload waterfall 和
+device-code UI seam。它同时再次确认 DSH-native adapter 仍没有通用 request-body middleware。
+
+证据：[`examples/subscription-login`](../examples/subscription-login/)、
+[`tests/provider-adapter.spec.ts`](../tests/provider-adapter.spec.ts)、
+[`tests/dsh-runtime.spec.ts`](../tests/dsh-runtime.spec.ts)、
+[`tests/oauth-bridge.spec.ts`](../tests/oauth-bridge.spec.ts)。
 
 ## 继续新增记录时
 

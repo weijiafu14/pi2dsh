@@ -103,6 +103,15 @@ export interface OAuthUiSurface {
   input(title: unknown, placeholder?: unknown, signal?: AbortSignal): Promise<string | undefined>
   select(title: unknown, options: unknown[], signal?: AbortSignal): Promise<string | undefined>
   notify(message: unknown): void
+  /**
+   * Keep a device-code flow visible while the package polls in the background.
+   *
+   * Unlike auth-code flows, device-code flows normally do not issue a later
+   * prompt. A command notice therefore arrives only after the code has expired.
+   * Hosts with a live question surface should implement this optional seam;
+   * older/headless hosts still receive the plain notification below.
+   */
+  deviceCode?(title: unknown, detail: unknown, signal?: AbortSignal): Promise<void>
 }
 
 interface OAuthPromptEvent {
@@ -155,6 +164,7 @@ export function oauthInteraction(
   signal?: AbortSignal,
   shorten?: (url: string) => string | undefined,
   open?: (url: string) => void,
+  cancel?: () => void,
 ): {
   prompt(prompt: OAuthPromptEvent): Promise<string | undefined>
   notify(event: OAuthNotifyEvent): void
@@ -241,8 +251,21 @@ export function oauthInteraction(
           : ''
         // Same as above: a clickable line in the dialog, plain text in the
         // notice. The code stays as code so it survives the markdown pass.
-        pending = `[Open the device login page](${event.verificationUri}) and enter code \`${event.userCode}\`${window}`
+        const detail = `[Open the device login page](${event.verificationUri}) and enter code \`${event.userCode}\`${window}`
+        pending = detail
         ui.notify(`Visit ${event.verificationUri} and enter code ${event.userCode}${window}`)
+        // A device flow polls without asking a follow-up question. Put a live
+        // host dialog on screen NOW; otherwise the only visible artifact is a
+        // command notice released after the command ends, when the code is no
+        // longer useful. Resolving this dialog means the user cancelled it.
+        // Successful/failed login aborts the signal first and merely closes it.
+        if (ui.deviceCode !== undefined) {
+          pending = undefined
+          void ui.deviceCode('Complete login in your browser', detail, effectiveSignal).then(
+            () => { if (!effectiveSignal.aborted) cancel?.() },
+            () => undefined,
+          )
+        }
         openIfPossible(open, event.verificationUri)
       } else if (event.message !== undefined) {
         ui.notify(event.message)
@@ -310,7 +333,13 @@ export async function loginPiProvider(options: {
     else options.signal.addEventListener('abort', () => done.abort(), { once: true })
   }
   try {
-    const credential = await adapter.login(oauthInteraction(options.ui, done.signal, options.shorten, options.open))
+    const credential = await adapter.login(oauthInteraction(
+      options.ui,
+      done.signal,
+      options.shorten,
+      options.open,
+      () => done.abort(),
+    ))
     await options.store.modify(options.providerId, async () => credential)
     return credential
   } finally {

@@ -244,6 +244,18 @@ client seam；两个数字都不表示“已经完整”。
 - 需要的公开 seam：DSH 权威模型目录与凭证可用性。
 - 理论判断：直接承接。
 
+<a id="pi-model-designated-call"></a>
+#### 目录模型的指定调用
+
+- 当前接口叶子：`modelRegistry.complete`、`modelRegistry.getProvider()`、
+  `Provider.stream`、`Provider.streamSimple`、`getApiKeyAndHeaders`。
+- 理论对应：[DSH / 模型运行时](#dsh-model-runtime)与
+  [DSH / 资源与附件](#dsh-resources)。
+- 需要的公开 seam：`llm.stream`、credentials、attachments，以及 Pi 内联图片与 DSH
+  attachment ref 的双向转换。
+- 理论判断：组合承接。模型能在目录里被找到，只证明“可发现”；只有指定调用真的带着
+  文本、图片、凭证和取消信号到达该 route，才证明“可调用”。
+
 <a id="pi-model-selection"></a>
 #### 模型与推理档位选择
 
@@ -262,8 +274,12 @@ client seam；两个数字都不表示“已经完整”。
 - 理论对应：[DSH / 模型运行时](#dsh-model-runtime)与
   [DSH / 插件组合](#dsh-composition)。
 - 理论需要：已有 adapter 最终 request/response 周围的 transport middleware。
-- 当前公开 seam：插件拥有整条 transport 时可实现；增强已有 adapter 时没有通用入口。
-- 理论判断：缺公开 seam。
+- 当前公开 seam：插件拥有整条 transport 时，Pi 标准 stream helper 的 `onPayload` 可把
+  最终请求体交给 pi2dsh waterfall，再由 DSH `llm.registerAdapter` 承载；增强 DSH 原生
+  adapter 时没有通用入口。
+- 理论判断：分支承接。package-owned transport 的 `before_provider_request` 可做可靠翻译；
+  `before_provider_headers`、`after_provider_response` 以及 DSH-native transport 的同类增强
+  仍缺公开 seam，不能伪装成已经支持。
 
 ### UI 与宿主呈现
 

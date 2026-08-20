@@ -34,6 +34,14 @@ export interface ProviderAdapterHost {
   /** Pi's full credential chain for this provider (stored OAuth → stored key → ambient env). */
   resolveAuth(): Promise<{ auth?: UnknownRecord } | undefined>
   warn(message: string): void
+  /**
+   * Pi's payload waterfall for a PACKAGE-OWNED transport. DSH-native adapters
+   * do not expose their body builder and therefore never call this seam.
+   */
+  beforeProviderRequest?(
+    payload: UnknownRecord,
+    request: { provider: string, model: UnknownRecord, signal?: AbortSignal },
+  ): Promise<UnknownRecord>
   /** The durable attachment store, when the composition mounts one. */
   resolveAttachments?(): DshAttachmentsLike | undefined
 }
@@ -217,6 +225,18 @@ export function piProviderDshAdapter(providerId: string, provider: PiTransportPr
         // transport metadata; Pi spells the same field the same way, and its
         // providers use it for prompt-cache affinity and request routing.
         ...(typeof options.sessionId === 'string' ? { sessionId: options.sessionId } : {}),
+        // Pi's standard transports invoke onPayload after constructing the
+        // exact HTTP body and before fetch(). That is the only honest place to
+        // implement before_provider_request. It is available here because
+        // THIS adapter is wrapping a Pi package's own transport; a native DSH
+        // adapter still has no equivalent public hook and remains unsupported.
+        ...(host.beforeProviderRequest === undefined ? {} : {
+          onPayload: (payload: UnknownRecord) => host.beforeProviderRequest!(payload, {
+            provider: providerId,
+            model,
+            ...(options.signal instanceof AbortSignal ? { signal: options.signal } : {}),
+          }),
+        }),
         // The effort the user picked, under the name Pi's PORTABLE entry point
         // reads. Two reasons it is not the per-API `reasoningEffort`:
         //

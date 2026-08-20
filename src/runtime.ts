@@ -643,6 +643,18 @@ function contextFor(
         question: String(title),
         ...(placeholder === undefined ? {} : { detail: String(placeholder) }),
       }),
+    // Device-code OAuth does not ask for text after announcing the code; the
+    // provider simply polls. Keep that expiring code in DSH's live question
+    // surface until the flow finishes. Any user dismissal is a cancellation,
+    // which oauthInteraction turns into an abort of the package-owned flow.
+    deviceCode: async (title: unknown, detail: unknown, promptSignal?: unknown) => {
+      await askOne(ctx, agent, joinSignals(signal, promptSignal), {
+        id: 'pi2dsh-device-code',
+        question: String(title),
+        detail: String(detail),
+        options: [{ label: 'Cancel login' }],
+      })
+    },
     editor: (title: unknown, prefill?: unknown) => askOne(ctx, agent, signal, {
       id: 'pi2dsh-editor',
       question: String(title),
@@ -1268,6 +1280,42 @@ async function dispatch(
     results.push(await state.agentScope.run(agent, () => handler(event, eventContext)))
   }
   return results
+}
+
+/**
+ * Pi's request-body event is a waterfall over the body the provider transport
+ * will actually send. Only package-registered Pi transports expose that body
+ * through SimpleStreamOptions.onPayload; native DSH adapters build it behind
+ * their own boundary and never call this function.
+ */
+async function dispatchBeforeProviderRequest(
+  ctx: Context,
+  state: RuntimeState,
+  payload: UnknownRecord,
+  request: { provider: string, model: UnknownRecord, signal?: AbortSignal },
+): Promise<UnknownRecord> {
+  let current = payload
+  const agent = currentAgent(state)
+  const eventContext = contextFor(ctx, state, agent, request.signal)
+  // A direct ctx.llm.stream() call may have no live agent, but the adapter
+  // still knows the exact selected model. Pi handlers are entitled to it.
+  eventContext.model = { ...request.model, provider: request.provider }
+  for (const handler of state.handlers.get('before_provider_request') ?? []) {
+    try {
+      const result = await state.agentScope.run(agent, () => handler({
+        type: 'before_provider_request',
+        payload: current,
+      }, eventContext))
+      if (result !== undefined && typeof result === 'object' && result !== null) {
+        current = result as UnknownRecord
+      }
+    } catch (error) {
+      // Pi isolates extension hook failures: one bad observer must not take
+      // down the provider or prevent later waterfall handlers from running.
+      logger(ctx).warn(`[pi2dsh] before_provider_request handler failed: ${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+  return current
 }
 
 /**
@@ -2495,6 +2543,7 @@ function registerLoginCommand(ctx: Context, state: RuntimeState): void {
         input(title: unknown, placeholder?: unknown): Promise<string | undefined>
         select(title: unknown, options: unknown[]): Promise<string | undefined>
         notify(message: unknown): void
+        deviceCode?(title: unknown, detail: unknown, signal?: AbortSignal): Promise<void>
       }
       let answer = args.trim().split(/\s+/u)[0] ?? ''
       if (answer.length === 0) {
@@ -3165,6 +3214,7 @@ function createPiApi(ctx: Context, state: RuntimeState): UnknownRecord {
             providerId: name, providerConfig: value, store: oauthStoreOf(state),
           }) as Promise<{ auth?: UnknownRecord } | undefined>,
           warn: message => logger(ctx).warn(message),
+          beforeProviderRequest: (payload, request) => dispatchBeforeProviderRequest(ctx, state, payload, request),
           // Image bytes live in the attachment service; without it an image
           // request is refused rather than sent as text the model cannot
           // answer from.

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { StringEnum } from '../src/compat/pi-ai.js'
+import { streamSimpleOpenAIResponses, StringEnum } from '../src/compat/pi-ai.js'
 import {
   createExtensionRuntime,
   DEFAULT_MAX_BYTES,
@@ -111,6 +111,13 @@ describe('dependency-light Pi host shims', () => {
       description: 'Size',
       default: 'small',
     })
+  })
+
+  it('exports the real Responses simple transport under the legacy provider-package name', () => {
+    // pi-grok imports this historical root symbol. Pi 0.84 names the same
+    // implementation `streamSimple` on the protocol subpath; the host shim
+    // keeps the package-facing ABI stable.
+    expect(streamSimpleOpenAIResponses).toBeTypeOf('function')
   })
 
   // Extensions that assemble their own ResourceLoader-shaped getExtensions()

@@ -1,4 +1,4 @@
-# Use a subscription account (ChatGPT / Claude / Copilot / Kimi) as a DSH model
+# Use a subscription account (ChatGPT / Claude / Copilot / Kimi / Grok) as a DSH model
 
 You already pay for a coding subscription, and you want those models in
 DeepSeek Harness — not a second API bill.
@@ -26,6 +26,22 @@ that too:
 ```sh
 dsh plugin --profile web add pi-provider-kimi-code
 ```
+
+SuperGrok is supplied by the community `pi-grok` provider rather than built
+into pi2dsh. Install the original package straight from its tagged GitHub
+release — no generated wrapper and no xAI-specific code in pi2dsh:
+
+```sh
+dsh plugin --profile web add github:stnly/pi-grok
+# restart dsh, then run: /login xai-oauth
+```
+
+The package owns the xAI device-code protocol, token refresh, model catalog,
+wire transport, and request sanitizer. pi2dsh only maps those standard Pi
+surfaces onto DSH: the expiring code is shown immediately in DSH's question
+panel, the provider transport becomes a native DSH model route, and the
+package's `before_provider_request` sanitizer runs on the exact body its own
+transport is about to send.
 
 ## 2. Log in
 
@@ -145,3 +161,10 @@ with mutation checks. And a real subscription login cannot be automated — that
 is what OAuth is for — so the live end-to-end run is this file's step 4, done
 by hand. It was done for `openai-codex` on 2026-08-18: login, seven models in
 the picker, a turn answered by GPT-5.6 Sol.
+
+The SuperGrok path was checked on 2026-08-20 with the unmodified
+`stnly/pi-grok` v0.10.1 package through a clean DSH Web profile: provider mount,
+real xAI OIDC discovery, device-code issuance, clickable code panel, and
+cancellation all completed. Finishing account approval and sending a model
+turn still require a SuperGrok subscription; no subscription credential is
+bundled or fabricated by this example.

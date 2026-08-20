@@ -1278,3 +1278,76 @@ describe('the credential behind the reference the profile names', () => {
     }
   })
 })
+
+describe('a Pi package-owned provider request in the real DSH runtime', () => {
+  it('runs before_provider_request on the exact payload its transport sends', async () => {
+    const scratch = await mkdtemp(join(tmpdir(), 'pi2dsh-provider-payload-'))
+    cleanup.push(scratch)
+    const packageRoot = join(scratch, 'pkg')
+    await mkdir(packageRoot, { recursive: true })
+    await writeFile(join(packageRoot, 'extension.js'), [
+      'export default function (pi) {',
+      "  pi.on('before_provider_request', (event, ctx) => {",
+      "    if (ctx.model?.provider !== 'payloadgw') return",
+      "    return { ...event.payload, sanitizedBy: 'pi-extension', selectedModel: ctx.model.id }",
+      '  })',
+      "  pi.registerProvider('payloadgw', {",
+      "    id: 'payloadgw',",
+      "    name: 'Payload Gateway',",
+      "    models: [{ id: 'payload-model', name: 'Payload Model', provider: 'payloadgw', api: 'openai-responses', baseUrl: 'https://example.invalid/v1' }],",
+      '    async *streamSimple(_model, _context, options) {',
+      "      const payload = await options.onPayload({ model: 'payload-model', input: 'raw' })",
+      "      const text = JSON.stringify(payload)",
+      "      yield { type: 'start', partial: {} }",
+      "      yield { type: 'text_start', contentIndex: 0 }",
+      "      yield { type: 'text_delta', contentIndex: 0, delta: text }",
+      "      yield { type: 'text_end', contentIndex: 0, content: text }",
+      "      yield { type: 'done', reason: 'stop', message: { role: 'assistant', content: [{ type: 'text', text }], usage: {}, stopReason: 'stop' } }",
+      '    },',
+      '  })',
+      '}',
+    ].join('\n'), 'utf8')
+
+    const ctx = new Context()
+    await ctx.plugin(SessionStore)
+    await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
+    await ctx.plugin(ToolRuntime)
+    await ctx.plugin(CommandRuntime)
+    await ctx.plugin(SkillRegistry)
+    await ctx.plugin(LlmRuntime as never, {} as never)
+    await ctx.plugin({
+      name: 'pi2dsh:provider-payload-test',
+      inject: ['tools', 'systemPrompt', 'commands', 'skills'],
+      async apply(inner: Context) {
+        await applyPiPackage(inner, {
+          rootUrl: pathToFileURL(`${packageRoot}/`),
+          manifest: {
+            schemaVersion: 1,
+            package: { name: '@pi2dsh-fixtures/provider-payload', version: '0.0.0' },
+            extensions: ['extension.js'],
+            skillDirs: [],
+            prompts: [],
+          } as never,
+        })
+      },
+    } as Plugin.Object)
+    await settle()
+
+    const llm = (ctx as unknown as { llm: { stream(options: object): AsyncIterable<Record<string, unknown>> } }).llm
+    const chunks: Array<Record<string, unknown>> = []
+    for await (const chunk of llm.stream({
+      provider: 'payloadgw',
+      model: 'payload-model',
+      messages: [{ role: 'user', content: [{ type: 'text', text: 'hi' }], source: { kind: 'user' } }],
+    })) chunks.push(chunk)
+
+    expect(chunks.find(chunk => chunk.type === 'text-delta')).toMatchObject({
+      text: JSON.stringify({
+        model: 'payload-model',
+        input: 'raw',
+        sanitizedBy: 'pi-extension',
+        selectedModel: 'payload-model',
+      }),
+    })
+  })
+})

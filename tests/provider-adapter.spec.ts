@@ -134,6 +134,56 @@ describe('Pi provider as a DSH llm route', () => {
     expect(llm.listProviders().map(entry => entry.id)).not.toContain('pifix')
   })
 
+  it('hands a package-owned transport the real pre-fetch payload waterfall', async () => {
+    const ctx = new Context()
+    await ctx.plugin(LlmRuntime as never, {} as never)
+    const llm = (ctx as unknown as { llm: { stream(o: UnknownRecord): AsyncIterable<UnknownRecord> } }).llm
+    const seen: UnknownRecord[] = []
+    const provider: UnknownRecord = {
+      id: 'payload-fixture',
+      name: 'Payload Fixture',
+      models: [{ id: 'payload-1', name: 'Payload One', provider: 'payload-fixture' }],
+      async *streamSimple(_model: UnknownRecord, _context: UnknownRecord, options: UnknownRecord) {
+        const onPayload = options.onPayload as ((payload: UnknownRecord) => Promise<UnknownRecord>) | undefined
+        seen.push(await onPayload!({ model: 'payload-1', input: 'before' }))
+        yield { type: 'start', partial: {} }
+        yield { type: 'text_start', contentIndex: 0 }
+        yield { type: 'text_delta', contentIndex: 0, delta: 'ok' }
+        yield { type: 'text_end', contentIndex: 0, content: 'ok' }
+        yield {
+          type: 'done', reason: 'stop',
+          message: { role: 'assistant', content: [{ type: 'text', text: 'ok' }], usage: {}, stopReason: 'stop' },
+        }
+      },
+    }
+    const hookCalls: UnknownRecord[] = []
+    registerPiProviderRoute({
+      llm: llm as never,
+      providerId: 'payload-fixture',
+      provider: provider as never,
+      host: {
+        resolveAuth: async () => ({ auth: { apiKey: 'fixture-key' } }),
+        warn: () => {},
+        async beforeProviderRequest(payload, request) {
+          hookCalls.push({ payload, request })
+          return { ...payload, sanitized: true }
+        },
+      },
+    })
+    for await (const _ of llm.stream({
+      provider: 'payload-fixture',
+      model: 'payload-1',
+      messages: [{ role: 'user', content: [{ type: 'text', text: 'hi' }], source: { kind: 'user' } }],
+    })) { /* drain */ }
+
+    expect(seen).toEqual([{ model: 'payload-1', input: 'before', sanitized: true }])
+    expect(hookCalls).toHaveLength(1)
+    expect(hookCalls[0]).toMatchObject({
+      payload: { model: 'payload-1', input: 'before' },
+      request: { provider: 'payload-fixture', model: { id: 'payload-1' } },
+    })
+  })
+
   it('keeps the existing route on a name conflict instead of clobbering it', async () => {
     const ctx = new Context()
     await ctx.plugin(LlmRuntime as never, {} as never)

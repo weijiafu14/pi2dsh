@@ -376,13 +376,13 @@ audit states this boundary explicitly.
 | [Commands, flags, editor input](docs/capabilities/commands.md) | 13 | 13 mapped, difference stated |
 | [Messages, context, agent loop](docs/capabilities/conversation.md) | 20 | 9 same semantics · 11 mapped, difference stated |
 | [Sessions & side conversations](docs/capabilities/sessions.md) | 24 | 6 same semantics · 18 mapped, difference stated |
-| [Models, providers, credentials](docs/capabilities/models.md) | 15 | 1 same semantics · 11 mapped, difference stated · 3 not available |
+| [Models, providers, credentials](docs/capabilities/models.md) | 15 | 1 same semantics · 12 mapped, difference stated · 2 not available |
 | [Asking the user, rendering](docs/capabilities/interaction.md) | 24 | 4 same semantics · 20 mapped, difference stated |
 | [Project environment & resources](docs/capabilities/environment.md) | 4 | 1 same semantics · 1 mapped, difference stated · 2 not available |
-| **Total** | **111** | **23 same semantics · 83 mapped, difference stated · 5 not available** |
+| **Total** | **111** | **23 same semantics · 84 mapped, difference stated · 4 not available** |
 <!-- capability-table:end -->
 
-Plus **202 imported symbols** from Pi's three runtime packages
+Plus **203 imported symbols** from Pi's three runtime packages
 (`pi-coding-agent`, `pi-tui`, `pi-ai`), served from vendored or headless
 shims — so a plugin's own Pi version pins never load. They are listed in
 [Imported Pi runtime symbols](docs/capabilities/imports.md).

@@ -236,6 +236,7 @@ export const HOST_IMPORT_RULES: Readonly<Record<string, Readonly<Record<string, 
   }),
   'pi-ai': Object.freeze({
     StringEnum: rule('full', 'Preserves Pi flat string-enum JSON Schema generation without loading provider SDKs.'),
+    streamSimpleOpenAIResponses: rule('full', 'Pi\'s real OpenAI Responses simple transport, exported under the legacy symbol used by transport-owning provider packages.'),
     registerProvider: rule('partial', 'Recorded in the Pi-facing registry, then exposed as a DSH route: a transport-owning provider uses llm.registerAdapter; a catalog-only provider is translated into the official llm-pi-ai profile schema.'),
     getProviders: rule('partial', 'Returns the bridge-local registry contents.'),
     getProvider: rule('partial', 'Reads the bridge-local registry.'),
@@ -535,9 +536,9 @@ export const EVENT_RULES: Readonly<Record<string, SurfaceRule>> = Object.freeze(
     design: 'DSH\'s agent/pre-step waterfall, whose decision type distinguishes entering a step from rejecting it. The transform applies to the messages that have not entered the step yet — the slice Pi packages actually rewrite — while entered history stays read-only under DSH\'s append-only log.',
   },
   before_provider_request: {
-    level: 'unsupported',
-    detail: 'Provider payload mutation belongs in a native DSH LLM adapter; the handler is accepted but never fires.',
-    design: 'Deliberately not wired. The request body is built inside a DSH llm adapter, and a package that needs to shape it should be one (or register its own provider, which this bridge does support). Faking the moment on the bridge side would let a handler edit a body that is not the one sent.',
+    level: 'partial',
+    detail: 'Fires with the exact outgoing payload for Pi package-owned transports; native DSH adapters expose no body-builder hook and remain unavailable.',
+    design: 'A transport-owning Pi provider is wrapped by pi2dsh as a DSH llm adapter and Pi\'s standard stream helpers expose the exact pre-fetch body through onPayload, so the waterfall is real there. Native DSH adapters build their body behind their own boundary; without an upstream seam this event cannot honestly fire for them.',
   },
   before_provider_headers: {
     level: 'unsupported',

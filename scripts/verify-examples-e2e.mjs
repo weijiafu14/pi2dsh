@@ -192,6 +192,69 @@ const visionEnv = {
   VISION_BRIDGE_API_KEY: process.env.VISION_BRIDGE_API_KEY,
 }
 const visionMissing = Object.entries(visionEnv).filter(([, value]) => (value ?? '').length === 0).map(([name]) => name)
+const registryVision = {
+  provider: process.env.VISION_BRIDGE_REGISTRY_PROVIDER,
+  model: process.env.VISION_BRIDGE_REGISTRY_MODEL,
+  authFile: process.env.CODEX_AUTH_FILE,
+}
+const registryVisionMissing = Object.entries(registryVision)
+  .filter(([, value]) => (value ?? '').length === 0)
+  .map(([name]) => name)
+const hasOpenAiVision = visionMissing.length === 0
+const hasRegistryVision = registryVisionMissing.length === 0
+
+/** Configure the plugin's Pi-registry mode inside an isolated OS home. */
+async function prepareRegistryVision(scratch, home, env) {
+  if (!hasRegistryVision) return
+  const userHome = join(scratch, 'user-home')
+  const configDirectory = join(userHome, '.pi', 'agent')
+  await mkdir(configDirectory, { recursive: true })
+  await writeFile(join(configDirectory, 'vision-bridge.json'), `${JSON.stringify({
+    enabled: true,
+    forceVisionBridge: true,
+    vision: {
+      active: 'e2e-registry',
+      models: [{
+        name: 'e2e-registry',
+        type: 'pi-registry',
+        registryProvider: registryVision.provider,
+        registryModel: registryVision.model,
+      }],
+    },
+  })}\n`)
+  await seedCodexLogin(home, registryVision.authFile)
+  // @kassing/pi-vision resolves its global config with os.homedir(). Keep the
+  // real developer home entirely out of this disposable run.
+  env.HOME = userHome
+}
+
+/** Seed an existing Codex login into a throwaway DSH home without copying any
+ * unrelated Codex settings. The temporary home is removed by its scenario. */
+async function seedCodexLogin(home, authFile) {
+  const source = JSON.parse(await readFile(resolve(authFile), 'utf8'))
+  const tokens = source.tokens
+  assert(tokens && typeof tokens === 'object', 'Codex auth file has no tokens object')
+  assert.equal(typeof tokens.access_token, 'string', 'Codex auth file has no access_token')
+  assert.equal(typeof tokens.refresh_token, 'string', 'Codex auth file has no refresh_token')
+  assert.equal(typeof tokens.account_id, 'string', 'Codex auth file has no account_id')
+  const encoded = tokens.access_token.split('.')[1]
+  assert(encoded, 'Codex access token is not a JWT')
+  const payload = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8'))
+  assert.equal(typeof payload.exp, 'number', 'Codex access token has no numeric exp claim')
+  const directory = join(home, 'pi2dsh', 'agent')
+  const target = join(directory, 'auth.json')
+  await mkdir(directory, { recursive: true, mode: 0o700 })
+  await writeFile(target, `${JSON.stringify({
+    'openai-codex': {
+      type: 'oauth',
+      access: tokens.access_token,
+      refresh: tokens.refresh_token,
+      expires: payload.exp * 1000,
+      accountId: tokens.account_id,
+    },
+  })}\n`, { mode: 0o600 })
+  await chmod(target, 0o600)
+}
 
 /** Session records from the one session log a scenario's home produced. */
 async function sessionRecords(home) {
@@ -208,6 +271,12 @@ async function sessionRecords(home) {
  * then routes around. Only the first proves anything about this example.
  */
 function assertVisionReallyRead(records, transcript) {
+  const bridgeFailure = records
+    .filter(record => record.type === 'user/message')
+    .flatMap(record => Array.isArray(record.data?.content) ? record.data.content : [])
+    .find(block => block.type === 'text' && /Vision understanding failed:/u.test(String(block.text ?? '')))
+  assert(bridgeFailure === undefined,
+    `the vision plugin reported its own failure: ${String(bridgeFailure?.text ?? '').slice(0, 1000)}`)
   const reads = records.filter(record => record.type === 'tool/call' && /image/iu.test(String(record.data?.name ?? '')))
   assert(reads.length > 0, `no image-reading tool ran at all:\n${transcript.slice(-1500)}`)
   const failed = []
@@ -335,22 +404,24 @@ async function runVisionBridge() {
     results.visionBridge = { status: 'skipped', reason: 'DEEPSEEK_API_KEY not set' }
     return
   }
-  if (visionMissing.length > 0) {
-    results.visionBridge = { status: 'skipped', reason: `no vision endpoint configured (${visionMissing.join(', ')})` }
+  if (!hasOpenAiVision && !hasRegistryVision) {
+    results.visionBridge = { status: 'skipped', reason: 'no complete OpenAI-compatible or Pi-registry vision model configured' }
     return
   }
   const scratch = await mkdtemp(join(tmpdir(), 'pi2dsh-ex-vision-'))
   try {
-    const { home, runDsh } = await makeHome(scratch, visionEnv)
+    const { home, env, runDsh } = await makeHome(scratch, hasOpenAiVision ? visionEnv : {})
     const installed = await runDsh(['plugin', '--profile', 'headless', 'add', engineSpec])
     const installedVision = await runDsh(['plugin', '--profile', 'headless', 'add', '@kassing/pi-vision'])
+    await prepareRegistryVision(scratch, home, env)
     await useJsonlSessions(home, 'headless')
 
     const image = join(projectRoot, 'examples/vision-bridge/test-images/solid-green.png')
     await stat(image)
     // The README's own command, verbatim in shape.
     const run = await runDsh(['--profile', 'headless',
-      `What solid color fills the image at ${image} ? Answer with just the color name.`])
+      `What solid color fills the image at ${image} ? Answer with just the color name. `
+      + 'If the vision-bridge message reports a failure, answer VISION_BRIDGE_FAILED without using tools.'])
 
     const records = await sessionRecords(home)
     const sessionFiles = (await filesBelow(join(home, 'sessions'))).filter(path => path.endsWith('/session.jsonl'))
@@ -364,9 +435,20 @@ async function runVisionBridge() {
     // The colour word alone is not evidence: without a vision endpoint the main
     // model finds it by decoding the PNG in bash. Require the read itself.
     assertVisionReallyRead(records, `${run.stdout}\n${rawLog}`)
-    results.visionBridge = { status: 'passed', engine: await installedEngineVersion(home, 'headless'), image: 'solid-green.png', answeredGreen: true, readThroughVision: true }
+    results.visionBridge = {
+      status: 'passed',
+      engine: await installedEngineVersion(home, 'headless'),
+      image: 'solid-green.png',
+      answeredGreen: true,
+      readThroughVision: true,
+      visionRoute: hasRegistryVision ? `${registryVision.provider}/${registryVision.model}` : 'openai-compatible',
+    }
   } finally {
-    await rm(scratch, { recursive: true, force: true })
+    if (process.env.PI2DSH_KEEP_SCRATCH === '1') {
+      console.error(`[examples-e2e] kept vision scratch for diagnosis: ${scratch}`)
+    } else {
+      await rm(scratch, { recursive: true, force: true })
+    }
   }
 }
 
@@ -435,17 +517,18 @@ async function runVisionBridgeWeb() {
     results.visionBridgeWeb = { status: 'skipped', reason: 'DEEPSEEK_API_KEY not set' }
     return
   }
-  if (visionMissing.length > 0) {
-    results.visionBridgeWeb = { status: 'skipped', reason: `no vision endpoint configured (${visionMissing.join(', ')})` }
+  if (!hasOpenAiVision && !hasRegistryVision) {
+    results.visionBridgeWeb = { status: 'skipped', reason: 'no complete OpenAI-compatible or Pi-registry vision model configured' }
     return
   }
   const playwrightFrom = process.env.PLAYWRIGHT_FROM ?? join(dshRoot, 'apps/web')
   const scratch = await mkdtemp(join(tmpdir(), 'pi2dsh-ex-vision-web-'))
   let web
   try {
-    const { home, env, runDsh } = await makeHome(scratch, visionEnv)
+    const { home, env, runDsh } = await makeHome(scratch, hasOpenAiVision ? visionEnv : {})
     await runDsh(['plugin', '--profile', 'web', 'add', engineSpec])
     await runDsh(['plugin', '--profile', 'web', 'add', '@kassing/pi-vision'])
+    await prepareRegistryVision(scratch, home, env)
     await useJsonlSessions(home, 'web')
 
     const port = Number(process.env.VISION_PORT ?? 5188)
@@ -482,7 +565,13 @@ async function runVisionBridgeWeb() {
     // bridge failed" still contains the words "vision" and "green", which is
     // exactly how a DOM-text assertion passed on a broken run.
     assertVisionReallyRead(await sessionRecords(home), webLog)
-    results.visionBridgeWeb = { status: 'passed', engine: await installedEngineVersion(home, 'web'), screenshots: captured.sort(), readThroughVision: true }
+    results.visionBridgeWeb = {
+      status: 'passed',
+      engine: await installedEngineVersion(home, 'web'),
+      screenshots: captured.sort(),
+      readThroughVision: true,
+      visionRoute: hasRegistryVision ? `${registryVision.provider}/${registryVision.model}` : 'openai-compatible',
+    }
   } finally {
     web?.kill('SIGTERM')
     await rm(scratch, { recursive: true, force: true })
@@ -531,6 +620,9 @@ async function runCustomGateways() {
     await useJsonlSessions(home, 'headless')
     // The README's own settings shape, pointed at the local endpoint.
     await writeFile(join(home, 'settings.yaml'), [
+      'agent-default-model:',
+      '  provider: my-gateway',
+      '  model: deepseek-chat',
       'llm-pi-ai:',
       '  providers:',
       '    my-gateway:',
@@ -544,14 +636,10 @@ async function runCustomGateways() {
       '          contextWindow: 131072',
       '',
     ].join('\n'))
-    // No agent-default-model here on purpose. The turn runs on the profile's
-    // own default route (a real model, from DEEPSEEK_API_KEY in the
-    // environment), because the probe tool has to actually be CALLED for its
-    // answer to exist — and the fake endpoint standing in for the gateway
-    // answers a fixed line and can emit no tool call at all. What the example
-    // claims is narrower and is what this checks: a route only DSH settings
-    // declare is visible to a mounted Pi package's modelRegistry.
-
+    // The same configured route must do BOTH jobs the README promises: drive
+    // the real agent turn and appear in the mounted Pi package's registry.
+    // Running the probe on some other default model would prove only catalog
+    // projection, not that `my-gateway` can actually serve a conversation.
     const run = await runDsh(['--profile', 'headless', 'call the pi_registry_probe tool once and repeat its output'])
     const sessionFiles = (await filesBelow(join(home, 'sessions'))).filter(path => path.endsWith('/session.jsonl'))
     assert.equal(sessionFiles.length, 1, `expected one session log, found ${sessionFiles.length}`)
@@ -585,7 +673,18 @@ async function runCustomGateways() {
     // The Pi-shaped fields survive the round trip, which is the example's point.
     assert.equal(entry.id, 'deepseek-chat')
     assert.equal(entry.contextWindow, 131072)
-    results.customGateways = { status: 'passed', engine: await installedEngineVersion(home, 'headless'), seenByPackage: entry }
+    const request = records.find(record => record.type === 'request/header')
+    assert.equal(request?.data?.header?.config?.provider, 'my-gateway',
+      `the probe turn did not actually use the configured route: ${JSON.stringify(request?.data?.header?.config)}`)
+    assert.equal(request?.data?.header?.config?.model, 'deepseek-chat')
+    assert.match(`${run.stdout}`, /my-gateway/u,
+      `the real gateway-backed turn did not complete with the probe output:\n${run.stdout}\n${run.stderr}`)
+    results.customGateways = {
+      status: 'passed',
+      engine: await installedEngineVersion(home, 'headless'),
+      seenByPackage: entry,
+      requestedThroughGateway: true,
+    }
   } finally {
     await rm(scratch, { recursive: true, force: true })
   }
@@ -662,12 +761,14 @@ const only = process.env.ONLY
  */
 async function runSubscriptionLogin() {
   const scratch = await mkdtemp(join(tmpdir(), 'pi2dsh-ex-login-'))
+  const authFile = process.env.CODEX_AUTH_FILE
   let web
   try {
     const { home, env, runDsh } = await makeHome(scratch)
     await runDsh(['plugin', '--profile', 'web', 'add', engineSpec])
     // The package the example names for exactly this case.
     await runDsh(['plugin', '--profile', 'web', 'add', 'pi-provider-kimi-code'])
+    if (authFile !== undefined && authFile.length > 0) await seedCodexLogin(home, authFile)
 
     // Boot the runtime and read what the engine announced. Deliberately not a
     // prompt: this scenario needs no model, so it must not need a model key
@@ -694,10 +795,36 @@ async function runSubscriptionLogin() {
     if (!/Pi provider "kimi-coding" registered as a native DSH llm route/u.test(log)) {
       throw new Error(`the package did not become a native route:\n${log.slice(-1500)}`)
     }
+    let accountBacked
+    if (authFile !== undefined && authFile.length > 0) {
+      const shots = join(scratch, 'provider-shots')
+      await execFile('node', [
+        join(projectRoot, 'docs/posting-kit/capture-providers.mjs'),
+        shots,
+        '--url', `http://127.0.0.1:${port}`,
+      ], {
+        cwd: projectRoot,
+        env: {
+          ...env,
+          PLAYWRIGHT_FROM: join(dshRoot, 'apps/web'),
+          CAPTURE_WORKSPACE: projectRoot,
+        },
+        timeout: 240_000,
+        maxBuffer: 16 * 1024 * 1024,
+      })
+      accountBacked = {
+        provider: 'openai-codex',
+        loginDialog: true,
+        modelPicker: true,
+        screenshots: (await readdir(shots)).sort(),
+      }
+    }
     results.subscriptionLogin = {
-      status: 'passed',
+      status: accountBacked === undefined ? 'partial' : 'passed',
       engine: await installedEngineVersion(home, 'web'),
-      note: 'account offered by /login and served as a native route; the live account login is manual (README step 4)',
+      ...(accountBacked === undefined ? {
+        note: 'pre-login discovery and native route passed; set CODEX_AUTH_FILE to verify the post-login model picker',
+      } : { accountBacked }),
     }
   } finally {
     web?.kill('SIGTERM')
@@ -778,12 +905,27 @@ for (const [name, , key] of selected) {
 }
 
 
+// A targeted retry updates only that scenario. Replacing the whole evidence
+// document here used to erase every unrelated result and made a one-case
+// diagnostic look like the project had only ever tested one example.
+let outputResults = results
+if (only !== undefined) {
+  try {
+    const existing = JSON.parse(await readFile(outputPath, 'utf8'))
+    if (existing?.results && typeof existing.results === 'object') {
+      outputResults = { ...existing.results, ...results }
+    }
+  } catch {
+    // A new or invalid output path simply starts a fresh targeted report.
+  }
+}
+
 await mkdir(resolve(outputPath, '..'), { recursive: true })
 await writeFile(outputPath, `${JSON.stringify({
   schemaVersion: 1,
   pi2dshCommit: (await execFile('git', ['rev-parse', 'HEAD'], { cwd: projectRoot })).stdout.trim(),
   dshCommit: (await execFile('git', ['rev-parse', 'HEAD'], { cwd: dshRoot })).stdout.trim(),
-  results,
+  results: outputResults,
 }, null, 2)}\n`)
 
 if (failures.length > 0) {

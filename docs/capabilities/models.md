@@ -16,7 +16,7 @@ bridge's `auth.json`** rather than by DSH credentials. Worth knowing if you
 audit where your keys go. Interactive OAuth flows from the Pi ecosystem run on
 DSH-native interaction and persist with Pi's `auth.json` semantics.
 
-**15 upstream-shaped Pi rule rows** — 1 same semantics · 11 mapped, difference stated · 3 not available.
+**15 upstream-shaped Pi rule rows** — 1 same semantics · 12 mapped, difference stated · 2 not available.
 
 | Pi surface | Kind | Status | What it does on DSH |
 |---|---|---|---|
@@ -27,7 +27,7 @@ DSH-native interaction and persist with Pi's `auth.json` semantics.
 | [`setThinkingLevel`](#setthinkinglevel-pi) | `pi.*` | Mapped, difference stated | Recorded per agent and applied as reasoningEffort through the agent/request waterfall; DSH validates the effort id at the request boundary. |
 | [`model_select`](#model_select-event) | `event` | Mapped, difference stated | Fired by setModel() and projected from request/header model changes in the durable log. |
 | [`thinking_level_select`](#thinking_level_select-event) | `event` | Mapped, difference stated | Fired by setThinkingLevel(); DSH-side reasoning changes surface through request/header projection. |
-| [`before_provider_request`](#before_provider_request-event) | `event` | Not available | Provider payload mutation belongs in a native DSH LLM adapter; the handler is accepted but never fires. |
+| [`before_provider_request`](#before_provider_request-event) | `event` | Mapped, difference stated | Fires with the exact outgoing payload for Pi package-owned transports; native DSH adapters expose no body-builder hook and remain unavailable. |
 | [`before_provider_headers`](#before_provider_headers-event) | `event` | Not available | Provider header mutation belongs in a native DSH LLM adapter; the handler is accepted but never fires. |
 | [`after_provider_response`](#after_provider_response-event) | `event` | Not available | Provider response interception belongs in a native DSH LLM adapter; the handler is accepted but never fires. |
 | [`modelRegistry`](#modelregistry-ctx) | `ctx.*` | Mapped, difference stated | A live registry over the ONE model directory — the DSH llm directory — projected exactly into Pi vocabulary; package-registered Pi-native routes keep api/baseUrl and the full Model shape through the round trip. DSH describes one model across two seams (a listing for directory membership, an exact per-route resolve for capacity) while Pi puts everything on one Model object read synchronously, so the projection joins them when the directory is read: entries carry contextWindow, maxTokens and reasoning, and a settings change re-reads them rather than serving the retired numbers. Custom gateways are HOST configuration (the official llm-pi-ai adapter's settings), never a Pi-side file: Pi's ~/.pi/agent/models.json is deliberately NOT read — user-facing configuration is DSH-shaped only. getProviderAuth/getApiKeyAndHeaders run Pi's full credential chain for package-registered providers and the host's configurable-provider + credentials seams for DSH routes. Host configuration may declare "<route>-vision" image-admission companions: real DSH routes that admit images, replace image blocks with explicit path-carrying notices (materialized attachment files any path-taking tool can read), and forward text-only to the original route; Pi's ctx.model reports the original route for a companion selection. |
@@ -86,9 +86,9 @@ Fired by the bridge's own setThinkingLevel; host-side reasoning changes arrive t
 
 ### `before_provider_request` <a id="before_provider_request-event"></a>
 
-`event` · Not available
+`event` · Mapped, difference stated
 
-Deliberately not wired. The request body is built inside a DSH llm adapter, and a package that needs to shape it should be one (or register its own provider, which this bridge does support). Faking the moment on the bridge side would let a handler edit a body that is not the one sent.
+A transport-owning Pi provider is wrapped by pi2dsh as a DSH llm adapter and Pi's standard stream helpers expose the exact pre-fetch body through onPayload, so the waterfall is real there. Native DSH adapters build their body behind their own boundary; without an upstream seam this event cannot honestly fire for them.
 
 ### `before_provider_headers` <a id="before_provider_headers-event"></a>
 
