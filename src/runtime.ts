@@ -130,6 +130,10 @@ interface RuntimeState {
   ownerAgent: UnknownRecord | undefined
   /** Host-anchor mount: host-level contributions only, serves no Agent (see RuntimeOptions.hostAnchor). */
   hostAnchor: boolean
+  /** The session-event projector, exposed for the mount-time backlog replay. */
+  projectSessionEvent?: (session: UnknownRecord, event: UnknownRecord) => void
+  /** Owned mounts: live session-event delivery starts after the backlog replay. */
+  sessionEventsLive?: boolean
   handlers: Map<string, PiHandler[]>
   tools: Map<string, PiTool>
   // The Pi runner facade tool-catalog packages (pi-fabric) hook by patching
@@ -1749,9 +1753,7 @@ function subscribeLifecycle(ctx: Context, state: RuntimeState): void {
     }
   })
 
-  cordis.on('session/event', (session: UnknownRecord, event: UnknownRecord) => {
-    const ownedSession = agentSession(state.ownerAgent)
-    if (ownedSession !== undefined ? session !== ownedSession : isSubagentOrigin(session)) return
+  const projectSessionEvent = (session: UnknownRecord, event: UnknownRecord): void => {
     const agent = [...state.activeAgents].find(candidate => candidate.session === session)
     const eventContext = contextFor(ctx, state, agent, undefined)
     const type = event.type
@@ -1900,6 +1902,29 @@ function subscribeLifecycle(ctx: Context, state: RuntimeState): void {
         await dispatch(state, 'agent_settled', { type: 'agent_settled' }, eventContext)
       }).catch(error => warn('turn end lifecycle', error))
     }
+  }
+  // Exposed for the mount-time backlog replay (flushPendingSessionStarts):
+  // events appended between Agent publication and extension readiness are
+  // otherwise lost to a per-Agent instance.
+  state.projectSessionEvent = projectSessionEvent
+
+  cordis.on('session/event', (session: UnknownRecord, event: UnknownRecord) => {
+    // The host anchor serves no session; this listener's own session guard
+    // predates acceptsAgent and must exclude it explicitly, or the anchor's
+    // extension instance receives a second copy of every lifecycle event
+    // beside the owning per-Agent instance (step-seams caught turn_start
+    // firing twice per model call through a globalThis-shared recorder).
+    if (state.hostAnchor) return
+    const ownedSession = agentSession(state.ownerAgent)
+    if (ownedSession !== undefined ? session !== ownedSession : isSubagentOrigin(session)) return
+    // A per-Agent mount runs AFTER its Agent published: events arriving
+    // before the extension handlers exist would dispatch into an empty
+    // ledger and be lost (a one-shot run opens its turn during module
+    // loading). Drop them here — the durable log holds them, and the flush
+    // replays the still-open turn synchronously before flipping this flag,
+    // so the seam is gap- and overlap-free.
+    if (ownedSession !== undefined && state.sessionEventsLive !== true) return
+    projectSessionEvent(session, event)
   })
 
   // Per-agent model/thinking overrides recorded by setModel()/setThinkingLevel()
@@ -1964,6 +1989,32 @@ async function flushPendingSessionStarts(ctx: Context, state: RuntimeState): Pro
   state.pendingSessionStarts.clear()
   for (const [agent, reason] of pending) {
     await startPiSession(ctx, state, agent, reason, undefined)
+  }
+  // Backlog replay for a per-Agent mount: the owner's loop may have OPENED a
+  // turn before this instance's handlers existed (a one-shot headless run
+  // prompts the instant the Agent publishes; DSH appends `turn/start` while
+  // extension modules are still loading, and the assembly our engine gate
+  // holds comes later in the same turn). Live delivery is suppressed until
+  // this point (see the session/event subscription), so Pi's event stream —
+  // agent_start before the prompt's first turn_start — is reconstructed from
+  // the durable log: replay the still-open turn and flip live delivery in
+  // the same synchronous stretch, so no event is doubled and none is lost.
+  if (state.ownerAgent !== undefined && state.projectSessionEvent !== undefined) {
+    const session = agentSession(state.ownerAgent) as (UnknownRecord & { events?: UnknownRecord[] }) | undefined
+    if (session !== undefined) {
+      const events = (session.events ?? []) as Array<UnknownRecord & { type?: string }>
+      let from = -1
+      for (let index = events.length - 1; index >= 0; index -= 1) {
+        if (events[index]!.type === 'turn/end') break
+        if (events[index]!.type === 'turn/start') { from = index; break }
+      }
+      if (from >= 0) {
+        for (let index = from; index < events.length; index += 1) {
+          state.projectSessionEvent(session, events[index]!)
+        }
+      }
+    }
+    state.sessionEventsLive = true
   }
 }
 

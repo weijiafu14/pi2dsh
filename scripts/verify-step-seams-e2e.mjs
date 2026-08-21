@@ -36,6 +36,15 @@ const projectRoot = resolve(new URL('..', import.meta.url).pathname)
 const dshRoot = process.env.PI2DSH_DSH_ROOT === undefined
   ? resolve(projectRoot, '..', 'deepseek-harness')
   : resolve(process.env.PI2DSH_DSH_ROOT)
+// A direct CLI entry (the npm @deepseek-ai/dsh package's lib/bin.js) runs
+// WITHOUT the tsx loader and outside any checkout: tsx + a checkout cwd lets
+// that tree's tsconfig paths hijack @deepseek-ai/* resolution into its
+// workspace sources, so the run would test the checkout's branch instead of
+// the stock CLI (same contract as verify-examples-e2e.mjs).
+const directDshBin = process.env.PI2DSH_DSH_BIN === undefined
+  ? undefined
+  : resolve(process.env.PI2DSH_DSH_BIN)
+const dshCwd = resolve(process.env.PI2DSH_DSH_CWD ?? dshRoot)
 const outputPath = resolve(process.argv[2] ?? 'community/step-seams-e2e.json')
 const apiKey = process.env.DEEPSEEK_API_KEY
 
@@ -137,7 +146,7 @@ export default function stepSeams(pi) {
 
 const scratch = await mkdtemp(join(tmpdir(), 'pi2dsh-step-seams-'))
 try {
-  const dshBin = join(dshRoot, 'apps/cli/src/bin.ts')
+  const dshBin = directDshBin ?? join(dshRoot, 'apps/cli/src/bin.ts')
   await stat(dshBin)
 
   const home = join(scratch, 'dsh-home')
@@ -173,15 +182,20 @@ try {
     npm_config_registry: 'https://registry.npmjs.org',
     PNPM_CONFIG_REGISTRY: 'https://registry.npmjs.org',
   }
-  const runDsh = args => execFile('node', ['--import', 'tsx/esm', dshBin, ...args], {
-    cwd: dshRoot,
-    env: environment,
-    timeout: 240_000,
-    maxBuffer: 16 * 1024 * 1024,
-  })
+  const runDsh = args => execFile(
+    directDshBin === undefined ? 'node' : directDshBin,
+    directDshBin === undefined ? ['--import', 'tsx/esm', dshBin, ...args] : args,
+    {
+      cwd: dshCwd,
+      env: environment,
+      timeout: 240_000,
+      maxBuffer: 16 * 1024 * 1024,
+    },
+  )
 
   // The two commands from the README, in order: the engine, then the package.
-  const installedEngine = await runDsh(['plugin', '--profile', 'headless', 'add', `file:${projectRoot}`])
+  const engineSpec = process.env.PI2DSH_ENGINE_SPEC ?? `file:${projectRoot}`
+  const installedEngine = await runDsh(['plugin', '--profile', 'headless', 'add', engineSpec])
   const installed = await runDsh(['plugin', '--profile', 'headless', 'add', `file:${source}`])
   await writeFile(join(home, 'profiles/headless/cordis.patch.yml'), [
     '- id: session-persistence-jsonl',
@@ -264,7 +278,9 @@ try {
     schemaVersion: 1,
     packageName,
     installPath: 'engine (dsh plugin add pi2dsh, then the package) — no conversion',
-    dshCommit: (await execFile('git', ['rev-parse', 'HEAD'], { cwd: dshRoot })).stdout.trim(),
+    dshCommit: directDshBin !== undefined
+      ? `npm:@deepseek-ai/dsh@${JSON.parse(await readFile(resolve(directDshBin, '..', '..', 'package.json'), 'utf8')).version}`
+      : (await execFile('git', ['rev-parse', 'HEAD'], { cwd: dshRoot })).stdout.trim(),
     pi2dshCommit: (await execFile('git', ['rev-parse', 'HEAD'], { cwd: projectRoot })).stdout.trim(),
     profile: 'headless',
     prompt,

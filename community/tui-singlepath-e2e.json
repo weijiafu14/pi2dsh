@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-08-21T14:33:15.193Z",
-  "startedAt": "2026-08-21T14:32:52.339Z",
+  "generatedAt": "2026-08-21T15:28:12.541Z",
+  "startedAt": "2026-08-21T15:27:48.613Z",
   "scenario": "stock-tui-single-path-per-agent",
   "cliSpec": "@deepseek-ai/dsh@0.1.0-rc.8",
   "tuiSpec": "@deepseek-harness-tui/dsh-tui",
@@ -12,16 +12,16 @@
   "dshAgentHasAgentSetupSeam": false,
   "tuiVersion": "0.8.7",
   "tuiAdvertisesSetupSeam": false,
-  "engineVersion": "0.13.3",
+  "engineVersion": "0.14.0",
   "agentA": {
     "managerTools": 23,
-    "sessionLog": "/tmp/pi2dsh-singlepath-e2e.jbrJRL/dsh-home/sessions/--private-tmp-pi2dsh-singlepath-e2e.jbrJRL--/5c9e42fd-08fc-40c3-976f-d57e7681d3fa/session.jsonl",
-    "marker": "PI2DSH_SINGLEPATH_A_MT31TXF7"
+    "sessionLog": "/tmp/pi2dsh-singlepath-e2e.jbrJRL/dsh-home/sessions/--private-tmp-pi2dsh-singlepath-e2e.jbrJRL--/b7249598-4cad-4a2f-8075-eff87837fea1/session.jsonl",
+    "marker": "PI2DSH_SINGLEPATH_A_MT33SKUD"
   },
   "agentB": {
     "managerTools": 23,
-    "sessionLog": "/tmp/pi2dsh-singlepath-e2e.jbrJRL/dsh-home/sessions/--private-tmp-pi2dsh-singlepath-e2e.jbrJRL--/9ecedb48-30b9-4be7-afd1-d6c3de17fdc8/session.jsonl",
-    "marker": "PI2DSH_SINGLEPATH_B_MT31TXF7"
+    "sessionLog": "/tmp/pi2dsh-singlepath-e2e.jbrJRL/dsh-home/sessions/--private-tmp-pi2dsh-singlepath-e2e.jbrJRL--/60b1125d-6972-471d-ba0c-1ccd0b1d50d1/session.jsonl",
+    "marker": "PI2DSH_SINGLEPATH_B_MT33SKUD"
   },
   "isolation": "marker B absent from agent A session log"
 }

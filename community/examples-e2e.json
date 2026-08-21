@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pi2dshCommit": "6da9c8967e23cdbfd0a51eb2cf2883c1b9ce1bf8",
+  "pi2dshCommit": "b61bba372e382c0b351077534ff0d3319cc5d232",
   "dshCommit": "69fff74f6f3e1f37939784885ef823477f06ace3",
   "results": {
     "alibabaTokenPlan": {
@@ -21,10 +21,10 @@
     },
     "gatewayCompat": {
       "engine": {
-        "version": "0.13.3",
+        "version": "0.14.0",
         "from": "local",
         "spec": "file:<working-tree>",
-        "commit": "6da9c8967e23cdbfd0a51eb2cf2883c1b9ce1bf8",
+        "commit": "b61bba372e382c0b351077534ff0d3319cc5d232",
         "dirty": true
       },
       "status": "passed",
@@ -55,10 +55,10 @@
     "customGateways": {
       "status": "passed",
       "engine": {
-        "version": "0.13.3",
+        "version": "0.14.0",
         "from": "local",
         "spec": "file:<working-tree>",
-        "commit": "6da9c8967e23cdbfd0a51eb2cf2883c1b9ce1bf8",
+        "commit": "b61bba372e382c0b351077534ff0d3319cc5d232",
         "dirty": true
       },
       "seenByPackage": {
@@ -72,10 +72,10 @@
     "subscriptionLogin": {
       "status": "partial",
       "engine": {
-        "version": "0.13.3",
+        "version": "0.14.0",
         "from": "local",
         "spec": "file:<working-tree>",
-        "commit": "6da9c8967e23cdbfd0a51eb2cf2883c1b9ce1bf8",
+        "commit": "b61bba372e382c0b351077534ff0d3319cc5d232",
         "dirty": true
       },
       "note": "pre-login discovery and native route passed; set CODEX_AUTH_FILE to verify the post-login model picker"
@@ -83,10 +83,10 @@
     "presentationSurfaces": {
       "status": "passed",
       "engine": {
-        "version": "0.13.3",
+        "version": "0.14.0",
         "from": "local",
         "spec": "file:<working-tree>",
-        "commit": "6da9c8967e23cdbfd0a51eb2cf2883c1b9ce1bf8",
+        "commit": "b61bba372e382c0b351077534ff0d3319cc5d232",
         "dirty": true
       },
       "screenshots": [
@@ -96,10 +96,10 @@
     "tuiMcp": {
       "status": "passed",
       "engine": {
-        "version": "0.13.3",
+        "version": "0.14.0",
         "from": "local",
         "spec": "file:<working-tree>",
-        "commit": "6da9c8967e23cdbfd0a51eb2cf2883c1b9ce1bf8",
+        "commit": "b61bba372e382c0b351077534ff0d3319cc5d232",
         "dirty": true
       },
       "profile": "dsh-tui",
@@ -135,10 +135,10 @@
     "sideConversation": {
       "status": "passed",
       "engine": {
-        "version": "0.13.3",
+        "version": "0.14.0",
         "from": "local",
         "spec": "file:<working-tree>",
-        "commit": "6da9c8967e23cdbfd0a51eb2cf2883c1b9ce1bf8",
+        "commit": "b61bba372e382c0b351077534ff0d3319cc5d232",
         "dirty": true
       },
       "screenshots": [
