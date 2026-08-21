@@ -2460,6 +2460,17 @@ interface ActiveLogin {
 
 const SHARED_HOST_STATE = new WeakMap<object, SharedHostState>()
 
+/**
+ * The engine's own built-in OAuth directory entries, by object identity.
+ * They are login placeholders (no models, no transport), preloaded so
+ * `/login <provider>` works before any package is installed — and a package
+ * registering the SAME provider id owns the richer definition (transport,
+ * catalog, its own flow) and must supersede the placeholder in the shared
+ * ledger. Two PACKAGES colliding on one id still keep first-wins, matching
+ * the route-ownership rule.
+ */
+const BUILTIN_PROVIDER_SEEDS = new WeakSet<object>()
+
 function sharedHostStateOf(ctx: Context): SharedHostState {
   const key = ((ctx as unknown as { root?: object }).root ?? ctx) as object
   let shared = SHARED_HOST_STATE.get(key)
@@ -3713,7 +3724,27 @@ function createPiApi(ctx: Context, state: RuntimeState): UnknownRecord {
           ?? (providerOrName as UnknownRecord | undefined)?.name ?? 'unnamed')
       const value = typeof providerOrName === 'string' ? config ?? {} : providerOrName as UnknownRecord
       state.providers.set(name, value)
-      if (!state.shared.providers.has(name)) state.shared.providers.set(name, value)
+      const sharedExisting = state.shared.providers.get(name)
+      if (sharedExisting === undefined || BUILTIN_PROVIDER_SEEDS.has(sharedExisting)) {
+        // First package registration, or a package superseding the engine's
+        // built-in login placeholder for the same provider id: the package
+        // owns the complete definition (transport, catalog, its own OAuth
+        // flow). Leaving the placeholder as the shared canonical is what
+        // silently demoted a transport-owning provider to "OAuth-only, no
+        // route" (kimi-coding). Package-vs-package collisions keep first-wins.
+        state.shared.providers.set(name, value)
+        if (sharedExisting !== undefined) {
+          // The placeholder may already carry a route from a stored login
+          // (ensureLoggedInProviderRoute). Retire it so the registration
+          // below rebuilds the route from the package's definition.
+          const stale = state.shared.providerRouteDisposers.get(name)
+          if (stale !== undefined) {
+            state.shared.providerRouteDisposers.delete(name)
+            state.shared.providerRouteOwners.delete(name)
+            stale()
+          }
+        }
+      }
       if (providerSupportsOAuth(value)) {
         // Pi hosts expose /login <provider> for oauth-capable providers; the
         // package's own login flow runs, credentials land in auth.json.
@@ -4159,9 +4190,12 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
   subscribeInterceptors(ctx, state)
   // Pi hosts ship their built-in OAuth providers ready to log in; preload the
   // four vendored official flows so `/login openai-codex` (etc.) works out of
-  // the box, before any package registers its own providers.
+  // the box, before any package registers its own providers. Each entry is
+  // remembered as a SEED: a placeholder a package's own registration of the
+  // same provider id must be allowed to supersede (see registerProvider).
   for (const provider of builtinProviders()) {
     const config = { name: provider.name, baseUrl: provider.baseUrl, oauth: provider.auth.oauth }
+    BUILTIN_PROVIDER_SEEDS.add(config)
     state.providers.set(provider.id, config)
     if (!shared.providers.has(provider.id)) shared.providers.set(provider.id, config)
   }

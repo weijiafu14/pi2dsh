@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pi2dshCommit": "965f6f5963289e303259165e3b2970ec59b69f02",
+  "pi2dshCommit": "6da9c8967e23cdbfd0a51eb2cf2883c1b9ce1bf8",
   "dshCommit": "69fff74f6f3e1f37939784885ef823477f06ace3",
   "results": {
     "alibabaTokenPlan": {
@@ -24,7 +24,7 @@
         "version": "0.13.3",
         "from": "local",
         "spec": "file:<working-tree>",
-        "commit": "965f6f5963289e303259165e3b2970ec59b69f02",
+        "commit": "6da9c8967e23cdbfd0a51eb2cf2883c1b9ce1bf8",
         "dirty": true
       },
       "status": "passed",
@@ -58,7 +58,7 @@
         "version": "0.13.3",
         "from": "local",
         "spec": "file:<working-tree>",
-        "commit": "965f6f5963289e303259165e3b2970ec59b69f02",
+        "commit": "6da9c8967e23cdbfd0a51eb2cf2883c1b9ce1bf8",
         "dirty": true
       },
       "seenByPackage": {
@@ -70,8 +70,28 @@
       "requestedThroughGateway": true
     },
     "subscriptionLogin": {
-      "status": "failed",
-      "error": "the package did not become a native route:\n[pi2dsh] image-admission companion route \"deepseek-official-vision\" registered for \"deepseek-official\"\n[pi2dsh] loaded pi2dsh-builtins: 0 tools, 1 commands, 0 skill roots\n[pi2dsh engine] preparing 1 Pi package(s): pi-provider-kimi-code\n[pi2dsh] Pi provider \"kimi-coding\" supports OAuth — log in with /login kimi-coding\n[pi2dsh] loaded pi-provider-kimi-code: 0 tools, 2 commands, 0 skill roots (host anchor)\ndsh web: http://127.0.0.1:5327\ndsh web: opening the default browser; pass --no-open to disable\n"
+      "status": "partial",
+      "engine": {
+        "version": "0.13.3",
+        "from": "local",
+        "spec": "file:<working-tree>",
+        "commit": "6da9c8967e23cdbfd0a51eb2cf2883c1b9ce1bf8",
+        "dirty": true
+      },
+      "note": "pre-login discovery and native route passed; set CODEX_AUTH_FILE to verify the post-login model picker"
+    },
+    "presentationSurfaces": {
+      "status": "passed",
+      "engine": {
+        "version": "0.13.3",
+        "from": "local",
+        "spec": "file:<working-tree>",
+        "commit": "6da9c8967e23cdbfd0a51eb2cf2883c1b9ce1bf8",
+        "dirty": true
+      },
+      "screenshots": [
+        "06-presentation-surfaces.png"
+      ]
     },
     "tuiMcp": {
       "status": "passed",
@@ -79,7 +99,7 @@
         "version": "0.13.3",
         "from": "local",
         "spec": "file:<working-tree>",
-        "commit": "965f6f5963289e303259165e3b2970ec59b69f02",
+        "commit": "6da9c8967e23cdbfd0a51eb2cf2883c1b9ce1bf8",
         "dirty": true
       },
       "profile": "dsh-tui",
@@ -112,26 +132,13 @@
         "session-restart"
       ]
     },
-    "presentationSurfaces": {
-      "status": "passed",
-      "engine": {
-        "version": "0.13.3",
-        "from": "local",
-        "spec": "file:<working-tree>",
-        "commit": "965f6f5963289e303259165e3b2970ec59b69f02",
-        "dirty": true
-      },
-      "screenshots": [
-        "06-presentation-surfaces.png"
-      ]
-    },
     "sideConversation": {
       "status": "passed",
       "engine": {
         "version": "0.13.3",
         "from": "local",
         "spec": "file:<working-tree>",
-        "commit": "965f6f5963289e303259165e3b2970ec59b69f02",
+        "commit": "6da9c8967e23cdbfd0a51eb2cf2883c1b9ce1bf8",
         "dirty": true
       },
       "screenshots": [

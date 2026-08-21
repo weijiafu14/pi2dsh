@@ -27,6 +27,7 @@
 //   node scripts/verify-tui-singlepath-e2e.mjs [community/tui-singlepath-e2e.json]
 
 import { execFile as execFileCallback, execSync } from 'node:child_process'
+import { readFileSync } from 'node:fs'
 import { chmod, mkdir, mkdtemp, readdir, readFile, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { promisify } from 'node:util'
@@ -54,14 +55,25 @@ function sh(command, options = {}) {
   return execSync(command, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], ...options })
 }
 
-/** Find a DeepSeek key: own env first, else inherit from a live process env (never printed). */
+/**
+ * Find a DeepSeek key, never printing it: own env, then the sibling DSH
+ * checkout's .env (the stable local source), then — last resort — a live
+ * process environment. The process table is inherently noisy (a parallel
+ * harness whose command line CONTAINS this very grep pattern poisons it),
+ * so that fallback only accepts a strictly key-shaped value.
+ */
 function findDeepseekKey() {
   if (process.env.DEEPSEEK_API_KEY) return process.env.DEEPSEEK_API_KEY
   try {
-    const out = sh('ps axeww 2>/dev/null | grep -o "DEEPSEEK_API_KEY=[^ ]*" | sort -u')
+    const envFile = readFileSync(resolve(projectRoot, '..', 'deepseek-harness', '.env'), 'utf8')
+    const fromFile = /^\s*(?:export\s+)?DEEPSEEK_API_KEY=["']?([A-Za-z0-9_-]{20,})["']?\s*$/mu.exec(envFile)
+    if (fromFile) return fromFile[1]
+  } catch { /* no checkout .env — try the process table */ }
+  try {
+    const out = sh('ps axeww 2>/dev/null | grep -oE "DEEPSEEK_API_KEY=sk-[A-Za-z0-9_-]{16,}" | sort -u')
     for (const line of out.split('\n')) {
-      const match = /^DEEPSEEK_API_KEY=(.+)$/u.exec(line.trim())
-      if (match && match[1].length > 10) return match[1]
+      const match = /^DEEPSEEK_API_KEY=(sk-[A-Za-z0-9_-]{16,})$/u.exec(line.trim())
+      if (match) return match[1]
     }
   } catch { /* fall through to skipped */ }
   return undefined

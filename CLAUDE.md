@@ -141,7 +141,14 @@ pi2dsh：通用 Pi Host ABI 兼容层，让 Pi 生态插件原样跑在 DeepSeek
   root 插件不可达；`agent/session-start` 官方明文"不能做启动门禁"；
   `assembly.tools` 在 assemble waterfall 之前快照，所以 gate 必须补快照。
 - 包注册 provider 的投影存在性由路由归属裁决：路由名没拿到（冲突/无
-  llm）＝不在投影里，绝不让别人路由的模型穿这份注册的 baseUrl。只声明
+  llm）＝不在投影里，绝不让别人路由的模型穿这份注册的 baseUrl。
+  **内建 OAuth 占位可被包定义升级**（2026-08-21 事故）：引擎预载的四个
+  内建登录条目只是占位（无模型无传输），包对同名 provider 的注册拥有
+  更完整定义，必须覆盖共享账本里的占位（占位若已因存量凭证建了路由要
+  拆掉重建）；包与包同名仍 first-wins。事故：064345a 为多实例防互踩加
+  的 `if (!shared.has) set` 把 kimi-coding 的 transport 定义永远挡在
+  canonical 之外——OAuth 行照打、native route 静默消失，0.13.1 直接
+  覆盖所以没这病。契约测试钉死在 tests/engine.spec.ts。只声明
   目录不带传输的包注册 provider 翻译为官方 `llm-pi-ai` profile：协议、端点、
   凭证引用、模型容量/模态/推理档位及官方开放的 compat 都进 DSH settings；桥不合成
   transport，真实请求仍由官方 adapter 发出。

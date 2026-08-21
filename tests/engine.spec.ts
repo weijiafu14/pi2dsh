@@ -359,6 +359,38 @@ describe('engine mounting on a real DSH composition', () => {
     await expect(execute(agentB)).resolves.toBe(b)
   })
 
+  it('a package registering a built-in provider id supersedes the login placeholder and becomes a native route', async () => {
+    // The engine preloads built-in OAuth directory entries (openai-codex,
+    // kimi-coding, …) so /login works before any package is installed. A
+    // package that registers the SAME provider id with a transport and a
+    // catalog owns the richer definition — the placeholder must not stay the
+    // shared canonical, or the transport silently never becomes a route (the
+    // kimi-coding regression: OAuth line logged, no native route, no models).
+    const root = await makeProfile({ 'pi-kimi-shape': '1.0.0' })
+    await installFixturePackage(root, 'pi-kimi-shape', { pi: { extensions: ['extension.ts'] } }, {
+      'extension.ts': [
+        'export default function extension(pi: any) {',
+        "  pi.registerProvider('kimi-coding', {",
+        "    baseUrl: 'https://gw.example/anthropic',",
+        "    api: 'openai-completions',",
+        '    streamSimple: async function* () { yield { type: "done" } },',
+        "    models: [{ id: 'kimi-test-1', name: 'Kimi Test', reasoning: false, input: ['text'], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, contextWindow: 8192, maxTokens: 1024 }],",
+        "    oauth: { name: 'Kimi (OAuth)', login: async () => ({ type: 'oauth' }) },",
+        '  })',
+        '}',
+      ].join('\n'),
+    })
+    const { ctx, llm } = await makeLlmContext(root)
+    await apply(ctx, {})
+    await settle()
+
+    // The package's transport definition became the live route under the
+    // built-in id, with the package's own catalog — with zero live agents.
+    expect(llm.listProviders().map(provider => provider.id)).toContain('kimi-coding')
+    const models = await llm.listModels('kimi-coding')
+    expect(models.map(model => model.id)).toContain('kimi-test-1')
+  })
+
   it('auto-registers a -vision companion for every text-only route, skipping image-capable routes (zero config)', async () => {
     const root = await makeProfile({})
     const { ctx, llm, TextAdapter } = await makeLlmContext(root)
