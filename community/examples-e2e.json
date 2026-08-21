@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pi2dshCommit": "b61bba372e382c0b351077534ff0d3319cc5d232",
+  "pi2dshCommit": "51aa6bb443f128d81a7a6e012d874d54bce8d329",
   "dshCommit": "69fff74f6f3e1f37939784885ef823477f06ace3",
   "results": {
     "alibabaTokenPlan": {
@@ -21,11 +21,9 @@
     },
     "gatewayCompat": {
       "engine": {
-        "version": "0.14.0",
-        "from": "local",
-        "spec": "file:<working-tree>",
-        "commit": "b61bba372e382c0b351077534ff0d3319cc5d232",
-        "dirty": true
+        "version": "0.14.1",
+        "from": "registry",
+        "spec": "pi2dsh@0.14.1"
       },
       "status": "passed",
       "requests": 2,
@@ -55,11 +53,9 @@
     "customGateways": {
       "status": "passed",
       "engine": {
-        "version": "0.14.0",
-        "from": "local",
-        "spec": "file:<working-tree>",
-        "commit": "b61bba372e382c0b351077534ff0d3319cc5d232",
-        "dirty": true
+        "version": "0.14.1",
+        "from": "registry",
+        "spec": "pi2dsh@0.14.1"
       },
       "seenByPackage": {
         "provider": "my-gateway",
@@ -72,35 +68,18 @@
     "subscriptionLogin": {
       "status": "partial",
       "engine": {
-        "version": "0.14.0",
-        "from": "local",
-        "spec": "file:<working-tree>",
-        "commit": "b61bba372e382c0b351077534ff0d3319cc5d232",
-        "dirty": true
+        "version": "0.14.1",
+        "from": "registry",
+        "spec": "pi2dsh@0.14.1"
       },
       "note": "pre-login discovery and native route passed; set CODEX_AUTH_FILE to verify the post-login model picker"
-    },
-    "presentationSurfaces": {
-      "status": "passed",
-      "engine": {
-        "version": "0.14.0",
-        "from": "local",
-        "spec": "file:<working-tree>",
-        "commit": "b61bba372e382c0b351077534ff0d3319cc5d232",
-        "dirty": true
-      },
-      "screenshots": [
-        "06-presentation-surfaces.png"
-      ]
     },
     "tuiMcp": {
       "status": "passed",
       "engine": {
-        "version": "0.14.0",
-        "from": "local",
-        "spec": "file:<working-tree>",
-        "commit": "b61bba372e382c0b351077534ff0d3319cc5d232",
-        "dirty": true
+        "version": "0.14.1",
+        "from": "registry",
+        "spec": "pi2dsh@0.14.1"
       },
       "profile": "dsh-tui",
       "piPackage": "pi-mcp-adapter",
@@ -132,14 +111,23 @@
         "session-restart"
       ]
     },
+    "presentationSurfaces": {
+      "status": "passed",
+      "engine": {
+        "version": "0.14.1",
+        "from": "registry",
+        "spec": "pi2dsh@0.14.1"
+      },
+      "screenshots": [
+        "06-presentation-surfaces.png"
+      ]
+    },
     "sideConversation": {
       "status": "passed",
       "engine": {
-        "version": "0.14.0",
-        "from": "local",
-        "spec": "file:<working-tree>",
-        "commit": "b61bba372e382c0b351077534ff0d3319cc5d232",
-        "dirty": true
+        "version": "0.14.1",
+        "from": "registry",
+        "spec": "pi2dsh@0.14.1"
       },
       "screenshots": [
         "01-side-conversation-main-thread-clean.png",
