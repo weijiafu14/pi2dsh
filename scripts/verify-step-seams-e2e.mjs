@@ -279,7 +279,9 @@ try {
     packageName,
     installPath: 'engine (dsh plugin add pi2dsh, then the package) — no conversion',
     dshCommit: directDshBin !== undefined
-      ? `npm:@deepseek-ai/dsh@${JSON.parse(await readFile(resolve(directDshBin, '..', '..', 'package.json'), 'utf8')).version}`
+      // The .bin entry is a symlink farm, not a path inside the package —
+      // resolve the CLI package's own manifest from the install directory.
+      ? `npm:@deepseek-ai/dsh@${JSON.parse(await readFile(resolve(dshCwd, 'node_modules', '@deepseek-ai', 'dsh', 'package.json'), 'utf8')).version}`
       : (await execFile('git', ['rev-parse', 'HEAD'], { cwd: dshRoot })).stdout.trim(),
     pi2dshCommit: (await execFile('git', ['rev-parse', 'HEAD'], { cwd: projectRoot })).stdout.trim(),
     profile: 'headless',

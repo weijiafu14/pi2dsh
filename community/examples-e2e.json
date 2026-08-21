@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pi2dshCommit": "91e5611347ca69e13487de752a46b4ce0b513302",
+  "pi2dshCommit": "4223d4981ebce60a4691fc4c38ed38e87dfce851",
   "dshCommit": "69fff74f6f3e1f37939784885ef823477f06ace3",
   "results": {
     "alibabaTokenPlan": {
@@ -21,10 +21,9 @@
     },
     "gatewayCompat": {
       "engine": {
-        "version": "0.14.1",
-        "from": "local-tarball",
-        "spec": "file:<tarball>",
-        "sha256": "a934bda9cb4306551541376ee96a1faf30ae31311c977e6a9c4a8b42df0e2715"
+        "version": "0.15.0",
+        "from": "registry",
+        "spec": "pi2dsh@0.15.0"
       },
       "status": "passed",
       "requests": 2,
@@ -51,23 +50,12 @@
         "user: Current runtime context. This snapshot supersedes earlier ru"
       ]
     },
-    "subscriptionLogin": {
-      "status": "partial",
-      "engine": {
-        "version": "0.14.1",
-        "from": "local-tarball",
-        "spec": "file:<tarball>",
-        "sha256": "a934bda9cb4306551541376ee96a1faf30ae31311c977e6a9c4a8b42df0e2715"
-      },
-      "note": "pre-login discovery and native route passed; set CODEX_AUTH_FILE to verify the post-login model picker"
-    },
     "customGateways": {
       "status": "passed",
       "engine": {
-        "version": "0.14.1",
-        "from": "local-tarball",
-        "spec": "file:<tarball>",
-        "sha256": "a934bda9cb4306551541376ee96a1faf30ae31311c977e6a9c4a8b42df0e2715"
+        "version": "0.15.0",
+        "from": "registry",
+        "spec": "pi2dsh@0.15.0"
       },
       "seenByPackage": {
         "provider": "my-gateway",
@@ -77,13 +65,21 @@
       },
       "requestedThroughGateway": true
     },
+    "subscriptionLogin": {
+      "status": "partial",
+      "engine": {
+        "version": "0.15.0",
+        "from": "registry",
+        "spec": "pi2dsh@0.15.0"
+      },
+      "note": "pre-login discovery and native route passed; set CODEX_AUTH_FILE to verify the post-login model picker"
+    },
     "presentationSurfaces": {
       "status": "passed",
       "engine": {
-        "version": "0.14.1",
-        "from": "local-tarball",
-        "spec": "file:<tarball>",
-        "sha256": "a934bda9cb4306551541376ee96a1faf30ae31311c977e6a9c4a8b42df0e2715"
+        "version": "0.15.0",
+        "from": "registry",
+        "spec": "pi2dsh@0.15.0"
       },
       "screenshots": [
         "06-presentation-surfaces.png"
@@ -92,10 +88,9 @@
     "tuiMcp": {
       "status": "passed",
       "engine": {
-        "version": "0.14.1",
-        "from": "local-tarball",
-        "spec": "file:<tarball>",
-        "sha256": "a934bda9cb4306551541376ee96a1faf30ae31311c977e6a9c4a8b42df0e2715"
+        "version": "0.15.0",
+        "from": "registry",
+        "spec": "pi2dsh@0.15.0"
       },
       "profile": "dsh-tui",
       "piPackage": "pi-mcp-adapter",
@@ -130,10 +125,9 @@
     "sideConversation": {
       "status": "passed",
       "engine": {
-        "version": "0.14.1",
-        "from": "local-tarball",
-        "spec": "file:<tarball>",
-        "sha256": "a934bda9cb4306551541376ee96a1faf30ae31311c977e6a9c4a8b42df0e2715"
+        "version": "0.15.0",
+        "from": "registry",
+        "spec": "pi2dsh@0.15.0"
       },
       "screenshots": [
         "01-side-conversation-main-thread-clean.png",
