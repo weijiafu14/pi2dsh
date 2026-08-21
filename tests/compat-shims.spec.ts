@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest'
 import {
   __createPiAiRuntimeRegistry,
   __runWithPiAiRuntime,
+  envApiKeyAuth,
   getApiProvider,
   getProvider,
+  openAICompletionsApi,
   registerApiProvider,
   registerProvider,
   streamSimpleOpenAIResponses,
@@ -127,6 +129,49 @@ describe('dependency-light Pi host shims', () => {
     // implementation `streamSimple` on the protocol subpath; the host shim
     // keeps the package-facing ABI stable.
     expect(streamSimpleOpenAIResponses).toBeTypeOf('function')
+  })
+
+  it('implements Pi envApiKeyAuth: stored key wins, then ordered env fallback', async () => {
+    const auth = envApiKeyAuth('Fixture key', ['FIRST_KEY', 'SECOND_KEY']) as {
+      login(interaction: unknown): Promise<unknown>
+      resolve(input: unknown): Promise<unknown>
+    }
+    const signal = new AbortController().signal
+    await expect(auth.login({
+      signal,
+      prompt: async (input: unknown) => {
+        expect(input).toEqual({ type: 'secret', message: 'Enter Fixture key' })
+        return 'prompted-key'
+      },
+    })).resolves.toEqual({ type: 'api_key', key: 'prompted-key' })
+
+    await expect(auth.resolve({
+      signal,
+      credential: { key: 'stored-key', env: { source: 'stored' } },
+      ctx: { env: async () => 'must-not-win' },
+    })).resolves.toEqual({
+      auth: { apiKey: 'stored-key' },
+      env: { source: 'stored' },
+      source: 'stored credential',
+    })
+
+    const reads: string[] = []
+    await expect(auth.resolve({
+      signal,
+      ctx: {
+        env: async (name: string) => {
+          reads.push(name)
+          return name === 'SECOND_KEY' ? 'environment-key' : undefined
+        },
+      },
+    })).resolves.toEqual({ auth: { apiKey: 'environment-key' }, source: 'SECOND_KEY' })
+    expect(reads).toEqual(['FIRST_KEY', 'SECOND_KEY'])
+  })
+
+  it('hands Provider packages Pi\'s real lazy protocol transport factory', () => {
+    const api = openAICompletionsApi()
+    expect(api.stream).toBeTypeOf('function')
+    expect(api.streamSimple).toBeTypeOf('function')
   })
 
   it('isolates Pi compat and API-provider registries between Agent runtimes', () => {

@@ -9,7 +9,7 @@ import { EventEmitter } from 'node:events'
 import { AsyncLocalStorage } from 'node:async_hooks'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
-import { dirname, join } from 'node:path'
+import { join } from 'node:path'
 import { createJiti } from 'jiti'
 import type { Context } from '@deepseek-ai/cordis'
 import { createUserMessage, type ContentBlock } from '@deepseek-ai/dsh-llm'
@@ -2381,6 +2381,8 @@ const COMPANION_ROUTE_PREFIX = 'pi2dsh-companion/'
 interface SharedHostState {
   companionRoutes: Map<string, string>
   providerRouteDisposers: Map<string, PiRouteHandle>
+  /** Coalesced dynamic-catalog refreshes, shared by startup and first use. */
+  providerModelDiscoveries: Map<string, Promise<number | undefined>>
   /** Agent-runtime owners for each host-global provider route. */
   providerRouteOwners: Map<string, Set<RuntimeState>>
   /** Per-session Pi runtimes, in package mount order, for provider waterfalls. */
@@ -2432,6 +2434,7 @@ function sharedHostStateOf(ctx: Context): SharedHostState {
     shared = {
       companionRoutes: new Map(),
       providerRouteDisposers: new Map(),
+      providerModelDiscoveries: new Map(),
       providerRouteOwners: new Map(),
       runtimeStatesBySession: new Map(),
       publishedOAuthKeys: new Map(),
@@ -2845,36 +2848,47 @@ async function discoverProviderModels(
 ): Promise<number | undefined> {
   const refreshModels = (value as { refreshModels?: unknown }).refreshModels
   if (typeof refreshModels !== 'function') return undefined
+  const existing = state.shared.providerModelDiscoveries.get(name)
+  if (existing !== undefined) return await existing
+  const task = (async (): Promise<number | undefined> => {
+    try {
+      const resolved = await resolvePiProviderAuth({
+        providerId: name, providerConfig: value, store: oauthStoreOf(state),
+      }).catch(() => undefined)
+      const apiKey = (resolved?.auth as UnknownRecord | undefined)?.apiKey
+      await Promise.resolve(refreshModels.call(value, {
+        stored: undefined,
+        ...(apiKey === undefined ? {} : { credential: { type: 'api_key', key: apiKey } }),
+        store: {
+          read: async () => undefined,
+          write: async () => {},
+          delete: async () => {},
+        },
+        allowNetwork: true,
+        signal: new AbortController().signal,
+        publish: async (publication: { update?: () => void }) => {
+          publication.update?.()
+          return true
+        },
+      }))
+    } catch (error) {
+      logger(ctx).warn(`[pi2dsh] model catalog refresh for Pi provider ${JSON.stringify(name)} failed (its registry entries stay static): ${error instanceof Error ? error.message : String(error)}`)
+      return undefined
+    }
+    // The Pi-side projection, then the DSH-side announcement. Refreshing only
+    // the first is what left a post-login model list invisible until a restart:
+    // the entries existed, and no directory observer had been told to look.
+    void state.modelCatalog?.refresh()
+    state.providerRouteDisposers.get(name)?.reannounce?.()
+    return await llmOf(ctx)?.listModels(name).then(models => models.length).catch(() => undefined)
+  })()
+  state.shared.providerModelDiscoveries.set(name, task)
   try {
-    const resolved = await resolvePiProviderAuth({
-      providerId: name, providerConfig: value, store: oauthStoreOf(state),
-    }).catch(() => undefined)
-    const apiKey = (resolved?.auth as UnknownRecord | undefined)?.apiKey
-    await Promise.resolve(refreshModels.call(value, {
-      stored: undefined,
-      ...(apiKey === undefined ? {} : { credential: { type: 'api_key', key: apiKey } }),
-      store: {
-        read: async () => undefined,
-        write: async () => {},
-        delete: async () => {},
-      },
-      allowNetwork: true,
-      signal: new AbortController().signal,
-      publish: async (publication: { update?: () => void }) => {
-        publication.update?.()
-        return true
-      },
-    }))
-  } catch (error) {
-    logger(ctx).warn(`[pi2dsh] model catalog refresh for Pi provider ${JSON.stringify(name)} failed (its registry entries stay static): ${error instanceof Error ? error.message : String(error)}`)
-    return undefined
+    return await task
+  } finally {
+    if (state.shared.providerModelDiscoveries.get(name) === task)
+      state.shared.providerModelDiscoveries.delete(name)
   }
-  // The Pi-side projection, then the DSH-side announcement. Refreshing only
-  // the first is what left a post-login model list invisible until a restart:
-  // the entries existed, and no directory observer had been told to look.
-  void state.modelCatalog?.refresh()
-  state.providerRouteDisposers.get(name)?.reannounce?.()
-  return await llmOf(ctx)?.listModels(name).then(models => models.length).catch(() => undefined)
 }
 
 function registerLoginCommand(ctx: Context, state: RuntimeState): void {
@@ -3593,6 +3607,7 @@ function registerSharedProviderRoute(
         providerConfig: canonical,
         store: oauthStoreOf(state),
       }) as Promise<{ auth?: UnknownRecord } | undefined>,
+      ensureModel: async () => { await discoverProviderModels(ctx, state, name, canonical) },
       warn: message => logger(ctx).warn(message),
       beforeProviderRequest: (payload, request) => dispatchHostProviderRequest(
         ctx,
@@ -3906,17 +3921,10 @@ async function loadExtensions(
     resolveShim('pi-ai'),
   ])
   const aliases: Record<string, string> = {}
+  const require = createRequire(import.meta.url)
   for (const family of ['@earendil-works', '@mariozechner']) {
     aliases[`${family}/pi-coding-agent`] = codingAgentShim
     aliases[`${family}/pi-tui`] = tuiShim
-    aliases[`${family}/pi-ai`] = aiShim
-    // Pi resolves subpath entries of pi-ai (compat superset, oauth, provider
-    // catalogs) for extensions; all of them land on the same shim surface.
-    aliases[`${family}/pi-ai/compat`] = aiShim
-    aliases[`${family}/pi-ai/oauth`] = aiShim
-    aliases[`${family}/pi-ai/providers/all`] = aiShim
-    aliases[`${family}/pi-ai/bedrock-provider`] = aiShim
-    aliases[`${family}/pi-ai/bun-oauth`] = aiShim
     // Pi publishes `./api/*` too, and a gateway package reaches for the entry
     // that matches its protocol. Every one of them lands on the same shim.
     for (const api of [
@@ -3924,8 +3932,31 @@ async function loadExtensions(
       'azure-openai-responses', 'google-generative-ai', 'google-vertex',
       'mistral-conversations', 'bedrock-converse-stream', 'pi-messages',
     ]) {
+      // The shim itself re-exports Pi's real lazy transport factories. Resolve
+      // those PUBLIC package subpaths exactly; otherwise
+      // Jiti's prefix alias rewrites e.g. `pi-ai/api/foo.lazy` underneath the
+      // shim path (`pi-ai.ts/api/foo.lazy`) when tests load the TypeScript
+      // fallback before a dist build exists.
+      try {
+        aliases[`${family}/pi-ai/api/${api}.lazy`] = fileURLToPath(
+          import.meta.resolve(`@earendil-works/pi-ai/api/${api}.lazy`),
+        )
+      } catch {
+        // The ordinary shim alias below preserves a useful missing-package
+        // failure if the bridge's declared dependency is unavailable.
+      }
       aliases[`${family}/pi-ai/api/${api}`] = aiShim
     }
+    // Pi resolves subpath entries of pi-ai (compat superset, oauth, provider
+    // catalogs) for extensions; all of them land on the same shim surface.
+    // Keep the broad package alias last: Jiti applies prefix aliases in
+    // insertion order, so it must not swallow the real `.lazy` subpaths above.
+    aliases[`${family}/pi-ai/compat`] = aiShim
+    aliases[`${family}/pi-ai/oauth`] = aiShim
+    aliases[`${family}/pi-ai/providers/all`] = aiShim
+    aliases[`${family}/pi-ai/bedrock-provider`] = aiShim
+    aliases[`${family}/pi-ai/bun-oauth`] = aiShim
+    aliases[`${family}/pi-ai`] = aiShim
   }
   // Pi's loader hands extensions the host's typebox without a declaration;
   // mirror that by resolving every typebox entry the whitelist names to the
@@ -3933,7 +3964,6 @@ async function loadExtensions(
   // typebox restricts its exports map (no ./package.json), so resolve each
   // public entry directly; resolution anchors at this runtime file, which in a
   // generated bundle sits next to the bundle's own node_modules.
-  const require = createRequire(import.meta.url)
   for (const entry of ['typebox', 'typebox/value', 'typebox/compile']) {
     try {
       const resolved = require.resolve(entry)

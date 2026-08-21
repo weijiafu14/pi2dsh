@@ -134,6 +134,50 @@ describe('Pi provider as a DSH llm route', () => {
     expect(llm.listProviders().map(entry => entry.id)).not.toContain('pifix')
   })
 
+  it('waits for dynamic discovery when first use names a model absent at startup', async () => {
+    const ctx = new Context()
+    await ctx.plugin(LlmRuntime as never, {} as never)
+    const llm = (ctx as unknown as { llm: { stream(o: UnknownRecord): AsyncIterable<UnknownRecord> } }).llm
+    const models: UnknownRecord[] = []
+    const seen: UnknownRecord[] = []
+    let discoveries = 0
+    const provider = {
+      id: 'dynamic',
+      getModels: () => models,
+      async *streamSimple(model: UnknownRecord): AsyncIterable<UnknownRecord> {
+        seen.push(model)
+        yield { type: 'start', partial: {} }
+        yield { type: 'done', reason: 'stop', message: { role: 'assistant', content: [] } }
+      },
+    }
+    registerPiProviderRoute({
+      llm: llm as never,
+      providerId: 'dynamic',
+      provider,
+      host: {
+        resolveAuth: async () => ({ auth: {} }),
+        ensureModel: async id => {
+          discoveries += 1
+          models.push({ id, provider: 'dynamic', api: 'openai-completions', baseUrl: 'https://dynamic.example/v1' })
+        },
+        warn: () => {},
+      },
+    })
+
+    for await (const _chunk of llm.stream({
+      provider: 'dynamic',
+      model: 'late-model',
+      messages: [{ role: 'user', content: [{ type: 'text', text: 'hi' }] }],
+    })) { /* drain */ }
+
+    expect(discoveries).toBe(1)
+    expect(seen).toEqual([expect.objectContaining({
+      id: 'late-model',
+      api: 'openai-completions',
+      baseUrl: 'https://dynamic.example/v1',
+    })])
+  })
+
   it('hands a package-owned transport the real pre-fetch payload waterfall', async () => {
     const ctx = new Context()
     await ctx.plugin(LlmRuntime as never, {} as never)

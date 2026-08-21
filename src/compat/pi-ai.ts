@@ -31,6 +31,42 @@ export type ModelThinkingLevel = 'off' | ThinkingLevel
 export type ThinkingLevelMap = Partial<Record<ModelThinkingLevel, string | null>>
 export type Api = string
 
+/** Pi's standard stored-key → ordered environment fallback auth helper. */
+export function envApiKeyAuth(name: string, envVars: readonly string[]): UnknownRecord {
+  return {
+    name,
+    login: async (interaction: {
+      signal: AbortSignal
+      prompt(input: { type: 'secret', message: string }): Promise<string>
+    }) => {
+      interaction.signal.throwIfAborted()
+      const key = await interaction.prompt({ type: 'secret', message: `Enter ${name}` })
+      interaction.signal.throwIfAborted()
+      return { type: 'api_key', key }
+    },
+    resolve: async ({
+      ctx,
+      credential,
+      signal,
+    }: {
+      ctx: { env(name: string): Promise<string | undefined> }
+      credential?: { key?: string, env?: Record<string, string> }
+      signal: AbortSignal
+    }) => {
+      signal.throwIfAborted()
+      if (credential?.key) {
+        return { auth: { apiKey: credential.key }, env: credential.env, source: 'stored credential' }
+      }
+      for (const envVar of envVars) {
+        const value = await ctx.env(envVar)
+        signal.throwIfAborted()
+        if (value) return { auth: { apiKey: value }, source: envVar }
+      }
+      return undefined
+    },
+  }
+}
+
 export interface Model<TApi extends Api = Api> {
   id: string
   name?: string
@@ -326,28 +362,23 @@ export function stream(model: UnknownRecord, context: UnknownRecord, options?: U
  * fails to mount, which reads as "the plugin is broken" rather than "the bridge
  * is missing an export".
  *
- * The provider each returns is not a wire client: its stream is the same DSH
- * llm route `complete()` and `stream()` already run on, so every model call in
- * this process keeps going through the one directory and the one path. Without
- * a mounted llm service it fails loud rather than reaching a provider SDK.
- * @param api - the protocol id this factory serves.
- * @returns a provider carrying that protocol's id and the routed stream.
+ * These factories are different from top-level `complete()` / `stream()`:
+ * calling a factory is how a Provider package deliberately takes ownership of
+ * a wire transport before registering the finished Provider with its host.
+ * Returning a DSH-routed placeholder here makes that Provider recurse back
+ * into the route currently invoking it. Re-export Pi's real lazy factories;
+ * pi2dsh then wraps the package-owned Provider as one native DSH adapter.
  */
-function routedApi(api: string): { api: string, stream: PiAiLlmBridge, streamSimple: PiAiLlmBridge } {
-  const routed: PiAiLlmBridge = (model, context, options) => requireLlmBridge(api)(model, context, options)
-  return { api, stream: routed, streamSimple: routed }
-}
-
-export const anthropicMessagesApi = (): ReturnType<typeof routedApi> => routedApi('anthropic-messages')
-export const openAICompletionsApi = (): ReturnType<typeof routedApi> => routedApi('openai-completions')
-export const openAIResponsesApi = (): ReturnType<typeof routedApi> => routedApi('openai-responses')
-export const openAICodexResponsesApi = (): ReturnType<typeof routedApi> => routedApi('openai-codex-responses')
-export const azureOpenAIResponsesApi = (): ReturnType<typeof routedApi> => routedApi('azure-openai-responses')
-export const googleGenerativeAIApi = (): ReturnType<typeof routedApi> => routedApi('google-generative-ai')
-export const googleVertexApi = (): ReturnType<typeof routedApi> => routedApi('google-vertex')
-export const mistralConversationsApi = (): ReturnType<typeof routedApi> => routedApi('mistral-conversations')
-export const bedrockConverseStreamApi = (): ReturnType<typeof routedApi> => routedApi('bedrock-converse-stream')
-export const piMessagesApi = (): ReturnType<typeof routedApi> => routedApi('pi-messages')
+export { anthropicMessagesApi } from '@earendil-works/pi-ai/api/anthropic-messages.lazy'
+export { openAICompletionsApi } from '@earendil-works/pi-ai/api/openai-completions.lazy'
+export { openAIResponsesApi } from '@earendil-works/pi-ai/api/openai-responses.lazy'
+export { openAICodexResponsesApi } from '@earendil-works/pi-ai/api/openai-codex-responses.lazy'
+export { azureOpenAIResponsesApi } from '@earendil-works/pi-ai/api/azure-openai-responses.lazy'
+export { googleGenerativeAIApi } from '@earendil-works/pi-ai/api/google-generative-ai.lazy'
+export { googleVertexApi } from '@earendil-works/pi-ai/api/google-vertex.lazy'
+export { mistralConversationsApi } from '@earendil-works/pi-ai/api/mistral-conversations.lazy'
+export { bedrockConverseStreamApi } from '@earendil-works/pi-ai/api/bedrock-converse-stream.lazy'
+export { piMessagesApi } from '@earendil-works/pi-ai/api/pi-messages.lazy'
 
 export interface StringEnumOptions<T extends readonly string[]> {
   description?: string

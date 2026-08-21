@@ -33,6 +33,8 @@ interface PiTransportProvider {
 export interface ProviderAdapterHost {
   /** Pi's full credential chain for this provider (stored OAuth → stored key → ambient env). */
   resolveAuth(): Promise<{ auth?: UnknownRecord } | undefined>
+  /** Wait for an on-demand dynamic catalog refresh when first use names an unseen model. */
+  ensureModel?(modelId: string): Promise<void>
   warn(message: string): void
   /**
    * Pi's payload waterfall for a PACKAGE-OWNED transport. DSH-native adapters
@@ -193,8 +195,12 @@ export function piProviderDshAdapter(providerId: string, provider: PiTransportPr
       const modelId = String(options.model ?? '')
       // The provider's own model entry keeps its api/thinking metadata; an
       // unlisted id passes through as pi-ai's advisory-catalog contract allows.
-      const model = providerModels(provider).find(entry => entry.id === modelId)
-        ?? { id: modelId, provider: providerId }
+      let model = providerModels(provider).find(entry => entry.id === modelId)
+      if (model === undefined && host.ensureModel !== undefined) {
+        await host.ensureModel(modelId)
+        model = providerModels(provider).find(entry => entry.id === modelId)
+      }
+      model ??= { id: modelId, provider: providerId }
       // Images are read through the attachment service, exactly as DSH's own
       // pi-ai adapter reads them — and refused under DSH's own code when they
       // cannot be. Dropping them silently (what this bridge did) sends the
