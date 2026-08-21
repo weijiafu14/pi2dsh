@@ -171,7 +171,13 @@ interface RuntimeState {
   pendingSessionStarts: Map<UnknownRecord, string>
   currentSystemPrompt: string
   messageSource: string
+  /** Pi's cross-extension bus: shared by every package instance of one agent
+   * (host/anchor instances share the host bus), matching Pi's one-bus-per-
+   * session contract. NEVER removeAllListeners on it — that would strip the
+   * other packages' subscriptions; unwind through eventBusOffs instead. */
   eventBus: EventEmitter
+  /** This instance's own bus subscriptions, for scoped unwind on dispose/reload. */
+  eventBusOffs: Array<() => void>
   agentScope: AsyncLocalStorage<UnknownRecord | undefined>
   /** Per-Agent bridge used by Pi's designated-model calls. */
   llmBridge: PiAiLlmBridge | undefined
@@ -1962,7 +1968,8 @@ function subscribeLifecycle(ctx: Context, state: RuntimeState): void {
     for (const dispose of state.toolDisposers.values()) dispose()
     state.toolDisposers.clear()
     for (const provider of [...state.ownedProviderRoutes]) releaseSharedProviderRoute(state, provider)
-    state.eventBus.removeAllListeners()
+    // The bus is agent-shared: unwind only this instance's subscriptions.
+    for (const off of state.eventBusOffs.splice(0)) off()
   }, 'pi2dsh session shutdown')
 }
 
@@ -2472,7 +2479,27 @@ interface SharedHostState {
   /** Per-session Pi runtimes, in package mount order, for provider waterfalls. */
   runtimeStatesBySession: Map<string, Set<RuntimeState>>
   publishedOAuthKeys: Map<string, string>
+  /** Composed canonical provider configs — the ONLY read surface. Maintained
+   * exclusively by recomposeSharedProvider from the layered ledger below. */
   providers: Map<string, UnknownRecord>
+  /** Base layer: the engine's built-in OAuth directory entries (Pi's
+   * `builtins` map). Survives any package overlay; restored on unregister. */
+  providerBuiltins?: Map<string, UnknownRecord>
+  /** Extension layer, one slot per package so a package's per-agent instances
+   * re-registering the same content stay idempotent instead of perturbing
+   * cross-package overlay order. Slot content follows Pi's re-registration
+   * contract: defined values merge over the previous registration. */
+  providerPackages?: Map<string, Map<string, UnknownRecord>>
+  /** Package overlay order = first-registration order, mirroring Pi where
+   * "last registration wins" is load order (per-session rebuilds keep it stable). */
+  providerPackageOrder?: string[]
+  /** Pi's cross-extension event bus is ONE bus per session; ours is one per
+   * agent (host/anchor instances share the host bus). */
+  agentEventBuses?: WeakMap<object, EventEmitter>
+  hostEventBus?: EventEmitter
+  /** Pi's theme is session-shared UI state, not per-extension. */
+  agentThemes?: WeakMap<object, Theme>
+  hostTheme?: Theme
   modelCatalog?: ModelCatalog
   catalogSubscribed?: boolean
   loginRegistered?: WeakSet<object>
@@ -2512,15 +2539,134 @@ interface ActiveLogin {
 const SHARED_HOST_STATE = new WeakMap<object, SharedHostState>()
 
 /**
- * The engine's own built-in OAuth directory entries, by object identity.
- * They are login placeholders (no models, no transport), preloaded so
- * `/login <provider>` works before any package is installed — and a package
- * registering the SAME provider id owns the richer definition (transport,
- * catalog, its own flow) and must supersede the placeholder in the shared
- * ledger. Two PACKAGES colliding on one id still keep first-wins, matching
- * the route-ownership rule.
+ * Pi's provider ledger is layered, not flat (model-runtime.ts:742-786 at the
+ * pinned upstream): a builtin base map, an extension overlay where defined
+ * fields merge over the base (undefined fields expose the base — a package
+ * overriding only baseUrl keeps the builtin OAuth flow), later registrations
+ * overriding earlier ones, and unregistration restoring the builtin. These
+ * helpers vendor that contract for the shared host ledger. One deliberate
+ * adaptation: the overlay is slotted per PACKAGE and folded in package
+ * first-registration order, because in Pi "last wins" is load order (each
+ * session rebuilds the runtime so registration order is always load order),
+ * while our host ledger accumulates across sessions — folding raw arrival
+ * order would let a later agent's re-registration of package A overturn
+ * package B for no Pi-semantic reason.
  */
-const BUILTIN_PROVIDER_SEEDS = new WeakSet<object>()
+export function mergeProviderRegistration(previous: UnknownRecord | undefined, config: UnknownRecord): UnknownRecord {
+  const effective: UnknownRecord = { ...previous }
+  for (const [key, value] of Object.entries(config)) {
+    if (value !== undefined) effective[key] = value
+  }
+  return effective
+}
+
+export function overlayProviderConfig(base: UnknownRecord | undefined, overlay: UnknownRecord): UnknownRecord {
+  const merged: UnknownRecord = { ...base }
+  for (const [key, value] of Object.entries(overlay)) {
+    if (value !== undefined) merged[key] = value
+  }
+  // Pi's applyExtension: an overlay WITHOUT its own model list keeps the base
+  // models, rebased onto the overlay's gateway when one is given; an overlay
+  // WITH a model list replaces the base list outright (handled by the field
+  // copy above).
+  const baseModels = base?.models
+  if (overlay.models === undefined && typeof overlay.baseUrl === 'string' && Array.isArray(baseModels)) {
+    merged.models = baseModels.map(entry => (
+      typeof entry === 'object' && entry !== null ? { ...entry as UnknownRecord, baseUrl: overlay.baseUrl } : entry
+    ))
+  }
+  return merged
+}
+
+/** Structural fingerprint used to decide whether a recomposition actually
+ * changed the canonical shape. Function identities differ on every factory
+ * run (each agent instance registers fresh closures), so functions compare
+ * by presence — behaviourally equivalent re-registrations keep the existing
+ * canonical reference and the route built on it, exactly like today. */
+function providerFingerprint(config: UnknownRecord | undefined): string {
+  if (config === undefined) return 'absent'
+  return JSON.stringify(config, (_key, value: unknown) => (typeof value === 'function' ? '[function]' : value))
+}
+
+function recordPackageProviderRegistration(shared: SharedHostState, packageName: string, name: string, value: UnknownRecord): void {
+  shared.providerPackages ??= new Map()
+  shared.providerPackageOrder ??= []
+  if (!shared.providerPackageOrder.includes(packageName)) shared.providerPackageOrder.push(packageName)
+  let slots = shared.providerPackages.get(name)
+  if (slots === undefined) {
+    slots = new Map()
+    shared.providerPackages.set(name, slots)
+  }
+  slots.set(packageName, mergeProviderRegistration(slots.get(packageName), value))
+}
+
+/** Rebuild the canonical entry for one provider id from builtin + package
+ * slots. Returns whether the composed shape changed (callers retire the
+ * route on change so it is rebuilt from the new canonical). */
+function recomposeSharedProvider(shared: SharedHostState, name: string): boolean {
+  const builtin = shared.providerBuiltins?.get(name)
+  const slots = shared.providerPackages?.get(name)
+  let canonical: UnknownRecord | undefined
+  if (slots === undefined || slots.size === 0) {
+    // No overlays: expose the builtin untouched so its auth/login behavior is
+    // exact (Pi recomposeProvider takes the same shortcut).
+    canonical = builtin
+  } else {
+    canonical = { ...(builtin ?? {}) }
+    for (const packageName of shared.providerPackageOrder ?? []) {
+      const registration = slots.get(packageName)
+      if (registration !== undefined) canonical = overlayProviderConfig(canonical, registration)
+    }
+  }
+  const previous = shared.providers.get(name)
+  const changed = providerFingerprint(previous) !== providerFingerprint(canonical)
+  if (!changed) return false
+  if (canonical === undefined) shared.providers.delete(name)
+  else shared.providers.set(name, canonical)
+  return true
+}
+
+/** Force-retire a provider's route regardless of refcounts: the canonical
+ * definition changed, so a route built on the old shape must not serve it. */
+function retireSharedProviderRoute(shared: SharedHostState, name: string): void {
+  const route = shared.providerRouteDisposers.get(name)
+  if (route === undefined) return
+  shared.providerRouteDisposers.delete(name)
+  shared.providerRouteOwners.delete(name)
+  route()
+}
+
+function sharedEventBusFor(shared: SharedHostState, ownerAgent: UnknownRecord | undefined): EventEmitter {
+  if (ownerAgent === undefined) {
+    if (shared.hostEventBus === undefined) {
+      shared.hostEventBus = new EventEmitter()
+      shared.hostEventBus.setMaxListeners(0)
+    }
+    return shared.hostEventBus
+  }
+  shared.agentEventBuses ??= new WeakMap()
+  let bus = shared.agentEventBuses.get(ownerAgent)
+  if (bus === undefined) {
+    bus = new EventEmitter()
+    bus.setMaxListeners(0)
+    shared.agentEventBuses.set(ownerAgent, bus)
+  }
+  return bus
+}
+
+function sharedThemeFor(shared: SharedHostState, ownerAgent: UnknownRecord | undefined): Theme {
+  if (ownerAgent === undefined) {
+    shared.hostTheme ??= new Theme()
+    return shared.hostTheme
+  }
+  shared.agentThemes ??= new WeakMap()
+  let theme = shared.agentThemes.get(ownerAgent)
+  if (theme === undefined) {
+    theme = new Theme()
+    shared.agentThemes.set(ownerAgent, theme)
+  }
+  return theme
+}
 
 function sharedHostStateOf(ctx: Context): SharedHostState {
   const key = ((ctx as unknown as { root?: object }).root ?? ctx) as object
@@ -3706,8 +3852,11 @@ function registerSharedProviderRoute(
     return existing
   }
 
+  // The canonical composed config is maintained by recomposeSharedProvider;
+  // the fallback only covers host paths (stored-login placeholder routes)
+  // that reach here before any composition happened for this id.
   const canonical = shared.providers.get(name) ?? value
-  shared.providers.set(name, canonical)
+  if (!shared.providers.has(name)) shared.providers.set(name, canonical)
   const route = registerPiProviderRoute({
     llm: llmOf(ctx) as never,
     ctx: ctx as never,
@@ -3775,28 +3924,20 @@ function createPiApi(ctx: Context, state: RuntimeState): UnknownRecord {
           ?? (providerOrName as UnknownRecord | undefined)?.name ?? 'unnamed')
       const value = typeof providerOrName === 'string' ? config ?? {} : providerOrName as UnknownRecord
       state.providers.set(name, value)
-      const sharedExisting = state.shared.providers.get(name)
-      if (sharedExisting === undefined || BUILTIN_PROVIDER_SEEDS.has(sharedExisting)) {
-        // First package registration, or a package superseding the engine's
-        // built-in login placeholder for the same provider id: the package
-        // owns the complete definition (transport, catalog, its own OAuth
-        // flow). Leaving the placeholder as the shared canonical is what
-        // silently demoted a transport-owning provider to "OAuth-only, no
-        // route" (kimi-coding). Package-vs-package collisions keep first-wins.
-        state.shared.providers.set(name, value)
-        if (sharedExisting !== undefined) {
-          // The placeholder may already carry a route from a stored login
-          // (ensureLoggedInProviderRoute). Retire it so the registration
-          // below rebuilds the route from the package's definition.
-          const stale = state.shared.providerRouteDisposers.get(name)
-          if (stale !== undefined) {
-            state.shared.providerRouteDisposers.delete(name)
-            state.shared.providerRouteOwners.delete(name)
-            stale()
-          }
-        }
+      // Pi's layered ledger: this registration merges into the package's slot
+      // (defined fields over the previous registration), the canonical is
+      // recomposed as builtin base + package overlays in load order, and a
+      // changed shape retires the existing route so it is rebuilt from the
+      // new canonical — partial overlays keep the builtin OAuth base instead
+      // of discarding it, later packages override earlier ones, and an
+      // idempotent re-registration from another agent's instance changes
+      // nothing (same fingerprint keeps the existing canonical and route).
+      recordPackageProviderRegistration(state.shared, state.packageName, name, value)
+      if (recomposeSharedProvider(state.shared, name)) {
+        retireSharedProviderRoute(state.shared, name)
       }
-      if (providerSupportsOAuth(value)) {
+      const canonical = state.shared.providers.get(name) ?? value
+      if (providerSupportsOAuth(canonical)) {
         // Pi hosts expose /login <provider> for oauth-capable providers; the
         // package's own login flow runs, credentials land in auth.json.
         ensureLoginCommand(ctx, state)
@@ -3805,7 +3946,7 @@ function createPiApi(ctx: Context, state: RuntimeState): UnknownRecord {
       // A provider carrying its own transport becomes a REAL DSH llm route:
       // the loop and child agents route to it natively, with credentials
       // resolved through Pi's own chain per request.
-      const routeDisposer = registerSharedProviderRoute(ctx, state, name, value)
+      const routeDisposer = registerSharedProviderRoute(ctx, state, name, canonical)
       if (routeDisposer !== undefined) {
         void state.modelCatalog?.refresh()
         // Only the transport-carrying path is registered by the time this
@@ -3814,19 +3955,34 @@ function createPiApi(ctx: Context, state: RuntimeState): UnknownRecord {
         // here claimed a route that could still fail a moment later — which is
         // exactly what a fake credential produced: "registered as a native DSH
         // llm route" immediately followed by "could not be served".
-        if (providerCarriesTransport(value)) {
+        if (providerCarriesTransport(canonical)) {
           logger(ctx).info(`[pi2dsh] Pi provider ${JSON.stringify(name)} registered as a native DSH llm route`)
         }
-      } else if (!providerSupportsOAuth(value)) {
+      } else if (!providerSupportsOAuth(canonical)) {
         logger(ctx).info(`[pi2dsh] recorded Pi provider ${JSON.stringify(name)}; model calls stay on DSH llm adapters`)
       }
       // Pi hosts refresh a registered provider's dynamic model catalog
       // (fetchModels against its gateway); best-effort and non-blocking.
-      void discoverProviderModels(ctx, state, name, value)
+      void discoverProviderModels(ctx, state, name, canonical)
     },
     unregisterProvider(name: string) {
       state.providers.delete(name)
       releaseSharedProviderRoute(state, name)
+      // Pi's unregisterProvider deletes the extension layer and recomposes so
+      // the builtin base is restored. Adapted to the slotted ledger: this
+      // package's slot is removed (other packages' overlays survive — in Pi
+      // every unregister nukes the whole extension entry, but that contract
+      // exists only inside one short-lived session runtime; on a long-lived
+      // host it would let one package erase another's registration).
+      const slots = state.shared.providerPackages?.get(name)
+      if (slots?.delete(state.packageName) === true && recomposeSharedProvider(state.shared, name)) {
+        retireSharedProviderRoute(state.shared, name)
+        // Pi's recompose updates the directory entry in place; our route is an
+        // explicit registration, so the restored composition (builtin base or
+        // the remaining packages' overlays) must be re-published.
+        const restored = state.shared.providers.get(name)
+        if (restored !== undefined) registerSharedProviderRoute(ctx, state, name, restored)
+      }
     },
     // Renderer registrations are accepted verbatim; DSH owns presentation, so
     // they are never invoked — matching Pi's own non-TUI surfaces.
@@ -3949,7 +4105,9 @@ function createPiApi(ctx: Context, state: RuntimeState): UnknownRecord {
           Promise.resolve(handler(data)).catch(error => logger(ctx).warn(`[pi2dsh] package event ${channel} handler failed: ${String(error)}`))
         }
         state.eventBus.on(channel, safeHandler)
-        return () => state.eventBus.off(channel, safeHandler)
+        const off = (): void => { state.eventBus.off(channel, safeHandler) }
+        state.eventBusOffs.push(off)
+        return off
       },
     },
   }
@@ -4193,13 +4351,14 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
     pendingSessionStarts: new Map(),
     currentSystemPrompt: '',
     messageSource: `pi2dsh:${options.manifest.package.name}`,
-    eventBus: new EventEmitter(),
+    eventBus: sharedEventBusFor(shared, ownerAgent),
+    eventBusOffs: [],
     agentScope: new AsyncLocalStorage(),
     llmBridge: undefined,
     piAiRegistry: __createPiAiRuntimeRegistry(),
     subagentSessionFactory: undefined,
     bridge: new PiSessionBridge(),
-    theme: new Theme(),
+    theme: sharedThemeFor(shared, ownerAgent),
     shortcuts: new Map(),
     messageRenderers: new Map(),
     entryRenderers: new Map(),
@@ -4241,14 +4400,19 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
   subscribeInterceptors(ctx, state)
   // Pi hosts ship their built-in OAuth providers ready to log in; preload the
   // four vendored official flows so `/login openai-codex` (etc.) works out of
-  // the box, before any package registers its own providers. Each entry is
-  // remembered as a SEED: a placeholder a package's own registration of the
-  // same provider id must be allowed to supersede (see registerProvider).
+  // the box, before any package registers its own providers. They form the
+  // BUILTIN BASE LAYER of the layered ledger: a package registering the same
+  // provider id overlays it field-wise (its defined fields win, undefined
+  // fields keep the builtin — so a partial registration inherits the builtin
+  // OAuth flow), and unregistering the overlay restores the builtin.
+  shared.providerBuiltins ??= new Map()
   for (const provider of builtinProviders()) {
     const config = { name: provider.name, baseUrl: provider.baseUrl, oauth: provider.auth.oauth }
-    BUILTIN_PROVIDER_SEEDS.add(config)
     state.providers.set(provider.id, config)
-    if (!shared.providers.has(provider.id)) shared.providers.set(provider.id, config)
+    if (!shared.providerBuiltins.has(provider.id)) {
+      shared.providerBuiltins.set(provider.id, config)
+      recomposeSharedProvider(shared, provider.id)
+    }
   }
   ensureLoginCommand(ctx, state)
   // A credential stored by an EARLIER session must still produce a route:
@@ -4479,7 +4643,8 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
     // reload would double the subscriptions.
     state.extensionsReady = false
     state.handlers.clear()
-    state.eventBus.removeAllListeners()
+    // The bus is agent-shared: unwind only this instance's subscriptions.
+    for (const off of state.eventBusOffs.splice(0)) off()
     try {
       await registerPromptCommands(ctx, state, rootDir, options.manifest)
       await mountExtensions()

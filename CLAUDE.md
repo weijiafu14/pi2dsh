@@ -152,6 +152,16 @@ pi2dsh：通用 Pi Host ABI 兼容层，让 Pi 生态插件原样跑在 DeepSeek
   目录不带传输的包注册 provider 翻译为官方 `llm-pi-ai` profile：协议、端点、
   凭证引用、模型容量/模态/推理档位及官方开放的 compat 都进 DSH settings；桥不合成
   transport，真实请求仍由官方 adapter 发出。
+- **全局/会话归属按 Pi 三层生命周期语义模型判定（2026-08-22）**：理论
+  权威在 [docs/architecture-mapping-matrix.md](docs/architecture-mapping-matrix.md)
+  的"生命周期语义模型"章节，本文件只留操作判据、不复写理论。判据：
+  Pi 磁盘持久 → host 存储/官方服务；Pi 会话共享（事件总线、theme 等）→
+  **agent 级共享，不是包私有**；Pi 扩展私有 → 包×会话实例；宿主消费的
+  注册面只有 provider 一族，沉淀进 host 账本、随插件卸载而非会话结束
+  退场。**禁止磁盘影子清单**（持久化上次运行的注册回放＝第二份权威
+  store，插件更新后必然过期）。零会话时刻的世界形状**已拍板
+  （2026-08-22）：锚路线**，裁决理由与备选路线的代价清单在同一章节；
+  除非宿主产品形态变成"打开即进工作区"，不重开这个决策。
 - 零 patch、零 hacky、零私有 API：一切经中间层转换 Pi 的**公开**透出。
   核心转换器禁止 `if (packageName === ...)` 逐包特判——修一个公共 ABI
   缺口，同类包一起解锁。**当前唯一成文例外**：runtime.ts 的

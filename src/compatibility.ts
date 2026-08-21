@@ -363,12 +363,12 @@ export const API_RULES: Readonly<Record<string, SurfaceRule>> = Object.freeze({
     detail: 'Two outcomes, by whether the provider carries its own transport. '
       + 'WITH a transport (pi-ai createProvider and friends): it becomes a real DSH llm route through llm.registerAdapter, and from then on the package\'s own HTTP client carries the turn — its API key or OAuth token is resolved by Pi\'s credential chain and persisted in the bridge\'s auth.json, not by DSH credentials. '
       + 'WITHOUT one (catalog-only): protocol, endpoint, credential reference, model capabilities, reasoning levels and the compat fields offered by DSH are translated into the official llm-pi-ai profile; no bridge transport is synthesized.',
-    design: 'Two mechanisms behind one call. A provider carrying its own transport becomes a real DSH route through llm.registerAdapter, and the package\'s own HTTP client then carries the turn with its key resolved by Pi\'s credential chain into the bridge\'s auth.json. A catalog-only declaration becomes configuration for DSH\'s official llm-pi-ai adapter, which owns credentials and the real HTTP request. Both enter the one DSH model directory.',
+    design: 'Two mechanisms behind one call. A provider carrying its own transport becomes a real DSH route through llm.registerAdapter, and the package\'s own HTTP client then carries the turn with its key resolved by Pi\'s credential chain into the bridge\'s auth.json. A catalog-only declaration becomes configuration for DSH\'s official llm-pi-ai adapter, which owns credentials and the real HTTP request. Both enter the one DSH model directory. The shared ledger follows Pi\'s layered composition (model-runtime registerProvider/recomposeProvider at the pinned upstream): the engine\'s built-in OAuth entries are the base layer, package registrations overlay it field-wise (defined fields win, undefined fields expose the base — a package overriding only the endpoint keeps the builtin OAuth flow), later packages override earlier ones in load order, re-registration merges defined fields over the package\'s previous registration, and a changed composition rebuilds the route. One adaptation for the long-lived host: overlays are slotted per package so another agent instance\'s idempotent re-registration cannot perturb cross-package order.',
   },
   unregisterProvider: {
     level: 'partial',
-    detail: 'Removes the recorded provider declaration.',
-    design: 'Disposes the route registration when one was made and drops the recorded declaration.',
+    detail: 'Removes this package\'s registration; the composed provider recomposes so the builtin base (or the remaining packages\' overlays) is restored, matching Pi\'s unregister-restores-builtin contract.',
+    design: 'Deletes the package\'s ledger slot and recomposes the canonical config; a changed composition retires the route built on the old shape. Deviation from Pi noted: Pi\'s unregister deletes the WHOLE extension layer (safe inside one short-lived session runtime); on the long-lived host ledger only the calling package\'s slot is removed so one package cannot erase another\'s registration.',
   },
   registerMessageRenderer: {
     level: 'partial',
@@ -457,8 +457,8 @@ export const API_RULES: Readonly<Record<string, SurfaceRule>> = Object.freeze({
   },
   events: {
     level: 'full',
-    detail: 'Package-local Pi extension event-bus emit/on semantics are preserved for migrated extensions in the same bundle.',
-    design: 'A package-local emitter inside the bridge, so extensions bundled together talk to each other exactly as they do under Pi.',
+    detail: 'Pi\'s cross-extension event bus: one shared bus per agent, so every Pi package mounted for the same agent hears every other package\'s emits — matching Pi\'s one-bus-per-session loader contract. Different agents have different buses.',
+    design: 'The bus is keyed on the owning agent in shared host state (host/anchor instances share the host bus). Each instance unwinds only its own subscriptions on dispose/reload, never the other packages\'.',
   },
 })
 

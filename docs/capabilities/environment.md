@@ -13,7 +13,7 @@ continues to run, while pi2dsh maps only its public host surfaces into DSH.
 
 | Pi surface | Kind | Status | What it does on DSH |
 |---|---|---|---|
-| [`events`](#events-pi) | `pi.*` | Same semantics | Package-local Pi extension event-bus emit/on semantics are preserved for migrated extensions in the same bundle. |
+| [`events`](#events-pi) | `pi.*` | Same semantics | Pi's cross-extension event bus: one shared bus per agent, so every Pi package mounted for the same agent hears every other package's emits — matching Pi's one-bus-per-session loader contract. Different agents have different buses. |
 | [`project_trust`](#project_trust-event) | `event` | Not available | Project trust must remain owned by the DSH host; the handler is accepted but never consulted. |
 | [`resources_discover`](#resources_discover-event) | `event` | Not available | Dynamic resource discovery must be converted into DSH providers; the handler is accepted but never fires. |
 | [`isProjectTrusted`](#isprojecttrusted-ctx) | `ctx.*` | Mapped, difference stated | Fails closed as untrusted because DSH does not expose Pi project-trust state. |
@@ -28,7 +28,7 @@ taken on trust.
 
 `pi.*` · Same semantics
 
-A package-local emitter inside the bridge, so extensions bundled together talk to each other exactly as they do under Pi.
+The bus is keyed on the owning agent in shared host state (host/anchor instances share the host bus). Each instance unwinds only its own subscriptions on dispose/reload, never the other packages'.
 
 ### `project_trust` <a id="project_trust-event"></a>
 

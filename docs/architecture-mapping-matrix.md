@@ -8,6 +8,84 @@
 把所有嵌套对象拆成 callable，45 也不包含以后发现的全部 service、waterfall、event 和
 client seam；两个数字都不表示“已经完整”。
 
+## 生命周期语义模型：两种世界形状（2026-08-22 审计）
+
+<a id="lifecycle-semantics"></a>
+
+一切全局/会话归属判断的理论地基。对照真 Pi 源码钉死（坐标见各条），
+不是印象派。
+
+**Pi 是"单活跃会话的进程"，运行时没有跨会话全局层。** 三层：
+
+1. **磁盘持久**：auth.json、models.json、models-store.json、trust.json、
+   settings、session JSONL。跨会话延续只靠这些文件。
+2. **会话共享**：ModelRuntime、SettingsManager、ResourceLoader、事件总线
+   （loader.ts:550 单条 bus 发给该会话全部扩展）、工具注册表、TUI 主题、
+   按加载顺序串行分发的 ExtensionRunner。每次 `/new`、resume、fork、
+   `ctx.reload` 都整套重建（agent-session-runtime.ts:226-260 teardown 后
+   `createRuntime` → agent-session-services.ts:140 连 ModelRuntime 都新建）
+   并**重跑扩展工厂**（loader 只缓存工厂函数不缓存实例，loader.ts:508 每次
+   `await factory(api)`）。`session_start` 对一个实例恰好发一次
+   （agent-session.ts:2258）。
+3. **扩展私有**：各扩展自己的 tools/commands/handlers/renderers/flags/
+   shortcuts 收集器。
+
+**DSH 是"多会话共存的系统"**：llm 目录、凭证、设置、web 服务器是系统级
+服务，会话（agent）只是系统里的一种资源。Pi 的"进程启动"与"会话启动"
+是同一瞬间；DSH 把这一个瞬间拆成两个（进程可以先于任何会话存在）。
+
+**归属翻译判据**（死规则，按 API 面名字判定，无骑墙面）：
+
+| Pi 层 | DSH 落点 |
+| --- | --- |
+| 磁盘持久 | host 存储 / DSH 官方服务（credentials、settings） |
+| 会话共享 | **agent 级共享**（同一 agent 的所有包共享一条事件总线、一个主题；不是包私有） |
+| 扩展私有 | 包 × 会话实例（`agent/created` 驱动，dispose unwind） |
+| 宿主消费的注册面 | 只有 provider 一族（registerProvider / registerNativeProvider，含 OAuth 定义）；沉淀进 host 共享账本，随插件卸载退场而非会话结束退场 |
+
+**已拍板（2026-08-22）：零会话时刻的世界形状 = 路线 B（锚），维持现状。**
+工厂是不透明代码、Pi 无声明清单，宿主想知道插件里有什么只有跑工厂一条路。
+候选两条路线：
+
+- **路线 A：完整模拟单会话世界 + 产品调整。** 工厂只在会话里跑（次数与
+  Pi 完全一致），host 账本由第一个会话沉淀。代价：每次进程启动到第一个
+  会话之间，已安装插件的 provider/登录入口在系统面（模型目录、登录面板、
+  设置）不可见——TUI 无感（启动即建会话），web 首页可见空窗，且引擎启动
+  期的存量凭证恢复拿不到包定义的 transport、native 路由要等第一个会话。
+  产品上需要把"插件能力在会话里才存在"变成 DSH 用户可理解的体验。
+- **路线 B（现状实现）：锚。** 引擎启动时完整跑一遍工厂承担"启动即加载"
+  半边：只取 provider 半边、会话半边只记账不挂、永不接收会话事件；每会话
+  再跑取会话半边、provider 半边进共享账本去重。代价：工厂运行次数 =
+  会话数 + 1（重跑的副作用与非确定性本是 Pi 契约属性——Pi 每次换会话同样
+  重跑，清理责任在插件的 session_shutdown；锚唯一新颖处是那次运行永远没有
+  后续 session_start，遵守契约的插件观察不到）。
+- 两条路线都**禁止磁盘影子清单**（持久化上次运行的注册回放）：第二份权威
+  store，插件更新后必然过期。
+- 判断依据不是机制数字的整齐，而是产品语义：`dsh plugin add` 是系统级
+  动作，装完之后零会话时系统面就该看得见它——这是 DSH 语义；路线 A 的
+  "产品调整"实质是让 DSH 用户理解 Pi 的"会话即世界"哲学，构成用户面
+  Pi 泄漏（用户面界线铁律）。裁决理由还有两条：① "提前建会话抹空窗"
+  绕不开死结——首页时刻用户尚未选工作区，插件建出的只能是挂宿主 cwd 的
+  幽灵会话，即"对插件谎称在会话里"的不诚实版锚，语义污染比多跑一次
+  工厂严重；② 路线 A 的成立前提是宿主产品形态变化（web 打开即进
+  工作区，TUI 形状）——命运不在仓外插件手里。若宿主未来真变成该形态，
+  切换到 A 是纯减法（删锚即可，沉淀账本与会话实例不动）。
+- **Pi 本家佐证：Pi 没有零会话状态，"会话之外要知道插件内容"时 Pi 的
+  官方做法就是造一个幽灵会话。** `pi --list-models` 和 `pi --help` 都
+  不跳过会话，而是 `SessionManager.inMemory(cwd)` 造一个内存会话
+  （main.ts:366-368），走完整 createRuntime——工厂全跑、扩展 provider
+  全注册——再从中取数据（--help 要列出扩展注册的 flags，main.ts:858；
+  --list-models 从该会话的 modelRuntime 列模型，main.ts:866）；
+  `--no-session` 的含义是"不落盘"，不是"没有会话"。pi-server（web
+  形态地基，实验包）把无会话的 `listModels` 留作嵌入方接口、仓内无
+  实现者。锚 = 同一思路在长驻进程上的适配：Pi 的短命进程用完即弃的
+  内存幽灵会话，在 DSH 长驻进程里变成常驻锚，且锚把"我不是会话"做
+  诚实了（不发会话事件、会话面只记账）。
+
+相关叶子：[扩展实例作用域](#pi-extension-instance-scope)、
+[模型注册](#pi-model-registry)。工作准则里的操作判据见 CLAUDE.md 第三节
+（指路，不复写理论）。
+
 ## Pi 能力树
 
 ### 工具与执行

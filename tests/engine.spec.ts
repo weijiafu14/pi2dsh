@@ -359,13 +359,14 @@ describe('engine mounting on a real DSH composition', () => {
     await expect(execute(agentB)).resolves.toBe(b)
   })
 
-  it('a package registering a built-in provider id supersedes the login placeholder and becomes a native route', async () => {
+  it('a package registering a built-in provider id overlays the builtin base and becomes a native route', async () => {
     // The engine preloads built-in OAuth directory entries (openai-codex,
-    // kimi-coding, …) so /login works before any package is installed. A
-    // package that registers the SAME provider id with a transport and a
-    // catalog owns the richer definition — the placeholder must not stay the
-    // shared canonical, or the transport silently never becomes a route (the
-    // kimi-coding regression: OAuth line logged, no native route, no models).
+    // kimi-coding, …) as the BUILTIN BASE LAYER of Pi's layered ledger. A
+    // package registering the SAME provider id overlays it field-wise — its
+    // transport and catalog become the live definition (leaving the login
+    // placeholder as the canonical is what silently produced "OAuth line
+    // logged, no native route, no models" in the kimi-coding regression),
+    // while fields the package does not define keep the builtin base.
     const root = await makeProfile({ 'pi-kimi-shape': '1.0.0' })
     await installFixturePackage(root, 'pi-kimi-shape', { pi: { extensions: ['extension.ts'] } }, {
       'extension.ts': [
@@ -389,6 +390,152 @@ describe('engine mounting on a real DSH composition', () => {
     expect(llm.listProviders().map(provider => provider.id)).toContain('kimi-coding')
     const models = await llm.listModels('kimi-coding')
     expect(models.map(model => model.id)).toContain('kimi-test-1')
+  })
+
+  it('a later package overlays an earlier one on the same provider id, and unregistering restores the earlier layer', async () => {
+    // Pi's contract: registrations layer, later ones override earlier ones
+    // (in Pi "later" is load order — each session rebuilds the runtime), and
+    // unregistering an overlay restores what is underneath. The old flat
+    // first-wins ledger inverted this: the first package froze the canonical
+    // and a user installing a replacement gateway saw nothing change.
+    const root = await makeProfile({ 'pi-gw-first': '1.0.0', 'pi-gw-second': '1.0.0' })
+    await installFixturePackage(root, 'pi-gw-first', { pi: { extensions: ['extension.ts'] } }, {
+      'extension.ts': [
+        'export default function extension(pi: any) {',
+        "  pi.registerProvider('gw-shared', {",
+        "    baseUrl: 'https://first.example',",
+        "    api: 'openai-completions',",
+        '    streamSimple: async function* () { yield { type: "done" } },',
+        "    models: [{ id: 'model-first', name: 'First', reasoning: false, input: ['text'], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, contextWindow: 8192, maxTokens: 1024 }],",
+        '  })',
+        '}',
+      ].join('\n'),
+    })
+    await installFixturePackage(root, 'pi-gw-second', { pi: { extensions: ['extension.ts'] } }, {
+      'extension.ts': [
+        'export default function extension(pi: any) {',
+        "  pi.registerProvider('gw-shared', {",
+        "    baseUrl: 'https://second.example',",
+        "    api: 'openai-completions',",
+        '    streamSimple: async function* () { yield { type: "done" } },',
+        "    models: [{ id: 'model-second', name: 'Second', reasoning: false, input: ['text'], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, contextWindow: 8192, maxTokens: 1024 }],",
+        '  })',
+        '  pi.registerTool({',
+        "    name: 'drop_gw_overlay',",
+        "    description: 'Unregisters this package\\'s gw-shared overlay.',",
+        "    parameters: { type: 'object', properties: {}, additionalProperties: false },",
+        '    async execute() {',
+        "      pi.unregisterProvider('gw-shared')",
+        "      return { content: [{ type: 'text', text: 'dropped' }] }",
+        '    },',
+        '  })',
+        '}',
+      ].join('\n'),
+    })
+    const { ctx, llm } = await makeLlmContext(root)
+    await apply(ctx, {})
+    await settle()
+
+    // Later package wins while both overlays stand.
+    let models = await llm.listModels('gw-shared')
+    expect(models.map(model => model.id)).toContain('model-second')
+    expect(models.map(model => model.id)).not.toContain('model-first')
+
+    // Unregistering the later overlay restores the earlier layer — and the
+    // route is REBUILT from the restored composition, not just retired.
+    const sessions = (ctx as unknown as { sessions: { create(id: unknown, options: Record<string, unknown>): { id: unknown } } }).sessions
+    const session = sessions.create(SessionId('pi2dsh-ledger-agent'), { meta: { createdAt: Date.now(), cwd: root } })
+    const agent: Record<string, unknown> = { id: session.id, session, steer() {}, inject() {}, followup() {}, whenIdle: () => Promise.resolve() }
+    await mountAgentRuntime(ctx, agent)
+    await (ctx as unknown as {
+      tools: { execute(request: Record<string, unknown>): Promise<unknown> }
+    }).tools.execute({
+      signal: new AbortController().signal,
+      callId: CallId('drop-gw-overlay'),
+      name: 'drop_gw_overlay',
+      arguments: {},
+      agent,
+    })
+    await settle()
+    models = await llm.listModels('gw-shared')
+    expect(models.map(model => model.id)).toContain('model-first')
+    expect(models.map(model => model.id)).not.toContain('model-second')
+  })
+
+  it("the Pi cross-extension event bus is shared per agent: same-agent packages hear each other, other agents do not", async () => {
+    // Pi's loader hands ONE event bus to every extension of a session
+    // (loader.ts:550 at the pinned upstream). The old per-package emitter
+    // silently broke cooperating packages: A's emit never reached B.
+    const root = await makeProfile({ 'pi-bus-sender': '1.0.0', 'pi-bus-receiver': '1.0.0' })
+    await installFixturePackage(root, 'pi-bus-sender', { pi: { extensions: ['extension.ts'] } }, {
+      'extension.ts': [
+        'export default function extension(pi: any) {',
+        '  pi.registerTool({',
+        "    name: 'bus_send',",
+        "    description: 'Broadcasts on the shared Pi event bus.',",
+        "    parameters: { type: 'object', properties: {}, additionalProperties: false },",
+        '    async execute() {',
+        "      pi.events.emit('pi2dsh-bus-test', 'ping')",
+        "      return { content: [{ type: 'text', text: 'sent' }] }",
+        '    },',
+        '  })',
+        '}',
+      ].join('\n'),
+    })
+    await installFixturePackage(root, 'pi-bus-receiver', { pi: { extensions: ['extension.ts'] } }, {
+      'extension.ts': [
+        'export default function extension(pi: any) {',
+        '  const received: string[] = []',
+        "  pi.events.on('pi2dsh-bus-test', (data: unknown) => { received.push(String(data)) })",
+        '  pi.registerTool({',
+        "    name: 'bus_report',",
+        "    description: 'Reports what this instance heard on the bus.',",
+        "    parameters: { type: 'object', properties: {}, additionalProperties: false },",
+        '    async execute() {',
+        "      return { content: [{ type: 'text', text: received.join(',') }] }",
+        '    },',
+        '  })',
+        '}',
+      ].join('\n'),
+    })
+
+    const ctx = new Context()
+    await ctx.plugin(SessionStore)
+    await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
+    await ctx.plugin(ToolRuntime)
+    await ctx.plugin(CommandRuntime)
+    await ctx.plugin(SkillRegistry)
+    ;(ctx as unknown as { baseUrl: string }).baseUrl = `file://${root}/cordis.yml`
+    await apply(ctx, {})
+
+    const sessions = (ctx as unknown as { sessions: { create(id: unknown, options: Record<string, unknown>): { id: unknown } } }).sessions
+    const makeAgent = (id: string): Record<string, unknown> => {
+      const session = sessions.create(SessionId(id), { meta: { createdAt: Date.now(), cwd: root } })
+      return { id: session.id, session, steer() {}, inject() {}, followup() {}, whenIdle: () => Promise.resolve() }
+    }
+    const agentA = makeAgent('pi2dsh-bus-agent-a')
+    const agentB = makeAgent('pi2dsh-bus-agent-b')
+    await mountAgentRuntime(ctx, agentA)
+    await mountAgentRuntime(ctx, agentB)
+
+    const execute = async (agent: Record<string, unknown>, name: string): Promise<string | undefined> => {
+      const result = await (ctx as unknown as {
+        tools: { execute(request: Record<string, unknown>): Promise<{ content: Array<{ text?: string }> }> }
+      }).tools.execute({
+        signal: new AbortController().signal,
+        callId: CallId(`bus-${name}-${String(agent.id)}`),
+        name,
+        arguments: {},
+        agent,
+      })
+      return result.content[0]?.text
+    }
+
+    await execute(agentA, 'bus_send')
+    // Same agent: the receiver package heard the sender package.
+    await expect(execute(agentA, 'bus_report')).resolves.toBe('ping')
+    // Different agent: its bus is separate, nothing arrived.
+    await expect(execute(agentB, 'bus_report')).resolves.toBe('')
   })
 
   it('auto-registers a -vision companion for every text-only route, skipping image-capable routes (zero config)', async () => {

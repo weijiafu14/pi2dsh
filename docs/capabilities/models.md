@@ -21,7 +21,7 @@ DSH-native interaction and persist with Pi's `auth.json` semantics.
 | Pi surface | Kind | Status | What it does on DSH |
 |---|---|---|---|
 | [`registerProvider`](#registerprovider-pi) | `pi.*` | Mapped, difference stated | Two outcomes, by whether the provider carries its own transport. WITH a transport (pi-ai createProvider and friends): it becomes a real DSH llm route through llm.registerAdapter, and from then on the package's own HTTP client carries the turn — its API key or OAuth token is resolved by Pi's credential chain and persisted in the bridge's auth.json, not by DSH credentials. WITHOUT one (catalog-only): protocol, endpoint, credential reference, model capabilities, reasoning levels and the compat fields offered by DSH are translated into the official llm-pi-ai profile; no bridge transport is synthesized. |
-| [`unregisterProvider`](#unregisterprovider-pi) | `pi.*` | Mapped, difference stated | Removes the recorded provider declaration. |
+| [`unregisterProvider`](#unregisterprovider-pi) | `pi.*` | Mapped, difference stated | Removes this package's registration; the composed provider recomposes so the builtin base (or the remaining packages' overlays) is restored, matching Pi's unregister-restores-builtin contract. |
 | [`setModel`](#setmodel-pi) | `pi.*` | Mapped, difference stated | Recorded as a per-agent override applied through the agent/request waterfall on the next model call; DSH remains authoritative for provider routing. |
 | [`getThinkingLevel`](#getthinkinglevel-pi) | `pi.*` | Mapped, difference stated | Returns the level recorded by setThinkingLevel (default off). |
 | [`setThinkingLevel`](#setthinkinglevel-pi) | `pi.*` | Mapped, difference stated | Recorded per agent and applied as reasoningEffort through the agent/request waterfall; DSH validates the effort id at the request boundary. |
@@ -46,13 +46,13 @@ taken on trust.
 
 `pi.*` · Mapped, difference stated
 
-Two mechanisms behind one call. A provider carrying its own transport becomes a real DSH route through llm.registerAdapter, and the package's own HTTP client then carries the turn with its key resolved by Pi's credential chain into the bridge's auth.json. A catalog-only declaration becomes configuration for DSH's official llm-pi-ai adapter, which owns credentials and the real HTTP request. Both enter the one DSH model directory.
+Two mechanisms behind one call. A provider carrying its own transport becomes a real DSH route through llm.registerAdapter, and the package's own HTTP client then carries the turn with its key resolved by Pi's credential chain into the bridge's auth.json. A catalog-only declaration becomes configuration for DSH's official llm-pi-ai adapter, which owns credentials and the real HTTP request. Both enter the one DSH model directory. The shared ledger follows Pi's layered composition (model-runtime registerProvider/recomposeProvider at the pinned upstream): the engine's built-in OAuth entries are the base layer, package registrations overlay it field-wise (defined fields win, undefined fields expose the base — a package overriding only the endpoint keeps the builtin OAuth flow), later packages override earlier ones in load order, re-registration merges defined fields over the package's previous registration, and a changed composition rebuilds the route. One adaptation for the long-lived host: overlays are slotted per package so another agent instance's idempotent re-registration cannot perturb cross-package order.
 
 ### `unregisterProvider` <a id="unregisterprovider-pi"></a>
 
 `pi.*` · Mapped, difference stated
 
-Disposes the route registration when one was made and drops the recorded declaration.
+Deletes the package's ledger slot and recomposes the canonical config; a changed composition retires the route built on the old shape. Deviation from Pi noted: Pi's unregister deletes the WHOLE extension layer (safe inside one short-lived session runtime); on the long-lived host ledger only the calling package's slot is removed so one package cannot erase another's registration.
 
 ### `setModel` <a id="setmodel-pi"></a>
 
