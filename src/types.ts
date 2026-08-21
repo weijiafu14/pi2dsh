@@ -55,14 +55,4 @@ export interface GeneratedRuntimeManifest {
     argumentHint?: string
     path: string
   }>
-  // Present in converted bundles for review provenance; host-mode manifests
-  // are built at load time from the installed package and carry none.
-  report?: CompatibilityReport
-}
-
-export interface GenerateOptions {
-  outDir: string
-  runtimeSpec?: string
-  strict?: boolean
-  allowUnsupported?: boolean
 }

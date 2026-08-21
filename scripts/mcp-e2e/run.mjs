@@ -186,7 +186,7 @@ for (const scenario of SCENARIOS) {
 
 const summary = {
   generatedAt: new Date().toISOString(),
-  adapter: 'pi-mcp-adapter@2.26.0',
+  adapter: 'pi-mcp-adapter@2.26.1',
   counts: {
     pass: results.filter(r => r.verdict === 'pass').length,
     fail: results.filter(r => r.verdict === 'fail').length,

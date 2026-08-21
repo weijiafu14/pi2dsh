@@ -3,9 +3,11 @@
 
 Project trust and dynamic resource discovery — the two places
 where the host, not the package, owns the decision. Skills declared by a Pi
-package are loaded through DSH's own skill filesystem; MCP servers declared in
-Pi config are translated into official `dsh-mcp-client` entries by
-`pi2dsh mcp-config` (the Pi MCP adapter's code never runs).
+package are loaded through DSH's own skill filesystem. MCP server definitions
+in Pi config are translated into official `dsh-mcp-client` entries by
+`pi2dsh mcp-config`. A deliberately installed Pi MCP capability package is a
+different case: its own transport, cache, OAuth and resource/prompt behavior
+continues to run, while pi2dsh maps only its public host surfaces into DSH.
 
 **4 upstream-shaped Pi rule rows** — 1 same semantics · 1 mapped, difference stated · 2 not available.
 

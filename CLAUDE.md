@@ -81,9 +81,12 @@ pi2dsh：通用 Pi Host ABI 兼容层，让 Pi 生态插件原样跑在 DeepSeek
 ```text
 第 1 层  Pi 插件（原样源码，零修改）
          它需要的一切只来自中间层：三包 import 被 jiti alias 截获到 compat
-         shim；registerX/事件/ctx 面全是中间层投影；插件视野里 100% Pi
-         词汇，永远不出现 DSH 概念（连字符串都不行，宿主托管路由的 api
-         用 Pi 官方词 'faux'）。
+         shim；registerX/事件/ctx 面全是中间层投影；插件视野里的数据面
+         与 API 形状 100% Pi 词汇，永远不出现 DSH 概念（连字符串都不行，
+         宿主托管路由的 api 用 Pi 官方词 'faux'）。唯一豁免：
+         PiCapabilityError 等能力缺口报错文案——第三节要求它讲清 DSH 侧
+         动作（如 dsh plugin remove X），文案是给用户看的指引，不算数据
+         面泄漏。
 第 2 层  pi2dsh 中间层
          compat 三 shim / ExtensionAPI 收单 / Pi 元数据账本 / registry
          投影 / 事件桥 / 凭证 / 会话与子代理桥 / 伴生路由。以"普通
@@ -96,8 +99,22 @@ pi2dsh：通用 Pi Host ABI 兼容层，让 Pi 生态插件原样跑在 DeepSeek
   传输/第二套配置入口——动手前先查 DSH 官方有什么**（事故：官方
   llm-pi-ai 就在默认组合里、任意 OpenAI 兼容网关本是纯配置，却先背
   pi-ai 全家桶再自写 wire client，两版全是重复建设，全部删除）。已知的
-  官方件：llm-pi-ai（模型网关）、dsh-mcp-client（MCP）、
+  官方件：llm-pi-ai（模型网关）、dsh-mcp-client（配置型 MCP server）、
   dsh-skill-filesystem（skills）、settings/credentials seam。
+- **“配置”与“能力包”分开判。** 只有 MCP server 定义时翻译给官方
+  dsh-mcp-client；用户显式安装的 Pi MCP 能力包若自己拥有管理面、lazy
+  proxy、OAuth、resources/prompts、transport/cache，则保留原包运行时，
+  中间层只投影它使用的公开 Host ABI，绝不复制 transport。宿主同名命令
+  优先，外来命令用有来源含义的别名（dsh-TUI 原生 `/mcp` 不动，Pi 包
+  入口为 `/pi-mcp`）。这条是通用能力包边界，不许写包名业务特判。
+- **能力包完整性按归属拆证据。** 会被 Host ABI 改变的生命周期、命令、TUI、
+  动态工具、问答、附件、模型回调与取消必须用真实包穿过真实 DSH runtime 做
+  E2E；包内部 transport/OAuth/cache/protocol 用同版本上游完整套件与 conformance
+  证明。两边版本、结果、已知降级必须落一张矩阵，禁止再用一条 echo 宣称“完整
+  支持”。范本：`docs/mcp-compatibility.md`。
+- **Pi 终端面只桥公开服务。** `ui.custom`/`setStatus` 只在组合存在 dsh-TUI
+  `tuiScenes`/`tuiStatus` 时投影；否则保持 headless。实现按能力工作，不按包名工作；
+  不复制插件自己的管理状态或业务逻辑。
 - 单一目录、单一调用路径：运行时模型目录只有 DSH llm 目录，Pi registry
   是其精确投影（包注册路由出口 restore 完整 Pi 形状——账本是中间层
   本职）；插件一切标准模型调用（registry.complete、getProvider().stream、
@@ -110,11 +127,20 @@ pi2dsh：通用 Pi Host ABI 兼容层，让 Pi 生态插件原样跑在 DeepSeek
   transport，真实请求仍由官方 adapter 发出。
 - 零 patch、零 hacky、零私有 API：一切经中间层转换 Pi 的**公开**透出。
   核心转换器禁止 `if (packageName === ...)` 逐包特判——修一个公共 ABI
-  缺口，同类包一起解锁。
+  缺口，同类包一起解锁。**当前唯一成文例外**：runtime.ts 的
+  `KNOWN_IMAGE_TOOLS_BY_PACKAGE`——Pi 没有"工具会输出图片"的声明机制，
+  浏览器图片卡只能对逐包核证过输出契约的工具开放。这是缺口标记不是可
+  扩展方案（第二个生图包不会自动解锁），正解是推动 Pi 上游加图片输出
+  声明；新增任何逐包例外必须先写进本条，否则就是违规。
 - 语义对齐以真 Pi 源码为准（本仓库旁的 ../pi 是源码参照），vendored
   文件字节级/节选搬运并注明来源 commit，logic unchanged；同名不同义的
   行为（如 registerCommand 撞名编号 /name-2 vs Pi 的 :1/:2、伴生路由的
   ctx.model 报原身）必须写进 src/compatibility.ts 判定文案。
+- **Pi 兼容面钉死单一上游版本**（当前 Pi 0.84.1；2026-08-20 拍板）：
+  111 条规则、vendored 源码、类型快照只对这个版本负责，上游发新版不
+  自动跟。理由：追上游"发现新接口"这一环纯靠人、没有自动提醒，与其
+  带着无声漂移跑，不如显式锁死。升级快照是一次显式决策：重盘上游声明
+  diff、逐条归类新面、更新规则/文档/vendored 来源 commit，一次做完。
 - 插件自身的 bug（在真 Pi 同版本上同样坏）不 patch，如实归因即为界。
 - 跨目录通道透传字段用白名单，禁止裸展开：DSH 对 reasoning/context 等
   名字有自己的语义（事故：Pi 的 reasoning:false 撞 DSH 的
@@ -255,12 +281,13 @@ ERR_PNPM_IGNORED_BUILDS）。example 里每条命令必须实际跑过；对外�
 不得出现内部端点/凭证（示例用 OpenRouter 等公开服务占位）。README
 （双语）的 Examples 章节同步更新。
 
-已有：examples/vision-bridge（视觉委托）、examples/custom-gateways
-（DSH settings 网关配置）、examples/gateway-compat（provider compat 三坑）、
-examples/side-conversation（/btw 侧边会话）、examples/presentation-surfaces
-（Pi 插件自己的界面落进 Web 座位）。存量已验证能力（guardian 审批、
-跨会话记忆、OAuth /login、MCP 配置转换、host 模式）的 example 待补——补前
-必须按上述判据重新端到端验证，禁止凭记忆写。
+已有哪些 example，以 `examples/` 目录与 README 的 Examples 章节为准，
+本文件不再手抄清单（2026-08-20 审计抓到这里的手抄清单漏了
+codex-image-gen 和 subscription-login 两个——手抄必漂，见第六节
+"同一事实只写一处"）。存量已验证但尚无 example 的能力（guardian 审批、
+跨会话记忆、单纯的 mcp-config 配置翻译）待补——能力包的 TUI MCP 示例不
+冒充这条配置路径；补前必须按上述判据重新端到端验证，
+禁止凭记忆写。
 
 ### 五点一、examples 必须能自动回归（新增铁律）
 
@@ -320,7 +347,8 @@ Web 双端、并行跑完。**不许挑着跑，不许"这次先跑这两个"，
 pnpm verify:release   # verify + 全部 examples（装 npm 上刚发的那版）+ step-seams 真机
 ```
 
-- 引擎必须从 **npm 装刚发的那版**（`PI2DSH_ENGINE_SPEC=pi2dsh`），不是本地
+- 引擎必须从 **npm 装刚发的那版**（`PI2DSH_ENGINE_SPEC=pi2dsh@<版本>`，
+  `verify:release` 已自动带上 package.json 的版本号），不是本地
   `file:`——裸环终验和回归是同一件事，别分两次做。
 - 场景**并行**跑（各自独立临时 DSH_HOME + 各自端口）。串行是几分钟 npm 安装和
   浏览器启动一个接一个排队，慢到人就开始"这次先跳过"，标准就是这么烂掉的。
@@ -370,6 +398,15 @@ pnpm verify:release   # verify + 全部 examples（装 npm 上刚发的那版）
 - 大事先汇报再动手；设计偏离单独拎出来等拍板；说人话不用黑话。
 - **发现问题先全面盘点、一次对齐、一次改完**——禁止用户说一个改一个的
   挤牙膏模式；标准落地立刻写进本文件，不排队。
+- **同一事实只写一处**（2026-08-20 审计后立标）：清单和数字类事实指定
+  唯一权威位置，其它文件只指路、不抄写。当前约定：examples 清单权威在
+  `examples/` 目录 + README Examples 章节；运行时能力数字权威在
+  `docs/capabilities/` 生成页；`docs/pi-abi-coverage.md` 只保留钉死
+  上游版本的快照口径，不复写会随实现变的数字。**不为此新增自动生成**
+  ——标准用非结构化 Markdown 表达是有意选择（表达力优先），防漂靠
+  "不抄写"，不靠生成器。事故：CLAUDE.md 手抄 examples 清单漏两个、
+  待补清单里躺着已删除的 host 模式；pi-abi-coverage.md 的手写数字在
+  能力升级（ee73dc3）后过期。
 - 画架构图直接 ASCII，不用工具。
 - 凭证只经环境变量注入，永不落盘/入提交/回显。
 - git 操作前确认 cwd 在 pi2dsh（事故：commit 跑进 deepseek-harness 仓库
@@ -402,7 +439,7 @@ pnpm verify:release   # verify + 全部 examples（装 npm 上刚发的那版）
   `pi-session-probe`（file: 依赖），命令 `/cap-sessions`。
 - BSD grep 对打包后的超长单行 .mjs 会静默失败——判 dist 内容用
   `node -e '...readFileSync(...).includes(...)'`，别信 grep 空结果。
-- CLI 入口（cli.ts）与 index.ts 同款纪律：analyzer/generator（拖
-  typescript optional peer）只许命令分支内动态 import——matrix/
-  mcp-config/host 必须在无 typescript 安装下可跑（verify 的打包冒烟
+- CLI 入口（cli.ts）与 index.ts 同款纪律：analyzer（拖 typescript
+  optional peer）只许 inspect 命令分支内动态 import——matrix/
+  mcp-config 必须在无 typescript 安装下可跑（verify 的打包冒烟
   测这个）。

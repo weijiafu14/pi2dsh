@@ -40,7 +40,7 @@ export interface ProviderAdapterHost {
    */
   beforeProviderRequest?(
     payload: UnknownRecord,
-    request: { provider: string, model: UnknownRecord, signal?: AbortSignal },
+    request: { provider: string, model: UnknownRecord, sessionId?: string, signal?: AbortSignal },
   ): Promise<UnknownRecord>
   /** The durable attachment store, when the composition mounts one. */
   resolveAttachments?(): DshAttachmentsLike | undefined
@@ -234,6 +234,7 @@ export function piProviderDshAdapter(providerId: string, provider: PiTransportPr
           onPayload: (payload: UnknownRecord) => host.beforeProviderRequest!(payload, {
             provider: providerId,
             model,
+            ...(typeof options.sessionId === 'string' ? { sessionId: options.sessionId } : {}),
             ...(options.signal instanceof AbortSignal ? { signal: options.signal } : {}),
           }),
         }),

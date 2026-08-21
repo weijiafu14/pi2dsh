@@ -40,11 +40,10 @@ dsh plugin --profile web add @kassing/pi-vision
 
 然后**重启 `dsh`**——插件在启动时挂载。
 
-> **profile 名字请用 `web` 或 `headless`。** DSH 只为这两个名字内置了模板，
-> 每个都带一个界面层（网页应用 / 一次性执行器）。`dsh plugin --profile <别的
-> 名字>` 建出来的 profile **没有任何界面层**，起来之后会**直接挂住、不报任何
-> 错**——这跟 pi2dsh 无关，但第一次装的时候很容易撞上。确实想用别的名字，就
-> 自己往它的 `dsh.profile.bundles` 里加界面 bundle。
+> **profile 必须带一个界面 bundle。** DSH 内置模板是 `web` 与 `headless`；产品
+> 自己装了界面的自定义 profile 也完全有效，例如 `dsh-tui` profile 里的
+> `@deepseek-harness-tui/dsh-tui`。只有随手新建、没装任何界面层的空 profile 才会
+> 启动后没人驱动；这种情况先把目标界面加进 `dsh.profile.bundles`。
 
 就这一种方式。没有转换步骤，没有生成产物，不用构建。引擎会读出你 profile 里的
 Pi 包（每一个都是你显式装的），用同一个桥实例挂载它们：一个模型目录、一个登录、
@@ -159,6 +158,7 @@ Web 里**直接粘图**——哪怕你的主模型是纯文本的。DSH 正常�
 | [`@crazygit/pi-codex-image-gen`](https://www.npmjs.com/package/@crazygit/pi-codex-image-gen) | ChatGPT/Codex OAuth 调 `gpt-image-2` 生图；本地参考图走 DSH 审批后上传；编辑图片；原生附件存储并在 Web 内直接显示 | CLI + Web | [`codex-image-gen`](examples/codex-image-gen/) |
 | [`pi-btw`](https://www.npmjs.com/package/pi-btw) | `/btw <问题>` 跑成 DSH 子代理界面里的真子会话；`/btw-inject`；`/btw --save`；主会话保持干净 | CLI + Web | [`side-conversation`](examples/side-conversation/) |
 | [`pi-powerline-footer`](https://www.npmjs.com/package/pi-powerline-footer) | 终端状态条（模型、思考档位、项目、上下文用量）画进 DSH 的 widget dock，带颜色 | Web | [`presentation-surfaces`](examples/presentation-surfaces/) |
+| [`pi-mcp-adapter`](https://www.npmjs.com/package/pi-mcp-adapter) | 完整管理界面画进 dsh-TUI；stdio/Streamable HTTP/SSE；发现、直连/代理/脚本调用、resources、prompts、图片、结构化内容、MCP Apps、审批、elicitation、sampling、取消与重启全部穿过 DSH 运行时；原生 `/mcp` 与 `/pi-mcp` 共存 | dsh-TUI | [`tui-mcp`](examples/tui-mcp/) · [证据矩阵](docs/mcp-compatibility.md) |
 | [`pi-vision-tool`](https://www.npmjs.com/package/pi-vision-tool) | 工具注册，且带一个 DSH 需要转换的 JSON Schema 形状（`anyOf` → `oneOf`） | CLI + Web | — |
 | [`pi-approval-guardian`](https://www.npmjs.com/package/pi-approval-guardian) | 每次工具调用先由第二个模型审批；放行与拒绝两条路都看到了 | CLI（裸环境） | — |
 | [`pi-hermes-memory`](https://www.npmjs.com/package/pi-hermes-memory) | 跨会话记忆：一个进程写入，另一个全新进程读回 | CLI | — |
@@ -257,18 +257,20 @@ footer、title、working/thinking 类），都画在宿主自己的 slot 座位�
 
 保证它靠谱的几条标准：
 
-- **DSH 已经有的东西，绝不再造一遍。** 工具进 DSH 的工具注册表，模型进 DSH 的
-  llm 配置，MCP 交给 `dsh-mcp-client`，skills 交给 `dsh-skill-filesystem`，
-  提问交给 DSH 的 user questions。桥做的是配置翻译，不是另起一套运行时。
-- **你面前永远没有 Pi。** 你要配的、要读的、要敲的，全是 DSH 形状：DSH 设置、
-  DSH 命令、DSH 凭证。Pi 的词汇只活在插件自己的视野和桥的内部实现里。
+- **DSH 已经有的东西，桥绝不再造一遍。** 工具进 DSH 的工具注册表，模型进 DSH 的
+  llm 配置，只有 server 配置的 MCP 交给 `dsh-mcp-client`，skills 交给
+  `dsh-skill-filesystem`，提问交给 DSH 的 user questions。用户显式安装的 Pi
+  能力包可以保留它自己拥有的行为；桥只映射公开宿主面，不抄它的 transport。
+- **不造桥私有的用户世界。** 常规配置仍然全是 DSH 形状：DSH 设置、命令、凭证。
+  如果一个被安装的能力包明确自带管理面，就保留并在冲突时标出来源——dsh-TUI 的
+  `/mcp` 不动，Pi 管理面叫 `/pi-mcp`。
 - **零逐包特判。** 核心里没有任何 `if (packageName === …)`。修一个 ABI 缺口，
   撞上它的包一起解锁。
 - **绝不伪装成功。** 映射不了的能力会**如实告诉你**——同一个插件同一项能力只提示
   一次，讲人话。如果某个插件在启动期就需要这样一项能力，它会被整包标成不可用并
   给出卸载建议，而不是半死不活地跑着。
-- **验证过才算数。** 每项能力都有公开 API 契约测试，并且必须在真实 DSH loop 上
-  端到端跑通——CLI **和** Web 双端——才会发布。
+- **验证过才算数。** 每项能力都有公开 API 契约测试，并且必须在它声称支持的每个
+  DSH 界面上端到端跑通才会发布。
 
 ## 这件事正在检验 DSH 什么
 
@@ -324,11 +326,11 @@ Pi 包能碰到的每一个面，以及它落到 DSH 的什么位置。下面这
 | [工具](docs/capabilities/tools.md) | 11 | 2 语义一致 · 9 已映射并写明差异 |
 | [命令、flag、编辑器输入](docs/capabilities/commands.md) | 13 | 13 已映射并写明差异 |
 | [消息、上下文、agent 循环](docs/capabilities/conversation.md) | 20 | 9 语义一致 · 11 已映射并写明差异 |
-| [会话与侧边对话](docs/capabilities/sessions.md) | 24 | 6 语义一致 · 18 已映射并写明差异 |
+| [会话与侧边对话](docs/capabilities/sessions.md) | 24 | 7 语义一致 · 17 已映射并写明差异 |
 | [模型、provider、凭证](docs/capabilities/models.md) | 15 | 1 语义一致 · 12 已映射并写明差异 · 2 不提供 |
-| [向用户提问与渲染](docs/capabilities/interaction.md) | 24 | 4 语义一致 · 20 已映射并写明差异 |
+| [向用户提问与渲染](docs/capabilities/interaction.md) | 24 | 5 语义一致 · 19 已映射并写明差异 |
 | [项目环境与资源](docs/capabilities/environment.md) | 4 | 1 语义一致 · 1 已映射并写明差异 · 2 不提供 |
-| **合计** | **111** | **23 语义一致 · 84 已映射并写明差异 · 4 不提供** |
+| **合计** | **111** | **25 语义一致 · 82 已映射并写明差异 · 4 不提供** |
 <!-- capability-table:end -->
 
 另外还有 Pi 三个运行时包（`pi-coding-agent`、`pi-tui`、`pi-ai`）的 **203 个
@@ -373,6 +375,7 @@ loop 上实际跑过才会进来。
 | [`subscription-login`](examples/subscription-login/) | 用 ChatGPT / Claude / Copilot / Kimi 订阅账号当 DSH 的模型：`/login`、登录后自动建路由与凭证 |
 | [`gateway-compat`](examples/gateway-compat/) | 私有 / 国内 / 代理网关拒收 `developer` 角色：rc.8 官方 profile 如何把 Pi compat 声明送到真实请求（附透传录制代理） |
 | [`custom-gateways`](examples/custom-gateways/) | 按 DSH 官方方式接任何 OpenAI 兼容网关，每个 Pi 插件都能看到它 |
+| [`tui-mcp`](examples/tui-mcp/) | 保留 dsh-TUI 原生 `/mcp`，把 Pi 生态管理面作为 `/pi-mcp` 加进来，并让完整的宿主相关 MCP 功能面穿过 DSH 运行时 |
 
 ## 其它工具
 

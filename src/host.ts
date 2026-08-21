@@ -1,14 +1,13 @@
 // PiHostOnDSH: one DSH plugin that hosts unmodified Pi packages.
 //
-// Instead of converting each package into a vendored bundle, the host bundle
-// declares Pi packages as ordinary npm dependencies; DSH's plugin manager
-// (pnpm) installs them, and at load time this module resolves each installed
-// package, discovers its Pi entry points, and mounts it through the same
-// package-agnostic runtime as converted bundles. One host, any package —
-// there is deliberately no per-package branching here.
+// Pi packages are ordinary npm dependencies of the profile; DSH's plugin
+// manager (pnpm) installs them, and at load time this module resolves each
+// installed package, discovers its Pi entry points, and mounts it through
+// the same package-agnostic runtime. One host, any package — there is
+// deliberately no per-package branching here.
 
 import { existsSync, readFileSync } from 'node:fs'
-import { readdir, readFile, stat, writeFile, mkdir, cp } from 'node:fs/promises'
+import { readFile, stat, writeFile, mkdir, cp } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import { basename, dirname, join, relative } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -30,6 +29,13 @@ export interface PiHostConfig {
   packages: Array<string | PiHostPackageSpec>
   /** Image-admission companions: default automatic; `false` off; explicit map narrows. */
   visionCompanions?: false | Record<string, readonly string[]>
+}
+
+export interface PreparedPiHostPackage {
+  readonly name: string
+  readonly rootUrl: URL
+  readonly manifest: GeneratedRuntimeManifest
+  readonly config?: UnknownRecord
 }
 
 function parseFrontmatter(text: string): { attributes: Record<string, string>; body: string } {
@@ -115,16 +121,24 @@ function resolveInstalledDir(anchor: string, packageName: string): string {
  * host or their siblings — matching Pi's own per-extension error isolation.
  */
 export async function applyPiHost(ctx: Context, config: PiHostConfig, anchor?: string): Promise<void> {
-  const anchorPath = anchor ?? fileURLToPath(import.meta.url)
   registerVisionCompanions(ctx, config.visionCompanions)
+  const prepared = await preparePiHost(config, anchor)
+  await applyPreparedPiHost(ctx, prepared)
+}
+
+/** Resolve installed Pi packages and build immutable manifests without mounting their runtimes. */
+export async function preparePiHost(config: PiHostConfig, anchor?: string): Promise<PreparedPiHostPackage[]> {
+  const anchorPath = anchor ?? fileURLToPath(import.meta.url)
   const errors: Array<{ name: string; error: string }> = []
+  const prepared: PreparedPiHostPackage[] = []
   for (const spec of normalizeSpecs(config)) {
     try {
       const dir = resolveInstalledDir(anchorPath, spec.name)
       const pkg = await resolvePiPackage(dir)
       try {
         const manifest = await manifestForInstalled(pkg)
-        await applyPiPackage(ctx, {
+        prepared.push({
+          name: spec.name,
           rootUrl: pathToFileURL(`${pkg.rootDir}/`),
           manifest,
           ...(spec.config === undefined ? {} : { config: spec.config }),
@@ -141,12 +155,55 @@ export async function applyPiHost(ctx: Context, config: PiHostConfig, anchor?: s
     // line: a profile's logger level must never be able to hide which packages
     // did not mount. It could, and it did — a package failed to mount and the
     // only symptom was its absence from a list nobody was diffing.
+    const message = `[pi2dsh host] failed to mount ${failure.name}: ${failure.error}`
+    console.warn(message)
+  }
+  if (errors.length > 0 && errors.length === normalizeSpecs(config).length) {
+    throw new Error(`pi2dsh host mounted no packages; first failure: ${errors[0]!.name}: ${errors[0]!.error}`)
+  }
+  return prepared
+}
+
+/** Mount prepared Pi package runtimes into one exact DSH context. */
+export async function applyPreparedPiHost(
+  ctx: Context,
+  prepared: readonly PreparedPiHostPackage[],
+  ownerAgent?: UnknownRecord,
+): Promise<void> {
+  const errors: Array<{ name: string; error: string }> = []
+  for (const pkg of prepared) {
+    try {
+      // One real Cordis activation per Pi package, owned by this Agent scope.
+      // Besides giving teardown the correct owner, dsh-TUI's contribution
+      // services bind registration and later use to this activation identity;
+      // calling applyPiPackage() naked from the setup event has no live plugin
+      // caller and cannot register or open a scene correctly.
+      await ctx.plugin(Object.assign(
+        async (packageCtx: Context) => {
+          await applyPiPackage(packageCtx, {
+            rootUrl: pkg.rootUrl,
+            manifest: pkg.manifest,
+            // The engine/host registers companion routes once on the host
+            // before mounting prepared packages. Suppress applyPiPackage's
+            // standalone default here so one package cannot undo an explicit
+            // host-level `visionCompanions: false` or duplicate the catalog.
+            config: { ...(pkg.config ?? {}), visionCompanions: false },
+            ...(ownerAgent === undefined ? {} : { ownerAgent }),
+          })
+        },
+        { inject: ['tools', 'systemPrompt', 'commands'] },
+      ))
+    } catch (error) {
+      errors.push({ name: pkg.name, error: error instanceof Error ? error.message : String(error) })
+    }
+  }
+  for (const failure of errors) {
     const log = (ctx as unknown as { logger?: { warn?(message: string): void } }).logger
     const message = `[pi2dsh host] failed to mount ${failure.name}: ${failure.error}`
     log?.warn?.(message)
     console.warn(message)
   }
-  if (errors.length > 0 && errors.length === normalizeSpecs(config).length) {
+  if (errors.length > 0 && errors.length === prepared.length) {
     throw new Error(`pi2dsh host mounted no packages; first failure: ${errors[0]!.name}: ${errors[0]!.error}`)
   }
 }

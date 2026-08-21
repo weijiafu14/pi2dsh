@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "pi2dshCommit": "1b818c6dc4c8c397c7335b664ad16ab0bb572b27",
-  "dshCommit": "141eb6fef83422698aef7a981029e843e8161534",
+  "pi2dshCommit": "7aa2958953d09983af83c178d19273feff194fb4",
+  "dshCommit": "47f943859bef60e4160492346772ded9b24f765a",
   "results": {
     "visionBridge": {
       "status": "skipped",
@@ -107,6 +107,44 @@
         "03-side-conversation-host-catalog.png",
         "04-side-conversation-injected-on-request.png",
         "05-side-conversation-child-view.png"
+      ]
+    },
+    "tuiMcp": {
+      "status": "passed",
+      "engine": {
+        "version": "0.13.2",
+        "from": "local-tarball",
+        "spec": "file:<tarball>",
+        "sha256": "3c74ed63ce054df721a47543daa02f4b676dda98443bc256badb1c0e5ff8a6b6"
+      },
+      "profile": "dsh-tui",
+      "piPackage": "pi-mcp-adapter",
+      "piPackageVersion": "2.26.1",
+      "command": "/pi-mcp",
+      "nativeCommandPreserved": "/mcp",
+      "mcpServer": "@modelcontextprotocol/server-everything",
+      "transports": [
+        "stdio",
+        "streamable-http",
+        "sse"
+      ],
+      "capabilities": [
+        "manager",
+        "discovery",
+        "proxy",
+        "direct-tools",
+        "mcpScript",
+        "resources",
+        "prompts",
+        "images",
+        "structured-content",
+        "mcp-app-ui",
+        "approval",
+        "elicitation",
+        "sampling",
+        "cancellation",
+        "reconnect",
+        "session-restart"
       ]
     }
   }

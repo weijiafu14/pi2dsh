@@ -13,7 +13,7 @@ listed, named after the package, opened in its own view and continuable. This
 does not exercise the separate `ctx.subagents` provider seam. See
 [`examples/side-conversation`](../../examples/side-conversation/).
 
-**24 upstream-shaped Pi rule rows** — 6 same semantics · 18 mapped, difference stated.
+**24 upstream-shaped Pi rule rows** — 7 same semantics · 17 mapped, difference stated.
 
 | Pi surface | Kind | Status | What it does on DSH |
 |---|---|---|---|
@@ -31,8 +31,8 @@ does not exercise the separate `ctx.subagents` provider seam. See
 | [`session_before_tree`](#session_before_tree-event) | `event` | Mapped, difference stated | Registration is accepted; Pi session-tree navigation never occurs on DSH surfaces, so the handler never fires. Loading is unaffected. |
 | [`session_tree`](#session_tree-event) | `event` | Mapped, difference stated | Registration is accepted; Pi session-tree navigation never occurs on DSH surfaces, so the handler never fires. Loading is unaffected. |
 | [`cwd`](#cwd-ctx) | `ctx.*` | Same semantics | Mapped to the active DSH agent session working directory. |
-| [`hasUI`](#hasui-ctx) | `ctx.*` | Same semantics | Reports whether a human can actually answer: false when no questions service is mounted, false when the service is mounted with no provider registered (the headless posture), and false inside a child agent, which DSH refuses to let ask. |
-| [`mode`](#mode-ctx) | `ctx.*` | Mapped, difference stated | Reports rpc mode so Pi extensions can choose their documented headless fallback. |
+| [`hasUI`](#hasui-ctx) | `ctx.*` | Same semantics | Reports whether a real interactive surface exists: true for dsh-TUI's mounted scene service or for a DSH user-question provider; false for a genuinely headless composition and for child-agent questions that DSH refuses. |
+| [`mode`](#mode-ctx) | `ctx.*` | Same semantics | Reports tui when dsh-TUI's public scene service is mounted, rpc in browser/headless compositions. |
 | [`sessionManager`](#sessionmanager-ctx) | `ctx.*` | Mapped, difference stated | A real read-only projection: DSH durable messages plus pi2dsh sidecar entries, exposed through Pi's exact 14-method surface as a single-branch tree. buildContextEntries is compaction-aware — entries a compaction summarized away are gone, exactly as they are for the model — while getEntries stays the append-only log, which is the same split Pi makes. |
 | [`shutdown`](#shutdown-ctx) | `ctx.*` | Mapped, difference stated | Pi defines shutdown behavior as host-provided (runner.ts bindExtensions); this host absorbs the request — the user owns DSH process exit — and informs the user once. The package keeps running. |
 | [`compact`](#compact-ctx) | `ctx.*` | Mapped, difference stated | Pi's fire-and-forget trigger, translated to DSH's official manual compaction (ctx.compaction.compactNow on the live agent). onComplete receives the real summary text and the shadowed-content token estimate as tokensBefore; firstKeptEntryId is empty because the DSH log has no Pi entry ids. Without a compaction service the gap flows through Pi's onError callback and the capability ledger. |
@@ -136,13 +136,13 @@ Read off the live DSH agent's session; the bridge keeps no working directory of 
 
 `ctx.*` · Same semantics
 
-Probed rather than guessed. The bridge registers a throwaway provider on DSH's UserQuestionService and reads the documented DUPLICATE_PROVIDER rejection as "a real provider is already there", then disposes it. Inside a child agent the answer is false without probing, because DSH refuses to let child agents ask.
+The terminal answer comes from the optional public tuiScenes service. The question answer is probed rather than guessed: the bridge registers a throwaway UserQuestion provider and reads the documented DUPLICATE_PROVIDER rejection as "a real provider is already there", then disposes it. Inside a child agent only the terminal scene can make this true, because DSH refuses child-agent questions.
 
 ### `mode` <a id="mode-ctx"></a>
 
-`ctx.*` · Mapped, difference stated
+`ctx.*` · Same semantics
 
-A constant. The bridge is an rpc host, and this is the value Pi packages branch on to take their own documented headless path.
+Derived from the live optional TuiSurfaceAdapter. This is the branch interactive Pi plugins use before calling ui.custom; it changes with the Cordis service lifecycle rather than being a constant.
 
 ### `sessionManager` <a id="sessionmanager-ctx"></a>
 

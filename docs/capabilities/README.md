@@ -9,7 +9,7 @@ from the rules the bridge itself consults at runtime (`src/compatibility.ts`,
 also reported by `pi2dsh matrix --json`), so they cannot drift from the
 implementation.
 
-**111 upstream-shaped Pi rule rows total** — 23 same semantics · 84 mapped, difference stated · 4 not available — plus **203 imported symbols** from the three Pi runtime
+**111 upstream-shaped Pi rule rows total** — 25 same semantics · 82 mapped, difference stated · 4 not available — plus **203 imported symbols** from the three Pi runtime
 packages (`pi-coding-agent`, `pi-tui`, `pi-ai`), which the bridge serves
 from vendored or headless shims so a package's own Pi pins never load — listed
 in [Imported Pi runtime symbols](imports.md).
@@ -26,9 +26,9 @@ it is built** — the DSH seam, service or waterfall behind it.
 | [Tools](tools.md) | 11 | 2 same semantics · 9 mapped, difference stated |
 | [Commands, flags and editor input](commands.md) | 13 | 13 mapped, difference stated |
 | [Messages, context and the agent loop](conversation.md) | 20 | 9 same semantics · 11 mapped, difference stated |
-| [Sessions, branching and side conversations](sessions.md) | 24 | 6 same semantics · 18 mapped, difference stated |
+| [Sessions, branching and side conversations](sessions.md) | 24 | 7 same semantics · 17 mapped, difference stated |
 | [Models, providers and credentials](models.md) | 15 | 1 same semantics · 12 mapped, difference stated · 2 not available |
-| [Asking the user, and rendering](interaction.md) | 24 | 4 same semantics · 20 mapped, difference stated |
+| [Asking the user, and rendering](interaction.md) | 24 | 5 same semantics · 19 mapped, difference stated |
 | [Project environment, skills and resources](environment.md) | 4 | 1 same semantics · 1 mapped, difference stated · 2 not available |
 
 ## What the statuses mean

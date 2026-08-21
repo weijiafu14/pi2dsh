@@ -28,10 +28,12 @@ This is not yet a count of every nested callable. For example, the
 separate runtime verdict. A complete upstream drift audit must check those nested
 contracts too, not merely reproduce the total 111.
 
-Packages can also import **202 runtime symbols** from the three Pi packages served
-by the bridge: 111 from `pi-coding-agent`, 74 from `pi-tui`, and 17 from `pi-ai`.
-Those imports are a separate compatibility surface; they are not three extra ABI
-items and must not be mixed into the 111 denominator.
+Packages can also import runtime symbols from the three Pi packages served by the
+bridge. Those imports are a separate compatibility surface; they are not extra ABI
+items and must not be mixed into the 111 denominator. Their live, per-symbol list
+and counts are generated in [`capabilities/imports.md`](capabilities/imports.md) —
+this page does not restate them, because the bridge's export set changes as compat
+work lands and a hand-copied number here goes stale (it did once).
 
 ## Bridge-only extensions
 
@@ -43,27 +45,18 @@ denominator:
 - **111** — the pinned upstream Pi runtime ABI;
 - **1 bridge-only extension** — tracked separately from the upstream snapshot.
 
-After removing that extra row from the upstream denominator, the present runtime
-labels are **23 same semantics · 83 mapped with a stated difference · 5 not
-available**. These labels describe what a package receives; they are not a DSH
-architecture score.
+## Where the live runtime labels are
 
-## Area inventory
-
-| Area | Upstream surfaces | Current runtime labels |
-|---|---:|---|
-| Tools | 11 | 2 same · 9 mapped with a difference |
-| Commands, flags and editor input | 13 | 13 mapped with a difference |
-| Messages, context and the agent loop | 20 | 9 same · 11 mapped with a difference |
-| Sessions, branching and side conversations | 24 | 6 same · 18 mapped with a difference |
-| Models, providers and credentials | 15 | 1 same · 11 mapped with a difference · 3 unavailable |
-| Asking the user and rendering | 24 | 4 same · 20 mapped with a difference |
-| Project environment, skills and resources | 4 | 1 same · 1 mapped with a difference · 2 unavailable |
-| **Total** | **111** | **23 same · 83 mapped · 5 unavailable** |
-
-The generated, implementation-facing details remain in
-[`docs/capabilities/`](capabilities/README.md). The tools page shows the extra
-`unregisterTool` row while keeping it outside upstream totals.
+The per-surface runtime labels (same semantics / mapped with a stated difference /
+not available) and their per-area totals **live only in the generated pages** under
+[`docs/capabilities/`](capabilities/README.md), which `pnpm check:docs` keeps in
+lockstep with `src/compatibility.ts`. This page deliberately does not restate
+those numbers: they change whenever bridge work lands, and a hand-maintained copy
+here went stale once already (the `before_provider_request` upgrade moved a
+surface from unavailable to mapped while this page still said otherwise). The
+tools page shows the extra `unregisterTool` row while keeping it outside upstream
+totals. Either way, these labels describe what a package receives; they are not a
+DSH architecture score.
 
 ## Why the old “only three gaps” verdict was wrong
 
@@ -76,11 +69,13 @@ It mixed several unlike things into one bucket:
 - bridge work still to do was sometimes attributed to DSH;
 - the DSH module and Cordis lifecycle coverage were not audited at all.
 
-The five currently unavailable surfaces are also not one architectural class:
+The currently unavailable surfaces (see the generated pages for the live list) are
+also not one architectural class:
 
-- `before_provider_request`, `before_provider_headers`, and
-  `after_provider_response` need a real adapter wire lifecycle seam when a plugin
-  does not own the transport;
+- `before_provider_headers` and `after_provider_response` need a real adapter wire
+  lifecycle seam when a plugin does not own the transport
+  (`before_provider_request` is bridged for package-owned transports since
+  0.13.x — the DSH-native-adapter half of it remains `DSH-ARCH-003`);
 - `project_trust` needs a host-owned decision before untrusted project resources
   load;
 - `resources_discover` can be translated onto existing DSH provider seams and is

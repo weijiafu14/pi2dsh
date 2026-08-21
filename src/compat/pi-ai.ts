@@ -6,6 +6,8 @@
 // classifiers are vendored byte-identical (see ./vendor/PI-LICENSE) so
 // pattern tables stay in sync with Pi.
 
+import { AsyncLocalStorage } from 'node:async_hooks'
+
 export type { Static, TSchema } from 'typebox'
 export { Type } from 'typebox'
 export { isContextOverflow, isRecoverableLength } from './vendor/pi-ai-overflow.js'
@@ -98,20 +100,36 @@ export function contentText(content: string | readonly TextishContent[], separat
 // Legacy pi-ai/compat global-registry API. The registry is bridge-local:
 // providers registered here are visible to the same package but never route
 // real model calls (DSH llm adapters own those).
-const compatProviders = new Map<string, unknown>()
+interface PiAiRuntimeRegistry {
+  compatProviders: Map<string, unknown>
+  apiProviders: Map<string, { provider: CompatApiProvider, sourceId: string | undefined }>
+}
+
+const globalRegistry: PiAiRuntimeRegistry = {
+  compatProviders: new Map(),
+  apiProviders: new Map(),
+}
+const scopedRegistry = new AsyncLocalStorage<PiAiRuntimeRegistry>()
+
+const registry = (): PiAiRuntimeRegistry => scopedRegistry.getStore() ?? globalRegistry
+
+/** Create one isolated copy of Pi's process registries for an Agent runtime. */
+export function __createPiAiRuntimeRegistry(): PiAiRuntimeRegistry {
+  return { compatProviders: new Map(), apiProviders: new Map() }
+}
 
 export function registerProvider(name: string, provider: unknown): void {
-  compatProviders.set(name, provider)
+  registry().compatProviders.set(name, provider)
 }
 
 // Pi's compat getProviders() returns provider NAMES (callers iterate and
 // Set() them).
 export function getProviders(): string[] {
-  return [...compatProviders.keys()]
+  return [...registry().compatProviders.keys()]
 }
 
 export function getProvider(name: string): unknown {
-  return compatProviders.get(name)
+  return registry().compatProviders.get(name)
 }
 
 export function getModel(_provider: string, _id: string): undefined {
@@ -201,8 +219,6 @@ interface CompatApiProvider {
   streamSimple: (...args: unknown[]) => unknown
 }
 
-const apiProviderRegistry = new Map<string, { provider: CompatApiProvider, sourceId: string | undefined }>()
-
 function guardApi(api: string, fn: (...args: unknown[]) => unknown): (...args: unknown[]) => unknown {
   return (model: unknown, ...rest: unknown[]) => {
     const modelApi = (model as { api?: unknown } | undefined)?.api
@@ -212,7 +228,7 @@ function guardApi(api: string, fn: (...args: unknown[]) => unknown): (...args: u
 }
 
 export function registerApiProvider(provider: CompatApiProvider, sourceId?: string): void {
-  apiProviderRegistry.set(provider.api, {
+  registry().apiProviders.set(provider.api, {
     provider: {
       api: provider.api,
       stream: guardApi(provider.api, provider.stream),
@@ -223,16 +239,17 @@ export function registerApiProvider(provider: CompatApiProvider, sourceId?: stri
 }
 
 export function getApiProvider(api: string): CompatApiProvider | undefined {
-  return apiProviderRegistry.get(api)?.provider
+  return registry().apiProviders.get(api)?.provider
 }
 
 export function getApiProviders(): CompatApiProvider[] {
-  return Array.from(apiProviderRegistry.values(), entry => entry.provider)
+  return Array.from(registry().apiProviders.values(), entry => entry.provider)
 }
 
 export function unregisterApiProviders(sourceId: string): void {
-  for (const [api, entry] of apiProviderRegistry.entries()) {
-    if (entry.sourceId === sourceId) apiProviderRegistry.delete(api)
+  const providers = registry().apiProviders
+  for (const [api, entry] of providers.entries()) {
+    if (entry.sourceId === sourceId) providers.delete(api)
   }
 }
 
@@ -248,9 +265,27 @@ type PiAiLlmBridge = (model: UnknownRecord, context: UnknownRecord, options: Unk
 type UnknownRecord = Record<string, unknown>
 
 let activeLlmBridge: PiAiLlmBridge | undefined
+const scopedLlmBridge = new AsyncLocalStorage<PiAiLlmBridge | undefined>()
 
 export function __setPiAiLlmBridge(bridge: PiAiLlmBridge | undefined): void {
   activeLlmBridge = bridge
+}
+
+/** Run extension-owned work with the exact Agent runtime's DSH llm bridge. */
+export function __runWithPiAiLlmBridge<T>(
+  bridge: PiAiLlmBridge | undefined,
+  callback: () => T,
+): T {
+  return scopedLlmBridge.run(bridge, callback)
+}
+
+/** Bind both designated-model routing and Pi's registries to one Agent runtime. */
+export function __runWithPiAiRuntime<T>(
+  bridge: PiAiLlmBridge | undefined,
+  runtimeRegistry: PiAiRuntimeRegistry,
+  callback: () => T,
+): T {
+  return scopedRegistry.run(runtimeRegistry, () => scopedLlmBridge.run(bridge, callback))
 }
 
 // Internal bridge access for the pi-coding-agent shim: the vendored
@@ -259,14 +294,15 @@ export function __setPiAiLlmBridge(bridge: PiAiLlmBridge | undefined): void {
 // path (the DSH llm route). Undefined without a mounted llm service — the
 // vendored fallback then fails loud instead of reaching a provider SDK.
 export function __getPiAiLlmBridge(): PiAiLlmBridge | undefined {
-  return activeLlmBridge
+  return scopedLlmBridge.getStore() ?? activeLlmBridge
 }
 
 function requireLlmBridge(api: string): PiAiLlmBridge {
-  if (activeLlmBridge === undefined) {
+  const bridge = __getPiAiLlmBridge()
+  if (bridge === undefined) {
     throw new Error(`pi2dsh: pi-ai ${api}() needs a DSH llm service; this composition mounts none, so model calls cannot be routed`)
   }
-  return activeLlmBridge
+  return bridge
 }
 
 export async function complete(model: UnknownRecord, context: UnknownRecord, options?: UnknownRecord): Promise<unknown> {

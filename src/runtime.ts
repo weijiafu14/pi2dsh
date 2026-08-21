@@ -1,3 +1,7 @@
+// TODO: 拆解本文件（2026-08-20 用户拍板，待做）。~3.9k 行承载了包挂载、
+// SharedHostState、模型目录投影、/login 与凭证恢复、伴生路由、命令/工具/
+// 事件桥等多个职责。拆法必须跟着架构走：按 CLAUDE.md 三层结构与 host 级/
+// 包级资源边界切模块，纯搬家不改逻辑；动手前先给出切分方案对齐再执行。
 import { access, mkdir, readFile, writeFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -9,6 +13,7 @@ import { dirname, join } from 'node:path'
 import { createJiti } from 'jiti'
 import type { Context } from '@deepseek-ai/cordis'
 import { createUserMessage, type ContentBlock } from '@deepseek-ai/dsh-llm'
+import { scopeOf } from '@deepseek-ai/dsh-scope'
 import { renderPrompt } from '@deepseek-ai/dsh-system-prompt'
 import type {
   PostToolDecision,
@@ -20,7 +25,14 @@ import type {
 import type { GeneratedRuntimeManifest } from './types.js'
 import { CapabilityLedger, PiCapabilityError } from './capability.js'
 import { PiSessionBridge } from './session-bridge.js'
-import { ExtensionRunner, Theme, __setSubagentSessionFactory, generateBranchSummary, getAgentDir } from './compat/pi-coding-agent.js'
+import {
+  ExtensionRunner,
+  Theme,
+  __runWithSubagentSessionFactory,
+  generateBranchSummary,
+  getAgentDir,
+} from './compat/pi-coding-agent.js'
+import { getKeybindings } from './compat/pi-tui.js'
 import { childLabel, createBridgedAgentSession, type SubagentHost } from './subagent-bridge.js'
 import { openBrowser } from './compat/vendor/pi-open-browser.js'
 import { BrowserSurfaces, publishAuthorization, registerBrowserSurfaceRoute, revokeAuthorization, surfaceText, type SurfaceKey } from './browser-surfaces.js'
@@ -36,11 +48,19 @@ import {
   resolvePiProviderAuth,
   storedOAuthCredential,
 } from './oauth-bridge.js'
-import { __setPiAiLlmBridge, builtinProviders } from './compat/pi-ai.js'
+import { __createPiAiRuntimeRegistry, __runWithPiAiRuntime, builtinProviders } from './compat/pi-ai.js'
 import { validateToolArguments } from './compat/vendor/pi-tool-validation.js'
 import { ModelCatalog, llmOf, streamViaDshLlm, type DshAttachmentsLike } from './model-bridge.js'
 import { imageAdmissionCompanionAdapter, providerCarriesTransport, registerPiProviderRoute, type PiRouteHandle } from './provider-adapter.js'
 import { oauthCredentialRef } from './credentials-oauth.js'
+import {
+  commandNameForDshTui,
+  mountTuiSurfaceAdapter,
+  type PiCustomFactory,
+  type PiCustomOptions,
+  type TuiSurfaceAdapter,
+  type TuiSurfaceContext,
+} from './tui-surfaces.js'
 
 type UnknownRecord = Record<string, unknown>
 type PiHandler = (event: UnknownRecord, context: UnknownRecord) => unknown | Promise<unknown>
@@ -61,6 +81,8 @@ interface RuntimeOptions {
   rootUrl: URL
   manifest: GeneratedRuntimeManifest
   config?: UnknownRecord
+  /** Exact Agent owner supplied by the pre-publication setup host. */
+  ownerAgent?: UnknownRecord
 }
 
 interface PiTool {
@@ -92,6 +114,8 @@ interface PiCommand {
 
 interface RuntimeState {
   packageName: string
+  /** Exact DSH Agent that owns this runtime; absent only for legacy root mounts. */
+  ownerAgent: UnknownRecord | undefined
   handlers: Map<string, PiHandler[]>
   tools: Map<string, PiTool>
   // The Pi runner facade tool-catalog packages (pi-fabric) hook by patching
@@ -105,14 +129,38 @@ interface RuntimeState {
   // DSH-side disposers for registered commands, so Pi's same-name
   // registerCommand replacement (Map.set semantics) can release the old one.
   commandDisposers: Map<string, () => void>
+  /** DSH command name -> Pi command that currently owns that public name. */
+  dshCommandOwners: Map<string, string>
   flags: Map<string, boolean | string | undefined>
   notifications: string[]
   activeAgents: Set<UnknownRecord>
+  /** Latest non-child Agent whose Pi session owns this package instance. */
+  hostAgent: UnknownRecord | undefined
+  /** Agents whose linear Pi session_shutdown has already been projected. */
+  piShutdownAgents: WeakSet<object>
   disposedAgents: WeakSet<object>
+  /** Durable sessions that have already received Pi's session_start event. */
+  startedSessions: Set<string>
+  /** In-flight session_start handlers, so an immediate command can await initialization. */
+  sessionStartTasks: Map<string, Promise<void>>
+  /** Fallback dedupe for command agents whose composition has no durable session. */
+  startedSessionlessAgents: WeakSet<object>
+  /** In-flight session_start handlers for agents without a durable session id. */
+  sessionlessStartTasks: WeakMap<object, Promise<void>>
+  /** Extension entries are async imports; lifecycle events wait until handlers exist. */
+  extensionsReady: boolean
+  /** Agent starts observed while extension entries are still loading. */
+  pendingSessionStarts: Map<UnknownRecord, string>
   currentSystemPrompt: string
   messageSource: string
   eventBus: EventEmitter
   agentScope: AsyncLocalStorage<UnknownRecord | undefined>
+  /** Per-Agent bridge used by Pi's designated-model calls. */
+  llmBridge: PiAiLlmBridge | undefined
+  /** Per-Agent copy of Pi's compat and API-provider registries. */
+  piAiRegistry: ReturnType<typeof __createPiAiRuntimeRegistry>
+  /** Per-Agent factory used by Pi's createAgentSession(). */
+  subagentSessionFactory: SubagentSessionFactory | undefined
   bridge: PiSessionBridge
   theme: Theme
   // Registered-but-headless surfaces: accepted so packages load and can
@@ -179,12 +227,27 @@ interface RuntimeState {
   companionRoutes: Map<string, string>
   // Live DSH llm routes registered for transport-carrying Pi providers.
   providerRouteDisposers: Map<string, PiRouteHandle>
+  /** Host-shared provider routes this Agent runtime owns one reference to. */
+  ownedProviderRoutes: Set<string>
   // Last key handed to the host credential store per provider, so a request
   // that did not rotate anything writes nothing.
   publishedOAuthKeys: Map<string, string>
   // The host-shared slice this package state was built over.
   shared: SharedHostState
+  // Package-scoped terminal surface, present only in a composition that
+  // mounts dsh-TUI's public `tuiScenes` service.
+  tuiSurfaces: TuiSurfaceAdapter | undefined
 }
+
+type PiAiLlmBridge = (
+  model: UnknownRecord,
+  context: UnknownRecord,
+  options: UnknownRecord | undefined,
+) => ReturnType<typeof streamViaDshLlm>
+
+type SubagentSessionFactory = (
+  options: Record<string, unknown>,
+) => Promise<{ session: unknown }>
 
 interface PiExecOptions {
   signal?: AbortSignal
@@ -670,8 +733,8 @@ function contextFor(
     // nothing draws.
     setStatus: (key: unknown, text: unknown) => {
       const surfaces = state.shared.browserSurfaces
-      if (surfaces === undefined) return
-      surfaces.setStatus(sessionIdOf(state, agent), state.packageName, String(key), text)
+      surfaces?.setStatus(sessionIdOf(state, agent), state.packageName, String(key), text)
+      state.tuiSurfaces?.setStatus(String(key), text)
     },
     setWidget: (key: unknown, content: unknown) => {
       const surfaces = state.shared.browserSurfaces
@@ -695,8 +758,19 @@ function contextFor(
     // the DSH session: a session title is durable, user-owned and shown in the
     // session list, and quietly rewriting it would outlive the turn that asked.
     setTitle: (title: unknown) => putSurface(ctx, state, agent, 'title', title),
-    // Pi's own rpc mode resolves ui.custom to undefined; mirror that exactly.
-    custom: async () => undefined,
+    // A terminal composition gets the package's real Pi component through
+    // dsh-TUI's public full-screen scene seam. Browser/headless compositions
+    // keep Pi's own rpc-mode behavior and resolve undefined.
+    custom: async (factory: unknown, options?: unknown) => {
+      const surfaces = state.tuiSurfaces
+      if (surfaces === undefined || typeof factory !== 'function') return undefined
+      return surfaces.custom(
+        factory as PiCustomFactory<unknown>,
+        state.theme,
+        getKeybindings(),
+        options as PiCustomOptions | undefined,
+      )
+    },
     // Pi's editor calls, on DSH's real composer. `inputActions.setDraft` is
     // part of the session standard kit every session-scoped slot component
     // receives, so the bridge's own browser half can perform the write; the
@@ -956,12 +1030,14 @@ function contextFor(
   const base: UnknownRecord = {
     ...replacedSessionActions,
     ui,
-    mode: 'rpc',
+    get mode(): 'tui' | 'rpc' { return state.tuiSurfaces?.available === true ? 'tui' : 'rpc' },
     // A getter, not a value: this context is rebuilt for every dispatched
     // event, and the probe below costs a register/dispose. Packages read
     // `hasUI` rarely, and reading it lazily also makes the answer current at
     // the moment it is asked rather than at the moment the context was built.
-    get hasUI(): boolean { return humanAnswererAvailable(userQuestions, agent) },
+    get hasUI(): boolean {
+      return state.tuiSurfaces?.available === true || humanAnswererAvailable(userQuestions, agent)
+    },
     cwd: contextCwd,
     sessionManager: session === undefined
       ? state.bridge.readonlySessionManager({ id: 'pi2dsh-detached', events: [] }, contextCwd)
@@ -1247,8 +1323,8 @@ function contextFor(
       // host-managed (they reload with dsh itself) — documented in
       // compatibility.ts.
       reload: async () => {
-        const remounts = state.shared.packageRemounts
-        if (remounts === undefined || remounts.size === 0) return
+        const remounts = packageRemountsOf(ctx, state.shared)
+        if (remounts.size === 0) return
         for (const [name, remount] of remounts) {
           try {
             await remount()
@@ -1277,9 +1353,26 @@ async function dispatch(
   const results: unknown[] = []
   const agent = eventContext.__agent as UnknownRecord | undefined
   for (const handler of state.handlers.get(eventName) ?? []) {
-    results.push(await state.agentScope.run(agent, () => handler(event, eventContext)))
+    results.push(await runInPiRuntime(state, agent, () => handler(event, eventContext)))
   }
   return results
+}
+
+/**
+ * Bind every compatibility singleton to this exact Agent runtime for the
+ * duration of extension-owned work. AsyncLocalStorage follows promises and
+ * detached work spawned inside the callback, so two live Agents cannot
+ * overwrite each other's model bridge or child-session factory.
+ */
+function runInPiRuntime<T>(
+  state: RuntimeState,
+  agent: UnknownRecord | undefined,
+  callback: () => T,
+): T {
+  return state.agentScope.run(agent, () => __runWithSubagentSessionFactory(
+    state.subagentSessionFactory,
+    () => __runWithPiAiRuntime(state.llmBridge, state.piAiRegistry, callback),
+  ))
 }
 
 /**
@@ -1292,7 +1385,7 @@ async function dispatchBeforeProviderRequest(
   ctx: Context,
   state: RuntimeState,
   payload: UnknownRecord,
-  request: { provider: string, model: UnknownRecord, signal?: AbortSignal },
+  request: { provider: string, model: UnknownRecord, sessionId?: string, signal?: AbortSignal },
 ): Promise<UnknownRecord> {
   let current = payload
   const agent = currentAgent(state)
@@ -1302,7 +1395,7 @@ async function dispatchBeforeProviderRequest(
   eventContext.model = { ...request.model, provider: request.provider }
   for (const handler of state.handlers.get('before_provider_request') ?? []) {
     try {
-      const result = await state.agentScope.run(agent, () => handler({
+      const result = await runInPiRuntime(state, agent, () => handler({
         type: 'before_provider_request',
         payload: current,
       }, eventContext))
@@ -1314,6 +1407,25 @@ async function dispatchBeforeProviderRequest(
       // down the provider or prevent later waterfall handlers from running.
       logger(ctx).warn(`[pi2dsh] before_provider_request handler failed: ${error instanceof Error ? error.message : String(error)}`)
     }
+  }
+  return current
+}
+
+/** Run Pi's provider-body waterfall through every package runtime of one Agent. */
+async function dispatchHostProviderRequest(
+  ctx: Context,
+  shared: SharedHostState,
+  fallback: RuntimeState,
+  payload: UnknownRecord,
+  request: { provider: string, model: UnknownRecord, sessionId?: string, signal?: AbortSignal },
+): Promise<UnknownRecord> {
+  const scoped = request.sessionId === undefined
+    ? undefined
+    : shared.runtimeStatesBySession.get(request.sessionId)
+  const states = scoped === undefined || scoped.size === 0 ? [fallback] : [...scoped]
+  let current = payload
+  for (const state of states) {
+    current = await dispatchBeforeProviderRequest(ctx, state, current, request)
   }
   return current
 }
@@ -1416,6 +1528,159 @@ function sourceReason(value: unknown): string {
   return value === 'resume' ? 'resume' : value === 'fork' ? 'fork' : 'startup'
 }
 
+/**
+ * Claim Pi's once-per-session `session_start` event.
+ *
+ * dsh-TUI can execute a slash command before DSH starts the first model turn,
+ * so `agent/session-start` has not necessarily been announced yet. Pi, by
+ * contrast, announces `session_start` before the user can execute a command.
+ * The command bridge uses this same claim before invoking a Pi command; when
+ * DSH later announces the real agent lifecycle, the durable session id keeps
+ * the second path from restarting the extension.
+ */
+function claimPiSessionStart(state: RuntimeState, agent: UnknownRecord | undefined): boolean {
+  const id = agentSession(agent)?.id
+  if (typeof id === 'string') {
+    if (state.startedSessions.has(id)) return false
+    state.startedSessions.add(id)
+    return true
+  }
+  if (typeof agent === 'object' && agent !== null) {
+    if (state.startedSessionlessAgents.has(agent)) return false
+    state.startedSessionlessAgents.add(agent)
+    return true
+  }
+  return false
+}
+
+async function ensurePiSessionStarted(
+  ctx: Context,
+  state: RuntimeState,
+  agent: UnknownRecord | undefined,
+  signal: AbortSignal | undefined,
+): Promise<void> {
+  await startPiSession(ctx, state, agent, 'startup', signal)
+}
+
+function inFlightPiSessionStart(state: RuntimeState, agent: UnknownRecord | undefined): Promise<void> | undefined {
+  const id = agentSession(agent)?.id
+  if (typeof id === 'string') return state.sessionStartTasks.get(id)
+  if (typeof agent === 'object' && agent !== null) return state.sessionlessStartTasks.get(agent)
+  return undefined
+}
+
+function rememberPiSessionStart(state: RuntimeState, agent: UnknownRecord | undefined, task: Promise<void>): void {
+  const id = agentSession(agent)?.id
+  if (typeof id === 'string') state.sessionStartTasks.set(id, task)
+  else if (typeof agent === 'object' && agent !== null) state.sessionlessStartTasks.set(agent, task)
+}
+
+function forgetPiSessionStart(state: RuntimeState, agent: UnknownRecord | undefined, task: Promise<void>): void {
+  const id = agentSession(agent)?.id
+  if (typeof id === 'string') {
+    if (state.sessionStartTasks.get(id) === task) state.sessionStartTasks.delete(id)
+  } else if (typeof agent === 'object' && agent !== null && state.sessionlessStartTasks.get(agent) === task) {
+    state.sessionlessStartTasks.delete(agent)
+  }
+}
+
+function releasePiSessionClaim(state: RuntimeState, agent: UnknownRecord | undefined): void {
+  const id = agentSession(agent)?.id
+  if (typeof id === 'string') {
+    state.startedSessions.delete(id)
+    state.sessionStartTasks.delete(id)
+  } else if (typeof agent === 'object' && agent !== null) {
+    state.startedSessionlessAgents.delete(agent)
+    state.sessionlessStartTasks.delete(agent)
+  }
+}
+
+function replacementReason(reason: string): 'new' | 'resume' | 'fork' {
+  if (reason === 'resume') return 'resume'
+  if (reason === 'fork') return 'fork'
+  return 'new'
+}
+
+function trackRuntimeSession(state: RuntimeState, agent: UnknownRecord | undefined): void {
+  const id = agentSession(agent)?.id
+  if (typeof id !== 'string') return
+  let states = state.shared.runtimeStatesBySession.get(id)
+  if (states === undefined) {
+    states = new Set()
+    state.shared.runtimeStatesBySession.set(id, states)
+  }
+  states.add(state)
+}
+
+function untrackRuntimeSession(state: RuntimeState, agent: UnknownRecord | undefined): void {
+  const id = agentSession(agent)?.id
+  if (typeof id !== 'string') return
+  const states = state.shared.runtimeStatesBySession.get(id)
+  states?.delete(state)
+  if (states?.size === 0) state.shared.runtimeStatesBySession.delete(id)
+}
+
+/** Dispatch or join the one in-flight Pi session_start for this session. */
+async function startPiSession(
+  ctx: Context,
+  state: RuntimeState,
+  agent: UnknownRecord | undefined,
+  reason: string,
+  signal: AbortSignal | undefined,
+): Promise<void> {
+  if (!acceptsAgent(state, agent)) return
+  const existing = inFlightPiSessionStart(state, agent)
+  if (existing !== undefined) {
+    await existing
+    return
+  }
+  const task = runInPiRuntime(state, agent, async () => {
+    const previous = state.hostAgent
+    const replacing = typeof previous === 'object' && previous !== null && previous !== agent
+    const transitionReason = replacing ? replacementReason(reason) : reason
+
+    // DSH deliberately overlaps physical Agents during an atomic switch:
+    // B is fully created (and announces agent/session-start) before A is
+    // disposed. Pi deliberately exposes one linear extension runtime:
+    // session_shutdown(A) must settle before session_start(B). Serialize that
+    // semantic handoff here; the later physical disposal of A is then only a
+    // DSH-resource event and must not emit a second Pi shutdown.
+    if (replacing && !state.piShutdownAgents.has(previous)) {
+      state.piShutdownAgents.add(previous)
+      releasePiSessionClaim(state, previous)
+      await runInPiRuntime(state, previous, () => dispatch(
+        state,
+        'session_shutdown',
+        { type: 'session_shutdown', reason: replacementReason(reason) },
+        contextFor(ctx, state, previous, signal),
+      ))
+    }
+
+    if (typeof agent === 'object' && agent !== null) {
+      state.hostAgent = agent
+      state.piShutdownAgents.delete(agent)
+    }
+    if (!claimPiSessionStart(state, agent)) return
+    try {
+      await dispatch(
+        state,
+        'session_start',
+        { type: 'session_start', reason: transitionReason },
+        contextFor(ctx, state, agent, signal),
+      )
+    } catch (error) {
+      releasePiSessionClaim(state, agent)
+      throw error
+    }
+  })
+  rememberPiSessionStart(state, agent, task)
+  try {
+    await task
+  } finally {
+    forgetPiSessionStart(state, agent, task)
+  }
+}
+
 function subscribeLifecycle(ctx: Context, state: RuntimeState): void {
   const cordis = ctx as unknown as {
     on(name: string, callback: (...args: any[]) => unknown, options?: unknown): () => void
@@ -1425,36 +1690,45 @@ function subscribeLifecycle(ctx: Context, state: RuntimeState): void {
 
   cordis.on('agent/session-start', (payload: UnknownRecord) => {
     const agent = payload.agent as UnknownRecord
-    // Child agents (subagent-origin sessions — reviewer sessions, tool
-    // workers) are NOT Pi host sessions: a Pi extension lives in exactly one
-    // session, and leaking a child's lifecycle into it reads as "a new
-    // session started" mid-turn (packages then reset their runtime state
-    // while their own child is mid-flight). Track the agent for scoped
-    // routing but never project the Pi lifecycle event.
-    if (isSubagentOrigin(agent)) {
-      state.activeAgents.add(agent)
-      return
-    }
+    if (!acceptsAgent(state, agent)) return
     state.activeAgents.add(agent)
+    trackRuntimeSession(state, agent)
     const session = agentSession(agent)
     if (session !== undefined) state.bridge.load(session.id)
     if (state.pendingActiveTools !== undefined) {
-      state.agentScope.run(agent, () => setActiveTools(ctx, state, state.pendingActiveTools!))
+      runInPiRuntime(state, agent, () => setActiveTools(ctx, state, state.pendingActiveTools!))
     }
-    void dispatch(state, 'session_start', { type: 'session_start', reason: sourceReason(payload.source) }, contextFor(ctx, state, agent, undefined))
+    // dsh-TUI creates its initial Agent while plugin entries are still being
+    // imported. Marking the session as started at that instant would dispatch
+    // into an empty handler ledger, then suppress the real delivery once the
+    // extension is ready. Buffer the fact, not the event execution.
+    if (!state.extensionsReady) {
+      state.pendingSessionStarts.set(agent, sourceReason(payload.source))
+      return
+    }
+    void startPiSession(ctx, state, agent, sourceReason(payload.source), undefined)
       .catch(error => warn('session_start', error))
   })
   cordis.on('agent/disposed', (payload: UnknownRecord) => {
     const agent = payload.agent as UnknownRecord
+    if (!acceptsAgent(state, agent)) return
+    const ownsHostSession = state.hostAgent === agent
     state.activeAgents.delete(agent)
+    untrackRuntimeSession(state, agent)
+    state.pendingSessionStarts.delete(agent)
     if (typeof agent === 'object' && agent !== null) {
       state.toolRestrictions.get(agent)?.()
       state.toolRestrictions.delete(agent)
     }
     if (typeof agent === 'object' && agent !== null && !state.disposedAgents.has(agent)) {
       state.disposedAgents.add(agent)
-      // Child-agent disposal is not the Pi host session shutting down.
-      if (!isSubagentOrigin(agent)) {
+      releasePiSessionClaim(state, agent)
+      // A scoped runtime owns exactly this Agent. Legacy root mounts may
+      // still replace first and dispose second; the ownership guard above
+      // prevents one Agent's late disposal from touching another runtime.
+      if (ownsHostSession && !state.piShutdownAgents.has(agent)) {
+        state.piShutdownAgents.add(agent)
+        state.hostAgent = undefined
         void dispatch(state, 'session_shutdown', { type: 'session_shutdown', reason: 'quit' }, contextFor(ctx, state, agent, undefined))
           .catch(error => warn('session_shutdown', error))
       }
@@ -1462,8 +1736,8 @@ function subscribeLifecycle(ctx: Context, state: RuntimeState): void {
   })
 
   cordis.on('session/event', (session: UnknownRecord, event: UnknownRecord) => {
-    // Child-agent sessions never project into the parent's Pi extensions.
-    if (isSubagentOrigin(session)) return
+    const ownedSession = agentSession(state.ownerAgent)
+    if (ownedSession !== undefined ? session !== ownedSession : isSubagentOrigin(session)) return
     const agent = [...state.activeAgents].find(candidate => candidate.session === session)
     const eventContext = contextFor(ctx, state, agent, undefined)
     const type = event.type
@@ -1620,7 +1894,7 @@ function subscribeLifecycle(ctx: Context, state: RuntimeState): void {
   cordis.on('agent/request', async (payload: UnknownRecord, next: () => Promise<UnknownRecord>) => {
     const config = await next()
     const agent = payload.agent as UnknownRecord | undefined
-    if (agent === undefined) return config
+    if (agent === undefined || !acceptsAgent(state, agent)) return config
     const override = state.modelOverrides.get(agent)
     const thinking = state.thinkingLevels.get(agent)
     if (override === undefined && thinking === undefined) return config
@@ -1634,17 +1908,69 @@ function subscribeLifecycle(ctx: Context, state: RuntimeState): void {
 
 
   cordis.effect(() => async () => {
-    for (const agent of state.activeAgents) {
-      if (typeof agent === 'object' && agent !== null && !state.disposedAgents.has(agent)) {
-        state.disposedAgents.add(agent)
-        await dispatch(state, 'session_shutdown', { type: 'session_shutdown', reason: 'quit' }, contextFor(ctx, state, agent, undefined))
-      }
+    const agent = state.hostAgent
+    if (typeof agent === 'object' && agent !== null && !state.piShutdownAgents.has(agent)) {
+      state.piShutdownAgents.add(agent)
+      state.disposedAgents.add(agent)
+      await dispatch(state, 'session_shutdown', { type: 'session_shutdown', reason: 'quit' }, contextFor(ctx, state, agent, undefined))
     }
+    state.hostAgent = undefined
+    for (const active of state.activeAgents) untrackRuntimeSession(state, active)
     state.activeAgents.clear()
+    state.startedSessions.clear()
+    state.sessionStartTasks.clear()
+    state.pendingSessionStarts.clear()
     for (const dispose of state.toolDisposers.values()) dispose()
     state.toolDisposers.clear()
+    for (const provider of [...state.ownedProviderRoutes]) releaseSharedProviderRoute(state, provider)
     state.eventBus.removeAllListeners()
   }, 'pi2dsh session shutdown')
+}
+
+async function flushPendingSessionStarts(ctx: Context, state: RuntimeState): Promise<void> {
+  state.extensionsReady = true
+  const pending = [...state.pendingSessionStarts]
+  state.pendingSessionStarts.clear()
+  for (const [agent, reason] of pending) {
+    await startPiSession(ctx, state, agent, reason, undefined)
+  }
+}
+
+/**
+ * Start freshly reloaded extension handlers in every live Pi host session.
+ *
+ * `ctx.reload()` creates a new extension instance. The durable session has
+ * already been claimed by the previous instance, so the ordinary once-per-
+ * session guard must deliberately NOT suppress this replay: from the new
+ * instance's point of view this is its first `session_start`. The command's
+ * AsyncLocalStorage agent is included because a lean composition can execute
+ * a Pi command without publishing DSH's optional agent/session-start event.
+ */
+async function restartReloadedPiSessions(ctx: Context, state: RuntimeState): Promise<void> {
+  state.extensionsReady = true
+  const pending = new Map(state.pendingSessionStarts)
+  state.pendingSessionStarts.clear()
+  const commandAgent = currentAgent(state)
+  const candidates = [...state.activeAgents, ...(commandAgent === undefined ? [] : [commandAgent])]
+  const seenSessions = new Set<string>()
+  const seenSessionless = new Set<UnknownRecord>()
+  for (const agent of candidates) {
+    if (!acceptsAgent(state, agent)) continue
+    const sessionId = agentSession(agent)?.id
+    if (typeof sessionId === 'string') {
+      if (seenSessions.has(sessionId)) continue
+      seenSessions.add(sessionId)
+    } else {
+      if (seenSessionless.has(agent)) continue
+      seenSessionless.add(agent)
+    }
+    await runInPiRuntime(state, agent, () => dispatch(
+      state,
+      'session_start',
+      { type: 'session_start', reason: pending.get(agent) ?? 'resume' },
+      contextFor(ctx, state, agent, undefined),
+    ))
+  }
 }
 
 function subscribeInterceptors(ctx: Context, state: RuntimeState): void {
@@ -1654,7 +1980,7 @@ function subscribeInterceptors(ctx: Context, state: RuntimeState): void {
     // parent: DSH lets an untagged listener see every scope, so without this
     // a parent's guard would silently police another session's calls, and its
     // handlers would receive an end without ever having seen the start.
-    if (isSubagentOrigin(exec.agent as unknown as UnknownRecord | undefined)) return next()
+    if (!acceptsAgent(state, exec.agent as unknown as UnknownRecord | undefined)) return next()
     const input = cloneJson(exec.arguments)
     const event: UnknownRecord = { type: 'tool_call', toolName: exec.name, toolCallId: exec.callId, input }
     const results = await dispatch(state, 'tool_call', event, contextFor(ctx, state, exec.agent as unknown as UnknownRecord, exec.signal))
@@ -1702,7 +2028,7 @@ function subscribeInterceptors(ctx: Context, state: RuntimeState): void {
     // parent: DSH lets an untagged listener see every scope, so without this
     // a parent's guard would silently police another session's calls, and its
     // handlers would receive an end without ever having seen the start.
-    if (isSubagentOrigin(exec.agent as unknown as UnknownRecord | undefined)) return next()
+    if (!acceptsAgent(state, exec.agent as unknown as UnknownRecord | undefined)) return next()
     const downstream = await next()
     // Pi emits the execution's end as part of completing it, so a handler has
     // run before the caller sees the result. This waterfall is that moment;
@@ -1748,7 +2074,7 @@ function subscribeInterceptors(ctx: Context, state: RuntimeState): void {
   // event run during the assembly it is supposed to influence.
   cordis.on('agent/inbox/claimed', (payload: UnknownRecord) => {
     const agent = payload.agent as UnknownRecord | undefined
-    if (agent === undefined || isSubagentOrigin(agent)) return
+    if (agent === undefined || !acceptsAgent(state, agent)) return
     const claimed = state.claimedForStep.get(agent) ?? []
     claimed.push({ message: payload.message, turn: Number(payload.turn ?? 0) })
     state.claimedForStep.set(agent, claimed)
@@ -1756,7 +2082,7 @@ function subscribeInterceptors(ctx: Context, state: RuntimeState): void {
 
   cordis.on('agent/pre-step', async (payload: UnknownRecord, next: () => Promise<UnknownRecord>) => {
     const agent = payload.agent as UnknownRecord
-    if (isSubagentOrigin(agent)) return next()
+    if (!acceptsAgent(state, agent)) return next()
     // The step boundary IS the end of the previous tool batch, so this is
     // where Pi's batch verdict is read: stop only when every call in that
     // batch was blocked asking to terminate. Rejecting the proposed step is
@@ -1825,7 +2151,8 @@ function subscribeInterceptors(ctx: Context, state: RuntimeState): void {
     const original = renderPrompt(downstream as never)
     state.currentSystemPrompt = original
     const agent = (assembleContext.agent ?? assembleContext.scope) as UnknownRecord | undefined
-    if (agent !== undefined && !isSubagentOrigin(agent)) {
+    if (agent !== undefined && !acceptsAgent(state, agent)) return downstream
+    if (agent !== undefined && acceptsAgent(state, agent)) {
       // Pi's before_agent_start fires once per user prompt: after the user
       // message is known, before the first model call. That is HERE — the
       // loop claims the turn's messages and then assembles — and it has to be
@@ -2054,11 +2381,15 @@ const COMPANION_ROUTE_PREFIX = 'pi2dsh-companion/'
 interface SharedHostState {
   companionRoutes: Map<string, string>
   providerRouteDisposers: Map<string, PiRouteHandle>
+  /** Agent-runtime owners for each host-global provider route. */
+  providerRouteOwners: Map<string, Set<RuntimeState>>
+  /** Per-session Pi runtimes, in package mount order, for provider waterfalls. */
+  runtimeStatesBySession: Map<string, Set<RuntimeState>>
   publishedOAuthKeys: Map<string, string>
   providers: Map<string, UnknownRecord>
   modelCatalog?: ModelCatalog
   catalogSubscribed?: boolean
-  loginRegistered?: boolean
+  loginRegistered?: WeakSet<object>
   oauthRefreshHooked?: boolean
   companionSweepSubscribed?: boolean
   oauthStore?: FileCredentialStore
@@ -2067,7 +2398,7 @@ interface SharedHostState {
   // extension-owned registration and run the extension entries again through
   // a fresh loader, so edited plugin code takes effect. Host-managed resources
   // (skills, prompts) reload with dsh itself.
-  packageRemounts?: Map<string, () => Promise<void>>
+  packageRemounts?: WeakMap<object, Map<string, () => Promise<void>>>
   // The side-conversation panel is ONE surface per host, however many packages
   // contribute threads to it — same rule as the provider directory.
   browserSurfaces?: BrowserSurfaces
@@ -2101,12 +2432,26 @@ function sharedHostStateOf(ctx: Context): SharedHostState {
     shared = {
       companionRoutes: new Map(),
       providerRouteDisposers: new Map(),
+      providerRouteOwners: new Map(),
+      runtimeStatesBySession: new Map(),
       publishedOAuthKeys: new Map(),
       providers: new Map(),
     }
     SHARED_HOST_STATE.set(key, shared)
   }
   return shared
+}
+
+function packageRemountsOf(ctx: Context, shared: SharedHostState): Map<string, () => Promise<void>> {
+  const scoped = scopeOf(ctx)
+  const owner = (typeof scoped === 'object' && scoped !== null ? scoped : ctx) as object
+  const byOwner = (shared.packageRemounts ??= new WeakMap())
+  let remounts = byOwner.get(owner)
+  if (remounts === undefined) {
+    remounts = new Map()
+    byOwner.set(owner, remounts)
+  }
+  return remounts
 }
 
 /** Companion configuration: default (auto), `false` (off), or an explicit narrow map. */
@@ -2252,16 +2597,19 @@ async function materializeAttachmentImage(ctx: Context, attachment: UnknownRecor
   }
 }
 
-// Pi hosts ship /login <provider> as a built-in; register it once per HOST
-// (the provider directory it reads is host-shared, so one command serves
-// every mounted package). The try/catch still guards the separate-bundle
-// layout, where each bundle carries its own module graph and host slice.
+// Pi hosts ship /login <provider> as a built-in. Commands are Agent-scoped,
+// while the provider directory they read is host-shared, so register one
+// command per Agent regardless of how many Pi packages that Agent mounts.
 function ensureLoginCommand(ctx: Context, state: RuntimeState): void {
-  if (state.shared.loginRegistered === true) return
-  state.shared.loginRegistered = true
+  const scoped = scopeOf(ctx)
+  const owner = (typeof scoped === 'object' && scoped !== null ? scoped : ctx) as object
+  const registered = (state.shared.loginRegistered ??= new WeakSet())
+  if (registered.has(owner)) return
+  registered.add(owner)
   try {
     registerLoginCommand(ctx, state)
   } catch (error) {
+    registered.delete(owner)
     logger(ctx).warn(`[pi2dsh] /login is already registered by an earlier package in this host; this package's providers use that command (${error instanceof Error ? error.message : String(error)})`)
   }
 }
@@ -2459,7 +2807,7 @@ function keepOAuthCredentialFresh(ctx: Context, state: RuntimeState): void {
   const cordisCtx = ctx as unknown as { on(event: string, handler: (...args: never[]) => unknown): () => void }
   cordisCtx.on('llm/stream', ((options: UnknownRecord, next: () => AsyncIterable<unknown>) => {
     const provider = typeof options.provider === 'string' ? options.provider : undefined
-    const config = provider === undefined ? undefined : state.providers.get(provider)
+    const config = provider === undefined ? undefined : state.shared.providers.get(provider)
     if (provider === undefined || config === undefined || !providerSupportsOAuth(config)) return next()
     const publish = (): Promise<unknown> => publishOAuthCredential(ctx, state, provider, config)
       .catch(error => logger(ctx).warn(`[pi2dsh] could not refresh the stored credential for ${JSON.stringify(provider)}: ${error instanceof Error ? error.message : String(error)}`))
@@ -2664,6 +3012,14 @@ function registerTool(ctx: Context, state: RuntimeState, tool: PiTool): void {
     async execute(args, exec) {
       // Live ledger resolution (see the re-registration note above).
       const live = state.tools.get(tool.name) ?? tool
+      const agent = exec.agent as unknown as UnknownRecord | undefined
+      // A DSH surface may replace its Agent without publishing the optional
+      // agent/session-start event first (dsh-TUI /new does exactly that).
+      // Pi initializes session-owned tools such as MCP before any tool can be
+      // invoked, so the tool boundary must share the same once-per-session
+      // start gate as the slash-command boundary. Without it the first MCP
+      // call in a fresh TUI session reaches the adapter as "not initialized".
+      await ensurePiSessionStarted(ctx, state, agent, exec.signal)
       const mutated = state.argMutations.get(exec as unknown as object)
       if (mutated !== undefined) state.argMutations.delete(exec as unknown as object)
       const effective = mutated ?? args
@@ -2677,8 +3033,7 @@ function registerTool(ctx: Context, state: RuntimeState, tool: PiTool): void {
         { name: live.name, parameters: live.parameters },
         { name: live.name, arguments: live.prepareArguments?.(cloneJson(effective)) ?? effective },
       )
-      const agent = exec.agent as unknown as UnknownRecord | undefined
-      const result = await normalizeToolResultForDsh(ctx, await state.agentScope.run(agent, () => live.execute(
+      const result = await normalizeToolResultForDsh(ctx, await runInPiRuntime(state, agent, () => live.execute(
           String(exec.callId),
           prepared,
           exec.signal,
@@ -2726,6 +3081,12 @@ function currentAgent(state: RuntimeState): UnknownRecord | undefined {
   if (scoped !== undefined) return scoped
   if (state.activeAgents.size === 1) return state.activeAgents.values().next().value as UnknownRecord | undefined
   return undefined
+}
+
+/** Exact-Agent ownership for scoped mounts; legacy root mounts retain their old host-session rule. */
+function acceptsAgent(state: RuntimeState, agent: UnknownRecord | undefined): boolean {
+  if (state.ownerAgent !== undefined) return agent === state.ownerAgent
+  return !isSubagentOrigin(agent)
 }
 
 function toolRuntime(ctx: Context, agent?: UnknownRecord): {
@@ -3006,12 +3367,23 @@ async function executePiCommand(
   }
 }
 
-function dshCommandName(ctx: Context, piName: string): string {
+function normalizedPiCommandName(piName: string): string {
   // DSH command names are /^[a-z][a-z0-9_-]*$/; Pi allows richer names like
   // "btw:tangent". Normalize instead of refusing the whole package.
   const normalized = piName.toLowerCase().replace(/[^a-z0-9_-]+/gu, '-').replace(/^[^a-z]+/u, '')
-  const name = normalized.length > 0 ? normalized : 'pi-command'
-  if (name !== piName) logger(ctx).warn(`[pi2dsh] Pi command /${piName} registered as /${name} to satisfy DSH command naming`)
+  return normalized.length > 0 ? normalized : 'pi-command'
+}
+
+function dshCommandName(ctx: Context, state: RuntimeState, piName: string): string {
+  const validName = normalizedPiCommandName(piName)
+  const tuiAvailable = state.tuiSurfaces?.available === true || optionalService(ctx, 'tuiScenes') !== undefined
+  const name = commandNameForDshTui(validName, tuiAvailable)
+  if (name !== piName) {
+    const reason = name === 'pi-mcp'
+      ? "because dsh-TUI reserves /mcp for its native MCP status view"
+      : 'to satisfy DSH command naming'
+    logger(ctx).warn(`[pi2dsh] Pi command /${piName} registered as /${name} ${reason}`)
+  }
   return name
 }
 
@@ -3045,7 +3417,23 @@ function registerCommand(ctx: Context, state: RuntimeState, command: PiCommand):
     logger(ctx).warn(`[pi2dsh] command /${command.name} was not registered because this DSH composition has no ctx.commands`)
     return
   }
-  const baseName = dshCommandName(ctx, command.name)
+  const baseName = dshCommandName(ctx, state, command.name)
+  const existingOwner = state.dshCommandOwners.get(baseName)
+  // Prefer a Pi command that NATURALLY owns this name over an earlier command
+  // the host renamed into it. pi-mcp-adapter deliberately declares both
+  // /mcp and /pi-mcp; dsh-TUI reserves /mcp, so the first declaration is
+  // temporarily projected onto /pi-mcp. When the explicit /pi-mcp arrives it
+  // should replace that temporary projection, not leak a meaningless
+  // /pi-mcp-2. The rule is generic: normalization collisions where both Pi
+  // names naturally map to the same DSH name still use numbered aliases.
+  if (existingOwner !== undefined
+    && existingOwner !== command.name
+    && normalizedPiCommandName(command.name) === baseName
+    && normalizedPiCommandName(existingOwner) !== baseName) {
+    state.commandDisposers.get(existingOwner)?.()
+    state.commandDisposers.delete(existingOwner)
+    state.dshCommandOwners.delete(baseName)
+  }
   const definitionFor = (dshName: string): UnknownRecord => ({
     name: dshName,
     description: command.description || `Migrated Pi command /${command.name}`,
@@ -3064,7 +3452,10 @@ function registerCommand(ctx: Context, state: RuntimeState, command: PiCommand):
       // (including a reload remount) replaces the ledger entry while this one
       // DSH-side registration keeps serving the name.
       const live = state.commands.get(command.name) ?? command
-      await state.agentScope.run(agent, () => live.handler(String(invocation.rawInput ?? '').trimStart(), commandContext))
+      await runInPiRuntime(state, agent, async () => {
+        await ensurePiSessionStarted(ctx, state, agent, invocation.signal as AbortSignal | undefined)
+        await live.handler(String(invocation.rawInput ?? '').trimStart(), commandContext)
+      })
       const notices = commandContext.__notices as string[]
       return { kind: 'success', ...(notices.length > 0 ? { text: notices.join('\n') } : {}) }
     },
@@ -3074,6 +3465,7 @@ function registerCommand(ctx: Context, state: RuntimeState, command: PiCommand):
     const dshName = ordinal === 1 ? baseName : `${baseName}-${ordinal}`
     try {
       state.commandDisposers.set(command.name, commands.register(definitionFor(dshName)))
+      state.dshCommandOwners.set(dshName, command.name)
       if (ordinal > 1) {
         logger(ctx).warn(`[pi2dsh] command /${command.name} collides with an earlier registration in this host; mounted as /${dshName} (Pi numbers colliding commands the same way)`)
       }
@@ -3158,6 +3550,67 @@ function requireSession(state: RuntimeState, operation: string): { id: string; e
   return session
 }
 
+function releaseSharedProviderRoute(state: RuntimeState, name: string): void {
+  if (!state.ownedProviderRoutes.delete(name)) return
+  const owners = state.shared.providerRouteOwners.get(name)
+  owners?.delete(state)
+  if (owners !== undefined && owners.size > 0) return
+  state.shared.providerRouteOwners.delete(name)
+  const route = state.shared.providerRouteDisposers.get(name)
+  state.shared.providerRouteDisposers.delete(name)
+  route?.()
+}
+
+function registerSharedProviderRoute(
+  ctx: Context,
+  state: RuntimeState,
+  name: string,
+  value: UnknownRecord,
+): PiRouteHandle | undefined {
+  const shared = state.shared
+  const existing = shared.providerRouteDisposers.get(name)
+  if (existing !== undefined) {
+    let owners = shared.providerRouteOwners.get(name)
+    if (owners === undefined) {
+      owners = new Set()
+      shared.providerRouteOwners.set(name, owners)
+    }
+    owners.add(state)
+    state.ownedProviderRoutes.add(name)
+    return existing
+  }
+
+  const canonical = shared.providers.get(name) ?? value
+  shared.providers.set(name, canonical)
+  const route = registerPiProviderRoute({
+    llm: llmOf(ctx) as never,
+    ctx: ctx as never,
+    providerId: name,
+    provider: canonical,
+    host: {
+      resolveAuth: async () => resolvePiProviderAuth({
+        providerId: name,
+        providerConfig: canonical,
+        store: oauthStoreOf(state),
+      }) as Promise<{ auth?: UnknownRecord } | undefined>,
+      warn: message => logger(ctx).warn(message),
+      beforeProviderRequest: (payload, request) => dispatchHostProviderRequest(
+        ctx,
+        shared,
+        state,
+        payload,
+        request,
+      ),
+      resolveAttachments: () => optionalService<DshAttachmentsLike>(ctx, 'attachments'),
+    },
+  })
+  if (route === undefined) return undefined
+  shared.providerRouteDisposers.set(name, route)
+  shared.providerRouteOwners.set(name, new Set([state]))
+  state.ownedProviderRoutes.add(name)
+  return route
+}
+
 function createPiApi(ctx: Context, state: RuntimeState): UnknownRecord {
   return {
     on(event: string, handler: PiHandler) {
@@ -3195,6 +3648,7 @@ function createPiApi(ctx: Context, state: RuntimeState): UnknownRecord {
           ?? (providerOrName as UnknownRecord | undefined)?.name ?? 'unnamed')
       const value = typeof providerOrName === 'string' ? config ?? {} : providerOrName as UnknownRecord
       state.providers.set(name, value)
+      if (!state.shared.providers.has(name)) state.shared.providers.set(name, value)
       if (providerSupportsOAuth(value)) {
         // Pi hosts expose /login <provider> for oauth-capable providers; the
         // package's own login flow runs, credentials land in auth.json.
@@ -3204,25 +3658,8 @@ function createPiApi(ctx: Context, state: RuntimeState): UnknownRecord {
       // A provider carrying its own transport becomes a REAL DSH llm route:
       // the loop and child agents route to it natively, with credentials
       // resolved through Pi's own chain per request.
-      const routeDisposer = registerPiProviderRoute({
-        llm: llmOf(ctx) as never,
-        ctx: ctx as never,
-        providerId: name,
-        provider: value,
-        host: {
-          resolveAuth: async () => resolvePiProviderAuth({
-            providerId: name, providerConfig: value, store: oauthStoreOf(state),
-          }) as Promise<{ auth?: UnknownRecord } | undefined>,
-          warn: message => logger(ctx).warn(message),
-          beforeProviderRequest: (payload, request) => dispatchBeforeProviderRequest(ctx, state, payload, request),
-          // Image bytes live in the attachment service; without it an image
-          // request is refused rather than sent as text the model cannot
-          // answer from.
-          resolveAttachments: () => optionalService<DshAttachmentsLike>(ctx, 'attachments'),
-        },
-      })
+      const routeDisposer = registerSharedProviderRoute(ctx, state, name, value)
       if (routeDisposer !== undefined) {
-        state.providerRouteDisposers.set(name, routeDisposer)
         void state.modelCatalog?.refresh()
         // Only the transport-carrying path is registered by the time this
         // returns. The catalog-only path mounts DSH's official adapter
@@ -3242,11 +3679,7 @@ function createPiApi(ctx: Context, state: RuntimeState): UnknownRecord {
     },
     unregisterProvider(name: string) {
       state.providers.delete(name)
-      const routeDisposer = state.providerRouteDisposers.get(name)
-      if (routeDisposer !== undefined) {
-        state.providerRouteDisposers.delete(name)
-        routeDisposer()
-      }
+      releaseSharedProviderRoute(state, name)
     },
     // Renderer registrations are accepted verbatim; DSH owns presentation, so
     // they are never invoked — matching Pi's own non-TUI surfaces.
@@ -3566,9 +3999,14 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
       sourceInfo: { path: '', source: 'pi2dsh', scope: 'session', origin: 'package' },
     }))
   const shared = sharedHostStateOf(ctx)
+  const scopedOwner = options.ownerAgent ?? scopeOf(ctx)
+  const ownerAgent = typeof scopedOwner === 'object' && scopedOwner !== null
+    ? scopedOwner as UnknownRecord
+    : undefined
   const state: RuntimeState = {
     shared,
     packageName: options.manifest.package.name,
+    ownerAgent,
     handlers: new Map(),
     tools: runtimeTools,
     runner: new ExtensionRunner(piToolRecords),
@@ -3576,21 +4014,33 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
     toolRestrictions: new WeakMap(),
     commands: new Map(),
     commandDisposers: new Map(),
+    dshCommandOwners: new Map(),
     companionRoutes: shared.companionRoutes,
     flags: new Map(),
     notifications: [],
     activeAgents: new Set(),
+    hostAgent: undefined,
+    piShutdownAgents: new WeakSet(),
     disposedAgents: new WeakSet(),
+    startedSessions: new Set(),
+    sessionStartTasks: new Map(),
+    startedSessionlessAgents: new WeakSet(),
+    sessionlessStartTasks: new WeakMap(),
+    extensionsReady: false,
+    pendingSessionStarts: new Map(),
     currentSystemPrompt: '',
     messageSource: `pi2dsh:${options.manifest.package.name}`,
     eventBus: new EventEmitter(),
     agentScope: new AsyncLocalStorage(),
+    llmBridge: undefined,
+    piAiRegistry: __createPiAiRuntimeRegistry(),
+    subagentSessionFactory: undefined,
     bridge: new PiSessionBridge(),
     theme: new Theme(),
     shortcuts: new Map(),
     messageRenderers: new Map(),
     entryRenderers: new Map(),
-    providers: shared.providers,
+    providers: new Map(),
     autocompleteProviders: [],
     editorBuffers: new WeakMap(),
     toolsExpanded: false,
@@ -3608,15 +4058,31 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
     streamingTexts: new Map(),
     lastLoggedModels: new WeakMap(),
     providerRouteDisposers: shared.providerRouteDisposers,
+    ownedProviderRoutes: new Set(),
     publishedOAuthKeys: shared.publishedOAuthKeys,
+    tuiSurfaces: undefined,
   }
+  // dsh-TUI is optional and may be mounted before or after this package.
+  // Cordis keeps the child activation aligned with the service lifecycle;
+  // by the time a terminal command executes, context.mode/hasUI and
+  // ui.custom reflect whether the real terminal surface is available.
+  mountTuiSurfaceAdapter(
+    ctx as unknown as TuiSurfaceContext,
+    state.packageName,
+    adapter => { state.tuiSurfaces = adapter },
+    typeof ownerAgent?.id === 'string'
+      ? ownerAgent.id
+      : undefined,
+  )
   subscribeLifecycle(ctx, state)
   subscribeInterceptors(ctx, state)
   // Pi hosts ship their built-in OAuth providers ready to log in; preload the
   // four vendored official flows so `/login openai-codex` (etc.) works out of
   // the box, before any package registers its own providers.
   for (const provider of builtinProviders()) {
-    state.providers.set(provider.id, { name: provider.name, baseUrl: provider.baseUrl, oauth: provider.auth.oauth })
+    const config = { name: provider.name, baseUrl: provider.baseUrl, oauth: provider.auth.oauth }
+    state.providers.set(provider.id, config)
+    if (!shared.providers.has(provider.id)) shared.providers.set(provider.id, config)
   }
   ensureLoginCommand(ctx, state)
   // A credential stored by an EARLIER session must still produce a route:
@@ -3638,12 +4104,16 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
     if (skills === undefined) logger(ctx).warn('[pi2dsh] migrated skills were not mounted because this DSH composition has no ctx.skills')
     else {
       const { apply: applyFilesystemSkills } = await import('@deepseek-ai/dsh-skill-filesystem')
-      applyFilesystemSkills(ctx, {
+      const config = {
         providerName: `pi2dsh-${options.manifest.package.name.replace(/[^a-zA-Z0-9_-]+/gu, '-').replace(/^-+|-+$/gu, '')}`,
         includeDefaultRoots: false,
         customSkillDirs: options.manifest.skillDirs.map(path => join(rootDir, path)),
         watch: false,
-      })
+      }
+      await ctx.plugin(Object.assign(
+        (skillCtx: Context) => applyFilesystemSkills(skillCtx, config),
+        { inject: ['skills'] },
+      ))
     }
   }
   // Model Runtime Bridge: ONE model directory — the DSH llm directory —
@@ -3665,8 +4135,7 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
     // the registry, so extension-visible reads (guardian reviewer probes)
     // never race the initial catalog fill. Later refreshes stay concurrent.
     await state.modelCatalog.refresh()
-    __setPiAiLlmBridge((model, context, callOptions) => streamViaDshLlm(llm, { model, context, options: callOptions }))
-    ctx.effect(() => () => __setPiAiLlmBridge(undefined))
+    state.llmBridge = (model, context, callOptions) => streamViaDshLlm(llm, { model, context, options: callOptions })
   }
   // createAgentSession builds a real DSH child agent through ctx.agents; the
   // factory lives for exactly the runtime's lifetime.
@@ -3748,7 +4217,7 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
     }
     return rendered
   }))
-  __setSubagentSessionFactory(async (subagentOptions) => {
+  state.subagentSessionFactory = async (subagentOptions) => {
     const created = await createBridgedAgentSession(subagentHost(), subagentOptions)
     // Track it against the session the panel floats over — the PARENT, not the
     // child: the panel is a view of "what this conversation started".
@@ -3765,7 +4234,7 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
       ctx.effect(() => dispose)
     }
     return created
-  })
+  }
   // Extracted so the factory above can build one per call; the annotation
   // carries the contract the object literal used to get from the call site.
   const subagentHost = (): SubagentHost => ({
@@ -3792,7 +4261,6 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
     messageSource: state.messageSource,
     packageName: state.packageName,
   })
-  ctx.effect(() => () => __setSubagentSessionFactory(undefined))
   await registerPromptCommands(ctx, state, rootDir, options.manifest)
   const onExtensionError = (failure: string): void =>
     logger(ctx).warn(`[pi2dsh] extension entry failed and was skipped (matching Pi's per-extension error isolation): ${failure}`)
@@ -3812,14 +4280,25 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
       guidance: '',
       packageName: state.packageName,
     })
-  const mountExtensions = (): Promise<void> => loadExtensions(
-    rootDir, options.manifest, createPiApi(ctx, state), onExtensionError, onCapabilityGap, onHostInfraReference)
+  const mountExtensions = (): Promise<void> => runInPiRuntime(
+    state,
+    currentAgent(state),
+    () => loadExtensions(
+      rootDir,
+      options.manifest,
+      createPiApi(ctx, state),
+      onExtensionError,
+      onCapabilityGap,
+      onHostInfraReference,
+    ),
+  )
   await mountExtensions()
+  await flushPendingSessionStarts(ctx, state)
   // Pi's ctx.reload() remount: dispose every extension-owned registration and
   // run the entries again through a fresh loader. Prompt commands are package
   // registrations too (they share the command ledger), so they re-register
   // with the entries.
-  const remounts = (shared.packageRemounts ??= new Map())
+  const remounts = packageRemountsOf(ctx, shared)
   remounts.set(state.packageName, async () => {
     // Tool and command registrations on the DSH side stay in place — their
     // handlers resolve the live ledger entries, and re-registering from a
@@ -3828,10 +4307,19 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
     // registration path; event handlers (both Pi lifecycle handlers and the
     // package-local event bus) start from a clean slate — without this every
     // reload would double the subscriptions.
+    state.extensionsReady = false
     state.handlers.clear()
     state.eventBus.removeAllListeners()
-    await registerPromptCommands(ctx, state, rootDir, options.manifest)
-    await mountExtensions()
+    try {
+      await registerPromptCommands(ctx, state, rootDir, options.manifest)
+      await mountExtensions()
+      await restartReloadedPiSessions(ctx, state)
+    } finally {
+      // A failed per-entry import is isolated by loadExtensions, but keep the
+      // lifecycle gate usable even if host-owned prompt registration itself
+      // rejects before the remount completes.
+      state.extensionsReady = true
+    }
   })
   ctx.effect(() => () => { remounts.delete(state.packageName) })
   const health = state.shared.capabilityLedger?.healthOf(state.packageName)

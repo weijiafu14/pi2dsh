@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { streamSimpleOpenAIResponses, StringEnum } from '../src/compat/pi-ai.js'
+import {
+  __createPiAiRuntimeRegistry,
+  __runWithPiAiRuntime,
+  getApiProvider,
+  getProvider,
+  registerApiProvider,
+  registerProvider,
+  streamSimpleOpenAIResponses,
+  StringEnum,
+} from '../src/compat/pi-ai.js'
 import {
   createExtensionRuntime,
   DEFAULT_MAX_BYTES,
@@ -118,6 +127,31 @@ describe('dependency-light Pi host shims', () => {
     // implementation `streamSimple` on the protocol subpath; the host shim
     // keeps the package-facing ABI stable.
     expect(streamSimpleOpenAIResponses).toBeTypeOf('function')
+  })
+
+  it('isolates Pi compat and API-provider registries between Agent runtimes', () => {
+    const a = __createPiAiRuntimeRegistry()
+    const b = __createPiAiRuntimeRegistry()
+    const api = (id: string) => ({
+      api: id,
+      stream: () => undefined,
+      streamSimple: () => undefined,
+    })
+
+    __runWithPiAiRuntime(undefined, a, () => {
+      registerProvider('private-a', { owner: 'a' })
+      registerApiProvider(api('private-api'), 'a')
+    })
+    __runWithPiAiRuntime(undefined, b, () => {
+      expect(getProvider('private-a')).toBeUndefined()
+      expect(getApiProvider('private-api')).toBeUndefined()
+      registerProvider('private-b', { owner: 'b' })
+    })
+    __runWithPiAiRuntime(undefined, a, () => {
+      expect(getProvider('private-a')).toEqual({ owner: 'a' })
+      expect(getProvider('private-b')).toBeUndefined()
+      expect(getApiProvider('private-api')).toBeDefined()
+    })
   })
 
   // Extensions that assemble their own ResourceLoader-shaped getExtensions()

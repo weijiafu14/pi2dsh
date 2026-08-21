@@ -25,6 +25,11 @@
 //   codex-image-gen  a real ChatGPT/Codex OAuth account drives the published
 //                    image plugin through generation and reference-image edit;
 //                    needs CODEX_AUTH_FILE because the account is the fixture.
+//   tui-mcp          installs the real dsh-TUI + pi-mcp-adapter combination,
+//                    then verifies the complete host-influenced matrix: TUI,
+//                    lifecycle, three transports, discovery, direct/proxy/
+//                    scripted calls, resources/prompts/images, approval,
+//                    MCP Apps, elicitation, sampling, cancellation and restart.
 //
 // Usage: node scripts/verify-examples-e2e.mjs [outfile]
 //        DEEPSEEK_API_KEY=… to include the live half; without it that half
@@ -35,7 +40,8 @@
 
 import assert from 'node:assert/strict'
 import { execFile as execFileCallback, spawn } from 'node:child_process'
-import { chmod, mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
+import { createHash } from 'node:crypto'
+import { chmod, mkdir, mkdtemp, readFile, readdir, rm, stat, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { promisify } from 'node:util'
@@ -96,6 +102,11 @@ function engineOrigin() {
   engineOriginOnce ??= (async () => {
     if (!engineSpec.startsWith('file:')) return { from: 'registry', spec: engineSpec }
     const at = engineSpec.slice('file:'.length)
+    const source = await stat(at)
+    if (!source.isDirectory()) {
+      const sha256 = createHash('sha256').update(await readFile(at)).digest('hex')
+      return { from: 'local-tarball', spec: 'file:<tarball>', sha256 }
+    }
     const [commit, status] = await Promise.all([
       execFile('git', ['rev-parse', 'HEAD'], { cwd: at }).then(r => r.stdout.trim()).catch(() => null),
       execFile('git', ['status', '--porcelain'], { cwd: at }).then(r => r.stdout.trim()).catch(() => ''),
@@ -863,6 +874,85 @@ async function runCodexImageGen() {
   }
 }
 
+// ---------------------------------------------------------------------------
+// examples/tui-mcp — clean installed profile + complete host-influenced MCP matrix
+// ---------------------------------------------------------------------------
+async function runTuiMcp() {
+  const scratch = await mkdtemp(join(tmpdir(), 'pi2dsh-ex-tui-mcp-'))
+  try {
+    const { home, env, runDsh } = await makeHome(scratch)
+    await runDsh(['plugin', '--profile', 'dsh-tui', 'add', '@deepseek-harness-tui/dsh-tui'])
+    await runDsh(['plugin', '--profile', 'dsh-tui', 'add', engineSpec])
+    await runDsh(['plugin', '--profile', 'dsh-tui', 'add', 'pi-mcp-adapter'])
+    const profileRoot = join(home, 'profiles', 'dsh-tui')
+    const profile = JSON.parse(await readFile(join(profileRoot, 'package.json'), 'utf8'))
+    const piMcpManifest = JSON.parse(await readFile(join(profileRoot, 'node_modules', 'pi-mcp-adapter', 'package.json'), 'utf8'))
+    assert(profile.dsh?.profile?.bundles?.includes('@deepseek-harness-tui/dsh-tui'),
+      'the installed profile did not retain the dsh-TUI surface bundle')
+    assert(profile.dsh?.profile?.bundles?.includes('pi2dsh'),
+      'the installed profile did not retain the pi2dsh engine bundle')
+
+    // The real DSH loader injects bundle peers from the host composition. This
+    // verifier imports the installed engine directly so it can drive an exact
+    // fake of dsh-TUI's public services without starting a second terminal;
+    // give that standalone Node import the same peer packages. These links are
+    // test scaffolding only and live inside the throwaway profile.
+    const engineRoot = join(profileRoot, 'node_modules', 'pi2dsh')
+    const engineManifest = JSON.parse(await readFile(join(engineRoot, 'package.json'), 'utf8'))
+    const peers = new Set([
+      ...Object.keys(engineManifest.peerDependencies ?? {}).filter(name => name.startsWith('@deepseek-ai/')),
+      // Bundled entry chunks import these host services directly even though
+      // they are not part of the plugin's public peer type surface.
+      '@deepseek-ai/dsh-credentials',
+      '@deepseek-ai/dsh-llm-pi-ai',
+    ])
+    for (const peer of peers) {
+      const source = join(projectRoot, 'node_modules', peer)
+      const target = join(profileRoot, 'node_modules', peer)
+      await stat(source)
+      const targetExists = await stat(target).then(() => true, () => false)
+      if (targetExists) continue
+      await mkdir(resolve(target, '..'), { recursive: true })
+      await symlink(source, target, 'dir')
+    }
+
+    const run = await execFile('node', [join(projectRoot, 'scripts/verify-tui-mcp-tool-e2e.mjs')], {
+      cwd: projectRoot,
+      env: {
+        ...env,
+        PI2DSH_ENGINE_ROOT: engineRoot,
+        PI2DSH_MCP_ADAPTER_ROOT: join(profileRoot, 'node_modules', 'pi-mcp-adapter'),
+      },
+      timeout: 300_000,
+      maxBuffer: 16 * 1024 * 1024,
+    })
+    assert.match(run.stdout, /"verdict": "pass"/u, `the MCP verifier did not pass:\n${run.stdout}\n${run.stderr}`)
+    assert.match(run.stdout, /"streamableHttp"/u, 'the verifier did not execute the real Streamable HTTP transport')
+    assert.match(run.stdout, /"legacySse"/u, 'the verifier did not execute the real legacy SSE transport')
+    assert.match(run.stdout, /"samplingCalls": 1/u, 'the verifier did not route MCP sampling through DSH llm')
+    assert.match(run.stdout, /"mcpApp"/u, 'the verifier did not serve an MCP App through the adapter UI host')
+    assert.match(run.stdout, /"sessionRestart": true/u, 'the verifier did not survive a real Pi session restart')
+    results.tuiMcp = {
+      status: 'passed',
+      engine: await installedEngineVersion(home, 'dsh-tui'),
+      profile: 'dsh-tui',
+      piPackage: 'pi-mcp-adapter',
+      piPackageVersion: piMcpManifest.version,
+      command: '/pi-mcp',
+      nativeCommandPreserved: '/mcp',
+      mcpServer: '@modelcontextprotocol/server-everything',
+      transports: ['stdio', 'streamable-http', 'sse'],
+      capabilities: [
+        'manager', 'discovery', 'proxy', 'direct-tools', 'mcpScript',
+        'resources', 'prompts', 'images', 'structured-content', 'mcp-app-ui', 'approval',
+        'elicitation', 'sampling', 'cancellation', 'reconnect', 'session-restart',
+      ],
+    }
+  } finally {
+    await rm(scratch, { recursive: true, force: true })
+  }
+}
+
 const SCENARIOS = [
   ['gateway-compat', runGatewayCompat, 'gatewayCompat'],
   ['vision-bridge', runVisionBridge, 'visionBridge'],
@@ -872,6 +962,7 @@ const SCENARIOS = [
   ['presentation-surfaces', runPresentationSurfaces, 'presentationSurfaces'],
   ['subscription-login', runSubscriptionLogin, 'subscriptionLogin'],
   ['codex-image-gen', runCodexImageGen, 'codexImageGen'],
+  ['tui-mcp', runTuiMcp, 'tuiMcp'],
 ]
 const selected = SCENARIOS.filter(([name]) => only === undefined || only === name)
 if (selected.length === 0) {

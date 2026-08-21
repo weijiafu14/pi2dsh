@@ -47,13 +47,11 @@ dsh plugin --profile web add @kassing/pi-vision
 
 Then **restart `dsh`** — plugins mount at startup.
 
-> **Use `web` or `headless` as the profile name.** DSH ships a template for
-> exactly those two, and each includes a surface (the web app / the one-shot
-> driver). `dsh plugin --profile <any-other-name>` creates a profile with no
-> surface at all, and that profile **starts up and then hangs with no
-> diagnostic** — nothing to do with pi2dsh, but easy to hit on your first
-> install. If you want a differently named profile, add the surface bundle to
-> its `dsh.profile.bundles` yourself.
+> **A profile needs a surface bundle.** DSH's built-in templates are `web` and
+> `headless`. A custom profile is valid when its product installs a surface —
+> for example `@deepseek-harness-tui/dsh-tui` in the `dsh-tui` profile. A bare
+> arbitrary profile has no surface and can start with nothing to drive it, so
+> add the intended surface to `dsh.profile.bundles` first.
 
 That is the whole model. There is no conversion step, no generated bundle, no
 build. The engine discovers the Pi packages in your profile (every one is
@@ -178,6 +176,7 @@ it work. **This is the list to trust.**
 | [`@crazygit/pi-codex-image-gen`](https://www.npmjs.com/package/@crazygit/pi-codex-image-gen) | ChatGPT/Codex OAuth → `gpt-image-2` generation; local reference-image upload through DSH approval; image edit; native attachment storage and inline Web rendering | CLI + web | [`codex-image-gen`](examples/codex-image-gen/) |
 | [`pi-btw`](https://www.npmjs.com/package/pi-btw) | `/btw <question>` as a real child session in DSH's subagent UI; `/btw-inject`; `/btw --save`; main thread stays clean | CLI + web | [`side-conversation`](examples/side-conversation/) |
 | [`pi-powerline-footer`](https://www.npmjs.com/package/pi-powerline-footer) | A terminal status line — model, thinking level, project, context usage — drawn into DSH's widget dock, colour included | web | [`presentation-surfaces`](examples/presentation-surfaces/) |
+| [`pi-mcp-adapter`](https://www.npmjs.com/package/pi-mcp-adapter) | Full-screen manager in dsh-TUI; stdio/Streamable HTTP/SSE; discovery, direct/proxy/scripted calls, resources, prompts, images, structured content, MCP Apps, approval, elicitation, sampling, cancellation and restart through DSH runtimes; native `/mcp` preserved beside `/pi-mcp` | dsh-TUI | [`tui-mcp`](examples/tui-mcp/) · [evidence matrix](docs/mcp-compatibility.md) |
 | [`pi-vision-tool`](https://www.npmjs.com/package/pi-vision-tool) | Tool registration through a JSON-Schema shape DSH had to convert (`anyOf` → `oneOf`) | CLI + web | — |
 | [`pi-approval-guardian`](https://www.npmjs.com/package/pi-approval-guardian) | Every tool call reviewed by a second model before execution; allow and deny both observed | CLI (bare env) | — |
 | [`pi-hermes-memory`](https://www.npmjs.com/package/pi-hermes-memory) | Cross-session memory: written in one process, read back in a second, fresh one | CLI | — |
@@ -294,14 +293,17 @@ ESM.
 
 The rules that keep it honest:
 
-- **Never a second implementation of something DSH already has.** Tools go to
-  DSH's tool registry, models to DSH's llm configuration, MCP to
-  `dsh-mcp-client`, skills to `dsh-skill-filesystem`, questions to DSH's user
-  questions. The bridge translates configuration; it does not build a parallel
-  runtime.
-- **You never see Pi.** Everything you configure, read, or type is DSH-shaped:
-  DSH settings, DSH commands, DSH credentials. Pi vocabulary exists only
-  inside the plugin's view and the bridge's own internals.
+- **Never a second bridge-owned implementation of something DSH already has.**
+  Tools go to DSH's tool registry, models to DSH's llm configuration,
+  configuration-only MCP servers to `dsh-mcp-client`, skills to
+  `dsh-skill-filesystem`, and questions to DSH's user questions. An explicitly
+  installed Pi capability package can retain behavior that it owns; the bridge
+  maps its public surfaces and does not copy its transport.
+- **No bridge-private user world.** Normal configuration remains DSH-shaped:
+  DSH settings, commands and credentials. When an installed capability package
+  deliberately exposes its own manager, that surface remains recognizable and
+  is namespaced on conflict — dsh-TUI keeps `/mcp`, while the Pi manager is
+  `/pi-mcp`.
 - **No per-package special cases.** The core contains no
   `if (packageName === …)`. One ABI gap fixed unlocks every package that hits
   it.
@@ -310,7 +312,7 @@ The rules that keep it honest:
   something invented. If a plugin needs one during startup, it is marked
   unusable with a removal hint rather than half-working.
 - **Verified, not asserted.** Every capability has a public-API contract test,
-  and ships only after running end to end on a real DSH loop — CLI *and* web.
+  and ships only after running end to end on every DSH surface it claims.
 
 ## What this is teaching us about DSH
 
@@ -375,11 +377,11 @@ audit states this boundary explicitly.
 | [Tools](docs/capabilities/tools.md) | 11 | 2 same semantics · 9 mapped, difference stated |
 | [Commands, flags, editor input](docs/capabilities/commands.md) | 13 | 13 mapped, difference stated |
 | [Messages, context, agent loop](docs/capabilities/conversation.md) | 20 | 9 same semantics · 11 mapped, difference stated |
-| [Sessions & side conversations](docs/capabilities/sessions.md) | 24 | 6 same semantics · 18 mapped, difference stated |
+| [Sessions & side conversations](docs/capabilities/sessions.md) | 24 | 7 same semantics · 17 mapped, difference stated |
 | [Models, providers, credentials](docs/capabilities/models.md) | 15 | 1 same semantics · 12 mapped, difference stated · 2 not available |
-| [Asking the user, rendering](docs/capabilities/interaction.md) | 24 | 4 same semantics · 20 mapped, difference stated |
+| [Asking the user, rendering](docs/capabilities/interaction.md) | 24 | 5 same semantics · 19 mapped, difference stated |
 | [Project environment & resources](docs/capabilities/environment.md) | 4 | 1 same semantics · 1 mapped, difference stated · 2 not available |
-| **Total** | **111** | **23 same semantics · 84 mapped, difference stated · 4 not available** |
+| **Total** | **111** | **25 same semantics · 82 mapped, difference stated · 4 not available** |
 <!-- capability-table:end -->
 
 Plus **203 imported symbols** from Pi's three runtime packages
@@ -434,6 +436,7 @@ in one has actually been executed against a real DSH loop before landing.
 | [`subscription-login`](examples/subscription-login/) | Use a ChatGPT / Claude / Copilot / Kimi subscription as a DSH model: `/login`, then the route and credential appear on their own |
 | [`gateway-compat`](examples/gateway-compat/) | Private / domestic / proxy gateways that reject the `developer` role: how rc.8's official profile carries Pi compat declarations to the wire (passthrough recorder included) |
 | [`custom-gateways`](examples/custom-gateways/) | Add any OpenAI-compatible gateway the official DSH way, and every Pi plugin sees it |
+| [`tui-mcp`](examples/tui-mcp/) | Keep dsh-TUI's native `/mcp`, add the Pi ecosystem manager as `/pi-mcp`, and exercise its complete host-influenced MCP surface through DSH runtimes |
 
 ## Other tools
 

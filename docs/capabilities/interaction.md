@@ -9,7 +9,7 @@ and side conversations — in native Web slots. A Pi terminal component itself
 is not mounted in the browser; terminal-only factories and raw key handling
 remain headless or become an explicit Web-native projection.
 
-**24 upstream-shaped Pi rule rows** — 4 same semantics · 20 mapped, difference stated.
+**24 upstream-shaped Pi rule rows** — 5 same semantics · 19 mapped, difference stated.
 
 | Pi surface | Kind | Status | What it does on DSH |
 |---|---|---|---|
@@ -17,13 +17,13 @@ remain headless or become an explicit Web-native projection.
 | [`registerEntryRenderer`](#registerentryrenderer-pi) | `pi.*` | Mapped, difference stated | The renderer really runs: entries the package appended are drawn by the package's own code and shown in the DSH web conversation. What reaches the browser is the component's rendered text, not a mounted Pi component. |
 | [`registerMarkdownTransformer`](#registermarkdowntransformer-pi) | `pi.*` | Mapped, difference stated | Registration is accepted; DSH owns presentation, so the transformer is never invoked — matching Pi's non-TUI surfaces. |
 | [`notify`](#notify-ctxui) | `ctx.ui.*` | Same semantics | Captured as a command result when applicable and emitted through DSH logging at the severity the caller passed (warning and error log as warnings). |
-| [`setStatus`](#setstatus-ctxui) | `ctx.ui.*` | Mapped, difference stated | Pi's keyed status entries render as pills in the bridge's own browser half (Pi's status bar is a terminal-footer surface; DSH's equivalent is the frame-wide pill stack). setStatus(key, undefined) removes exactly one entry, Pi's clear shape. |
+| [`setStatus`](#setstatus-ctxui) | `ctx.ui.*` | Same semantics | Pi's keyed status entries render in the active DSH front door: dsh-TUI's native status line in terminal mode and package-keyed pills in the bridge's browser half. setStatus(key, undefined) removes exactly one entry. |
 | [`setWidget`](#setwidget-ctxui) | `ctx.ui.*` | Mapped, difference stated | String-array widgets render as a strip in DSH's conversation.input.dock seat (a full-width row of its own above the composer card). setWidget(key, undefined) removes one widget. Component factories are ignored, exactly like Pi's own rpc mode, where widgets travel to a host as lines. |
 | [`select`](#select-ctxui) | `ctx.ui.*` | Same semantics | Mapped to one native DSH userQuestions single-select request. |
 | [`confirm`](#confirm-ctxui) | `ctx.ui.*` | Same semantics | Mapped to one native DSH userQuestions Yes/No request. |
 | [`input`](#input-ctxui) | `ctx.ui.*` | Same semantics | Mapped to one native DSH userQuestions free-text request. |
 | [`editor`](#editor-ctxui) | `ctx.ui.*` | Mapped, difference stated | Mapped to one DSH userQuestions free-text request. The prefill is shown as context but is NOT editable text: the caller receives what the user typed fresh, not an edit of the prefill. |
-| [`custom`](#custom-ctxui) | `ctx.ui.*` | Mapped, difference stated | Resolves undefined, exactly like Pi's own rpc mode; guarded fallbacks keep working. A Pi component cannot be forwarded to a browser — but the SHAPE packages use this for (a focused side panel over the conversation) is drawn natively by the bridge's own browser half. |
+| [`custom`](#custom-ctxui) | `ctx.ui.*` | Mapped, difference stated | In dsh-TUI, runs the real Pi component in a native full-screen scene with raw terminal input, render invalidation, result completion and disposal. In browser/headless compositions it resolves undefined, Pi's own rpc-mode behavior. |
 | [`setWorkingMessage`](#setworkingmessage-ctxui) | `ctx.ui.*` | Mapped, difference stated | A live working message, drawn in DSH's conversation.composer.dock band (under the composer card — the host's ambient-readout seat, where its own stats line sits). Calling with no argument restores the default, i.e. clears it. |
 | [`setWorkingVisible`](#setworkingvisible-ctxui) | `ctx.ui.*` | Mapped, difference stated | Hides or shows the working chrome (message, indicator, hidden-thinking label) without clearing it — Pi's exact semantics. |
 | [`setWorkingIndicator`](#setworkingindicator-ctxui) | `ctx.ui.*` | Mapped, difference stated | WorkingIndicatorOptions ({frames?: string[]}) project to the frames' text in the same composer-dock working chrome. An empty array hides the indicator and frames: undefined restores the default (clears it); animated frames render as their static concatenation — the honest still of the package's own frames. |
@@ -70,9 +70,9 @@ Written to the DSH logger at the severity the caller passed, and returned as the
 
 ### `setStatus` <a id="setstatus-ctxui"></a>
 
-`ctx.ui.*` · Mapped, difference stated
+`ctx.ui.*` · Same semantics
 
-BrowserSurfaces.setStatus keys entries by (session, package, status key); the client half polls the bridge's own /pi2dsh/browser-state route and draws them in its shell.overlay seat. Pi's rpc mode transmits setStatus to a host too — this is one of the surfaces rpc genuinely wires.
+Terminal mode writes a package-namespaced key through dsh-TUI's public tuiStatus service and owns the returned disposer. Browser mode writes BrowserSurfaces by (session, package, key); the client half draws the entries from the bridge route.
 
 ### `setWidget` <a id="setwidget-ctxui"></a>
 
@@ -108,7 +108,7 @@ One native DSH UserQuestionService free-text request. DSH has no editable-prefil
 
 `ctx.ui.*` · Mapped, difference stated
 
-Two halves. The call itself resolves undefined, matching Pi's rpc mode, because a Pi TUI component has no meaning in a browser. Separately, pi2dsh ships a client half (`dsh.client` + `exports["./client"]`) that takes DSH's frame-wide `shell.overlay` seat and renders a side conversation as a floating panel plus the presentation surfaces, fed by this package's own route (`/pi2dsh/browser-state`). So the capability lands as a native DSH surface rather than as a relayed Pi component.
+The bridge adapts the public Pi component protocol (render(width), handleInput(raw bytes), requestRender, dispose) onto dsh-TUI's public tuiScenes seam and host React/ANSI renderer; no Pi TUI owns the terminal. Browsers cannot execute terminal components, so their rpc behavior remains undefined and package-specific browser shapes continue through native client slots.
 
 ### `setWorkingMessage` <a id="setworkingmessage-ctxui"></a>
 

@@ -331,9 +331,10 @@ describe('an installed Pi package in the real DSH runtime', () => {
     const counters = JSON.parse((probe.content[0] as { type: 'text'; text: string }).text) as Record<string, number>
     // The context-probe command really runs ctx.reload() now, which remounts
     // the extension entries once: setup-time counters (flag_default,
-    // package_event) tick again on the remount pass.
+    // package_event) tick again on the remount pass, and the fresh extension
+    // instance receives its own one session_start for the still-live session.
     expect(counters).toMatchObject({
-      session_start: 1,
+      session_start: 2,
       session_shutdown: 1,
       package_event: 2,
       flag_default: 2,

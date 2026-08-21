@@ -11,7 +11,7 @@ being sent as chat. Pi's never-throw collision behaviour is preserved.
 
 | Pi surface | Kind | Status | What it does on DSH |
 |---|---|---|---|
-| [`registerCommand`](#registercommand-pi) | `pi.*` | Mapped, difference stated | Registered in ctx.commands with Pi's never-throw collision semantics: a package re-registering its own name replaces it, and cross-source collisions mount under Pi's numbered scheme (/name-2 — the earlier registration keeps the bare name, where Pi renumbers both). ui.notify becomes the result, while interactive Pi TUI methods fail explicitly in headless DSH. |
+| [`registerCommand`](#registercommand-pi) | `pi.*` | Mapped, difference stated | Registered in ctx.commands with Pi's never-throw collision semantics: a package re-registering its own name replaces it, and cross-source collisions mount under Pi's numbered scheme (/name-2 — the earlier registration keeps the bare name, where Pi renumbers both). In dsh-TUI, its locally reserved /mcp remains native and the migrated command is reachable as /pi-mcp. |
 | [`registerShortcut`](#registershortcut-pi) | `pi.*` | Mapped, difference stated | Registration is recorded and introspectable; DSH surfaces feed no terminal key input, so handlers never fire — the same as Pi's non-TUI modes. |
 | [`registerFlag`](#registerflag-pi) | `pi.*` | Mapped, difference stated | The declared default is available through getFlag; Pi process flags cannot be added to the DSH launcher. |
 | [`getFlag`](#getflag-pi) | `pi.*` | Mapped, difference stated | Returns the migrated flag default because DSH cannot register the original Pi CLI flag. |
@@ -35,7 +35,7 @@ taken on trust.
 
 `pi.*` · Mapped, difference stated
 
-Registered on ctx.commands with an input descriptor. The descriptor is what makes /name <arguments> parse as a command in the web app instead of being sent as chat, so it is not optional detail.
+Registered on ctx.commands with an input descriptor. The descriptor is what makes /name <arguments> parse as a command instead of chat. dsh-TUI currently exposes no reserved-command registry; the one verified local interception needed by the MCP integration is translated before registration.
 
 ### `registerShortcut` <a id="registershortcut-pi"></a>
 

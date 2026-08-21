@@ -153,8 +153,8 @@ Pi 的用户习惯搬给 DSH 用户**。后果链：为它自建了配置解析�
 已知官方件清单（动手前对照）：
 - `@deepseek-ai/dsh-llm-pi-ai`：通用模型适配器，任意 OpenAI 兼容网关
   = settings 纯配置（三种 wire 协议全支持，在 base 默认组合里）
-- `@deepseek-ai/dsh-mcp-client`：MCP（我们的 mcp-config 就是范例：只做
-  配置翻译，零运行时）
+- `@deepseek-ai/dsh-mcp-client`：配置型 MCP server（我们的 mcp-config 就是
+  范例：只做配置翻译，零运行时）
 - `@deepseek-ai/dsh-skill-filesystem`：skills 挂载
 - settings / credentials seam：用户配置与凭证引用
 
@@ -164,6 +164,29 @@ wire client（500 行 + 契约测试，发版 0.7.0）。而官方 llm-pi-ai 从
 默认组合里，"an OpenAI-compatible gateway … is configuration rather
 than a code change" 是它 README 的原话。两版全部删除。教训写成三个字：
 **先查官方**。
+
+这里必须区分“配置”与“能力包”：如果用户只迁移 MCP server 定义，必须走
+官方 `dsh-mcp-client`；如果用户显式安装的 Pi 包本身就是一个能力运行时，且它拥有
+官方客户端没有的管理面、lazy proxy、脚本编排、OAuth、resources/prompts 等行为，
+兼容层应保留这个已发布包的运行时，只把它使用的**公开 Host ABI** 映射到 DSH，
+不能把 transport/cache/auth 再抄一份。宿主已有同名命令时保留宿主原命令，并为
+外来命令提供有来源含义的别名（dsh-TUI：原生 `/mcp` 保留，Pi 包为 `/pi-mcp`）。
+这不是“桥自建第二套 MCP”，而是“用户安装的能力包原样运行”；核心仍禁止按包名
+实现 transport 或业务逻辑。
+
+能力包验收必须按**归属边界**拆证据，不能拿一条工具 smoke test 冒充完整支持：
+
+- 一切可能受 Host ABI 影响的面（生命周期、命令、TUI、动态工具、交互、附件、
+  模型回调、取消）必须由真实包穿过真实 DSH runtime 做 E2E；
+- 包内部的 transport/OAuth/cache/protocol 分支使用**同版本上游完整测试与协议一致性
+  套件**作为基线，不在桥里复制实现，也不拿自制 mock 重演一遍；
+- 两份证据的版本与已知降级必须写进一张可复核矩阵。`pi-mcp-adapter@2.26.1`
+  的落地范本见 [`mcp-compatibility.md`](mcp-compatibility.md)。
+
+终端形态同样只走公开 seam：Pi `ui.custom`/`setStatus` 映射到 dsh-TUI 公开的
+`tuiScenes`/`tuiStatus`；有服务才挂载，无服务保持 headless。桥只识别能力与命令
+所有权，不识别插件包名。宿主保留命令与外来命令冲突时，宿主命令不动，外来命令
+获得有来源含义的别名。
 
 ### 3.2 三层零跨层
 
@@ -196,7 +219,18 @@ undefined——被"别让我看见跨层的东西，跨层就会导致不一致�
 
 - 零 patch、零 hacky、零私有 API；核心转换器禁止
   `if (packageName === ...)` 逐包特判——修公共 ABI 缺口，同类包一起
-  解锁（一次 jiti 子路径 alias 修复同时解锁 4 个包）。
+  解锁（一次 jiti 子路径 alias 修复同时解锁 4 个包）。**当前唯一成文
+  例外**：runtime.ts 的 `KNOWN_IMAGE_TOOLS_BY_PACKAGE`（2026-08-20
+  审计成文）——Pi 没有"工具会输出图片"的声明机制，浏览器图片卡只能对
+  逐包核证过输出契约的工具开放；这是缺口标记不是可扩展方案，正解是
+  推动 Pi 上游加图片输出声明。新增逐包例外必须先写进 CLAUDE.md 对应
+  条款。
+- **Pi 兼容面钉死单一上游版本**（当前 Pi 0.84.1；2026-08-20 拍板）：
+  上游发新版不自动跟，升级快照是一次显式决策（重盘声明 diff、逐条归类
+  新面、更新规则/文档/vendored 来源 commit）。由来：追上游的"发现新
+  接口"环节纯靠人、无自动提醒（标准又禁止固定数量校验），与其无声
+  漂移不如锁死；插件锁的 Pi 依赖本就不被加载（jiti alias 截获），锁死
+  对用户无感。
 - 语义对齐以真 Pi 源码为准（../pi 是源码参照）；vendored 文件字节级/
   节选搬运并注明来源 commit，logic unchanged。
 - 同名不同义的行为必须写进 src/compatibility.ts 判定文案（例：
@@ -325,6 +359,14 @@ Pi 0.84.1 declarations 逐项对照后，当前规则的上游形状行应是 11
 - **发现问题先全面盘点、一次对齐、一次改完**；标准落地立刻写进
   CLAUDE.md，不排队。**事故档案**：挤牙膏式"用户说一个改一个"与
   "把标准写入排在动作清单第 5 步"都被骂过。
+- **同一事实只写一处**：清单和数字类事实指定唯一权威位置，其它文件
+  只指路、不抄写；不为此新增自动生成（标准用非结构化 Markdown 是有意
+  选择，表达力优先，防漂靠"不抄写"不靠生成器）。**事故档案
+  （2026-08-20 审计）**：CLAUDE.md 手抄 examples 清单漏了
+  codex-image-gen、subscription-login 两个，待补清单里还躺着已整体
+  删除的 host 模式；pi-abi-coverage.md 手写的运行时标签数字在
+  `before_provider_request` 升级（ee73dc3）后全部过期，而自动生成的
+  capabilities 页同一时刻是对的——漂的全是手抄份。
 - 凭证只经环境变量注入，永不落盘/入提交/回显。
 - git 操作前确认 cwd。**事故档案**：一次 commit 跑进了旁边的
   deepseek-harness 仓库——version 被误改、暂存区被污染，靠它的

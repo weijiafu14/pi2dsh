@@ -205,7 +205,7 @@ describe('Pi package discovery and compatibility analysis', () => {
       expect.objectContaining({ capability: 'ctx.hasUI', level: 'full' }),
       expect.objectContaining({ capability: 'ctx.cwd', level: 'full' }),
       expect.objectContaining({ capability: 'ctx.ui.input', level: 'full' }),
-      expect.objectContaining({ capability: 'ctx.ui.setStatus', level: 'partial' }),
+      expect.objectContaining({ capability: 'ctx.ui.setStatus', level: 'full' }),
       // shutdown is absorbed per Pi's host-defined semantics (partial), no
       // longer an explicit failure.
       expect.objectContaining({ capability: 'ctx.shutdown', level: 'partial' }),

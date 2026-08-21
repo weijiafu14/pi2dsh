@@ -11,6 +11,7 @@
 //   3. Host-owned capabilities (package install, standalone model stacks) —
 //      importable so packages load, but constructing them throws a structured
 //      PiCapabilityError naming the DSH-owned replacement, never a silent fake.
+import { AsyncLocalStorage } from 'node:async_hooks'
 import { readImageDimensions } from './vendor/pi-image-dimensions.js'
 import { PiCapabilityError } from '../capability.js'
 
@@ -839,16 +840,26 @@ export class ExtensionRunner {
 // mounted runtime the call keeps its explicit failure.
 type SubagentSessionFactory = (options: Record<string, unknown>) => Promise<{ session: unknown }>
 let subagentSessionFactory: SubagentSessionFactory | undefined
+const scopedSubagentSessionFactory = new AsyncLocalStorage<SubagentSessionFactory | undefined>()
 
 export function __setSubagentSessionFactory(factory: SubagentSessionFactory | undefined): void {
   subagentSessionFactory = factory
 }
 
+/** Run extension-owned work with the exact Agent runtime's child-session factory. */
+export function __runWithSubagentSessionFactory<T>(
+  factory: SubagentSessionFactory | undefined,
+  callback: () => T,
+): T {
+  return scopedSubagentSessionFactory.run(factory, callback)
+}
+
 export async function createAgentSession(options: Record<string, unknown> = {}): Promise<{ session: unknown }> {
-  if (subagentSessionFactory === undefined) {
+  const factory = scopedSubagentSessionFactory.getStore() ?? subagentSessionFactory
+  if (factory === undefined) {
     return unsupportedRuntime('createAgentSession() outside a mounted pi2dsh runtime')
   }
-  return subagentSessionFactory(options)
+  return factory(options)
 }
 
 // Byte-identical to Pi's own composition of its built-in tool constructors

@@ -23,8 +23,8 @@ import { existsSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { Context } from '@deepseek-ai/cordis'
-import { applyPiHost } from './host.js'
-import { applyPiPackage } from './runtime.js'
+import { applyPreparedPiHost, preparePiHost, type PreparedPiHostPackage } from './host.js'
+import { registerVisionCompanions } from './runtime.js'
 import { resolvePiPackage } from './source.js'
 
 export interface EngineConfig {
@@ -58,6 +58,15 @@ interface DiscoveredPackage {
   dir: string
 }
 
+interface ProfileManifest {
+  dependencies?: Record<string, string>
+  dsh?: { profile?: { bundles?: string[] } }
+}
+
+async function readProfileManifest(profileRoot: string): Promise<ProfileManifest> {
+  return JSON.parse(await readFile(join(profileRoot, 'package.json'), 'utf8')) as ProfileManifest
+}
+
 function resolveDependencyDir(profileRoot: string, name: string): string | undefined {
   // Direct dependencies of the profile live under its node_modules by name
   // (pnpm links them there); resolving by path needs no exports gymnastics.
@@ -77,8 +86,7 @@ export async function discoverProfilePiPackages(
 ): Promise<DiscoveredPackage[]> {
   const warn = options.warn ?? (() => {})
   const excluded = new Set(options.exclude ?? [])
-  const manifestText = await readFile(join(profileRoot, 'package.json'), 'utf8')
-  const manifest = JSON.parse(manifestText) as { dependencies?: Record<string, string> }
+  const manifest = await readProfileManifest(profileRoot)
   const discovered: DiscoveredPackage[] = []
   for (const name of Object.keys(manifest.dependencies ?? {})) {
     if (name === 'pi2dsh' || excluded.has(name)) continue
@@ -117,6 +125,28 @@ export async function discoverProfilePiPackages(
   return discovered
 }
 
+/** Discover a surface-owned, pre-publication Agent setup event from direct dependencies. */
+export async function discoverAgentSetupEvent(profileRoot: string): Promise<string | undefined> {
+  const manifest = await readProfileManifest(profileRoot)
+  const bundles = new Set(manifest.dsh?.profile?.bundles ?? [])
+  for (const name of Object.keys(manifest.dependencies ?? {})) {
+    if (!bundles.has(name)) continue
+    const dir = resolveDependencyDir(profileRoot, name)
+    if (dir === undefined) continue
+    try {
+      const dependency = JSON.parse(await readFile(join(dir, 'package.json'), 'utf8')) as {
+        dshTui?: { agentSetupEvent?: unknown }
+      }
+      const event = dependency.dshTui?.agentSetupEvent
+      if (typeof event === 'string' && event.length > 0) return event
+    } catch {
+      // Package discovery already reports unreadable direct dependencies. A
+      // surface capability probe only decides between scoped and legacy mount.
+    }
+  }
+  return undefined
+}
+
 /** Cordis plugin surface: `dsh plugin add pi2dsh` mounts this. */
 export const name = 'pi2dsh'
 export const inject = ['tools', 'systemPrompt', 'commands', 'skills']
@@ -144,6 +174,8 @@ export async function apply(ctx: Context, config: EngineConfig = {}): Promise<vo
         ...(Array.isArray(config.exclude) ? { exclude: config.exclude } : {}),
         warn,
       })
+  registerVisionCompanions(ctx, config.visionCompanions)
+  let prepared: PreparedPiHostPackage[]
   if (packages.length === 0) {
     // The host itself owns Pi's built-in provider directory and `/login`.
     // Mount an empty internal package so those host-level capabilities exist
@@ -151,7 +183,8 @@ export async function apply(ctx: Context, config: EngineConfig = {}): Promise<vo
     // registerVisionCompanions alone here left a fresh engine unable to run
     // `/login openai-codex`: DSH treated the unknown slash line as a model
     // prompt and failed on the unrelated default provider credential.
-    await applyPiPackage(ctx, {
+    prepared = [{
+      name: 'pi2dsh-builtins',
       rootUrl: new URL('.', import.meta.url),
       manifest: {
         schemaVersion: 1,
@@ -160,20 +193,33 @@ export async function apply(ctx: Context, config: EngineConfig = {}): Promise<vo
         skillDirs: [],
         prompts: [],
       },
-      config: {
-        ...(config.visionCompanions === undefined ? {} : { visionCompanions: config.visionCompanions }),
-      },
-    })
+    }]
     info('[pi2dsh engine] no Pi packages installed in this profile yet — add one with: dsh plugin --profile <p> add <pi-package>')
+  } else {
+    info(`[pi2dsh engine] preparing ${packages.length} Pi package(s): ${packages.map(pkg => pkg.name).join(', ')}`)
+    prepared = await preparePiHost(
+      { packages: packages.map(pkg => ({ name: pkg.name })) },
+      join(profileRoot, 'package.json'),
+    )
+  }
+
+  const agentSetupEvent = await discoverAgentSetupEvent(profileRoot)
+  if (agentSetupEvent === undefined) {
+    // Web, headless and older TUI surfaces do not expose a pre-publication
+    // contributor seam. Preserve pi2dsh's established host-scoped behavior on
+    // those products; the per-Agent path below is an additive surface
+    // capability, never a regression for existing profiles.
+    await applyPreparedPiHost(ctx, prepared)
     return
   }
-  info(`[pi2dsh engine] mounting ${packages.length} Pi package(s): ${packages.map(pkg => pkg.name).join(', ')}`)
-  await applyPiHost(
-    ctx,
-    {
-      packages: packages.map(pkg => ({ name: pkg.name })),
-      ...(config.visionCompanions === undefined ? {} : { visionCompanions: config.visionCompanions }),
-    },
-    join(profileRoot, 'package.json'),
-  )
+
+  // dsh-TUI runs this serial event from its existing agents.create/resume
+  // setup callback, after preset composition and before DSH publishes the
+  // Agent. Every Agent therefore receives fresh Pi extension instances and
+  // owns their effects through its agentCtx; stock DSH Core needs no patch.
+  ;(ctx as unknown as {
+    on(name: string, listener: (payload: { agent: Record<string, unknown>, agentCtx: Context }) => Promise<void>): () => void
+  }).on(agentSetupEvent, async ({ agent, agentCtx }) => {
+    await applyPreparedPiHost(agentCtx, prepared, agent)
+  })
 }

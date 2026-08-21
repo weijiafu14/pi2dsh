@@ -14,7 +14,9 @@ import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
 import CommandRuntime from '@deepseek-ai/dsh-commands'
 import SkillRegistry from '@deepseek-ai/dsh-skill'
-import { apply, discoverProfilePiPackages, findProfileRoot, inject, name } from '../src/engine.js'
+import { agentEvents } from '@deepseek-ai/dsh-agent'
+import { createScope, type Scope } from '@deepseek-ai/dsh-scope'
+import { apply, discoverAgentSetupEvent, discoverProfilePiPackages, findProfileRoot, inject, name } from '../src/engine.js'
 
 const cleanup: string[] = []
 
@@ -22,11 +24,15 @@ afterEach(async () => {
   await Promise.all(cleanup.splice(0).map(path => rm(path, { recursive: true, force: true })))
 })
 
-async function makeProfile(dependencies: Record<string, string>): Promise<string> {
+async function makeProfile(dependencies: Record<string, string>, bundles: string[] = []): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), 'pi2dsh-engine-profile-'))
   cleanup.push(root)
   await writeFile(join(root, 'cordis.yml'), '- name: dsh-base\n')
-  await writeFile(join(root, 'package.json'), JSON.stringify({ name: 'profile', dependencies }, null, 2))
+  await writeFile(join(root, 'package.json'), JSON.stringify({
+    name: 'profile',
+    dependencies,
+    dsh: { profile: { bundles } },
+  }, null, 2))
   await mkdir(join(root, 'node_modules'), { recursive: true })
   return root
 }
@@ -44,6 +50,20 @@ async function installFixturePackage(
     await mkdir(join(dir, relative, '..'), { recursive: true })
     await writeFile(join(dir, relative), content)
   }
+}
+
+async function mountAgentRuntime(ctx: Context, agent: Record<string, unknown>): Promise<Scope> {
+  const scope = createScope(ctx, agent as never)
+  const agentCtx = scope.ctx.extend({ agent: agent as never })
+  agent.ctx = agentCtx
+  await (ctx as unknown as {
+    serial(name: 'tui/agent-setup', payload: Record<string, unknown>): Promise<void>
+  }).serial('tui/agent-setup', {
+    agent,
+    agentCtx,
+  })
+  agentEvents(ctx, agent as never).emit('agent/session-start', { source: 'startup' })
+  return scope
 }
 
 describe('engine discovery', () => {
@@ -86,6 +106,23 @@ describe('engine discovery', () => {
     const narrowed = await discoverProfilePiPackages(root, { exclude: ['pi-second'] })
     expect(narrowed.map(pkg => pkg.name)).toEqual(['pi-marked'])
   })
+
+  it('discovers only an explicitly advertised surface Agent setup seam', async () => {
+    const root = await makeProfile(
+      { 'old-surface': '1.0.0', 'new-surface': '1.0.0' },
+      ['old-surface', 'new-surface'],
+    )
+    await installFixturePackage(root, 'old-surface', { dsh: { bundle: { patch: './cordis.patch.yml' } } })
+    await installFixturePackage(root, 'new-surface', {
+      dsh: { bundle: { patch: './cordis.patch.yml' } },
+      dshTui: { agentSetupEvent: 'tui/agent-setup' },
+    })
+    expect(await discoverAgentSetupEvent(root)).toBe('tui/agent-setup')
+
+    const legacy = await makeProfile({ 'old-surface': '1.0.0' }, ['old-surface'])
+    await installFixturePackage(legacy, 'old-surface', { dsh: { bundle: { patch: './cordis.patch.yml' } } })
+    expect(await discoverAgentSetupEvent(legacy)).toBeUndefined()
+  })
 })
 
 describe('engine mounting on a real DSH composition', () => {
@@ -127,6 +164,7 @@ describe('engine mounting on a real DSH composition', () => {
       meta: { createdAt: Date.now(), cwd: root },
     })
     const agent = { id: session.id, session, steer() {}, inject() {}, followup() {}, whenIdle: () => Promise.resolve() }
+    await mountAgentRuntime(ctx, agent)
     const result = await typedCtx.tools.execute({
       signal: new AbortController().signal,
       callId: CallId('engine-probe'),
@@ -194,8 +232,83 @@ describe('engine mounting on a real DSH composition', () => {
       meta: { createdAt: Date.now(), cwd: root },
     })
     const agent = { id: session.id, session, steer() {}, inject() {}, followup() {}, whenIdle: () => Promise.resolve() }
+    await mountAgentRuntime(ctx, agent)
 
     expect(typedCtx.commands.list(agent).map(command => command.name)).toContain('login')
+  })
+
+  it('creates one isolated Pi runtime per Agent and disposing A leaves B live', async () => {
+    const root = await makeProfile(
+      { 'tui-surface': '1.0.0', 'pi-isolation': '1.0.0' },
+      ['tui-surface'],
+    )
+    await installFixturePackage(root, 'tui-surface', {
+      dsh: { bundle: { patch: './cordis.patch.yml' } },
+      dshTui: { agentSetupEvent: 'tui/agent-setup' },
+    })
+    const counter = join(root, 'factory-counter')
+    await installFixturePackage(root, 'pi-isolation', { pi: { extensions: ['extension.ts'] } }, {
+      'extension.ts': [
+        "import { existsSync, readFileSync, writeFileSync } from 'node:fs'",
+        `const counter = ${JSON.stringify(counter)}`,
+        'export default function extension(pi: any) {',
+        "  const instance = existsSync(counter) ? Number(readFileSync(counter, 'utf8')) + 1 : 1",
+        "  writeFileSync(counter, String(instance))",
+        '  let starts = 0',
+        "  pi.on('session_start', () => { starts += 1 })",
+        '  pi.registerTool({',
+        "    name: 'agent_isolation_probe',",
+        "    description: 'Reports this extension factory instance.',",
+        "    parameters: { type: 'object', properties: {}, additionalProperties: false },",
+        '    async execute() {',
+        "      return { content: [{ type: 'text', text: `instance:${instance};starts:${starts}` }] }",
+        '    },',
+        '  })',
+        '}',
+      ].join('\n'),
+    })
+
+    const ctx = new Context()
+    await ctx.plugin(SessionStore)
+    await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
+    await ctx.plugin(ToolRuntime)
+    await ctx.plugin(CommandRuntime)
+    await ctx.plugin(SkillRegistry)
+    ;(ctx as unknown as { baseUrl: string }).baseUrl = `file://${root}/cordis.yml`
+    await apply(ctx, {})
+
+    const sessions = (ctx as unknown as { sessions: { create(id: unknown, options: Record<string, unknown>): { id: unknown } } }).sessions
+    const makeAgent = (id: string): Record<string, unknown> => {
+      const session = sessions.create(SessionId(id), { meta: { createdAt: Date.now(), cwd: root } })
+      return { id: session.id, session, steer() {}, inject() {}, followup() {}, whenIdle: () => Promise.resolve() }
+    }
+    const agentA = makeAgent('pi2dsh-agent-a')
+    const agentB = makeAgent('pi2dsh-agent-b')
+    const scopeA = await mountAgentRuntime(ctx, agentA)
+    await mountAgentRuntime(ctx, agentB)
+
+    const execute = async (agent: Record<string, unknown>): Promise<string | undefined> => {
+      const result = await (ctx as unknown as {
+        tools: { execute(request: Record<string, unknown>): Promise<{ content: Array<{ text?: string }> }> }
+      }).tools.execute({
+        signal: new AbortController().signal,
+        callId: CallId(`probe-${String(agent.id)}`),
+        name: 'agent_isolation_probe',
+        arguments: {},
+        agent,
+      })
+      return result.content[0]?.text
+    }
+
+    const a = await execute(agentA)
+    const b = await execute(agentB)
+    expect(a).toMatch(/^instance:\d+;starts:1$/u)
+    expect(b).toMatch(/^instance:\d+;starts:1$/u)
+    expect(a).not.toBe(b)
+
+    agentEvents(ctx, agentA as never).emit('agent/disposed', {})
+    await scopeA.dispose()
+    await expect(execute(agentB)).resolves.toBe(b)
   })
 
   it('auto-registers a -vision companion for every text-only route, skipping image-capable routes (zero config)', async () => {
