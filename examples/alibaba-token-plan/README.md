@@ -5,6 +5,12 @@ Harness model route. The original `pi-provider-alibaba` package owns Alibaba's
 endpoints, authentication, dynamic `/v1/models` discovery, protocol and HTTP
 transport; pi2dsh only maps its public Pi Host ABI onto DSH.
 
+**Token Plan and Coding Plan are separate products.** Their keys and Base URLs
+are isolated and must be used as matching pairs. Both dedicated keys may start
+with `sk-sp-`, so the prefix does not identify the product. This example's live
+E2E covers **Token Plan (CN)**; it does not claim a Token Plan key can be reused
+on the Coding Plan route.
+
 ## 1. Install the engine and the original provider
 
 ```sh
@@ -26,11 +32,13 @@ export ALIBABA_TOKEN_PLAN_API_KEY='<your-plan-key>'
 China Coding Plan:
 
 ```sh
-export ALIBABA_CODING_API_KEY='<your-plan-key>'
+export ALIBABA_CODING_API_KEY='<your-Coding-Plan-specific-key>'
 ```
 
 These are plugin-defined, host-neutral environment variables. The key stays in
 the process environment; do not put it in `settings.yaml` or commit it.
+Obtain the key from the page for the plan you actually purchased. Never move a
+Token Plan key into `ALIBABA_CODING_API_KEY`, or vice versa.
 
 ## 3. Start DSH and select the route
 
@@ -42,6 +50,11 @@ Open the model picker and choose the matching group:
 
 - **Alibaba Token Plan (CN)** for `ALIBABA_TOKEN_PLAN_API_KEY`;
 - **Alibaba Coding Plan (CN)** for `ALIBABA_CODING_API_KEY`.
+
+The second route is usable only with a Coding Plan-specific key. A successful
+`/models` request is not sufficient proof: a mismatched Token Plan key can list
+Coding Plan models and still receive `401 invalid access token` on the actual
+completion request.
 
 The provider discovers the live catalog from Alibaba. You can select a model
 such as `deepseek-v4-pro` even on the first headless request: pi2dsh waits for
@@ -76,6 +89,9 @@ standard protocol factory uses the same Host ABI path.
 
 - **401 on an international route:** a China Plan key belongs on the `(CN)`
   route. Select the matching group.
+- **`/models` works but completion returns 401:** the key and route belong to
+  different plans. Token Plan, Coding Plan and pay-as-you-go credentials are
+  not interchangeable.
 - **No models:** verify the environment variable belongs to the selected Plan
   type, then restart DSH so the provider sees the process environment.
 - **`Cannot read properties of undefined` on the first headless request:**
@@ -100,3 +116,6 @@ ONLY=alibaba-token-plan pnpm test:examples
 The live acceptance on 2026-08-21 used `pi-provider-alibaba@1.0.1` and the
 published `pi2dsh@0.13.3`. Both tool loops completed on
 `alibaba-token-cn/deepseek-v4-pro`; the exact Plan key appeared in zero files.
+The same Token Plan key was deliberately tested against `alibaba-coding-cn`:
+model listing returned 200, but the real completion returned 401. Coding Plan
+therefore remains a separate credential-specific E2E, not an inferred pass.

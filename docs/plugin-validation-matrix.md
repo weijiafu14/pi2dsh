@@ -131,8 +131,8 @@ provider。后者由下一条 rc.8 场景单独验证。
 ## pi-provider-alibaba
 
 场景：原版 `pi-provider-alibaba@1.0.1` 用 Pi 公开 `createProvider`、`envApiKeyAuth`、
-`openAICompletionsApi` 和动态 `fetchModels`，把阿里云百炼 Plan 订阅注册成 DSH 原生模型
-route，并在冷启动第一条请求上直接使用动态目录模型。
+`openAICompletionsApi` 和动态 `fetchModels`，把阿里云百炼 Token Plan（中国区）订阅注册成
+DSH 原生模型 route，并在冷启动第一条请求上直接使用动态目录模型。
 
 使用的 Pi 架构分支：
 
@@ -171,6 +171,12 @@ pi-provider-alibaba 注册 auth、OpenAI-completions transport、fallback 与动
 `alibaba-token-cn/deepseek-v4-pro`，第一条请求与重启后的第二条请求都完成完整工具闭环；
 扫描整个测试 home，精确 Plan key 命中 0 个文件。Web 同日真机选择同一动态模型也完成
 两步工具链。
+
+负向对照：Token Plan 与 Coding Plan 的专属 key 都可能以 `sk-sp-` 开头，但官方要求与
+各自 Base URL 配对、不可混用。同一枚 Token Plan key 请求 Coding Plan `/models` 返回
+200，真实 completion 随后返回 `401 invalid access token`。因此本记录只给 Token Plan
+分级；`alibaba-coding-cn` 必须取得真正的 Coding Plan key 后另做 E2E，不能由前缀或目录
+探活推断通过。
 
 结论：这是通用 transport-owning Provider ABI 的真实消费者，不是 Alibaba 特判，也不
 等于修复了 hand-declared `llm-pi-ai` profile；它通过另一条官方开放的 adapter seam
