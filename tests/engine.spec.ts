@@ -16,7 +16,7 @@ import CommandRuntime from '@deepseek-ai/dsh-commands'
 import SkillRegistry from '@deepseek-ai/dsh-skill'
 import { agentEvents } from '@deepseek-ai/dsh-agent'
 import { createScope, type Scope } from '@deepseek-ai/dsh-scope'
-import { apply, discoverAgentSetupEvent, discoverProfilePiPackages, findProfileRoot, inject, name } from '../src/engine.js'
+import { apply, discoverProfilePiPackages, findProfileRoot, inject, name } from '../src/engine.js'
 
 const cleanup: string[] = []
 
@@ -56,12 +56,11 @@ async function mountAgentRuntime(ctx: Context, agent: Record<string, unknown>): 
   const scope = createScope(ctx, agent as never)
   const agentCtx = scope.ctx.extend({ agent: agent as never })
   agent.ctx = agentCtx
-  await (ctx as unknown as {
-    serial(name: 'tui/agent-setup', payload: Record<string, unknown>): Promise<void>
-  }).serial('tui/agent-setup', {
-    agent,
-    agentCtx,
-  })
+  // The official publication notifications, exactly as agent-loop's publish()
+  // delivers them. The engine's single mount path listens for agent/created
+  // and mounts every prepared Pi package into agent.ctx; its assemble and
+  // pre-execute gates hold model-facing work until that mount lands.
+  agentEvents(ctx, agent as never).emit('agent/created', { agent: agent as never })
   agentEvents(ctx, agent as never).emit('agent/session-start', { source: 'startup' })
   return scope
 }
@@ -107,22 +106,6 @@ describe('engine discovery', () => {
     expect(narrowed.map(pkg => pkg.name)).toEqual(['pi-marked'])
   })
 
-  it('discovers only an explicitly advertised surface Agent setup seam', async () => {
-    const root = await makeProfile(
-      { 'old-surface': '1.0.0', 'new-surface': '1.0.0' },
-      ['old-surface', 'new-surface'],
-    )
-    await installFixturePackage(root, 'old-surface', { dsh: { bundle: { patch: './cordis.patch.yml' } } })
-    await installFixturePackage(root, 'new-surface', {
-      dsh: { bundle: { patch: './cordis.patch.yml' } },
-      dshTui: { agentSetupEvent: 'tui/agent-setup' },
-    })
-    expect(await discoverAgentSetupEvent(root)).toBe('tui/agent-setup')
-
-    const legacy = await makeProfile({ 'old-surface': '1.0.0' }, ['old-surface'])
-    await installFixturePackage(legacy, 'old-surface', { dsh: { bundle: { patch: './cordis.patch.yml' } } })
-    expect(await discoverAgentSetupEvent(legacy)).toBeUndefined()
-  })
 })
 
 describe('engine mounting on a real DSH composition', () => {
@@ -237,15 +220,80 @@ describe('engine mounting on a real DSH composition', () => {
     expect(typedCtx.commands.list(agent).map(command => command.name)).toContain('login')
   })
 
-  it('creates one isolated Pi runtime per Agent and disposing A leaves B live', async () => {
-    const root = await makeProfile(
-      { 'tui-surface': '1.0.0', 'pi-isolation': '1.0.0' },
-      ['tui-surface'],
-    )
-    await installFixturePackage(root, 'tui-surface', {
-      dsh: { bundle: { patch: './cordis.patch.yml' } },
-      dshTui: { agentSetupEvent: 'tui/agent-setup' },
+  it('host anchor carries host-level halves with zero agents and never doubles agent-facing surfaces', async () => {
+    const root = await makeProfile({ 'pi-anchored': '1.0.0' })
+    await installFixturePackage(root, 'pi-anchored', { pi: { extensions: ['extension.ts'], skills: ['skills'] } }, {
+      'extension.ts': [
+        'export default function extension(pi: any) {',
+        '  pi.registerTool({',
+        "    name: 'anchor_probe_tool',",
+        "    description: 'probe',",
+        "    parameters: { type: 'object', properties: {}, additionalProperties: false },",
+        "    async execute() { return { content: [{ type: 'text', text: 'ok' }] } },",
+        '  })',
+        "  pi.registerCommand('anchor-probe', { description: 'probe', handler: async () => {} })",
+        '}',
+      ].join('\n'),
+      'skills/anchored/SKILL.md': '---\nname: anchored-skill\ndescription: proves host-level skills mount at apply\n---\nPI2DSH_ANCHOR_SKILL_OK\n',
     })
+
+    const ctx = new Context()
+    await ctx.plugin(SessionStore)
+    await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
+    await ctx.plugin(ToolRuntime)
+    await ctx.plugin(CommandRuntime)
+    await ctx.plugin(SkillRegistry)
+    ;(ctx as unknown as { baseUrl: string }).baseUrl = `file://${root}/cordis.yml`
+    await apply(ctx, {})
+    await settle()
+
+    // Host half, with ZERO agents: the skill is discoverable from engine
+    // apply alone (web boots with no session; /login-class capabilities must
+    // not wait for one).
+    const signal = new AbortController().signal
+    const skills = await (ctx as unknown as {
+      skills: { list(options: Record<string, unknown>): Promise<Array<{ name: string }>> }
+    }).skills.list({ cwd: root, signal })
+    expect(skills.map(skill => skill.name)).toContain('anchored-skill')
+
+    // Agent-facing halves are NOT projected by the anchor: no tool and no
+    // command exist before an agent mounts…
+    const typedCtx = ctx as unknown as {
+      sessions: { create(id: unknown, options: Record<string, unknown>): { id: unknown } }
+      commands: { list(agent: unknown): Array<{ name: string }> }
+      tools: { execute(request: Record<string, unknown>): Promise<{ isError?: boolean, content: Array<{ text?: string }> }> }
+    }
+    const bare = { id: 'anchor-bare', steer() {}, inject() {}, followup() {}, whenIdle: () => Promise.resolve() }
+    expect(typedCtx.commands.list(bare).map(command => command.name)).not.toContain('anchor-probe')
+
+    // …and exactly ONE of each exists after one agent mounts (no anchor twin,
+    // no /anchor-probe-2 numbered collision).
+    const session = typedCtx.sessions.create(SessionId('pi2dsh-anchor-agent'), {
+      meta: { createdAt: Date.now(), cwd: root },
+    })
+    const agent = { id: session.id, session, steer() {}, inject() {}, followup() {}, whenIdle: () => Promise.resolve() }
+    await mountAgentRuntime(ctx, agent)
+    // The per-agent mount is asynchronous; the tool/assembly gates await it,
+    // the command palette simply converges. Poll for the converged palette.
+    let named: string[] = []
+    for (let waited = 0; waited < 5000; waited += 50) {
+      named = typedCtx.commands.list(agent).map(command => command.name).filter(name => name.startsWith('anchor-probe'))
+      if (named.length > 0) break
+      await new Promise(resolve => setTimeout(resolve, 50))
+    }
+    expect(named).toEqual(['anchor-probe'])
+    const result = await typedCtx.tools.execute({
+      signal,
+      callId: CallId('anchor-probe-call'),
+      name: 'anchor_probe_tool',
+      arguments: {},
+      agent: agent as never,
+    })
+    expect(result.isError ?? false).toBe(false)
+  })
+
+  it('creates one isolated Pi runtime per Agent and disposing A leaves B live', async () => {
+    const root = await makeProfile({ 'pi-isolation': '1.0.0' })
     const counter = join(root, 'factory-counter')
     await installFixturePackage(root, 'pi-isolation', { pi: { extensions: ['extension.ts'] } }, {
       'extension.ts': [

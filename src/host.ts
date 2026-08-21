@@ -169,6 +169,7 @@ export async function applyPreparedPiHost(
   ctx: Context,
   prepared: readonly PreparedPiHostPackage[],
   ownerAgent?: UnknownRecord,
+  mode: { hostAnchor?: boolean } = {},
 ): Promise<void> {
   const errors: Array<{ name: string; error: string }> = []
   for (const pkg of prepared) {
@@ -189,6 +190,7 @@ export async function applyPreparedPiHost(
             // host-level `visionCompanions: false` or duplicate the catalog.
             config: { ...(pkg.config ?? {}), visionCompanions: false },
             ...(ownerAgent === undefined ? {} : { ownerAgent }),
+            ...(mode.hostAnchor === true ? { hostAnchor: true } : {}),
           })
         },
         { inject: ['tools', 'systemPrompt', 'commands'] },

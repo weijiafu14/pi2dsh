@@ -14,11 +14,17 @@ runtimes. The test uses the official
 `@modelcontextprotocol/server-everything@2026.8.18` package over real child
 processes and local network transports.
 
-The Agent-lifecycle acceptance additionally uses unmodified DSH rc.8 with the
-source-built dsh-TUI `tui/agent-setup` branch: startup Agent A, `/new` Agent B,
-and a real DeepSeek tool turn on B all mount through dsh-TUI's existing
-`agents.create({ setup })` transaction. No DSH Core fork enters that dependency
-tree.
+The Agent-lifecycle acceptance additionally runs on the fully stock stack —
+the npm `@deepseek-ai/dsh@0.1.0-rc.8` CLI and the npm
+`@deepseek-harness-tui/dsh-tui`, no forks anywhere: startup Agent A and `/new`
+Agent B each receive their own Pi runtime through DSH's official
+`agent/created` lifecycle event and awaited assembly/tool waterfalls, and a
+real DeepSeek tool turn runs on each agent with the proof read from the
+session log's tool results
+([`scripts/verify-tui-singlepath-e2e.mjs`](../scripts/verify-tui-singlepath-e2e.mjs),
+verdict in `community/tui-singlepath-e2e.json`). The run asserts the installed
+`dsh-agent` is the stock rc.8 with no `agent/setup` seam and the installed TUI
+advertises no setup extension point.
 
 The remaining protocol-internal behavior is verified by the upstream package's
 version-matched suites. This split is deliberate: pi2dsh must prove every seam
@@ -38,7 +44,7 @@ The same verifier is run after installing a packed pi2dsh tarball, dsh-TUI and
 | Terminal UI | `/pi-mcp` opens the real full-screen manager through dsh-TUI's public `tuiScenes` service; ANSI output, input and close lifecycle cross the package-agnostic custom-UI bridge |
 | Command ownership | dsh-TUI's native `/mcp` remains present; the Pi package command is exposed as `/pi-mcp` |
 | Lifecycle | An immediate command waits for asynchronous `session_start`; reconnect works; dispose/restart creates one new package session; final shutdown reaps the stdio child |
-| Agent ownership | dsh-TUI awaits `tui/agent-setup` before publication; startup Agent A and `/new` Agent B each report `everything 23/23`, and B completes a real `everything_echo` model tool call |
+| Agent ownership | Each root Agent mounts its own package runtime from the official `agent/created` event, gated by the awaited `system-prompt/assemble` and `tools/pre-execute` waterfalls; on stock npm dsh-TUI, startup Agent A and `/new` Agent B each list the everything server fully connected and complete a real `everything_echo` model tool call, proven from the session logs |
 | Transports | Real stdio, Streamable HTTP and legacy SSE server processes connect and answer calls |
 | Discovery | Proxy `search`, `describe` and server `instructions` return live metadata |
 | Tool projection | The proxy tool and seven hot-loaded direct tools register in DSH `ToolRuntime` and execute there |

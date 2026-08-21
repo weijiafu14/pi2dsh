@@ -176,6 +176,23 @@ async function makeHome(scratch, extraEnv = {}) {
   return { home, env, runDsh }
 }
 
+/**
+ * Boot the web surface the same way runDsh runs the CLI. With a direct bin
+ * (PI2DSH_DSH_BIN) the process must run WITHOUT the tsx loader and outside the
+ * checkout: `--import tsx/esm` with cwd inside a DSH source tree lets that
+ * tree's tsconfig paths hijack `@deepseek-ai/*` resolution into its workspace
+ * sources — the run then tests the checkout's branch, not the installed CLI.
+ */
+function spawnWeb(port, env) {
+  return spawn(
+    directDshBin === undefined ? 'node' : directDshBin,
+    directDshBin === undefined
+      ? ['--import', 'tsx/esm', dshBin, '--profile', 'web', '--port', String(port)]
+      : ['--profile', 'web', '--port', String(port)],
+    { cwd: dshCwd, env, stdio: ['ignore', 'pipe', 'pipe'] },
+  )
+}
+
 /** Point the profile's session log somewhere this script can read it. */
 async function useJsonlSessions(home, profile) {
   await writeFile(join(home, `profiles/${profile}/cordis.patch.yml`), [
@@ -579,9 +596,7 @@ async function runSideConversation() {
     await useJsonlSessions(home, 'web')
 
     const port = Number(process.env.SIDE_PORT ?? 5187)
-    web = spawn('node', ['--import', 'tsx/esm', dshBin, '--profile', 'web', '--port', String(port)], {
-      cwd: dshRoot, env, stdio: ['ignore', 'pipe', 'pipe'],
-    })
+    web = spawnWeb(port, env)
     let webLog = ''
     web.stdout.on('data', chunk => { webLog += String(chunk) })
     web.stderr.on('data', chunk => { webLog += String(chunk) })
@@ -639,9 +654,7 @@ async function runVisionBridgeWeb() {
     await useJsonlSessions(home, 'web')
 
     const port = Number(process.env.VISION_PORT ?? 5188)
-    web = spawn('node', ['--import', 'tsx/esm', dshBin, '--profile', 'web', '--port', String(port)], {
-      cwd: dshRoot, env, stdio: ['ignore', 'pipe', 'pipe'],
-    })
+    web = spawnWeb(port, env)
     let webLog = ''
     web.stdout.on('data', chunk => { webLog += String(chunk) })
     web.stderr.on('data', chunk => { webLog += String(chunk) })
@@ -819,9 +832,7 @@ async function runPresentationSurfaces() {
     await useJsonlSessions(home, 'web')
 
     const port = Number(process.env.SURFACES_PORT ?? 5189)
-    web = spawn('node', ['--import', 'tsx/esm', dshBin, '--profile', 'web', '--port', String(port)], {
-      cwd: dshRoot, env, stdio: ['ignore', 'pipe', 'pipe'],
-    })
+    web = spawnWeb(port, env)
     let webLog = ''
     web.stdout.on('data', chunk => { webLog += String(chunk) })
     web.stderr.on('data', chunk => { webLog += String(chunk) })
@@ -882,8 +893,7 @@ async function runSubscriptionLogin() {
     // either — otherwise the one part of the example that CAN run without an
     // account would still be skipped for want of one.
     const port = 5300 + Math.floor(Math.random() * 200)
-    web = spawn('node', ['--import', 'tsx/esm', dshBin, '--profile', 'web', '--port', String(port)],
-      { cwd: dshRoot, env, stdio: ['ignore', 'pipe', 'pipe'] })
+    web = spawnWeb(port, env)
     let log = ''
     web.stdout.on('data', chunk => { log += String(chunk) })
     web.stderr.on('data', chunk => { log += String(chunk) })

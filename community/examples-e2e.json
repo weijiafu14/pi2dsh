@@ -1,15 +1,19 @@
 {
   "schemaVersion": 1,
-  "pi2dshCommit": "7aa2958953d09983af83c178d19273feff194fb4",
-  "dshCommit": "47f943859bef60e4160492346772ded9b24f765a",
+  "pi2dshCommit": "965f6f5963289e303259165e3b2970ec59b69f02",
+  "dshCommit": "69fff74f6f3e1f37939784885ef823477f06ace3",
   "results": {
+    "alibabaTokenPlan": {
+      "status": "skipped",
+      "reason": "ALIBABA_TOKEN_PLAN_API_KEY not set"
+    },
     "visionBridge": {
       "status": "skipped",
-      "reason": "no vision endpoint configured (VISION_BRIDGE_BASE_URL, VISION_BRIDGE_MODEL, VISION_BRIDGE_API_KEY)"
+      "reason": "no complete OpenAI-compatible or Pi-registry vision model configured"
     },
     "visionBridgeWeb": {
       "status": "skipped",
-      "reason": "no vision endpoint configured (VISION_BRIDGE_BASE_URL, VISION_BRIDGE_MODEL, VISION_BRIDGE_API_KEY)"
+      "reason": "no complete OpenAI-compatible or Pi-registry vision model configured"
     },
     "codexImageGen": {
       "status": "skipped",
@@ -17,18 +21,16 @@
     },
     "gatewayCompat": {
       "engine": {
-        "version": "0.13.0",
+        "version": "0.13.3",
         "from": "local",
         "spec": "file:<working-tree>",
-        "commit": "1b818c6dc4c8c397c7335b664ad16ab0bb572b27",
+        "commit": "965f6f5963289e303259165e3b2970ec59b69f02",
         "dirty": true
       },
       "status": "passed",
       "requests": 2,
       "roles": [
         "system",
-        "user",
-        "user",
         "user",
         "user"
       ],
@@ -47,18 +49,16 @@
       "previews": [
         "system: You are an AI agent powered by DeepSeek Harness. You are a ",
         "user: Reply with exactly: gateway-compat-ok",
-        "user: <system-reminder> The following workspace instructions may b",
-        "user: Current runtime context. This snapshot supersedes earlier ru",
-        "user: <system-reminder> A skill is a reusable set of task-specific"
+        "user: Current runtime context. This snapshot supersedes earlier ru"
       ]
     },
     "customGateways": {
       "status": "passed",
       "engine": {
-        "version": "0.13.0",
+        "version": "0.13.3",
         "from": "local",
         "spec": "file:<working-tree>",
-        "commit": "1b818c6dc4c8c397c7335b664ad16ab0bb572b27",
+        "commit": "965f6f5963289e303259165e3b2970ec59b69f02",
         "dirty": true
       },
       "seenByPackage": {
@@ -66,60 +66,25 @@
         "id": "deepseek-chat",
         "api": "faux",
         "contextWindow": 131072
-      }
+      },
+      "requestedThroughGateway": true
     },
     "subscriptionLogin": {
-      "status": "passed",
-      "engine": {
-        "version": "0.13.0",
-        "from": "local",
-        "spec": "file:<working-tree>",
-        "commit": "1b818c6dc4c8c397c7335b664ad16ab0bb572b27",
-        "dirty": true
-      },
-      "note": "account offered by /login and served as a native route; the live account login is manual (README step 4)"
-    },
-    "presentationSurfaces": {
-      "status": "passed",
-      "engine": {
-        "version": "0.13.0",
-        "from": "local",
-        "spec": "file:<working-tree>",
-        "commit": "1b818c6dc4c8c397c7335b664ad16ab0bb572b27",
-        "dirty": true
-      },
-      "screenshots": [
-        "06-presentation-surfaces.png"
-      ]
-    },
-    "sideConversation": {
-      "status": "passed",
-      "engine": {
-        "version": "0.13.0",
-        "from": "local",
-        "spec": "file:<working-tree>",
-        "commit": "1b818c6dc4c8c397c7335b664ad16ab0bb572b27",
-        "dirty": true
-      },
-      "screenshots": [
-        "01-side-conversation-main-thread-clean.png",
-        "02-side-conversation-panel.png",
-        "03-side-conversation-host-catalog.png",
-        "04-side-conversation-injected-on-request.png",
-        "05-side-conversation-child-view.png"
-      ]
+      "status": "failed",
+      "error": "the package did not become a native route:\n[pi2dsh] image-admission companion route \"deepseek-official-vision\" registered for \"deepseek-official\"\n[pi2dsh] loaded pi2dsh-builtins: 0 tools, 1 commands, 0 skill roots\n[pi2dsh engine] preparing 1 Pi package(s): pi-provider-kimi-code\n[pi2dsh] Pi provider \"kimi-coding\" supports OAuth — log in with /login kimi-coding\n[pi2dsh] loaded pi-provider-kimi-code: 0 tools, 2 commands, 0 skill roots (host anchor)\ndsh web: http://127.0.0.1:5327\ndsh web: opening the default browser; pass --no-open to disable\n"
     },
     "tuiMcp": {
       "status": "passed",
       "engine": {
-        "version": "0.13.2",
-        "from": "local-tarball",
-        "spec": "file:<tarball>",
-        "sha256": "3c74ed63ce054df721a47543daa02f4b676dda98443bc256badb1c0e5ff8a6b6"
+        "version": "0.13.3",
+        "from": "local",
+        "spec": "file:<working-tree>",
+        "commit": "965f6f5963289e303259165e3b2970ec59b69f02",
+        "dirty": true
       },
       "profile": "dsh-tui",
       "piPackage": "pi-mcp-adapter",
-      "piPackageVersion": "2.26.1",
+      "piPackageVersion": "2.27.0",
       "command": "/pi-mcp",
       "nativeCommandPreserved": "/mcp",
       "mcpServer": "@modelcontextprotocol/server-everything",
@@ -145,6 +110,36 @@
         "cancellation",
         "reconnect",
         "session-restart"
+      ]
+    },
+    "presentationSurfaces": {
+      "status": "passed",
+      "engine": {
+        "version": "0.13.3",
+        "from": "local",
+        "spec": "file:<working-tree>",
+        "commit": "965f6f5963289e303259165e3b2970ec59b69f02",
+        "dirty": true
+      },
+      "screenshots": [
+        "06-presentation-surfaces.png"
+      ]
+    },
+    "sideConversation": {
+      "status": "passed",
+      "engine": {
+        "version": "0.13.3",
+        "from": "local",
+        "spec": "file:<working-tree>",
+        "commit": "965f6f5963289e303259165e3b2970ec59b69f02",
+        "dirty": true
+      },
+      "screenshots": [
+        "01-side-conversation-main-thread-clean.png",
+        "02-side-conversation-panel.png",
+        "03-side-conversation-host-catalog.png",
+        "04-side-conversation-injected-on-request.png",
+        "05-side-conversation-child-view.png"
       ]
     }
   }

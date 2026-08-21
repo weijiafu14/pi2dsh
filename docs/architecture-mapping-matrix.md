@@ -123,6 +123,26 @@ client seam；两个数字都不表示“已经完整”。
 - 需要的公开 seam：Agent waterfalls 与持久 turn/step 事件。
 - 理论判断：组合承接。
 
+<a id="pi-extension-instance-scope"></a>
+#### 扩展实例作用域（每会话一份）
+
+- 当前接口叶子：`ExtensionFactory` 每 session 实例化一次；`session_start` 异步
+  handlers 在第一轮前完成；session 结束时实例随之销毁。
+- 理论对应：[DSH / 插件组合](#dsh-composition)与
+  [DSH / Agent 编排](#dsh-orchestration)。
+- 需要的公开 seam：`agent/created`（每条发布路径必触发、loop 启动前）、
+  `agent.ctx`（公开契约：注册 agent-local、dispose 自动 unwind）、
+  `system-prompt/assemble` 与 `tools/pre-execute` awaited waterfalls
+  （首轮就绪门；`assembly.tools` 在 waterfall 前快照，门内用官方
+  `tools.schemas(agent)` 补齐）。
+- 理论判断：组合承接。Pi 的保证是"第一轮前就绪"而非"发布前就绪"，
+  所以发布后挂载 + awaited 门恰好等价；已在 stock rc.8 npm 包上实证
+  （tests/agent-scoped-mount.spec.ts + scripts/verify-tui-singlepath-e2e.mjs）。
+  注：DSH 的发布前组合 seam（`setup(agentCtx)`）是创建者独占参数、root
+  插件不可达且 config 声明式 Agent 不经过——对生态插件这是真实缺口，正解
+  形状是 AgentRegistry 级的 serial `agent/setup` contributor（留作上游提案，
+  非本桥依赖）。
+
 <a id="pi-agent-control"></a>
 #### Agent 控制与空闲状态
 

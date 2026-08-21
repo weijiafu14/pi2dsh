@@ -125,26 +125,156 @@ export async function discoverProfilePiPackages(
   return discovered
 }
 
-/** Discover a surface-owned, pre-publication Agent setup event from direct dependencies. */
-export async function discoverAgentSetupEvent(profileRoot: string): Promise<string | undefined> {
-  const manifest = await readProfileManifest(profileRoot)
-  const bundles = new Set(manifest.dsh?.profile?.bundles ?? [])
-  for (const name of Object.keys(manifest.dependencies ?? {})) {
-    if (!bundles.has(name)) continue
-    const dir = resolveDependencyDir(profileRoot, name)
-    if (dir === undefined) continue
+interface AgentScopedMount {
+  ready: Promise<void>
+  /** Set when the mount failed; the agent then runs as a plain DSH agent. */
+  failure?: string
+}
+
+/** The loose shapes of the official DSH seams this file consumes. */
+interface AgentLike {
+  ctx: Context
+}
+interface EngineHostContext {
+  /** Un-injected reflection access (the ctx.get('loader') idiom): the engine
+   * must not hard-depend on the agent registry — compositions without one
+   * (bare test hosts) simply have no agents to mount for. */
+  get?(name: string): unknown
+  tools?: { schemas?(scope: unknown): Array<{ name: string }> }
+  on(name: string, listener: (...args: never[]) => unknown): () => void
+}
+interface AgentRegistryLike {
+  roots?(): AgentLike[]
+}
+
+/**
+ * The single mount path on every DSH surface: one Pi runtime per root Agent.
+ *
+ * Pi instantiates its extensions once per session; DSH's twin of that scope is
+ * the Agent with its public `agent.ctx` ("contributions are agent-local,
+ * unwind on disposal"). Mounting is driven purely by official core seams, so
+ * the same semantics hold on the TUI, web, headless, ACP and config-declared
+ * agents alike:
+ *
+ *   - `agent/created` fires on every publication path before the loop can run
+ *     a first turn; it eagerly starts that agent's mount.
+ *   - `system-prompt/assemble` (awaited waterfall, runs in every step's
+ *     preStep) gates the assembly on the mount and patches the pre-waterfall
+ *     tools snapshot from the official scoped projection `tools.schemas()` —
+ *     stock DSH collects `assembly.tools` before dispatching the waterfall,
+ *     so a mount that lands during the wait would otherwise miss turn one.
+ *   - `tools/pre-execute` (awaited waterfall) closes the same window for
+ *     direct executions that bypass assembly.
+ *
+ * `agent/session-start` deliberately is NOT the trigger: DSH documents it as a
+ * veto-less notification that cannot gate startup. The waterfalls above are
+ * the officially awaited seams, and the exact pattern of registering onto a
+ * foreign agent's ctx from a lifecycle event is what DSH's own schedule
+ * plugin ships.
+ *
+ * A mount failure never takes the Agent down: the agent keeps running as a
+ * plain DSH agent, the failure is reported loudly once, and only the Pi
+ * packages are missing — the capability-gap discipline, not a rollback.
+ */
+export function installAgentScopedMounts(
+  ctx: Context,
+  preparedPackages: Promise<readonly PreparedPiHostPackage[]>,
+  report: { warn(message: string): void },
+): void {
+  const host = ctx as unknown as EngineHostContext
+  const mounts = new WeakMap<object, AgentScopedMount>()
+
+  const registry = (): AgentRegistryLike | undefined => {
     try {
-      const dependency = JSON.parse(await readFile(join(dir, 'package.json'), 'utf8')) as {
-        dshTui?: { agentSetupEvent?: unknown }
-      }
-      const event = dependency.dshTui?.agentSetupEvent
-      if (typeof event === 'string' && event.length > 0) return event
+      return host.get?.('agents') as AgentRegistryLike | undefined
     } catch {
-      // Package discovery already reports unreadable direct dependencies. A
-      // surface capability probe only decides between scoped and legacy mount.
+      return undefined
     }
   }
-  return undefined
+
+  const isRootAgent = (agent: object): boolean => {
+    // Subagents keep Pi's own sub-session semantics through the session
+    // bridge; only runtime roots receive a Pi runtime (the same distinction
+    // DSH's schedule plugin draws via agents.roots()).
+    const agents = registry()
+    const roots = agents?.roots
+    if (typeof roots !== 'function') return true
+    try {
+      return (roots.call(agents) as unknown[]).includes(agent)
+    } catch {
+      return true
+    }
+  }
+
+  const ensureMount = (agent: AgentLike): AgentScopedMount => {
+    let mount = mounts.get(agent)
+    if (mount === undefined) {
+      const started: AgentScopedMount = { ready: Promise.resolve() }
+      started.ready = preparedPackages.then(async prepared => {
+        if (prepared.length === 0) return
+        try {
+          await applyPreparedPiHost(agent.ctx, prepared, agent as unknown as Record<string, unknown>)
+        } catch (error) {
+          // Loud, once per agent; the gates resolve so the plain DSH agent
+          // keeps working. Faking success is forbidden — the message names
+          // what is missing.
+          started.failure = error instanceof Error ? error.message : String(error)
+          report.warn(`[pi2dsh engine] Pi packages failed to mount for this agent; it continues without them: ${started.failure}`)
+        }
+      })
+      mounts.set(agent, started)
+      mount = started
+    }
+    return mount
+  }
+
+  // Eager start on publication. `agent/created` reaches host-level listeners
+  // on every create/resume/config path, before the loop can open a turn.
+  host.on('agent/created', ((payload: { agent: AgentLike }) => {
+    if (isRootAgent(payload.agent)) ensureMount(payload.agent)
+  }) as never)
+
+  // Correctness boundary #1: no prompt assembly for a root agent proceeds
+  // before its Pi runtime is mounted, and the tools snapshot taken before
+  // this waterfall is reconciled against the official scoped projection.
+  host.on('system-prompt/assemble', (async (
+    assembly: { tools: Array<{ name: string }> },
+    context: { agent?: AgentLike },
+    next: () => Promise<unknown>,
+  ) => {
+    const agent = context.agent
+    if (agent !== undefined && isRootAgent(agent)) {
+      await ensureMount(agent).ready
+      const schemas = host.tools?.schemas
+      if (typeof schemas === 'function') {
+        const present = new Set(assembly.tools.map(tool => tool.name))
+        for (const schema of schemas.call(host.tools, agent)) {
+          if (!present.has(schema.name)) assembly.tools.push(schema)
+        }
+      }
+    }
+    return next()
+  }) as never)
+
+  // Correctness boundary #2: tool execution for a root agent waits for the
+  // same mount (serially awaited by the tool runtime before dispatch).
+  host.on('tools/pre-execute', (async (
+    exec: { agent?: AgentLike },
+    next: () => Promise<unknown>,
+  ) => {
+    if (exec.agent !== undefined && isRootAgent(exec.agent)) await ensureMount(exec.agent).ready
+    return next()
+  }) as never)
+
+  // Backfill: agents published before this plugin finished loading (a surface
+  // that skips the official await-the-loader pattern DSH's headless runner
+  // uses). Their next assembly still passes the gates above.
+  void preparedPackages.then(() => {
+    const agents = registry()
+    const roots = agents?.roots
+    if (typeof roots !== 'function') return
+    for (const agent of roots.call(agents)) ensureMount(agent)
+  })
 }
 
 /** Cordis plugin surface: `dsh plugin add pi2dsh` mounts this. */
@@ -168,22 +298,27 @@ export async function apply(ctx: Context, config: EngineConfig = {}): Promise<vo
     throw new Error('pi2dsh engine: no DSH profile root (cordis.yml + package.json) above the installed engine — is pi2dsh installed via `dsh plugin add pi2dsh`?')
   }
 
-  const packages = Array.isArray(config.packages) && config.packages.length > 0
-    ? config.packages.map(name => ({ name }))
-    : await discoverProfilePiPackages(profileRoot, {
-        ...(Array.isArray(config.exclude) ? { exclude: config.exclude } : {}),
-        warn,
-      })
+  // The single mount path, before any await: gates and lifecycle listeners
+  // must exist the moment a surface can publish its first Agent. Package
+  // preparation resolves behind this promise; the gates hold each agent's
+  // first assembly until its own mount lands.
+  let resolvePrepared!: (prepared: readonly PreparedPiHostPackage[]) => void
+  const preparedPackages = new Promise<readonly PreparedPiHostPackage[]>(resolve => {
+    resolvePrepared = resolve
+  })
+  installAgentScopedMounts(ctx, preparedPackages, { warn })
+
   registerVisionCompanions(ctx, config.visionCompanions)
-  let prepared: PreparedPiHostPackage[]
-  if (packages.length === 0) {
-    // The host itself owns Pi's built-in provider directory and `/login`.
-    // Mount an empty internal package so those host-level capabilities exist
-    // even before the user installs their first community Pi package. Calling
-    // registerVisionCompanions alone here left a fresh engine unable to run
-    // `/login openai-codex`: DSH treated the unknown slash line as a model
-    // prompt and failed on the unrelated default provider credential.
-    prepared = [{
+
+  try {
+    // The host half, mounted exactly once regardless of packages or agents:
+    // Pi's built-in provider directory, `/login`, and credential recovery.
+    // Without it a fresh engine cannot run `/login openai-codex`: DSH treats
+    // the unknown slash line as a model prompt and fails on the unrelated
+    // default provider credential. Community packages join the same
+    // SharedHostState (keyed on ctx.root), so host-level resources stay
+    // single-instance no matter which agent scope mounts them.
+    await applyPreparedPiHost(ctx, [{
       name: 'pi2dsh-builtins',
       rootUrl: new URL('.', import.meta.url),
       manifest: {
@@ -193,33 +328,37 @@ export async function apply(ctx: Context, config: EngineConfig = {}): Promise<vo
         skillDirs: [],
         prompts: [],
       },
-    }]
-    info('[pi2dsh engine] no Pi packages installed in this profile yet — add one with: dsh plugin --profile <p> add <pi-package>')
-  } else {
+    }])
+
+    const packages = Array.isArray(config.packages) && config.packages.length > 0
+      ? config.packages.map(name => ({ name }))
+      : await discoverProfilePiPackages(profileRoot, {
+          ...(Array.isArray(config.exclude) ? { exclude: config.exclude } : {}),
+          warn,
+        })
+    if (packages.length === 0) {
+      info('[pi2dsh engine] no Pi packages installed in this profile yet — add one with: dsh plugin --profile <p> add <pi-package>')
+      resolvePrepared([])
+      return
+    }
     info(`[pi2dsh engine] preparing ${packages.length} Pi package(s): ${packages.map(pkg => pkg.name).join(', ')}`)
-    prepared = await preparePiHost(
+    const prepared = await preparePiHost(
       { packages: packages.map(pkg => ({ name: pkg.name })) },
       join(profileRoot, 'package.json'),
     )
+    // Host anchors, before the per-Agent gates open: every package's
+    // HOST-level contributions (provider routes, OAuth accounts, /login,
+    // credential recovery, companions, skills) exist from engine apply — a
+    // surface with zero live Agents (web at boot) still advertises them, the
+    // first Agent's model resolution finds its routes, and routes survive
+    // Agent churn. Anchors serve no Agent; sessions belong to the per-Agent
+    // instances the gates mount.
+    await applyPreparedPiHost(ctx, prepared, undefined, { hostAnchor: true })
+    resolvePrepared(prepared)
+  } catch (error) {
+    // The gates must never hang on a failed preparation; agents keep running
+    // as plain DSH agents while the engine failure propagates loudly.
+    resolvePrepared([])
+    throw error
   }
-
-  const agentSetupEvent = await discoverAgentSetupEvent(profileRoot)
-  if (agentSetupEvent === undefined) {
-    // Web, headless and older TUI surfaces do not expose a pre-publication
-    // contributor seam. Preserve pi2dsh's established host-scoped behavior on
-    // those products; the per-Agent path below is an additive surface
-    // capability, never a regression for existing profiles.
-    await applyPreparedPiHost(ctx, prepared)
-    return
-  }
-
-  // dsh-TUI runs this serial event from its existing agents.create/resume
-  // setup callback, after preset composition and before DSH publishes the
-  // Agent. Every Agent therefore receives fresh Pi extension instances and
-  // owns their effects through its agentCtx; stock DSH Core needs no patch.
-  ;(ctx as unknown as {
-    on(name: string, listener: (payload: { agent: Record<string, unknown>, agentCtx: Context }) => Promise<void>): () => void
-  }).on(agentSetupEvent, async ({ agent, agentCtx }) => {
-    await applyPreparedPiHost(agentCtx, prepared, agent)
-  })
 }

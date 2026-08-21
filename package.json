@@ -89,20 +89,21 @@
     "cross-spawn": "^7.0.6",
     "diff": "^9.0.0",
     "get-east-asian-width": "1.6.0",
+    "ignore": "7.0.5",
     "jiti": "^2.7.0",
     "marked": "^16.4.2",
     "pacote": "^21.0.0",
+    "proper-lockfile": "4.1.2",
     "tinyglobby": "^0.2.15",
     "typebox": "^1.0.4",
-    "yaml": "^2.8.1",
-    "ignore": "7.0.5",
-    "proper-lockfile": "4.1.2"
+    "yaml": "^2.8.1"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.1",
     "@deepseek-ai/dsh-attachment": "^0.1.0-rc.8",
     "@deepseek-ai/dsh-commands": "^0.1.0-rc.8",
     "@deepseek-ai/dsh-llm": "^0.1.0-rc.8",
+    "@deepseek-ai/dsh-scope": "^0.1.0-rc.8",
     "@deepseek-ai/dsh-session": "^0.1.0-rc.8",
     "@deepseek-ai/dsh-skill-filesystem": "^0.1.0-rc.8",
     "@deepseek-ai/dsh-subprocess": "^0.1.0-rc.8",
@@ -134,6 +135,7 @@
   "devDependencies": {
     "@deepseek-ai/cordis": "4.0.1",
     "@deepseek-ai/dsh-agent": "0.1.0-rc.8",
+    "@deepseek-ai/dsh-agent-loop": "0.1.0-rc.8",
     "@deepseek-ai/dsh-attachment-local": "0.1.0-rc.8",
     "@deepseek-ai/dsh-commands": "0.1.0-rc.8",
     "@deepseek-ai/dsh-credentials": "0.1.0-rc.8",
@@ -156,12 +158,12 @@
     "@earendil-works/pi-coding-agent": "0.84.1",
     "@types/node": "^24.10.0",
     "@types/pacote": "^11.1.8",
+    "@types/proper-lockfile": "^4.1.4",
     "@vitest/coverage-v8": "^4.1.10",
     "publint": "^0.3.23",
     "tsdown": "^0.22.14",
     "undici": "^8.10.0",
-    "vitest": "^4.1.10",
-    "@types/proper-lockfile": "^4.1.4"
+    "vitest": "^4.1.10"
   },
   "dsh": {
     "bundle": {

@@ -56,6 +56,19 @@ interface PiSubagentFacade {
 
 let subagentSerial = 0
 
+/**
+ * Cross-scope subscription base. Session events dispatch under the OWNING
+ * session's scope; a package instance mounted per Agent registers listeners
+ * inside its own Agent's scope and would never see a child session's events.
+ * The bridge's callbacks filter by exact session/agent identity, so they
+ * subscribe unscoped at the root context — the same posture the old
+ * host-level mount had.
+ */
+function unscopedEventContext(cordis: unknown): { on(name: string, callback: (...args: any[]) => unknown): () => void } {
+  const host = cordis as { root?: unknown, on(name: string, callback: (...args: any[]) => unknown): () => void }
+  return (host.root ?? host) as { on(name: string, callback: (...args: any[]) => unknown): () => void }
+}
+
 /** Flatten a Pi message's content to text for transcript seeding. */
 function piMessageText(message: UnknownRecord): string {
   const content = message.content
@@ -116,9 +129,12 @@ export class PiBridgedAgentSession {
       .map(tool => (tool as { name?: unknown } | undefined)?.name)
       .filter((name): name is string => typeof name === 'string')
 
-    const cordis = host.cordis as unknown as {
-      on(name: string, callback: (...args: any[]) => unknown): () => void
-    }
+    // Subscribe UNSCOPED, at the root: the child's events dispatch under the
+    // CHILD's scope, and this bridge lives inside the PARENT instance's agent
+    // scope — a scoped listener would be filtered out and the wait below
+    // would never resolve (the /btw hang). The callbacks filter by exact
+    // session/agent identity themselves, so root subscription is precise.
+    const cordis = unscopedEventContext(host.cordis)
     // Project this child session's durable events into Pi AgentSessionEvents.
     const offEvents = cordis.on('session/event', (session: UnknownRecord, event: UnknownRecord) => {
       if (session !== this.#session) return
@@ -301,9 +317,9 @@ export class PiBridgedAgentSession {
       }
     }
     const blocks = await this.#host.piContentToDsh([{ type: 'text', text: String(text) }])
-    const cordis = this.#host.cordis as unknown as {
-      on(name: string, callback: (...args: any[]) => unknown): () => void
-    }
+    // Root subscription for the same reason as the constructor: the child's
+    // turn/end dispatches under the child's scope.
+    const cordis = unscopedEventContext(this.#host.cordis)
     const completed = new Promise<void>(resolve => {
       const off = cordis.on('session/event', (session: UnknownRecord, event: UnknownRecord) => {
         if (session !== this.#session) return

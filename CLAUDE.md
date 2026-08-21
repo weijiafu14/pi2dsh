@@ -120,6 +120,26 @@ pi2dsh：通用 Pi Host ABI 兼容层，让 Pi 生态插件原样跑在 DeepSeek
   本职）；插件一切标准模型调用（registry.complete、getProvider().stream、
   pi-ai 顶层 complete/stream、createAgentSession）必经中间层转给 DSH llm
   路由；插件面永远拿不到直连传输；wire 层只属于路由供应商内部。
+- **Pi 运行时挂载唯一路径：每个 root Agent 一份，全 surface 无条件一致
+  （2026-08-21 拍板）**。作用域与时序拆开各用官方机制拿：挂载由
+  `agent/created`（所有发布路径必触发、loop 启动前 emit）驱动进公开契约
+  `agent.ctx`（agent-local、dispose 自动 unwind；DSH 自家 schedule 插件
+  就是这个模式）；首轮正确性由官方 awaited waterfall 收口——
+  `system-prompt/assemble` gate 等本 agent 挂载完成并用官方
+  `tools.schemas(agent)` 补齐 waterfall 前已快照的 `assembly.tools`，
+  `tools/pre-execute` 同样等待。host 级半边（内建 OAuth 目录、/login、
+  凭证恢复）恒挂 root 一次，社区包全部逐 Agent；SharedHostState 键在
+  ctx.root，agent scope 挂载共享同一份 host 状态。挂载失败不炸 Agent
+  （按能力缺口分级报错），这比 setup 事务回滚更贴 Pi 语义。禁止：
+  ① 按 surface 分裂两套挂载语义（事故：`tui/agent-setup` 能力握手让 TUI
+  逐 Agent、Web/headless 退回全局单例，用户当场毙掉，当日删除）；
+  ② 依赖任何 surface/Core fork 的 seam（事故：越界 fork 了 DSH Core 加
+  `agent/setup`——该 patch 的形状留作上游 PR 提案，不许我们背着跑；且
+  setup 路线天生漏 config 声明式 Agent，那条路径不经过 create 的 setup）。
+  背景事实（全部在装好的 stock rc.8 npm 包上实跑核证，契约测试
+  tests/agent-scoped-mount.spec.ts）：`setup(agentCtx)` 是创建者独占参数、
+  root 插件不可达；`agent/session-start` 官方明文"不能做启动门禁"；
+  `assembly.tools` 在 assemble waterfall 之前快照，所以 gate 必须补快照。
 - 包注册 provider 的投影存在性由路由归属裁决：路由名没拿到（冲突/无
   llm）＝不在投影里，绝不让别人路由的模型穿这份注册的 baseUrl。只声明
   目录不带传输的包注册 provider 翻译为官方 `llm-pi-ai` profile：协议、端点、
@@ -416,6 +436,30 @@ pnpm verify:release   # verify + 全部 examples（装 npm 上刚发的那版）
 
 - DSH CLI 必须在 deepseek-harness 目录跑（`node --import tsx/esm
   apps/cli/src/bin.ts`）；发现"跑很久"先查结果文件而不是傻等。
+- **stock 验证优先用 npm CLI，不用本地 checkout**：`@deepseek-ai/dsh` 是
+  npm 发布的 CLI 包（一个空目录 `pnpm add @deepseek-ai/dsh@0.1.0-rc.8` 即得
+  `node_modules/.bin/dsh`），真机装置见 scripts/verify-tui-singlepath-e2e.mjs。
+  本地 deepseek-harness checkout 可能停在实验分支（2026-08-21 就停在废弃的
+  core fork 分支上，工作区还有别人的沙箱工作线）——从 checkout 跑 tsx 会把
+  workspace 源码链进依赖树，"stock"就不 stock 了。
+- **DSH core 由 CLI 的依赖树提供，profile 只装 surface+插件**：
+  `@deepseek-ai/dsh@0.1.0-rc.8` 的依赖是 exact rc.8 核心包；profile
+  package.json 只有 bundles 和插件三五个条目，正常（pnpm@11 +
+  autoInstallPeers:false）不解析任何 @deepseek-ai 核心包。**若 profile 里
+  出现了自己的 core 拷贝，那是版本混装事故**（rc.8 生态挂 `next` tag、
+  `latest` 还是 rc.6；旧版系统 pnpm 自动装 peers 就会按 latest 拉 rc.6
+  进 profile，遮蔽 CLI 的 rc.8）。**回归断言必须回读 CLI 树里的
+  dsh-agent 版本 + 断言 profile 无 core 拷贝**，singlepath E2E 还断言其
+  lib 里没有 `agent/setup` 字符串（防 fork 污染）。
+- profile 的组合安装是 CLI 私有流程：改完 profile 配置要重装时重跑
+  `dsh plugin add`，别直接在 profile 目录裸跑 pnpm install。
+- 独立目录装 CLI 时 pnpm 11 的坑：minimumReleaseAge 用
+  `pnpm-workspace.yaml: minimumReleaseAge: 0`（.npmrc 的
+  minimum-release-age 不生效）；build 脚本要 allowBuilds
+  node-pty/koffi/@deepseek-ai/dsh-subprocess-local。
+- 真机 TUI 驱动用 tmux（send-keys -l + capture-pane）；断言读
+  `$DSH_HOME/sessions/*.jsonl` 里的工具结果（session-persistence-jsonl
+  patch 落盘），永不拿屏幕文字当断言。
 - 引擎形态是默认用户姿势；E2E 改 src 后：pnpm build，且 profile 里
   file: 装的 pi2dsh 是拷贝（pnpm file: 有缓存，update 不重拷）——必须
   手动 `rm -rf <profile>/node_modules/pi2dsh/dist && cp -R dist ...`。

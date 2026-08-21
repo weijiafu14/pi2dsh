@@ -28,7 +28,23 @@ await page.getByRole('button', { name: UI.newSession }).first().click({ timeout:
 const composer = page.getByRole('textbox').last()
 await composer.click()
 await composer.pressSequentially('/powerline', { delay: 25 })
-await page.waitForTimeout(800)
+// The package's commands register when the fresh session's Agent mounts its
+// Pi runtime — an eventual palette, a beat behind session creation. Wait for
+// the suggestion to actually list the command before picking it; typing
+// blind races the mount and silently loses the command. Still falsifiable:
+// if the command never registers, this times out and fails.
+const suggestionDeadline = Date.now() + 60_000
+for (;;) {
+  const listed = await page.evaluate(() => /powerline status/u.test(document.body.innerText))
+  if (listed) break
+  if (Date.now() > suggestionDeadline) throw new Error('capture: /powerline never appeared in the command suggestions')
+  await page.waitForTimeout(500)
+  // Re-arm the popover: retype the line so a popup that raced the palette
+  // refresh reopens against the current registry.
+  await composer.fill('')
+  await composer.pressSequentially('/powerline', { delay: 25 })
+}
+await page.waitForTimeout(300)
 await page.keyboard.press('Enter')
 await page.waitForTimeout(800)
 const sendButton = page.getByRole('button', { name: UI.send })

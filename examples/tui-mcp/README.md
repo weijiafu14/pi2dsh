@@ -6,12 +6,13 @@ for the capabilities that package owns: a full-screen server manager, lazy
 tool discovery, one proxy tool instead of flooding model context, MCP-only
 JavaScript orchestration, OAuth, resources and prompts.
 
-DSH Core stays on the unmodified rc.8 release. dsh-TUI supplies the awaited
-`tui/agent-setup` extension point from its Agent factory callback; until that
-small change ships upstream, use the source branch shown below. The
-`pi-mcp-adapter` package itself remains unmodified and still owns MCP transport,
-cache, authentication and behavior. pi2dsh only maps its public Pi host
-surfaces onto DSH:
+Everything is stock: the unmodified DSH rc.8 release, the unmodified
+`@deepseek-harness-tui/dsh-tui` from npm, and the unmodified `pi-mcp-adapter`
+package, which still owns MCP transport, cache, authentication and behavior.
+The engine gives every Agent its own Pi runtime through DSH's official Agent
+lifecycle events and awaited assembly/tool waterfalls — no surface needs to
+expose any extension point for it. pi2dsh only maps the package's public Pi
+host surfaces onto DSH:
 
 ```text
 pi-mcp-adapter               pi2dsh                    dsh-TUI / DSH
@@ -25,24 +26,11 @@ MCP transport/cache   ───────────────────�
 
 ## Install
 
-If your dsh-TUI already contains `tui/agent-setup`, add the engine and the Pi
-package:
-
 ```sh
+dsh plugin --profile dsh-tui add @deepseek-harness-tui/dsh-tui   # skip if the profile exists
 dsh plugin --profile dsh-tui add pi2dsh
 dsh plugin --profile dsh-tui add pi-mcp-adapter
 ```
-
-If you are creating the profile from scratch, install dsh-TUI too:
-
-```sh
-dsh plugin --profile dsh-tui add github:weijiafu14/dsh-TUI#codex/agent-setup-contributors
-dsh plugin --profile dsh-tui add pi2dsh
-dsh plugin --profile dsh-tui add pi-mcp-adapter
-```
-
-Once an upstream dsh-TUI release contains `tui/agent-setup`, replace the first
-line with the normal `@deepseek-harness-tui/dsh-tui` package.
 
 Restart DSH after adding plugins.
 
@@ -77,13 +65,14 @@ side-question command.
 
 ## What was verified
 
-The acceptance run uses a clean profile, stock DSH rc.8, the source-built
-dsh-TUI branch above and the published Pi package. It does not stop at an echo
-smoke test. It asserts all of the following:
+The acceptance run uses a clean profile, the stock npm DSH rc.8 CLI, the stock
+npm dsh-TUI and the published Pi package — no forks, no source builds. It does
+not stop at an echo smoke test. It asserts all of the following:
 
 - dsh-TUI's native `/mcp` is still present and is not replaced;
 - Agent A and the Agent created by `/new` each mount an independent package
-  runtime before publication; both show the real server as `23/23`;
+  runtime; both show the real server fully connected, and the assertions read
+  the session log's tool results, never the screen text;
 - on Agent B, a real DeepSeek turn calls `everything_echo` and receives the
   exact marker from the MCP process;
 - `/pi-mcp` opens the real adapter's manager and renders its configured server;
@@ -112,3 +101,14 @@ PI2DSH_MCP_ADAPTER_ROOT=/absolute/path/to/node_modules/pi-mcp-adapter \
 ```
 
 The script exits non-zero unless the complete host-influenced matrix passes.
+
+The real-terminal run — the stock npm CLI, the stock npm dsh-TUI, two agents,
+real DeepSeek turns, session-log assertions — is:
+
+```sh
+node scripts/verify-tui-singlepath-e2e.mjs
+```
+
+It records its verdict (with the exact installed versions and the proof that
+no fork was involved) in `community/tui-singlepath-e2e.json`, and reports
+`skipped` with the reason when no DeepSeek credential is available.

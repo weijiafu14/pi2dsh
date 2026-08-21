@@ -83,6 +83,18 @@ interface RuntimeOptions {
   config?: UnknownRecord
   /** Exact Agent owner supplied by the pre-publication setup host. */
   ownerAgent?: UnknownRecord
+  /**
+   * Host-anchor mount: the once-per-host instance that carries a package's
+   * HOST-level contributions — provider routes, OAuth accounts, `/login`
+   * availability, credential recovery, companion routes, skills — so they
+   * exist from engine apply with zero live Agents and survive Agent churn
+   * (SharedHostState keeps them single-instance and refcounted alongside the
+   * per-Agent instances). The anchor serves no Agent: it never bridges
+   * session lifecycles and its agent-facing surfaces (DSH tools, commands,
+   * prompt sections) are not projected — those belong to the per-Agent
+   * instances that own real sessions.
+   */
+  hostAnchor?: boolean
 }
 
 interface PiTool {
@@ -116,6 +128,8 @@ interface RuntimeState {
   packageName: string
   /** Exact DSH Agent that owns this runtime; absent only for legacy root mounts. */
   ownerAgent: UnknownRecord | undefined
+  /** Host-anchor mount: host-level contributions only, serves no Agent (see RuntimeOptions.hostAnchor). */
+  hostAnchor: boolean
   handlers: Map<string, PiHandler[]>
   tools: Map<string, PiTool>
   // The Pi runner facade tool-catalog packages (pi-fabric) hook by patching
@@ -1929,6 +1943,23 @@ function subscribeLifecycle(ctx: Context, state: RuntimeState): void {
 
 async function flushPendingSessionStarts(ctx: Context, state: RuntimeState): Promise<void> {
   state.extensionsReady = true
+  // A per-Agent mount happens AFTER DSH published the Agent: its
+  // agent/session-start fired before this instance existed, so no listener
+  // could even buffer it. The owner's session has started by definition —
+  // deliver the missed start now, exactly as Pi hosts run session_start
+  // before the first turn (a default-on status package draws from it; the
+  // lazy first-execution gate alone would leave it blank until the first
+  // command, and a toggle command would then flip it OFF instead of ON).
+  if (state.ownerAgent !== undefined && !state.pendingSessionStarts.has(state.ownerAgent)) {
+    const owned = state.ownerAgent
+    if (!state.activeAgents.has(owned)) {
+      state.activeAgents.add(owned)
+      trackRuntimeSession(state, owned)
+      const session = agentSession(owned)
+      if (session !== undefined) state.bridge.load(session.id)
+    }
+    state.pendingSessionStarts.set(owned, 'startup')
+  }
   const pending = [...state.pendingSessionStarts]
   state.pendingSessionStarts.clear()
   for (const [agent, reason] of pending) {
@@ -2128,7 +2159,9 @@ function subscribeInterceptors(ctx: Context, state: RuntimeState): void {
   // rewrite: DSH orders sections itself, and 100-199 is its own tool-guidance
   // band — so a Pi tool's guidance lands exactly where DSH's does.
   const systemPrompt = optionalService<{ section(section: UnknownRecord): () => void }>(ctx, 'systemPrompt')
-  if (systemPrompt !== undefined) {
+  // The anchor registers no prompt section: tool guidance describes the
+  // per-Agent instances' DSH-registered tools, which the anchor projects none of.
+  if (systemPrompt !== undefined && !state.hostAnchor) {
     // The section name carries the package: the guidance IS per-package (it
     // describes that package's tools), and a shared constant made the second
     // Pi package in a profile fail to mount entirely — DSH rejects a duplicate
@@ -3013,6 +3046,14 @@ function registerTool(ctx: Context, state: RuntimeState, tool: PiTool): void {
   const normalized = normalizeToolSchema(tool.parameters)
   for (const warning of normalized.warnings) logger(ctx).warn(`[pi2dsh] tool ${tool.name}: ${warning}`)
   state.tools.set(tool.name, tool)
+  if (state.hostAnchor) {
+    // The anchor keeps the package's own Pi-side ledger (getActiveTools,
+    // re-registration and unregister semantics stay exact) but projects no
+    // DSH tool: every executable session belongs to a per-Agent instance,
+    // and a host-level twin would put duplicate names in front of the model.
+    state.toolDisposers.set(tool.name, () => {})
+    return
+  }
   const definition: ToolDefinition = {
     name: tool.name,
     description: tool.description,
@@ -3099,6 +3140,9 @@ function currentAgent(state: RuntimeState): UnknownRecord | undefined {
 
 /** Exact-Agent ownership for scoped mounts; legacy root mounts retain their old host-session rule. */
 function acceptsAgent(state: RuntimeState, agent: UnknownRecord | undefined): boolean {
+  // The host anchor serves no Agent at all: every live Agent has its own
+  // instance, so anchor participation would double-run session lifecycles.
+  if (state.hostAnchor) return false
   if (state.ownerAgent !== undefined) return agent === state.ownerAgent
   return !isSubagentOrigin(agent)
 }
@@ -3424,6 +3468,12 @@ function registerCommand(ctx: Context, state: RuntimeState, command: PiCommand):
     return
   }
   state.commands.set(command.name, command)
+  if (state.hostAnchor) {
+    // Anchor ledger only: the command palette entries belong to the
+    // per-Agent instances; a host-level twin would collide into the
+    // numbered-alias scheme (/name-2) against its own package.
+    return
+  }
   const commands = (ctx as unknown as { get(name: string): unknown }).get('commands') as {
     register(definition: UnknownRecord): () => void
   } | undefined
@@ -4037,6 +4087,7 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
     shared,
     packageName: options.manifest.package.name,
     ownerAgent,
+    hostAnchor: options.hostAnchor === true,
     handlers: new Map(),
     tools: runtimeTools,
     runner: new ExtensionRunner(piToolRecords),
@@ -4129,7 +4180,11 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
       logger(ctx).warn(`[pi2dsh] could not restore the route for logged-in provider ${JSON.stringify(name)}: ${error instanceof Error ? error.message : String(error)}`)
     }
   }
-  if (options.manifest.skillDirs.length > 0) {
+  // Skills are static host-level content: DSH's skills registry is a host
+  // service and the filesystem provider name is per-package, so per-Agent
+  // registration would collide with itself. The anchor (or a legacy unowned
+  // mount) carries them exactly once.
+  if (options.manifest.skillDirs.length > 0 && state.ownerAgent === undefined) {
     const skills = (ctx as unknown as { get(name: string): unknown }).get('skills')
     if (skills === undefined) logger(ctx).warn('[pi2dsh] migrated skills were not mounted because this DSH composition has no ctx.skills')
     else {
@@ -4356,7 +4411,7 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
   const healthSuffix = health === undefined || health.status === 'ok'
     ? ''
     : ` — ${health.status.toUpperCase()}: missing Pi capabilities ${health.gaps.join(', ')}`
-  logger(ctx).info(`[pi2dsh] loaded ${options.manifest.package.name}: ${state.tools.size} tools, ${state.commands.size} commands, ${options.manifest.skillDirs.length} skill roots${healthSuffix}`)
+  logger(ctx).info(`[pi2dsh] loaded ${options.manifest.package.name}: ${state.tools.size} tools, ${state.commands.size} commands, ${options.manifest.skillDirs.length} skill roots${healthSuffix}${state.hostAnchor ? ' (host anchor)' : ''}`)
 }
 
 export const runtimeInternals = {

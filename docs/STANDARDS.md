@@ -215,6 +215,24 @@ DSH llm、registry.complete 缺失、DSH 原生路由 getProvider 返回
 undefined——被"别让我看见跨层的东西，跨层就会导致不一致性"钉死后统一
 收敛到 dshRoutedStream 单一路径。
 
+**事故档案（2026-08-21：Pi 运行时挂载双路径）**：为让 dsh-TUI 上做到
+每 Agent 一份 Pi 实例，先是越界 fork 了 DSH Core（AgentRegistry 加
+`agent/setup` serial——被用户当场喝止"我让你 fork TUI 你把 DSH 给我改
+了"），改回 TUI fork 的 `tui/agent-setup` seam 后，又在引擎里做了能力
+握手：surface 声明 seam 才逐 Agent，否则 Web/headless 退回全局单例。
+同一个 Pi ABI 两种语义，被用户毙掉（"还能分裂两套的？？"）。返工用
+倒推法重查 stock 官方面：`agent/created` 在每条发布路径必触发（含
+setup 路线覆盖不到的 config 声明式 Agent）、`agent.ctx` 是公开
+agent-local 契约（DSH 自家 schedule 插件同款用法）、awaited 的
+`system-prompt/assemble` + `tools/pre-execute` waterfall 提供首轮就绪
+门（`assembly.tools` 在 waterfall 前快照，门内用官方 `tools.schemas`
+补齐）。据此收敛为唯一路径：每个 root Agent 一份、全 surface 无条件
+一致、零 fork 依赖；stock npm CLI + stock npm dsh-TUI 真机 E2E 两个
+Agent 双真模型回合验证（scripts/verify-tui-singlepath-e2e.mjs）。TUI
+fork 的 seam 提交作废；core patch 的形状仅留作上游 PR 提案。教训：
+"为一个 surface 谈下来的专用接缝"是把架构押给单点，先问"官方已发布
+的面能不能组合出同一保证"。
+
 ### 3.4 实现纪律
 
 - 零 patch、零 hacky、零私有 API；核心转换器禁止
