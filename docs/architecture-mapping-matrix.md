@@ -230,11 +230,16 @@ client seam；两个数字都不表示“已经完整”。
 <a id="pi-model-provider-registration"></a>
 #### Provider 注册
 
-- 当前接口叶子：`registerProvider`、`unregisterProvider`。
+- 当前接口叶子：`createProvider`、`envApiKeyAuth`、各协议的 lazy API factory、
+  `registerProvider`、`unregisterProvider`、动态 `refreshModels`。
 - 理论对应：[DSH / 模型运行时](#dsh-model-runtime)与
   [DSH / 插件组合](#dsh-composition)。
 - 需要的公开 seam：`llm.registerAdapter`、configurable provider schema、credentials、settings。
-- 理论判断：组合承接。
+- 理论判断：组合承接。带 transport 的 provider 保留自己的协议 factory，经
+  `llm.registerAdapter` 成为原生路由；首次使用动态目录里尚未出现在启动快照的模型时，
+  中间层必须等待并合并 provider 的 catalog refresh，再把完整 Pi Model 交给 transport。
+  只声明目录的 provider 仍翻译给官方 configurable-provider schema，不能借动态刷新之名
+  偷建第二条传输。
 
 <a id="pi-model-registry"></a>
 #### 模型目录视图

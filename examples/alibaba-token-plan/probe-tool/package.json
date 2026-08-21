@@ -1,0 +1,11 @@
+{
+  "name": "@pi2dsh-example/alibaba-plan-probe",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "pi": {
+    "extensions": [
+      "index.mjs"
+    ]
+  }
+}

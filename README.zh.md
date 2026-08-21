@@ -159,6 +159,7 @@ Web 里**直接粘图**——哪怕你的主模型是纯文本的。DSH 正常�
 | [`pi-btw`](https://www.npmjs.com/package/pi-btw) | `/btw <问题>` 跑成 DSH 子代理界面里的真子会话；`/btw-inject`；`/btw --save`；主会话保持干净 | CLI + Web | [`side-conversation`](examples/side-conversation/) |
 | [`pi-powerline-footer`](https://www.npmjs.com/package/pi-powerline-footer) | 终端状态条（模型、思考档位、项目、上下文用量）画进 DSH 的 widget dock，带颜色 | Web | [`presentation-surfaces`](examples/presentation-surfaces/) |
 | [`pi-mcp-adapter`](https://www.npmjs.com/package/pi-mcp-adapter) | 完整管理界面画进 dsh-TUI；stdio/Streamable HTTP/SSE；发现、直连/代理/脚本调用、resources、prompts、图片、结构化内容、MCP Apps、审批、elicitation、sampling、取消与重启全部穿过 DSH 运行时；原生 `/mcp` 与 `/pi-mcp` 共存 | dsh-TUI | [`tui-mcp`](examples/tui-mcp/) · [证据矩阵](docs/mcp-compatibility.md) |
+| [`pi-provider-alibaba`](https://www.npmjs.com/package/pi-provider-alibaba) | 阿里云 Coding/Token/API 路由；环境变量或存储 key 鉴权；实时模型发现；冷启动动态模型；完整工具闭环与重启 | CLI + Web | [`alibaba-token-plan`](examples/alibaba-token-plan/) |
 | [`pi-vision-tool`](https://www.npmjs.com/package/pi-vision-tool) | 工具注册，且带一个 DSH 需要转换的 JSON Schema 形状（`anyOf` → `oneOf`） | CLI + Web | — |
 | [`pi-approval-guardian`](https://www.npmjs.com/package/pi-approval-guardian) | 每次工具调用先由第二个模型审批；放行与拒绝两条路都看到了 | CLI（裸环境） | — |
 | [`pi-hermes-memory`](https://www.npmjs.com/package/pi-hermes-memory) | 跨会话记忆：一个进程写入，另一个全新进程读回 | CLI | — |
@@ -374,6 +375,7 @@ loop 上实际跑过才会进来。
 | [`presentation-surfaces`](examples/presentation-surfaces/) | 真插件（`pi-powerline-footer`）的终端界面画进 DSH Web 座位，附 top50 里哪些 Pi 插件会画界面 |
 | [`subscription-login`](examples/subscription-login/) | 用 ChatGPT / Claude / Copilot / Kimi 订阅账号当 DSH 的模型：`/login`、登录后自动建路由与凭证 |
 | [`gateway-compat`](examples/gateway-compat/) | 私有 / 国内 / 代理网关拒收 `developer` 角色：rc.8 官方 profile 如何把 Pi compat 声明送到真实请求（附透传录制代理） |
+| [`alibaba-token-plan`](examples/alibaba-token-plan/) | 通过原版 Pi provider 使用阿里云百炼 Plan；包含动态 DeepSeek 模型、工具闭环与重启验证 |
 | [`custom-gateways`](examples/custom-gateways/) | 按 DSH 官方方式接任何 OpenAI 兼容网关，每个 Pi 插件都能看到它 |
 | [`tui-mcp`](examples/tui-mcp/) | 保留 dsh-TUI 原生 `/mcp`，把 Pi 生态管理面作为 `/pi-mcp` 加进来，并让完整的宿主相关 MCP 功能面穿过 DSH 运行时 |
 

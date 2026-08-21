@@ -43,6 +43,7 @@ const HEADLESS_COMPONENT = 'Constructible headless component with Pi-exact signa
 const VENDORED_TOOL = 'Pi\'s built-in tool constructor, vendored byte-identical with its pure-logic closure.'
 const EVENT_GUARD = 'Pi\'s exact one-line tool-event guard, reimplemented verbatim.'
 const VENDORED_SUMMARIZER = 'Vendored Pi logic; the model call fills Pi\'s own streamFn injection point with the DSH llm bridge when the caller passes none, so summarization runs on the ONE model path. Without a mounted llm service it fails explicitly.'
+const PI_PROVIDER_TRANSPORT_FACTORY = 'Pi\'s real lazy protocol transport factory, exposed to transport-owning provider packages and then wrapped as one native DSH llm adapter.'
 
 export const HOST_IMPORT_RULES: Readonly<Record<string, Readonly<Record<string, Rule>>>> = Object.freeze({
   'pi-coding-agent': Object.freeze({
@@ -236,6 +237,17 @@ export const HOST_IMPORT_RULES: Readonly<Record<string, Readonly<Record<string, 
   }),
   'pi-ai': Object.freeze({
     StringEnum: rule('full', 'Preserves Pi flat string-enum JSON Schema generation without loading provider SDKs.'),
+    envApiKeyAuth: rule('full', 'Pi 0.84.1 stored-key-first auth helper with ordered environment fallback and the original secret-prompt login contract.'),
+    anthropicMessagesApi: rule('full', PI_PROVIDER_TRANSPORT_FACTORY),
+    openAICompletionsApi: rule('full', PI_PROVIDER_TRANSPORT_FACTORY),
+    openAIResponsesApi: rule('full', PI_PROVIDER_TRANSPORT_FACTORY),
+    openAICodexResponsesApi: rule('full', PI_PROVIDER_TRANSPORT_FACTORY),
+    azureOpenAIResponsesApi: rule('full', PI_PROVIDER_TRANSPORT_FACTORY),
+    googleGenerativeAIApi: rule('full', PI_PROVIDER_TRANSPORT_FACTORY),
+    googleVertexApi: rule('full', PI_PROVIDER_TRANSPORT_FACTORY),
+    mistralConversationsApi: rule('full', PI_PROVIDER_TRANSPORT_FACTORY),
+    bedrockConverseStreamApi: rule('full', PI_PROVIDER_TRANSPORT_FACTORY),
+    piMessagesApi: rule('full', PI_PROVIDER_TRANSPORT_FACTORY),
     streamSimpleOpenAIResponses: rule('full', 'Pi\'s real OpenAI Responses simple transport, exported under the legacy symbol used by transport-owning provider packages.'),
     registerProvider: rule('partial', 'Recorded in the Pi-facing registry, then exposed as a DSH route: a transport-owning provider uses llm.registerAdapter; a catalog-only provider is translated into the official llm-pi-ai profile schema.'),
     getProviders: rule('partial', 'Returns the bridge-local registry contents.'),

@@ -227,11 +227,22 @@ there is exactly one model path, and a package cannot reach around it to a
 direct transport. Providers a package brings itself become real DSH routes
 through `llm.registerAdapter`.
 
-**18 symbols** — 11 same semantics · 7 mapped, difference stated.
+**29 symbols** — 22 same semantics · 7 mapped, difference stated.
 
 | Symbol | Status | How it is served |
 |---|---|---|
 | `StringEnum` | Same semantics | Preserves Pi flat string-enum JSON Schema generation without loading provider SDKs. |
+| `envApiKeyAuth` | Same semantics | Pi 0.84.1 stored-key-first auth helper with ordered environment fallback and the original secret-prompt login contract. |
+| `anthropicMessagesApi` | Same semantics | Pi's real lazy protocol transport factory, exposed to transport-owning provider packages and then wrapped as one native DSH llm adapter. |
+| `openAICompletionsApi` | Same semantics | Pi's real lazy protocol transport factory, exposed to transport-owning provider packages and then wrapped as one native DSH llm adapter. |
+| `openAIResponsesApi` | Same semantics | Pi's real lazy protocol transport factory, exposed to transport-owning provider packages and then wrapped as one native DSH llm adapter. |
+| `openAICodexResponsesApi` | Same semantics | Pi's real lazy protocol transport factory, exposed to transport-owning provider packages and then wrapped as one native DSH llm adapter. |
+| `azureOpenAIResponsesApi` | Same semantics | Pi's real lazy protocol transport factory, exposed to transport-owning provider packages and then wrapped as one native DSH llm adapter. |
+| `googleGenerativeAIApi` | Same semantics | Pi's real lazy protocol transport factory, exposed to transport-owning provider packages and then wrapped as one native DSH llm adapter. |
+| `googleVertexApi` | Same semantics | Pi's real lazy protocol transport factory, exposed to transport-owning provider packages and then wrapped as one native DSH llm adapter. |
+| `mistralConversationsApi` | Same semantics | Pi's real lazy protocol transport factory, exposed to transport-owning provider packages and then wrapped as one native DSH llm adapter. |
+| `bedrockConverseStreamApi` | Same semantics | Pi's real lazy protocol transport factory, exposed to transport-owning provider packages and then wrapped as one native DSH llm adapter. |
+| `piMessagesApi` | Same semantics | Pi's real lazy protocol transport factory, exposed to transport-owning provider packages and then wrapped as one native DSH llm adapter. |
 | `streamSimpleOpenAIResponses` | Same semantics | Pi's real OpenAI Responses simple transport, exported under the legacy symbol used by transport-owning provider packages. |
 | `registerProvider` | Mapped, difference stated | Recorded in the Pi-facing registry, then exposed as a DSH route: a transport-owning provider uses llm.registerAdapter; a catalog-only provider is translated into the official llm-pi-ai profile schema. |
 | `getProviders` | Mapped, difference stated | Returns the bridge-local registry contents. |

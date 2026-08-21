@@ -31,7 +31,12 @@ export type ModelThinkingLevel = 'off' | ThinkingLevel
 export type ThinkingLevelMap = Partial<Record<ModelThinkingLevel, string | null>>
 export type Api = string
 
-/** Pi's standard stored-key → ordered environment fallback auth helper. */
+/**
+ * Pi's standard stored-key → ordered environment fallback auth helper.
+ * Semantics copied unchanged from Pi 0.84.1
+ * (`packages/ai/src/auth/helpers.ts`, commit
+ * 6f707eb36064e82af9c1320a7634f4dfad21049b).
+ */
 export function envApiKeyAuth(name: string, envVars: readonly string[]): UnknownRecord {
   return {
     name,

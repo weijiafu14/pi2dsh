@@ -19,7 +19,9 @@
 - **客户端扩展**：pi-btw 面板证明仓外插件可通过 client module 和 slot 扩展 Web，Pi
   终端呈现被可靠翻译为 DSH 浏览器呈现，达到 2 级。
 - **模型 adapter**：pi-provider-litellm 证明自带 transport 的 Pi provider 可以注册为
-  DSH 原生 route；Provider 注册 1 级，推理档位投影 2 级。
+  DSH 原生 route；pi-provider-alibaba 进一步证明标准鉴权、协议 factory、动态模型目录、
+  冷启动首次使用与重启后的工具闭环都能沿同一 seam 成立。Provider 注册 1 级，鉴权、
+  动态目录与模型形状投影 2 级。
 - **配置型模型 provider**：DSH rc.8 的官方 `llm-pi-ai` profile 已能承载协议、输入
   模态、推理档位和按协议开放的 compat；pi2dsh 的 catalog-only 翻译达到 2 级。
 - **OAuth 模型链**：Pi 内建 openai-codex 流程证明登录、凭证发布、模型目录、模型选择和

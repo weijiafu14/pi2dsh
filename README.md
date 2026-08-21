@@ -177,6 +177,7 @@ it work. **This is the list to trust.**
 | [`pi-btw`](https://www.npmjs.com/package/pi-btw) | `/btw <question>` as a real child session in DSH's subagent UI; `/btw-inject`; `/btw --save`; main thread stays clean | CLI + web | [`side-conversation`](examples/side-conversation/) |
 | [`pi-powerline-footer`](https://www.npmjs.com/package/pi-powerline-footer) | A terminal status line — model, thinking level, project, context usage — drawn into DSH's widget dock, colour included | web | [`presentation-surfaces`](examples/presentation-surfaces/) |
 | [`pi-mcp-adapter`](https://www.npmjs.com/package/pi-mcp-adapter) | Full-screen manager in dsh-TUI; stdio/Streamable HTTP/SSE; discovery, direct/proxy/scripted calls, resources, prompts, images, structured content, MCP Apps, approval, elicitation, sampling, cancellation and restart through DSH runtimes; native `/mcp` preserved beside `/pi-mcp` | dsh-TUI | [`tui-mcp`](examples/tui-mcp/) · [evidence matrix](docs/mcp-compatibility.md) |
+| [`pi-provider-alibaba`](https://www.npmjs.com/package/pi-provider-alibaba) | Alibaba Cloud Coding/Token/API routes; environment or stored-key auth; live model discovery; cold-start dynamic model use; complete tool loop and restart | CLI + web | [`alibaba-token-plan`](examples/alibaba-token-plan/) |
 | [`pi-vision-tool`](https://www.npmjs.com/package/pi-vision-tool) | Tool registration through a JSON-Schema shape DSH had to convert (`anyOf` → `oneOf`) | CLI + web | — |
 | [`pi-approval-guardian`](https://www.npmjs.com/package/pi-approval-guardian) | Every tool call reviewed by a second model before execution; allow and deny both observed | CLI (bare env) | — |
 | [`pi-hermes-memory`](https://www.npmjs.com/package/pi-hermes-memory) | Cross-session memory: written in one process, read back in a second, fresh one | CLI | — |
@@ -435,6 +436,7 @@ in one has actually been executed against a real DSH loop before landing.
 | [`presentation-surfaces`](examples/presentation-surfaces/) | A real plugin's terminal chrome (`pi-powerline-footer`) in DSH's web seats, plus which of the top-50 Pi plugins draw at all |
 | [`subscription-login`](examples/subscription-login/) | Use a ChatGPT / Claude / Copilot / Kimi subscription as a DSH model: `/login`, then the route and credential appear on their own |
 | [`gateway-compat`](examples/gateway-compat/) | Private / domestic / proxy gateways that reject the `developer` role: how rc.8's official profile carries Pi compat declarations to the wire (passthrough recorder included) |
+| [`alibaba-token-plan`](examples/alibaba-token-plan/) | Use Alibaba Cloud Model Studio Plan routes through the original Pi provider; dynamic DeepSeek model, tool loop and restart included |
 | [`custom-gateways`](examples/custom-gateways/) | Add any OpenAI-compatible gateway the official DSH way, and every Pi plugin sees it |
 | [`tui-mcp`](examples/tui-mcp/) | Keep dsh-TUI's native `/mcp`, add the Pi ecosystem manager as `/pi-mcp`, and exercise its complete host-influenced MCP surface through DSH runtimes |
 

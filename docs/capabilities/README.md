@@ -9,7 +9,7 @@ from the rules the bridge itself consults at runtime (`src/compatibility.ts`,
 also reported by `pi2dsh matrix --json`), so they cannot drift from the
 implementation.
 
-**111 upstream-shaped Pi rule rows total** — 25 same semantics · 82 mapped, difference stated · 4 not available — plus **203 imported symbols** from the three Pi runtime
+**111 upstream-shaped Pi rule rows total** — 25 same semantics · 82 mapped, difference stated · 4 not available — plus **214 imported symbols** from the three Pi runtime
 packages (`pi-coding-agent`, `pi-tui`, `pi-ai`), which the bridge serves
 from vendored or headless shims so a package's own Pi pins never load — listed
 in [Imported Pi runtime symbols](imports.md).

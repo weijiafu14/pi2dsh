@@ -128,6 +128,59 @@ provider。后者由下一条 rc.8 场景单独验证。
 证据：[`examples/gateway-compat`](../examples/gateway-compat/)、
 [`scripts/verify-community-scenarios.mjs`](../scripts/verify-community-scenarios.mjs)。
 
+## pi-provider-alibaba
+
+场景：原版 `pi-provider-alibaba@1.0.1` 用 Pi 公开 `createProvider`、`envApiKeyAuth`、
+`openAICompletionsApi` 和动态 `fetchModels`，把阿里云百炼 Plan 订阅注册成 DSH 原生模型
+route，并在冷启动第一条请求上直接使用动态目录模型。
+
+使用的 Pi 架构分支：
+
+- [Provider 注册](architecture-mapping-matrix.md#pi-model-provider-registration)
+- [模型目录视图](architecture-mapping-matrix.md#pi-model-registry)
+- [目录模型的指定调用](architecture-mapping-matrix.md#pi-model-designated-call)
+- [模型与推理档位选择](architecture-mapping-matrix.md#pi-model-selection)
+
+理论对应：
+
+- DSH `llm.registerAdapter` 与权威模型目录
+- Pi provider 自有 transport 与凭证链
+- DSH 原生 agent loop、工具执行和 session log
+
+实际五层：
+
+```text
+pi-provider-alibaba 注册 auth、OpenAI-completions transport、fallback 与动态模型目录
+→ pi2dsh 提供 Pi 0.84.1 Host ABI，合并启动/首次使用的目录刷新并包装 transport
+→ DSH llm.registerAdapter + model catalog + 原生 agent loop
+→ alibaba-token-cn/deepseek-v4-pro 成为 DSH 权威 route，工具事实进入原生 session log
+→ 用户从 DSH 选择百炼模型；模型调用工具、消费结果并完成最终回答，重启后仍成立
+```
+
+实际结果：
+
+- Provider 注册：**1 级，原生承接**。
+- 鉴权与 package-owned transport：**2 级，可靠翻译**；key 只从环境进入 Pi 凭证链。
+- 动态模型目录首次使用：**2 级，可靠翻译**；刷新任务是 host 级单份，完整模型仍进入
+  DSH 的同一个 route，不产生第二份目录。
+- 工具调用与重启：**1 级，原生承接**；callId、tool result、第二次模型请求均在 DSH
+  原生 session log 对账。
+
+2026-08-21 使用发布到 npm 的 `pi2dsh@0.13.3` 做冷启动裸环：全新 `DSH_HOME`，从 registry
+安装引擎和未修改的 `pi-provider-alibaba@1.0.1`，选择
+`alibaba-token-cn/deepseek-v4-pro`，第一条请求与重启后的第二条请求都完成完整工具闭环；
+扫描整个测试 home，精确 Plan key 命中 0 个文件。Web 同日真机选择同一动态模型也完成
+两步工具链。
+
+结论：这是通用 transport-owning Provider ABI 的真实消费者，不是 Alibaba 特判，也不
+等于修复了 hand-declared `llm-pi-ai` profile；它通过另一条官方开放的 adapter seam
+保留 provider 自己的 wire 语义。
+
+证据：[`examples/alibaba-token-plan`](../examples/alibaba-token-plan/)、
+[`tests/provider-adapter.spec.ts`](../tests/provider-adapter.spec.ts)、
+[`tests/compat-shims.spec.ts`](../tests/compat-shims.spec.ts)、
+[`scripts/verify-examples-e2e.mjs`](../scripts/verify-examples-e2e.mjs)。
+
 ## catalog-only Pi provider / gateway compat
 
 场景：Pi 插件只声明 provider 目录，不带自己的 stream；其中包含私有网关需要的

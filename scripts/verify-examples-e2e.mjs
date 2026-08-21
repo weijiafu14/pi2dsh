@@ -12,6 +12,9 @@
 //                    proxy is not a stand-in endpoint; it only writes down
 //                    what was sent, which is the only way to check that a
 //                    compat declaration reached the wire. Nothing is mocked.
+//   alibaba-token-plan  the published engine plus the unmodified Alibaba Pi
+//                    provider against a real Plan subscription: cold-start
+//                    dynamic model, tool loop, restart and secret scan.
 //   vision-bridge    the real @kassing/pi-vision from npm against a live
 //                    model and the example's own test image (needs
 //                    DEEPSEEK_API_KEY and network).
@@ -51,9 +54,14 @@ const projectRoot = resolve(new URL('..', import.meta.url).pathname)
 const dshRoot = process.env.PI2DSH_DSH_ROOT === undefined
   ? resolve(projectRoot, '..', 'deepseek-harness')
   : resolve(process.env.PI2DSH_DSH_ROOT)
-const dshBin = join(dshRoot, 'apps/cli/src/bin.ts')
+const directDshBin = process.env.PI2DSH_DSH_BIN === undefined
+  ? undefined
+  : resolve(process.env.PI2DSH_DSH_BIN)
+const dshBin = directDshBin ?? join(dshRoot, 'apps/cli/src/bin.ts')
+const dshCwd = resolve(process.env.PI2DSH_DSH_CWD ?? dshRoot)
 const outputPath = resolve(process.argv[2] ?? 'community/examples-e2e.json')
 const apiKey = process.env.DEEPSEEK_API_KEY
+const alibabaTokenPlanKey = process.env.ALIBABA_TOKEN_PLAN_API_KEY
 // Which pi2dsh a run installs. The default is this working tree, because that
 // is what you want while developing. Point it at a published spec
 // (`PI2DSH_ENGINE_SPEC=pi2dsh@<published-version>`) for the bare-environment check after a
@@ -155,12 +163,16 @@ async function makeHome(scratch, extraEnv = {}) {
     PNPM_CONFIG_MINIMUM_RELEASE_AGE: '0',
     ...extraEnv,
   }
-  const runDsh = args => execFile('node', ['--import', 'tsx/esm', dshBin, ...args], {
-    cwd: dshRoot,
+  const runDsh = args => execFile(
+    directDshBin === undefined ? 'node' : directDshBin,
+    directDshBin === undefined ? ['--import', 'tsx/esm', dshBin, ...args] : args,
+    {
+    cwd: dshCwd,
     env,
     timeout: 300_000,
     maxBuffer: 16 * 1024 * 1024,
-  })
+    },
+  )
   return { home, env, runDsh }
 }
 
@@ -403,6 +415,90 @@ async function runGatewayCompat() {
     }
   } finally {
     endpoint?.kill('SIGTERM')
+    await rm(scratch, { recursive: true, force: true })
+  }
+}
+
+// ---------------------------------------------------------------------------
+// examples/alibaba-token-plan — published engine + real Plan + full tool loop
+// ---------------------------------------------------------------------------
+async function runAlibabaTokenPlan() {
+  if (alibabaTokenPlanKey === undefined || alibabaTokenPlanKey.length === 0) {
+    results.alibabaTokenPlan = { status: 'skipped', reason: 'ALIBABA_TOKEN_PLAN_API_KEY not set' }
+    return
+  }
+  const scratch = await mkdtemp(join(tmpdir(), 'pi2dsh-ex-alibaba-plan-'))
+  try {
+    const { home, runDsh } = await makeHome(scratch, {
+      ALIBABA_TOKEN_PLAN_API_KEY: alibabaTokenPlanKey,
+    })
+    const installedEngine = await runDsh(['plugin', '--profile', 'headless', 'add', engineSpec])
+    const installedProvider = await runDsh([
+      'plugin', '--profile', 'headless', 'add', 'pi-provider-alibaba@1.0.1',
+    ])
+    const installedProbe = await runDsh([
+      'plugin', '--profile', 'headless', 'add',
+      `file:${join(projectRoot, 'examples/alibaba-token-plan/probe-tool')}`,
+    ])
+    await useJsonlSessions(home, 'headless')
+    await useDefaultModel(home, 'alibaba-token-cn', 'deepseek-v4-pro')
+
+    const runOnce = marker => runDsh([
+      '--profile', 'headless',
+      `Call alibaba_plan_probe exactly once with {"value":"${marker}"}, then reply with exactly the tool result.`,
+    ])
+    const first = await runOnce('REGISTRY_FIRST_USE_OK')
+    const restarted = await runOnce('REGISTRY_RESTART_OK')
+    assert.match(first.stdout, /ALIBABA_PLAN_PROBE:REGISTRY_FIRST_USE_OK/u,
+      `first-use Plan turn did not complete:\n${first.stdout}\n${first.stderr}`)
+    assert.match(restarted.stdout, /ALIBABA_PLAN_PROBE:REGISTRY_RESTART_OK/u,
+      `restarted Plan turn did not complete:\n${restarted.stdout}\n${restarted.stderr}`)
+
+    const sessionFiles = (await filesBelow(join(home, 'sessions')))
+      .filter(path => path.endsWith('/session.jsonl'))
+    assert.equal(sessionFiles.length, 2, `expected two durable Plan sessions, found ${sessionFiles.length}`)
+    const rawLogs = await Promise.all(sessionFiles.map(path => readFile(path, 'utf8')))
+    const records = rawLogs.flatMap(raw => raw.split('\n').filter(Boolean).map(line => JSON.parse(line)))
+    const headers = records.filter(record => record.type === 'request/header')
+    assert(headers.length >= 4, `expected two model steps in each Plan turn, saw ${headers.length} requests`)
+    for (const header of headers) {
+      assert.equal(header.data?.header?.config?.provider, 'alibaba-token-cn')
+      assert.equal(header.data?.header?.config?.model, 'deepseek-v4-pro')
+    }
+    const calls = records.filter(record => record.type === 'tool/call'
+      && record.data?.name === 'alibaba_plan_probe')
+    const toolResults = records.filter(record => record.type === 'tool/result'
+      && JSON.stringify(record.data).includes('ALIBABA_PLAN_PROBE:'))
+    assert.equal(calls.length, 2, `expected two real Plan tool calls, saw ${calls.length}`)
+    assert.equal(toolResults.length, 2, `expected two paired Plan tool results, saw ${toolResults.length}`)
+    for (const call of calls) assert(String(call.data?.callId ?? '').length > 0, 'Plan tool call lost callId')
+
+    const captured = [
+      installedEngine.stdout, installedEngine.stderr,
+      installedProvider.stdout, installedProvider.stderr,
+      installedProbe.stdout, installedProbe.stderr,
+      first.stdout, first.stderr, restarted.stdout, restarted.stderr,
+      ...rawLogs,
+    ].join('\n')
+    assert(!captured.includes(alibabaTokenPlanKey), 'Plan credential appeared in captured evidence')
+    const persistedMatches = []
+    for (const path of await filesBelow(home)) {
+      if ((await readFile(path)).includes(Buffer.from(alibabaTokenPlanKey))) persistedMatches.push(path)
+    }
+    assert.deepEqual(persistedMatches, [], `Plan credential persisted in ${persistedMatches.join(', ')}`)
+
+    results.alibabaTokenPlan = {
+      status: 'passed',
+      engine: await installedEngineVersion(home, 'headless'),
+      providerPackage: 'pi-provider-alibaba@1.0.1',
+      route: 'alibaba-token-cn',
+      model: 'deepseek-v4-pro',
+      sessions: sessionFiles.length,
+      requests: headers.length,
+      toolCalls: calls.length,
+      persistedCredentialFiles: persistedMatches.length,
+    }
+  } finally {
     await rm(scratch, { recursive: true, force: true })
   }
 }
@@ -955,6 +1051,7 @@ async function runTuiMcp() {
 
 const SCENARIOS = [
   ['gateway-compat', runGatewayCompat, 'gatewayCompat'],
+  ['alibaba-token-plan', runAlibabaTokenPlan, 'alibabaTokenPlan'],
   ['vision-bridge', runVisionBridge, 'visionBridge'],
   ['side-conversation', runSideConversation, 'sideConversation'],
   ['vision-bridge-web', runVisionBridgeWeb, 'visionBridgeWeb'],
