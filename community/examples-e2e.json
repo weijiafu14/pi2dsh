@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pi2dshCommit": "04a810bf3f8866e2c7ae0317b0d1916e7d88f082",
+  "pi2dshCommit": "e96e4ec0c345b31b7337f8a3a33bd4a53987e2bf",
   "dshCommit": "69fff74f6f3e1f37939784885ef823477f06ace3",
   "results": {
     "alibabaTokenPlan": {
@@ -21,9 +21,9 @@
     },
     "gatewayCompat": {
       "engine": {
-        "version": "0.15.1",
+        "version": "0.15.2",
         "from": "registry",
-        "spec": "pi2dsh@0.15.1"
+        "spec": "pi2dsh@0.15.2"
       },
       "status": "passed",
       "requests": 2,
@@ -53,9 +53,9 @@
     "customGateways": {
       "status": "passed",
       "engine": {
-        "version": "0.15.1",
+        "version": "0.15.2",
         "from": "registry",
-        "spec": "pi2dsh@0.15.1"
+        "spec": "pi2dsh@0.15.2"
       },
       "seenByPackage": {
         "provider": "my-gateway",
@@ -68,18 +68,18 @@
     "subscriptionLogin": {
       "status": "partial",
       "engine": {
-        "version": "0.15.1",
+        "version": "0.15.2",
         "from": "registry",
-        "spec": "pi2dsh@0.15.1"
+        "spec": "pi2dsh@0.15.2"
       },
       "note": "pre-login discovery and native route passed; set CODEX_AUTH_FILE to verify the post-login model picker"
     },
     "tuiMcp": {
       "status": "passed",
       "engine": {
-        "version": "0.15.1",
+        "version": "0.15.2",
         "from": "registry",
-        "spec": "pi2dsh@0.15.1"
+        "spec": "pi2dsh@0.15.2"
       },
       "profile": "dsh-tui",
       "piPackage": "pi-mcp-adapter",
@@ -114,9 +114,9 @@
     "presentationSurfaces": {
       "status": "passed",
       "engine": {
-        "version": "0.15.1",
+        "version": "0.15.2",
         "from": "registry",
-        "spec": "pi2dsh@0.15.1"
+        "spec": "pi2dsh@0.15.2"
       },
       "screenshots": [
         "06-presentation-surfaces.png"
@@ -125,9 +125,9 @@
     "sideConversation": {
       "status": "passed",
       "engine": {
-        "version": "0.15.1",
+        "version": "0.15.2",
         "from": "registry",
-        "spec": "pi2dsh@0.15.1"
+        "spec": "pi2dsh@0.15.2"
       },
       "screenshots": [
         "01-side-conversation-main-thread-clean.png",
