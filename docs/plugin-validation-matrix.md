@@ -322,10 +322,10 @@ device-code UI seam。它同时再次确认 DSH-native adapter 仍没有通用 r
 [`tests/dsh-runtime.spec.ts`](../tests/dsh-runtime.spec.ts)、
 [`tests/oauth-bridge.spec.ts`](../tests/oauth-bridge.spec.ts)。
 
-## pi-mcp-adapter（Agent 级实例作用域，stock 全栈）
+## pi-mcp-adapter（Agent 级实例作用域、OAuth 与 stock 全栈）
 
 场景：在完全 stock 的栈（npm `@deepseek-ai/dsh@0.1.0-rc.8` CLI、npm
-`@deepseek-harness-tui/dsh-tui@0.8.7`，零 fork）上，启动 Agent A 与 `/new` 的
+`@deepseek-harness-tui/dsh-tui@0.8.8`，零 fork）上，启动 Agent A 与 `/new` 的
 Agent B 各自获得独立的 pi-mcp-adapter 实例：各自 `/pi-mcp` 管理面板 everything
 23/23，各自完成一次真 DeepSeek `everything_echo` 工具回合，B 的结果不出现在 A
 的会话日志里。
@@ -335,12 +335,14 @@ Agent B 各自获得独立的 pi-mcp-adapter 实例：各自 `/pi-mcp` 管理面
 - [扩展实例作用域（每会话一份）](architecture-mapping-matrix.md#pi-extension-instance-scope)
 - [Agent 与轮次生命周期](architecture-mapping-matrix.md#pi-agent-lifecycle)
 - [自定义 TUI 组件](architecture-mapping-matrix.md#pi-ui-chrome)
+- [阻塞式用户提问](architecture-mapping-matrix.md#pi-ui-questions)
 
 理论对应：
 
 - DSH `agent/created`（每条发布路径、loop 前）+ 公开 `agent.ctx`
 - DSH `system-prompt/assemble` / `tools/pre-execute` awaited waterfalls（就绪门）
 - dsh-TUI 公开 `tuiScenes`（管理面板场景）
+- DSH `ctx.userQuestions` 与 Web/dsh-TUI 原生问题渲染器（OAuth 场景）
 
 实际五层：
 
@@ -358,6 +360,9 @@ pi-mcp-adapter 工厂每 session 实例化、session_start 里建 MCP 连接
   官方事件 + awaited 门；Pi 的"第一轮前就绪"保证逐字保持）。
 - 工具/命令注册与执行：**1 级，原生承接**。
 - 管理面板场景：**2 级，可靠翻译**（tuiScenes 公开服务）。
+- OAuth 人机交互：**2 级，可靠翻译**。真实 Atlassian 流程在 Web 与 dsh-TUI
+  都完成 DCR + PKCE；Web 使用 Markdown 授权链接、TUI 使用 OSC 8，localhost
+  回调获胜后问题框自动撤销，真实只读工具结果进入 DSH 权威会话日志。
 
 结论：Pi 的每会话实例语义在所有 DSH surface 上由同一条路径承接，不需要任何
 surface 开放 setup 扩展点；DSH 缺"root 插件可达的发布前组合 seam"仍是真实
@@ -367,6 +372,8 @@ surface 开放 setup 扩展点；DSH 缺"root 插件可达的发布前组合 sea
 证据：[`scripts/verify-tui-singlepath-e2e.mjs`](../scripts/verify-tui-singlepath-e2e.mjs)、
 `community/tui-singlepath-e2e.json`（含安装到的每个版本与"无 fork"断言）、
 [`tests/agent-scoped-mount.spec.ts`](../tests/agent-scoped-mount.spec.ts)。
+OAuth 的真实外部服务边界与包内测试责任拆分见
+[`docs/mcp-compatibility.md`](mcp-compatibility.md#real-external-oauth-acceptance)。
 
 ## 继续新增记录时
 

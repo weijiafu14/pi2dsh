@@ -63,6 +63,48 @@ dsh-TUI's existing command remains separate:
 You do not need `pi-btw` for this example; dsh-TUI already implements its own
 side-question command.
 
+## OAuth-protected remote MCP servers (TUI and Web)
+
+The same package works in the Web profile. Install it through the same DSH
+plugin workflow:
+
+```sh
+dsh plugin --profile web add pi2dsh
+dsh plugin --profile web add pi-mcp-adapter
+```
+
+It reads the standard project `.mcp.json` format. For Atlassian Remote MCP, a
+minimal entry is:
+
+```json
+{
+  "mcpServers": {
+    "atlassian": {
+      "url": "https://mcp.atlassian.com/v1/mcp/authv2",
+      "auth": "oauth"
+    }
+  }
+}
+```
+
+Restart the selected DSH profile, then run this native DSH command in dsh-TUI
+or Web:
+
+```text
+/mcp-auth atlassian
+```
+
+The authorization page opens in the browser. On a local machine the localhost
+PKCE callback completes automatically and removes the fallback paste question;
+manual callback-URL paste is only for a remote/cross-machine browser that
+cannot reach the DSH process. Credentials stay in the operating-system secure
+store, are URL-bound, refresh through the package's OAuth implementation, and
+can be removed with:
+
+```text
+/pi-mcp logout atlassian
+```
+
 ## What was verified
 
 The acceptance run uses a clean profile, the stock npm DSH rc.8 CLI, the stock

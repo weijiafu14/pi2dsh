@@ -40,6 +40,31 @@ version-matched suites. This split is deliberate: pi2dsh must prove every seam
 it can affect, while it must not copy or pretend to re-test the package's own
 transport, OAuth and cache implementation with mocks.
 
+### Real external OAuth acceptance
+
+The host boundary was also exercised against the real Atlassian Remote MCP
+service with `pi-mcp-adapter@2.27.0` through `pi2dsh@0.15.2`, on both stock DSH
+Web and stock dsh-TUI. This is separate from the package-internal OAuth suite:
+it proves the parts a host bridge can break.
+
+- `/mcp-auth atlassian` reached Atlassian authorization-server discovery,
+  Dynamic Client Registration and the PKCE browser flow;
+- Web rendered a short native question heading plus one clickable authorization
+  link, while dsh-TUI rendered the same destination as one OSC 8 link — neither
+  surface exposed terminal control bytes or a duplicated long URL;
+- the localhost callback completed without manual URL paste, withdrew the
+  fallback question automatically, and reconnected the server with 26 tools;
+- a real DeepSeek turn on each surface called the read-only
+  `atlassian_atlassianUserInfo`; the durable DSH session logs contain
+  `tool/result` with `isError: false`;
+- `/pi-mcp logout atlassian` removed the credential, and the package's public
+  status helper reported `absent` afterward.
+
+The real-service run did not force Atlassian's refresh token to expire. Refresh,
+secure-store persistence, DCR recovery and protocol edge cases remain owned by
+the version-matched package-internal OAuth suite below; the host run proves that
+DSH neither blocks nor corrupts that flow.
+
 ## Host-influenced end-to-end matrix
 
 The executable evidence is
