@@ -57,6 +57,18 @@ goal/plan/job 也不等于验证 DSH 的同名 subsystem。这些结论应作为
 - **最小上游能力**：开放 ignorable append，或提供有命名空间的事件类型注册。
 - **证据**：[`verify-out-of-repo-event-type.mjs`](../scripts/verify-out-of-repo-event-type.mjs)、
   [DSH Discussion #2708](https://github.com/deepseek-ai/deepseek-harness/discussions/2708)。
+- **0.1.1-rc.2 源码复核（2026-08-22）**：seam 仍缺，且三处坐标钉死——
+  ① 读取门禁是**生成的封闭清单** `packages/core/session/src/known-event-types.ts`
+  （`KNOWN_SESSION_EVENT_TYPES`，由 `gen-persistence-catalog` 从仓内
+  `SessionEventMap` 声明生成），清单外且不带 `ignorable` 的类型让**任何 build
+  （包括写入者自己）拒载整个会话**；② `Session.append()` 的活跃写入路径仍无
+  `ignorable` 口子（该信封字段只在 seed 导入校验中被接受）；③ 官方在该文件
+  注释中明示：“Downstream (out-of-repo) plugin events are outside this list by
+  construction; **a registration surface for them is deferred until such a
+  consumer exists**” —— pi2dsh（承载 pi-btw 等一切 appendEntry 消费者）就是
+  那个 consumer，上游提案时机已到。注意：`SessionEventMap` 的
+  declaration-merge 可扩展性只服务**仓内**插件（生成清单收录它们），不构成
+  仓外通道；据此 sidecar 旁路与本缺口分级维持不变。
 
 ### DSH-ARCH-002：模型 compat schema 丢字段（rc.8 已修复）
 
