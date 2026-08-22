@@ -1,9 +1,18 @@
 # `pi-mcp-adapter` compatibility evidence
 
 This document is the acceptance boundary for running the published
-`pi-mcp-adapter@2.26.1` package through pi2dsh in DSH and dsh-TUI. It separates
+`pi-mcp-adapter` package through pi2dsh in DSH and dsh-TUI. It separates
 behavior that can be changed by the host bridge from behavior owned entirely
 by the MCP package. A single echo call is not considered acceptance.
+
+Versions each half of the evidence was measured on — they move independently,
+so neither number is restated elsewhere in this file:
+
+| Evidence half | Package version |
+|---|---|
+| Host-influenced end-to-end matrix (below) | `pi-mcp-adapter@2.27.0`, recorded per run in `community/examples-e2e.json` |
+| Package-internal upstream baseline | upstream tag `v2.26.1` (`fafae21`) |
+| Host-scenario checklist diff | upstream tag `v2.27.0` (`dd380db`) |
 
 ## Result
 
@@ -137,7 +146,7 @@ These differences are explicit and do not block the standard `mcp.json` path:
   structured data, resources and image attachments retain their functional
   content through DSH-native cards and attachments.
 
-`pi-mcp-adapter@2.26.1` itself states that adapter-level roots support, standard
+The package itself states that adapter-level roots support, standard
 MCP logging presentation, and configuration/UI for protocol cache hints are
 not implemented upstream. They are not pi2dsh regressions and are not claimed
 here.
