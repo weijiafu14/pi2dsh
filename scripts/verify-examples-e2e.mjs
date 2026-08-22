@@ -1122,7 +1122,11 @@ await mkdir(resolve(outputPath, '..'), { recursive: true })
 await writeFile(outputPath, `${JSON.stringify({
   schemaVersion: 1,
   pi2dshCommit: (await execFile('git', ['rev-parse', 'HEAD'], { cwd: projectRoot })).stdout.trim(),
-  dshCommit: (await execFile('git', ['rev-parse', 'HEAD'], { cwd: dshRoot })).stdout.trim(),
+  // Evidence must answer "which build was this" — with a direct stock CLI the
+  // checkout commit is NOT what ran; read the installed CLI package instead.
+  dshCommit: directDshBin !== undefined
+    ? `npm:@deepseek-ai/dsh@${JSON.parse(await readFile(resolve(dshCwd, 'node_modules', '@deepseek-ai', 'dsh', 'package.json'), 'utf8')).version}`
+    : (await execFile('git', ['rev-parse', 'HEAD'], { cwd: dshRoot })).stdout.trim(),
   results: outputResults,
 }, null, 2)}\n`)
 
