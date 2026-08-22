@@ -37,6 +37,33 @@ DeepSeek 在 DSH Web 和 dsh-TUI 中都真实调用了只读的
 - https://github.com/weijiafu14/pi2dsh
 - https://github.com/weijiafu14/pi2dsh/tree/main/examples/tui-mcp
 
+## Posted follow-ups across the MCP discussion set
+
+- OAuth-protected remote MCP: [#2017](https://github.com/deepseek-ai/deepseek-harness/discussions/2017#discussioncomment-18114702), [#3813](https://github.com/deepseek-ai/deepseek-harness/discussions/3813#discussioncomment-18114703), [#3997](https://github.com/deepseek-ai/deepseek-harness/discussions/3997#discussioncomment-18114810)
+- First-turn readiness: [#1239](https://github.com/deepseek-ai/deepseek-harness/discussions/1239#discussioncomment-18114786)
+- Status/observability: [#1300](https://github.com/deepseek-ai/deepseek-harness/discussions/1300#discussioncomment-18114788)
+- MCP 2026 protocol negotiation: [#1757](https://github.com/deepseek-ai/deepseek-harness/discussions/1757#discussioncomment-18114791)
+- Resource content preservation: [#2025](https://github.com/deepseek-ai/deepseek-harness/discussions/2025#discussioncomment-18114796)
+- Large tool catalogs / lazy disclosure: [#2588](https://github.com/deepseek-ai/deepseek-harness/discussions/2588#discussioncomment-18114798)
+- Configuration examples and setup: [#2732](https://github.com/deepseek-ai/deepseek-harness/discussions/2732#discussioncomment-18114801), [#2815](https://github.com/deepseek-ai/deepseek-harness/discussions/2815#discussioncomment-18114806)
+- Interactive manager: [#2807](https://github.com/deepseek-ai/deepseek-harness/discussions/2807#discussioncomment-18114803)
+- Per-tool/server approval: [#3904](https://github.com/deepseek-ai/deepseek-harness/discussions/3904#discussioncomment-18114808)
+- Legacy SSE transport: [#3991](https://github.com/deepseek-ai/deepseek-harness/discussions/3991#discussioncomment-18114809)
+
+## Audited but not advertised: current gaps
+
+| Discussions | Why pi2dsh + pi-mcp-adapter is not yet a complete answer |
+|---|---|
+| [#247](https://github.com/deepseek-ai/deepseek-harness/discussions/247) | The package has request timeouts, but no proven single total budget covering transport start plus every discovery page. |
+| [#314](https://github.com/deepseek-ai/deepseek-harness/discussions/314) | Streamable HTTP works in our macOS/Linux acceptance paths; the reported failure is Windows-specific and has not been reproduced through this stack. |
+| [#597](https://github.com/deepseek-ai/deepseek-harness/discussions/597), [#941](https://github.com/deepseek-ai/deepseek-harness/discussions/941) | ACP-carried and workspace-owned MCP require host lifecycle/ownership seams, not only a compatible MCP package. |
+| [#618](https://github.com/deepseek-ai/deepseek-harness/discussions/618) | The official client's atomic list-changed swap bug is a different implementation; our dynamic direct-tool conflict/rollback path has not been proven equivalent. |
+| [#2285](https://github.com/deepseek-ai/deepseek-harness/discussions/2285), [#3660](https://github.com/deepseek-ai/deepseek-harness/discussions/3660) | `pi-mcp-adapter` also follows `nextCursor` without a seen-cursor/page/catalog budget; it needs the same defensive capability before promotion here. |
+| [#3489](https://github.com/deepseek-ai/deepseek-harness/discussions/3489) | Package recovery covers spec 404 and narrowly known `-32000 Server not initialized`, not the reported `-32001 Unknown or expired MCP session`. |
+| [#3821](https://github.com/deepseek-ai/deepseek-harness/discussions/3821) | Standard MCP roots support is explicitly not implemented upstream in the package. |
+| [#3905](https://github.com/deepseek-ai/deepseek-harness/discussions/3905) | MCP `readOnlyHint` is not yet projected into DSH `isConcurrencySafe`; read tools cannot be advertised as safely parallel through this route. |
+| [#3998](https://github.com/deepseek-ai/deepseek-harness/discussions/3998) | Image bytes survive as DSH attachments, but generic `structuredContent.ui_url` presentation and a universal MCP result card are not fully implemented/proven. |
+
 ## deepseek-ai/deepseek-harness #3813 (English)
 
 There is now an installable ecosystem path for this without maintaining a
