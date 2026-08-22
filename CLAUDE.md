@@ -481,7 +481,13 @@ pnpm verify:release   # verify + 全部 examples（装 npm 上刚发的那版）
   拒绝，两代一致）；③ 0.1.1 attachment 服务会重编码存储图片，字节
   不再 verbatim（断言 PNG 签名+尺寸，不断字节相等）；④ waterfall
   `system-prompt/assemble`/`tools/pre-execute` 从 agent-loop 移入各
-  子系统，事件名与语义不变。singlepath E2E 默认跑 `latest` 线，rc.8 用
+  子系统，事件名与语义不变；⑤ 0.1.1 新增官方 `dsh-authorization`
+  （登录 flow 注册面），但 **stock 组合只带包不组合服务、也没有任何
+  stock 面调 `begin()`**（rc2 组合 dump 93 项无 authorization 实证）——
+  所以对该 seam 的挂钩一律用官方 `ctx.inject(['authorization',...],cb)`
+  模式（llm-pi-ai 同款，服务何时组合都能挂上；rc2-only 的
+  credentialKey 等符号必须动态 import，rc.8 chunk 不得引用）。
+  singlepath E2E 默认跑 `latest` 线，rc.8 用
   `PI2DSH_DSH_CLI_SPEC` 回测；升级预检的标准姿势=git worktree 切
   devDeps 重装跑全套契约（注意 peer range 与 lockfile 都要动，否则
   半新半旧混装出假故障）。

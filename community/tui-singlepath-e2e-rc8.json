@@ -1,0 +1,27 @@
+{
+  "generatedAt": "2026-08-22T15:32:15.320Z",
+  "startedAt": "2026-08-22T15:31:22.065Z",
+  "scenario": "stock-tui-single-path-per-agent",
+  "cliSpec": "@deepseek-ai/dsh@0.1.0-rc.8",
+  "tuiSpec": "@deepseek-harness-tui/dsh-tui",
+  "engineSpec": "/Users/developer/projj/workspace/pi2dsh",
+  "mcpAdapterSpec": "pi-mcp-adapter@2.27.0",
+  "status": "passed",
+  "cliVersion": "0.1.0-rc.8",
+  "dshAgentVersion": "0.1.0-rc.8",
+  "dshAgentHasAgentSetupSeam": false,
+  "tuiVersion": "0.8.8",
+  "tuiAdvertisesSetupSeam": false,
+  "engineVersion": "0.15.2",
+  "agentA": {
+    "managerTools": 23,
+    "sessionLog": "/tmp/pi2dsh-singlepath-e2e.gWt76G/dsh-home/sessions/--private-tmp-pi2dsh-singlepath-e2e.gWt76G--/3b0653d4-674e-42be-a96f-c33510f0cdb2/session.jsonl",
+    "marker": "PI2DSH_SINGLEPATH_A_MT4JD07L"
+  },
+  "agentB": {
+    "managerTools": 23,
+    "sessionLog": "/tmp/pi2dsh-singlepath-e2e.gWt76G/dsh-home/sessions/--private-tmp-pi2dsh-singlepath-e2e.gWt76G--/008f8bd8-b179-4e63-b99b-589c650d0b42/session.jsonl",
+    "marker": "PI2DSH_SINGLEPATH_B_MT4JD07L"
+  },
+  "isolation": "marker B absent from agent A session log"
+}

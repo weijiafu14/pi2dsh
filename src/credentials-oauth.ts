@@ -1,7 +1,7 @@
 import { join } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
-import { CredentialProvider, type CredentialInfo, type CredentialRef, type ResolvedCredential } from '@deepseek-ai/dsh-credentials'
-import { FileCredentialStore, providerSupportsOAuth, resolveOAuthApiKey, storedOAuthCredential } from './oauth-bridge.js'
+import { CredentialProvider, type CredentialInfo, type CredentialKey, type CredentialRecord, type CredentialRecordEntry, type CredentialRecordInfo, type CredentialRef, type ResolvedCredential } from '@deepseek-ai/dsh-credentials'
+import { FileCredentialStore, oauthCredentialRef, providerIdOfOAuthRef, providerSupportsOAuth, resolveOAuthApiKey, storedOAuthCredential } from './oauth-bridge.js'
 import { builtinProviders } from './compat/pi-ai.js'
 import { getAgentDir } from './compat/pi-coding-agent.js'
 
@@ -18,17 +18,11 @@ type UnknownRecord = Record<string, unknown>
 //
 // Reference convention: PI2DSH_OAUTH_<PROVIDER_ID> where the provider id is
 // upper-cased with `-` as `_` (openai-codex → PI2DSH_OAUTH_OPENAI_CODEX).
+// The helpers live in oauth-bridge (see the note there); re-exported here so
+// this module's public surface is unchanged.
 
-const OAUTH_REF_PREFIX = 'PI2DSH_OAUTH_'
-
-export function oauthCredentialRef(providerId: string): string {
-  return `${OAUTH_REF_PREFIX}${providerId.toUpperCase().replaceAll('-', '_')}`
-}
-
-function providerIdOfRef(ref: string): string | undefined {
-  if (!ref.startsWith(OAUTH_REF_PREFIX)) return undefined
-  return ref.slice(OAUTH_REF_PREFIX.length).toLowerCase().replaceAll('_', '-')
-}
+export { oauthCredentialRef } from './oauth-bridge.js'
+const providerIdOfRef = providerIdOfOAuthRef
 
 export interface PiOAuthCredentialProviderOptions {
   /** Path to the Pi-format auth.json; defaults to `$agentDir/auth.json`. */
@@ -93,6 +87,69 @@ export class PiOAuthCredentialProvider extends CredentialProvider {
     }
     // Logging out is a legitimate unset: drop the stored token.
     await this.oauthStore.delete(providerId, undefined)
+  }
+
+  // ---- credential records (0.1.1-line abstract members) --------------------
+  // The record space projects the SAME Pi-format store: a `pi2dsh/<provider>`
+  // key answers for that provider's stored OAuth login. Grant payloads never
+  // carry the token itself — resolution stays per-request through resolve().
+  // On the rc.8 line the base class has no record members and these concrete
+  // methods are simply extra.
+
+  private recordProviderId(key: unknown): string | undefined {
+    const value = String(key)
+    return value.startsWith('pi2dsh/') ? value.slice('pi2dsh/'.length) : undefined
+  }
+
+  async readRecord(key: CredentialKey): Promise<CredentialRecord | undefined> {
+    const providerId = this.recordProviderId(key)
+    if (providerId === undefined) return undefined
+    const stored = await storedOAuthCredential(this.oauthStore, providerId)
+    if (stored === undefined) return undefined
+    return { kind: 'grant', payload: { provider: providerId, managedBy: 'pi2dsh' } }
+  }
+
+  async describeRecord(key: CredentialKey): Promise<CredentialRecordInfo> {
+    const record = await this.readRecord(key)
+    return { configured: record !== undefined, ...(record === undefined ? {} : { kind: 'grant' as const }), writable: true }
+  }
+
+  async listRecords(): Promise<readonly CredentialRecordEntry[]> {
+    const entries: CredentialRecordEntry[] = []
+    const seen = new Set<string>()
+    const ids = [...this.extraProviders.keys(), ...builtinProviders().map(provider => provider.id)]
+    for (const providerId of ids) {
+      if (seen.has(providerId)) continue
+      seen.add(providerId)
+      if (await storedOAuthCredential(this.oauthStore, providerId) !== undefined) {
+        entries.push({ key: `pi2dsh/${providerId}` as CredentialKey, kind: 'grant' })
+      }
+    }
+    return entries
+  }
+
+  async modifyRecord(
+    key: CredentialKey,
+    mutate: (current: CredentialRecord | undefined) => Promise<CredentialRecord | undefined>,
+  ): Promise<CredentialRecord | undefined> {
+    const providerId = this.recordProviderId(key)
+    if (providerId === undefined) throw new Error(`credential record ${String(key)} is not managed by this provider`)
+    const next = await mutate(await this.readRecord(key))
+    if (next === undefined) {
+      await this.oauthStore.delete(providerId, undefined)
+    }
+    // A written grant is a registration witness; the token itself is managed
+    // by the login flow through the Pi store, so there is nothing to persist
+    // beyond what the flow already committed.
+    ;(this as unknown as { notifyRecordUpdated?(key: unknown): void }).notifyRecordUpdated?.(key)
+    return next
+  }
+
+  async deleteRecord(key: CredentialKey): Promise<void> {
+    const providerId = this.recordProviderId(key)
+    if (providerId === undefined) return
+    await this.oauthStore.delete(providerId, undefined)
+    ;(this as unknown as { notifyRecordUpdated?(key: unknown): void }).notifyRecordUpdated?.(key)
   }
 }
 

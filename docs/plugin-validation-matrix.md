@@ -275,6 +275,19 @@ headless profile 重启恢复后也完成真实回复。
 证据：[`examples/subscription-login`](../examples/subscription-login/)、
 [`scripts/verify-oauth-llm-e2e.mjs`](../scripts/verify-oauth-llm-e2e.mjs)。
 
+2026-08-22 追加官方 authorization seam 的真机验收（DSH 0.1.1-rc.2 stock CLI，
+web 与 TUI 双 surface）：引用
+[Provider OAuth 登录面](architecture-mapping-matrix.md#pi-provider-oauth-login)。
+在按用户路径安装 pi2dsh + `pi-provider-kimi-code` 的干净 profile 上（服务经用户可用
+的 profile patch 组合进来），`authorization.list()` 同列 37 条官方 llm-pi-ai flow 与
+5 条 `pi2dsh/<id>` flow（kimi-coding、openai-codex、anthropic、github-copilot 与验收
+包），同 id 不同 scope 并存无让位；对一个 Pi 包 flow 执行官方 `begin()` 走通包自己的
+login、record 见证落地、凭证进入中间层存储，官方 `deleteRecord` 把登出镜像回存储。
+判级：官方 flow 注册/begin/record 见证 **2 级，可靠翻译**。证据：
+[`community/authorization-seam-e2e.json`](../community/authorization-seam-e2e.json)、
+[`scripts/verify-authorization-seam-e2e.mjs`](../scripts/verify-authorization-seam-e2e.mjs)、
+契约测试 [`tests/authorization-flow.spec.ts`](../tests/authorization-flow.spec.ts)。
+
 ## stnly/pi-grok
 
 场景：原版社区插件把 SuperGrok 订阅注册成 DSH 模型 route，运行 xAI 设备码登录，并在

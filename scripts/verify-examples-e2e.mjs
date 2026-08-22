@@ -923,7 +923,7 @@ async function runSubscriptionLogin() {
         cwd: projectRoot,
         env: {
           ...env,
-          PLAYWRIGHT_FROM: join(dshRoot, 'apps/web'),
+          PLAYWRIGHT_FROM: process.env.PLAYWRIGHT_FROM ?? join(dshRoot, 'apps/web'),
           CAPTURE_WORKSPACE: projectRoot,
         },
         timeout: 240_000,

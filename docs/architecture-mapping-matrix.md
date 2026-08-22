@@ -339,6 +339,28 @@ client seam；两个数字都不表示“已经完整”。
   只声明目录的 provider 仍翻译给官方 configurable-provider schema，不能借动态刷新之名
   偷建第二条传输。
 
+<a id="pi-provider-oauth-login"></a>
+#### Provider OAuth 登录面
+
+- 当前接口叶子：provider 配置的 `oauth.login`（含 device-code、浏览器回调、短链）、
+  Pi 凭证链的 stored-credential 优先与双检锁刷新。
+- 理论对应：[DSH / 模型运行时](#dsh-model-runtime)；0.1.1 线新增的官方
+  `dsh-authorization` 服务（`registerFlow`/`begin`/record 见证/`authorization/settled`）。
+- 需要的公开 seam：`ctx.authorization`（0.1.1 线）、`credentials/record-updated`、
+  credentials record 一族（readRecord/modifyRecord/deleteRecord）。
+- 理论判断：组合承接，且按代分支。两代共有的用户入口是引擎的 `/login <id>`（Pi 包
+  自己的 login 实现跑在中间层的 UI 适配上）。0.1.1 线上每个 OAuth provider 另投影为
+  官方 authorization flow（key `pi2dsh/<id>`，label 带 "(pi2dsh)"）：flow 的 run 与
+  /login 同一条 spine，凭证仍落中间层 Pi 格式存储，DSH credential record 只作 seam
+  要求的 commit 见证；官方 `deleteRecord` 通过 `credentials/record-updated` 镜像回
+  Pi 存储（无 transport 的登录占位路由随之退场）。挂钩用官方
+  `ctx.inject(['authorization','credentials'], …)` 模式（llm-pi-ai 同款）：stock
+  组合只带包不组合服务、也没有任何 stock 面调用 `begin()`（2026-08-22 对
+  0.1.1-rc.2 组合 dump 实证：93 项无 authorization），服务何时组合进来都能挂上。
+  同 id 不同 scope 与官方目录 flow 并存（scope 即命名空间；官方 flow 的凭证只有
+  llm-pi-ai 路由能消费，我们的 flow 授权的才是中间层实际服务的路由）。
+  真机证据：`community/authorization-seam-e2e.json`（stock rc2 CLI 双 surface）。
+
 <a id="pi-model-registry"></a>
 #### 模型目录视图
 

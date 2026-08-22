@@ -92,6 +92,15 @@ so the first message after an idle stretch is not the one that fails.
 
 **No restart.** The models are in the picker the moment the login returns.
 
+**DSH's native sign-in registry.** On hosts that compose the official
+authorization service (DSH 0.1.1 line ships it as `@deepseek-ai/dsh-authorization`),
+every one of these accounts also registers as a native authorization flow —
+key `pi2dsh/<provider>`, label suffixed "(pi2dsh)" — alongside the host's own
+catalog sign-ins. A surface that lists those flows can start the same login
+you just ran with `/login`, and signing out there (deleting the credential
+record) signs the account out here too. Nothing to configure; it is the same
+login either way.
+
 ## 4. Use it
 
 Open the model picker (bottom right of the composer). The account has its own

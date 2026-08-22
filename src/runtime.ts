@@ -52,7 +52,7 @@ import { __createPiAiRuntimeRegistry, __runWithPiAiRuntime, builtinProviders } f
 import { validateToolArguments } from './compat/vendor/pi-tool-validation.js'
 import { ModelCatalog, llmOf, streamViaDshLlm, type DshAttachmentsLike } from './model-bridge.js'
 import { imageAdmissionCompanionAdapter, providerCarriesTransport, registerPiProviderRoute, type PiRouteHandle } from './provider-adapter.js'
-import { oauthCredentialRef } from './credentials-oauth.js'
+import { oauthCredentialRef } from './oauth-bridge.js'
 import {
   commandNameForDshTui,
   mountTuiSurfaceAdapter,
@@ -2601,6 +2601,9 @@ interface SharedHostState {
   /** Pi's theme is session-shared UI state, not per-extension. */
   agentThemes?: WeakMap<object, Theme>
   hostTheme?: Theme
+  /** Provider ids whose DSH authorization-seam projection is armed (an
+   * inject scope waiting on — or holding — the authorization service). */
+  authorizationArmedIds?: Set<string>
   modelCatalog?: ModelCatalog
   catalogSubscribed?: boolean
   loginRegistered?: WeakSet<object>
@@ -3233,6 +3236,254 @@ async function discoverProviderModels(
   }
 }
 
+/** The dialog surface a login flow talks to — the /login command hands the
+ * DSH command UI, the authorization-seam flow hands a session adapter. */
+export interface ProviderLoginUi {
+  input(title: unknown, placeholder?: unknown, signal?: AbortSignal): Promise<string | undefined>
+  select(title: unknown, options: unknown[], signal?: AbortSignal): Promise<string | undefined>
+  notify(message: unknown): void
+  deviceCode?(title: unknown, detail: unknown, signal?: AbortSignal): Promise<void>
+}
+
+/**
+ * Run one provider's own OAuth login end to end — the shared spine behind
+ * the /login command and the DSH authorization-seam flow. Owns the
+ * host-wide single-flight (the fixed callback port), the short-link
+ * publication, and the post-login route + catalog refresh.
+ * @returns the user-facing summary line.
+ */
+async function runProviderLogin(
+  ctx: Context,
+  state: RuntimeState,
+  providerId: string,
+  config: UnknownRecord,
+  ui: ProviderLoginUi,
+  externalSignal?: AbortSignal,
+): Promise<string> {
+  const oauthName = ((config.oauth as UnknownRecord | undefined)?.name as string | undefined) ?? providerId
+  // One login at a time, host-wide (see SharedHostState.activeLogin). A
+  // newer login is the user's current intent — nobody runs it twice
+  // wanting two — so it takes over: the previous flow is cancelled, which
+  // also closes its dialog and frees the callback port the new flow needs.
+  const superseded = await supersedeActiveLogin(state)
+  if (superseded !== undefined) ui.notify(`Cancelled the ${superseded} login that was still waiting.`)
+  const active: ActiveLogin = {
+    providerName: oauthName,
+    controller: new AbortController(),
+    finished: Promise.resolve(),
+    published: [],
+  }
+  if (externalSignal !== undefined) {
+    if (externalSignal.aborted) active.controller.abort()
+    else externalSignal.addEventListener('abort', () => active.controller.abort(), { once: true })
+  }
+  const attempt = loginPiProvider({
+    // The host action: this is the one place that opens a window on the
+    // machine dsh runs on. Nothing below this layer reaches for it.
+    open: openBrowser,
+    // A short link on this app's own origin, because a 400-character
+    // authorize URL in a dialog is not something a person can click.
+    shorten: (url: string) => {
+      const path = publishAuthorization(url)
+      const web = (ctx as unknown as { get(name: string): { port?: number, host?: string } | undefined }).get('webServer')
+      if (path === undefined || web?.port === undefined) return undefined
+      active.published.push(path)
+      const host = web.host === '0.0.0.0' || web.host === undefined ? '127.0.0.1' : web.host
+      return `http://${host}:${web.port}${path}`
+    },
+    providerId,
+    providerName: oauthName,
+    providerConfig: config,
+    store: oauthStoreOf(state),
+    ui,
+    signal: active.controller.signal,
+  })
+  // What the NEXT login waits on before binding the port: the attempt
+  // itself, however it ends.
+  active.finished = attempt.then(() => undefined, () => undefined)
+  state.shared.activeLogin = active
+  try {
+    await attempt
+  } finally {
+    for (const path of active.published) revokeAuthorization(path)
+    if (state.shared.activeLogin === active) state.shared.activeLogin = undefined
+  }
+  // The credential the user just supplied is the one gateway discovery was
+  // missing. Running it now — and re-announcing the route — is what makes
+  // this provider's models appear in the model picker without a restart;
+  // logging in and then finding nothing to select is not a login.
+  // Logging in is only half of "I want this gateway's models": the other
+  // half is the route. Declared first, so the discovery below (and the
+  // count reported to the user) sees it.
+  const declared = await ensureLoggedInProviderRoute(ctx, state, providerId, config)
+  const discovered = await discoverProviderModels(ctx, state, providerId, config)
+    ?? (declared ? await llmOf(ctx)?.listModels(providerId).then(list => list.length).catch(() => undefined) : undefined)
+  const models = discovered === undefined ? '' : `; ${discovered} models available`
+  ui.notify(`Logged in to ${oauthName}${models}`)
+  return `Logged in to ${oauthName}${models}`
+}
+
+/**
+ * Project one provider's OAuth login onto DSH's official authorization seam
+ * (`ctx.authorization`, 0.1.1 line). The flow runs the SAME login spine as
+ * /login; the DSH sign-in surface supplies the interaction. On hosts without
+ * the seam (rc.8 line) this is a no-op and /login stays the only entry.
+ *
+ * The credential itself stays in the bridge's Pi-format store — the DSH
+ * credential record written at the end is the seam's commit witness (the
+ * service verifies it observed a record update for the flow's key), and the
+ * official sign-out (`deleteRecord`) is mirrored back into the Pi store by
+ * the watcher below.
+ *
+ * Same id under another scope (the official llm-pi-ai catalog registers
+ * sign-ins for its whole catalog) is NOT a conflict: flows are keyed by
+ * scope/id exactly so registrars can coexist, and the credential spaces
+ * really are separate — signing in through the official flow lands a record
+ * only llm-pi-ai routes can use, while this flow authorizes the routes the
+ * bridge actually serves (package transports and logged-in builtins).
+ * Standing down here would leave those routes unreachable from the native
+ * surface. The label carries "(pi2dsh)" so a future surface shows whose
+ * sign-in each entry is. Only our own exact key is defended: a collision on
+ * `pi2dsh/<id>` throws in registerFlow and degrades to /login-only.
+ *
+ * Composition order is not ours to assume: the stock 0.1.1 compositions ship
+ * the authorization package without composing it, so the service may appear
+ * (or bounce) at any time after this provider registers. The official
+ * pattern — the one llm-pi-ai itself uses — is `ctx.inject(['authorization',
+ * ...], cb)`: cordis mounts the callback when the services are present,
+ * disposes everything it registered when they leave, and mounts it again if
+ * they return. The scope hangs off the CALLING ctx, so a flow projected for
+ * a package's provider dies with that package, and a built-in entry's flow
+ * dies with the engine.
+ */
+function maybeProjectAuthorizationFlow(ctx: Context, state: RuntimeState, providerId: string): void {
+  const shared = state.shared
+  shared.authorizationArmedIds ??= new Set()
+  if (shared.authorizationArmedIds.has(providerId)) return
+  const inject = (ctx as unknown as { inject?: (deps: string[], callback: (scope: Context) => void) => void }).inject
+  if (typeof inject !== 'function') return
+  shared.authorizationArmedIds.add(providerId)
+  inject.call(ctx, ['authorization', 'credentials'], scope => {
+    void projectAuthorizationFlow(scope, state, providerId)
+  })
+}
+
+/** The per-mount half: services are present on `scope`, register the flow and
+ * this provider's sign-out mirror. Everything registered here is disposed by
+ * cordis with the scope. */
+async function projectAuthorizationFlow(scope: Context, state: RuntimeState, providerId: string): Promise<void> {
+  const shared = state.shared
+  const ctx = scope
+  const authorization = optionalService<{
+    registerFlow(flow: UnknownRecord): () => void
+  }>(ctx, 'authorization')
+  const credentials = optionalService<{
+    modifyRecord(key: unknown, mutate: (current: unknown) => Promise<unknown>): Promise<unknown>
+    readRecord(key: unknown): Promise<unknown>
+  }>(ctx, 'credentials')
+  if (authorization === undefined || credentials === undefined) return
+  try {
+    // The key helpers are 0.1.1-line exports of the credentials package;
+    // resolve them dynamically so no chunk references symbols the rc.8
+    // generation lacks. Reaching here implies ctx.authorization exists, so
+    // the peer IS the new generation — a miss still degrades to a warning.
+    const credentialsModule = await import('@deepseek-ai/dsh-credentials') as unknown as {
+      credentialKey?(scope: string, id: string): unknown
+      isCredentialKeySegment?(value: string): boolean
+    }
+    const { credentialKey, isCredentialKeySegment } = credentialsModule
+    if (credentialKey === undefined || isCredentialKeySegment === undefined) return
+    if (!isCredentialKeySegment(providerId)) {
+      logger(ctx).warn(`[pi2dsh] provider ${JSON.stringify(providerId)} cannot appear on the DSH sign-in surface (its id is outside the credential-key grammar); /login still works`)
+      return
+    }
+    const canonicalOf = (): UnknownRecord => shared.providers.get(providerId) ?? {}
+    const labelOf = (): string =>
+      ((canonicalOf().oauth as UnknownRecord | undefined)?.name as string | undefined) ?? providerId
+    const key = credentialKey('pi2dsh', providerId)
+    // registerFlow's effect is created on the calling ctx (cordis binds
+    // `this.ctx` to the caller), so the flow is withdrawn with this scope;
+    // the returned disposer would only serve early withdrawal.
+    authorization.registerFlow({
+      key,
+      label: `${labelOf()} (pi2dsh)`,
+      methods: [{ id: 'oauth', label: `Sign in to ${labelOf()}` }],
+      run: async (session: {
+        method: string
+        signal: AbortSignal
+        notify(notice: UnknownRecord): void
+        prompt(prompt: UnknownRecord): Promise<string>
+      }) => {
+        const ui: ProviderLoginUi = {
+          notify: message => { session.notify({ message: String(message) }) },
+          input: async (title, _placeholder, promptSignal) => {
+            try {
+              return await session.prompt({
+                kind: 'text',
+                message: String(title),
+                ...(promptSignal instanceof AbortSignal ? { signal: promptSignal } : {}),
+              })
+            } catch (error) {
+              // A withdrawn prompt (the browser callback won the race) is a
+              // dismissal, not a failure — same contract as ui.input.
+              if (promptSignal instanceof AbortSignal && promptSignal.aborted) return undefined
+              throw error
+            }
+          },
+          select: async (title, options, promptSignal) => {
+            try {
+              return await session.prompt({
+                kind: 'select',
+                message: String(title),
+                options: options.map(option => ({ id: String(option), label: String(option) })),
+                ...(promptSignal instanceof AbortSignal ? { signal: promptSignal } : {}),
+              })
+            } catch (error) {
+              if (promptSignal instanceof AbortSignal && promptSignal.aborted) return undefined
+              throw error
+            }
+          },
+          // A device code is exactly what AuthorizationNotice.code is for.
+          deviceCode: async (title, detail) => {
+            session.notify({ message: String(title), code: String(detail) })
+          },
+        }
+        const canonical = canonicalOf()
+        if (!providerSupportsOAuth(canonical)) throw new Error(`${providerId} no longer supports OAuth login`)
+        await runProviderLogin(ctx, state, providerId, canonical, ui, session.signal)
+        await credentials.modifyRecord(key, async () => ({
+          kind: 'grant',
+          payload: { provider: providerId, managedBy: 'pi2dsh' },
+        }))
+      },
+    })
+    // The official sign-out mirror for THIS flow's key: deleting the DSH
+    // credential record removes the bridge's stored login too. Registered on
+    // the same scope, so it lives exactly as long as the flow it mirrors.
+    ;(ctx as unknown as { on(event: string, callback: (eventKey: unknown) => void): unknown }).on('credentials/record-updated', (eventKey: unknown) => {
+      void (async () => {
+        try {
+          if (String(eventKey) !== String(key)) return
+          if (await credentials.readRecord(key) !== undefined) return
+          await oauthStoreOf(state).delete(providerId)
+          // A login placeholder route exists only because of the stored
+          // credential; retire it. A package-owned transport route stays — its
+          // per-request credential resolution reports the missing login itself.
+          const canonical = shared.providers.get(providerId)
+          if (canonical !== undefined && !providerCarriesTransport(canonical)) {
+            retireSharedProviderRoute(shared, providerId)
+          }
+          logger(ctx).info(`[pi2dsh] signed out of ${providerId}: the DSH credential record was deleted, so the bridge's stored login was removed`)
+        } catch (error) {
+          logger(ctx).warn(`[pi2dsh] sign-out mirror failed: ${error instanceof Error ? error.message : String(error)}`)
+        }
+      })()
+    })
+  } catch (error) {
+    logger(ctx).warn(`[pi2dsh] could not project ${JSON.stringify(providerId)} onto the DSH sign-in surface: ${error instanceof Error ? error.message : String(error)}; /login still works`)
+  }
+}
+
 function registerLoginCommand(ctx: Context, state: RuntimeState): void {
   registerCommand(ctx, state, {
     name: 'login',
@@ -3243,11 +3494,8 @@ function registerLoginCommand(ctx: Context, state: RuntimeState): void {
         .filter(([, config]) => providerSupportsOAuth(config))
         .map(([name]) => name)
       if (oauthProviders.length === 0) throw new Error('no registered Pi provider supports OAuth login')
-      const ui = commandContext.ui as {
-        input(title: unknown, placeholder?: unknown): Promise<string | undefined>
+      const ui = commandContext.ui as ProviderLoginUi & {
         select(title: unknown, options: unknown[]): Promise<string | undefined>
-        notify(message: unknown): void
-        deviceCode?(title: unknown, detail: unknown, signal?: AbortSignal): Promise<void>
       }
       let answer = args.trim().split(/\s+/u)[0] ?? ''
       if (answer.length === 0) {
@@ -3269,68 +3517,7 @@ function registerLoginCommand(ctx: Context, state: RuntimeState): void {
       if (providerId === undefined || config === undefined || !providerSupportsOAuth(config)) {
         throw new Error(`unknown OAuth provider ${JSON.stringify(answer)}; available: ${oauthProviders.join(', ')}`)
       }
-      const oauthName = ((config.oauth as UnknownRecord | undefined)?.name as string | undefined) ?? providerId
-      const commandSignal = commandContext.signal as AbortSignal | undefined
-      // One login at a time, host-wide (see SharedHostState.activeLogin). A
-      // newer /login is the user's current intent — nobody runs it twice
-      // wanting two — so it takes over: the previous flow is cancelled, which
-      // also closes its dialog and frees the callback port the new flow needs.
-      const superseded = await supersedeActiveLogin(state)
-      if (superseded !== undefined) ui.notify(`Cancelled the ${superseded} login that was still waiting.`)
-      const active: ActiveLogin = {
-        providerName: oauthName,
-        controller: new AbortController(),
-        finished: Promise.resolve(),
-        published: [],
-      }
-      if (commandSignal !== undefined) {
-        if (commandSignal.aborted) active.controller.abort()
-        else commandSignal.addEventListener('abort', () => active.controller.abort(), { once: true })
-      }
-      const attempt = loginPiProvider({
-        // The host action: this is the one place that opens a window on the
-        // machine dsh runs on. Nothing below this layer reaches for it.
-        open: openBrowser,
-        // A short link on this app's own origin, because a 400-character
-        // authorize URL in a dialog is not something a person can click.
-        shorten: (url: string) => {
-          const path = publishAuthorization(url)
-          const web = (ctx as unknown as { get(name: string): { port?: number, host?: string } | undefined }).get('webServer')
-          if (path === undefined || web?.port === undefined) return undefined
-          active.published.push(path)
-          const host = web.host === '0.0.0.0' || web.host === undefined ? '127.0.0.1' : web.host
-          return `http://${host}:${web.port}${path}`
-        },
-        providerId,
-        providerName: oauthName,
-        providerConfig: config,
-        store: oauthStoreOf(state),
-        ui,
-        signal: active.controller.signal,
-      })
-      // What the NEXT /login waits on before binding the port: the attempt
-      // itself, however it ends.
-      active.finished = attempt.then(() => undefined, () => undefined)
-      state.shared.activeLogin = active
-      try {
-        await attempt
-      } finally {
-        for (const path of active.published) revokeAuthorization(path)
-        if (state.shared.activeLogin === active) state.shared.activeLogin = undefined
-      }
-      // The credential the user just supplied is the one gateway discovery was
-      // missing. Running it now — and re-announcing the route — is what makes
-      // this provider's models appear in the model picker without a restart;
-      // logging in and then finding nothing to select is not a login.
-      // Logging in is only half of "I want this gateway's models": the other
-      // half is the route. Declared first, so the discovery below (and the
-      // count reported to the user) sees it.
-      const declared = await ensureLoggedInProviderRoute(ctx, state, providerId, config)
-      const discovered = await discoverProviderModels(ctx, state, providerId, config)
-        ?? (declared ? await llmOf(ctx)?.listModels(providerId).then(list => list.length).catch(() => undefined) : undefined)
-      const models = discovered === undefined ? '' : `; ${discovered} models available`
-      ui.notify(`Logged in to ${oauthName}${models}`)
-      return `Logged in to ${oauthName}${models}`
+      return await runProviderLogin(ctx, state, providerId, config, ui, commandContext.signal as AbortSignal | undefined)
     },
   })
 }
@@ -4042,6 +4229,9 @@ function createPiApi(ctx: Context, state: RuntimeState): UnknownRecord {
         // Pi hosts expose /login <provider> for oauth-capable providers; the
         // package's own login flow runs, credentials land in auth.json.
         ensureLoginCommand(ctx, state)
+        // 0.1.1-line hosts additionally show it on their native sign-in
+        // surface through the official authorization seam.
+        maybeProjectAuthorizationFlow(ctx, state, name)
         logger(ctx).info(`[pi2dsh] Pi provider ${JSON.stringify(name)} supports OAuth — log in with /login ${name}`)
       }
       // A provider carrying its own transport becomes a REAL DSH llm route:
@@ -4514,6 +4704,10 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
       shared.providerBuiltins.set(provider.id, config)
       recomposeSharedProvider(shared, provider.id)
     }
+    // On 0.1.1-line hosts the built-in entries also join the native sign-in
+    // surface — unless another flow (the official llm-pi-ai catalog sign-ins)
+    // already answers for the same id, in which case that one stands.
+    maybeProjectAuthorizationFlow(ctx, state, provider.id)
   }
   ensureLoginCommand(ctx, state)
   // A credential stored by an EARLIER session must still produce a route:

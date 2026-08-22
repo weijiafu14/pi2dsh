@@ -22,6 +22,22 @@ type UnknownRecord = Record<string, unknown>
 //   L4 routing    — resolveOAuthApiKey yields the request key for dsh-llm's
 //                   one-shot credential seam; tokens never enter DSH settings.
 
+// Reference convention shared with the optional credentials provider:
+// PI2DSH_OAUTH_<PROVIDER_ID> (upper-cased, `-` → `_`). Lives HERE — not in
+// credentials-oauth.ts — because that module imports @deepseek-ai/dsh-credentials
+// (an optional peer a clean profile does not install), and the engine's main
+// runtime chunk must never share a static import graph with it.
+const OAUTH_REF_PREFIX = 'PI2DSH_OAUTH_'
+
+export function oauthCredentialRef(providerId: string): string {
+  return `${OAUTH_REF_PREFIX}${providerId.toUpperCase().replaceAll('-', '_')}`
+}
+
+export function providerIdOfOAuthRef(ref: string): string | undefined {
+  if (!ref.startsWith(OAUTH_REF_PREFIX)) return undefined
+  return ref.slice(OAUTH_REF_PREFIX.length).toLowerCase().replaceAll('_', '-')
+}
+
 export class FileCredentialStore extends InMemoryCredentialStore {
   readonly #path: string
 

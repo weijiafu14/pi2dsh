@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "pi2dshCommit": "e96e4ec0c345b31b7337f8a3a33bd4a53987e2bf",
-  "dshCommit": "69fff74f6f3e1f37939784885ef823477f06ace3",
+  "pi2dshCommit": "4cfb7edf189577f1f0b217422c0fbdbe8f75aff4",
+  "dshCommit": "npm:@deepseek-ai/dsh@0.1.1-rc.2",
   "results": {
     "alibabaTokenPlan": {
       "status": "skipped",
@@ -66,13 +66,23 @@
       "requestedThroughGateway": true
     },
     "subscriptionLogin": {
-      "status": "partial",
+      "status": "passed",
       "engine": {
-        "version": "0.15.2",
-        "from": "registry",
-        "spec": "pi2dsh@0.15.2"
+        "version": "0.16.0",
+        "from": "local",
+        "spec": "file:<working-tree>",
+        "commit": "4cfb7edf189577f1f0b217422c0fbdbe8f75aff4",
+        "dirty": true
       },
-      "note": "pre-login discovery and native route passed; set CODEX_AUTH_FILE to verify the post-login model picker"
+      "accountBacked": {
+        "provider": "openai-codex",
+        "loginDialog": true,
+        "modelPicker": true,
+        "screenshots": [
+          "10-login-dialog.png",
+          "11-model-picker-after-login.png"
+        ]
+      }
     },
     "tuiMcp": {
       "status": "passed",
