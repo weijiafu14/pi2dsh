@@ -3,7 +3,7 @@
   "packageName": "@pi2dsh-e2e/step-seams",
   "installPath": "engine (dsh plugin add pi2dsh, then the package) — no conversion",
   "dshCommit": "npm:@deepseek-ai/dsh@0.1.0-rc.8",
-  "pi2dshCommit": "4223d4981ebce60a4691fc4c38ed38e87dfce851",
+  "pi2dshCommit": "04a810bf3f8866e2c7ae0317b0d1916e7d88f082",
   "profile": "headless",
   "prompt": "Call the pi_repeat tool exactly once with word \"ok\" and times 7, then reply with the tool output verbatim.",
   "seams": {

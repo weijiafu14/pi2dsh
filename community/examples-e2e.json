@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pi2dshCommit": "4223d4981ebce60a4691fc4c38ed38e87dfce851",
+  "pi2dshCommit": "04a810bf3f8866e2c7ae0317b0d1916e7d88f082",
   "dshCommit": "69fff74f6f3e1f37939784885ef823477f06ace3",
   "results": {
     "alibabaTokenPlan": {
@@ -21,9 +21,9 @@
     },
     "gatewayCompat": {
       "engine": {
-        "version": "0.15.0",
+        "version": "0.15.1",
         "from": "registry",
-        "spec": "pi2dsh@0.15.0"
+        "spec": "pi2dsh@0.15.1"
       },
       "status": "passed",
       "requests": 2,
@@ -53,9 +53,9 @@
     "customGateways": {
       "status": "passed",
       "engine": {
-        "version": "0.15.0",
+        "version": "0.15.1",
         "from": "registry",
-        "spec": "pi2dsh@0.15.0"
+        "spec": "pi2dsh@0.15.1"
       },
       "seenByPackage": {
         "provider": "my-gateway",
@@ -68,29 +68,18 @@
     "subscriptionLogin": {
       "status": "partial",
       "engine": {
-        "version": "0.15.0",
+        "version": "0.15.1",
         "from": "registry",
-        "spec": "pi2dsh@0.15.0"
+        "spec": "pi2dsh@0.15.1"
       },
       "note": "pre-login discovery and native route passed; set CODEX_AUTH_FILE to verify the post-login model picker"
-    },
-    "presentationSurfaces": {
-      "status": "passed",
-      "engine": {
-        "version": "0.15.0",
-        "from": "registry",
-        "spec": "pi2dsh@0.15.0"
-      },
-      "screenshots": [
-        "06-presentation-surfaces.png"
-      ]
     },
     "tuiMcp": {
       "status": "passed",
       "engine": {
-        "version": "0.15.0",
+        "version": "0.15.1",
         "from": "registry",
-        "spec": "pi2dsh@0.15.0"
+        "spec": "pi2dsh@0.15.1"
       },
       "profile": "dsh-tui",
       "piPackage": "pi-mcp-adapter",
@@ -122,12 +111,23 @@
         "session-restart"
       ]
     },
+    "presentationSurfaces": {
+      "status": "passed",
+      "engine": {
+        "version": "0.15.1",
+        "from": "registry",
+        "spec": "pi2dsh@0.15.1"
+      },
+      "screenshots": [
+        "06-presentation-surfaces.png"
+      ]
+    },
     "sideConversation": {
       "status": "passed",
       "engine": {
-        "version": "0.15.0",
+        "version": "0.15.1",
         "from": "registry",
-        "spec": "pi2dsh@0.15.0"
+        "spec": "pi2dsh@0.15.1"
       },
       "screenshots": [
         "01-side-conversation-main-thread-clean.png",
