@@ -25,6 +25,14 @@ const execFile = promisify(execFileCallback)
 const projectRoot = resolve(new URL('..', import.meta.url).pathname)
 const dshRoot = resolve(process.env.PI2DSH_DSH_ROOT ?? join(projectRoot, '..', 'deepseek-harness'))
 const dshBin = join(dshRoot, 'apps/cli/src/bin.ts')
+// A directly runnable dsh binary (a stock npm CLI install) — same contract as
+// the examples and step-seams harnesses. Without it the run needs the local
+// checkout, whose workspace state this script must not depend on.
+const directDshBin = process.env.PI2DSH_DSH_BIN === undefined ? undefined : resolve(process.env.PI2DSH_DSH_BIN)
+const dshCwd = resolve(process.env.PI2DSH_DSH_CWD ?? dshRoot)
+const dshCommand = args => (directDshBin === undefined
+  ? { file: 'node', args: ['--import', 'tsx/esm', dshBin, ...args] }
+  : { file: directDshBin, args })
 const engineSpec = process.env.PI2DSH_ENGINE_SPEC ?? `file:${projectRoot}`
 const imagePluginSpec = process.env.PI2DSH_CODEX_IMAGE_PLUGIN_SPEC ?? '@crazygit/pi-codex-image-gen@0.2.2'
 const codexAuthFile = resolve(process.env.CODEX_AUTH_FILE ?? join(homedir(), '.codex', 'auth.json'))
@@ -142,8 +150,9 @@ async function stopChild(child) {
 }
 
 async function runHeadlessTurn({ env, prompt, sessionsRoot }) {
-  const child = spawn('node', ['--import', 'tsx/esm', dshBin, '--profile', 'headless', prompt], {
-    cwd: dshRoot,
+  const headless = dshCommand(['--profile', 'headless', prompt])
+  const child = spawn(headless.file, headless.args, {
+    cwd: dshCwd,
     env,
     stdio: ['ignore', 'pipe', 'pipe'],
   })
@@ -285,12 +294,15 @@ async function main() {
       PNPM_CONFIG_REGISTRY: 'https://registry.npmjs.org',
       PNPM_CONFIG_MINIMUM_RELEASE_AGE: '0',
     }
-    const runDsh = args => execFile('node', ['--import', 'tsx/esm', dshBin, ...args], {
-      cwd: dshRoot,
-      env,
-      timeout: 900_000,
-      maxBuffer: 32 * 1024 * 1024,
-    })
+    const runDsh = args => {
+      const command = dshCommand(args)
+      return execFile(command.file, command.args, {
+        cwd: dshCwd,
+        env,
+        timeout: 900_000,
+        maxBuffer: 32 * 1024 * 1024,
+      })
+    }
 
     for (const profile of ['headless', 'web']) {
       await runDsh(['plugin', '--profile', profile, 'add', engineSpec])
@@ -332,8 +344,9 @@ async function main() {
 
     const port = 5450 + Math.floor(Math.random() * 300)
     const logRef = { value: '' }
-    web = spawn('node', ['--import', 'tsx/esm', dshBin, '--profile', 'web', '--port', String(port)], {
-      cwd: dshRoot,
+    const webCommand = dshCommand(['--profile', 'web', '--port', String(port)])
+    web = spawn(webCommand.file, webCommand.args, {
+      cwd: dshCwd,
       env,
       stdio: ['ignore', 'pipe', 'pipe'],
     })
@@ -341,7 +354,8 @@ async function main() {
     web.stderr.on('data', chunk => { logRef.value += String(chunk) })
     await waitForWeb(web, logRef)
 
-    const require = createRequire(join(dshRoot, 'apps', 'web', 'package.json'))
+    const playwrightFrom = process.env.PLAYWRIGHT_FROM ?? join(dshRoot, 'apps', 'web')
+    const require = createRequire(join(resolve(playwrightFrom), 'package.json'))
     const { chromium } = require('playwright')
     const browser = await chromium.launch()
     try {

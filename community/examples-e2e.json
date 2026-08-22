@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pi2dshCommit": "4cfb7edf189577f1f0b217422c0fbdbe8f75aff4",
+  "pi2dshCommit": "0f808b34b041afdd3bbde29249b9ccb53f67b93b",
   "dshCommit": "npm:@deepseek-ai/dsh@0.1.1-rc.2",
   "results": {
     "alibabaTokenPlan": {
@@ -15,15 +15,11 @@
       "status": "skipped",
       "reason": "no complete OpenAI-compatible or Pi-registry vision model configured"
     },
-    "codexImageGen": {
-      "status": "skipped",
-      "reason": "CODEX_AUTH_FILE not set"
-    },
     "gatewayCompat": {
       "engine": {
-        "version": "0.15.2",
+        "version": "0.16.0",
         "from": "registry",
-        "spec": "pi2dsh@0.15.2"
+        "spec": "pi2dsh@0.16.0"
       },
       "status": "passed",
       "requests": 2,
@@ -53,9 +49,9 @@
     "customGateways": {
       "status": "passed",
       "engine": {
-        "version": "0.15.2",
+        "version": "0.16.0",
         "from": "registry",
-        "spec": "pi2dsh@0.15.2"
+        "spec": "pi2dsh@0.16.0"
       },
       "seenByPackage": {
         "provider": "my-gateway",
@@ -65,31 +61,54 @@
       },
       "requestedThroughGateway": true
     },
-    "subscriptionLogin": {
+    "codexImageGen": {
+      "schemaVersion": 1,
       "status": "passed",
       "engine": {
+        "name": "pi2dsh",
         "version": "0.16.0",
-        "from": "local",
-        "spec": "file:<working-tree>",
-        "commit": "4cfb7edf189577f1f0b217422c0fbdbe8f75aff4",
-        "dirty": true
+        "spec": "pi2dsh@0.16.0"
       },
-      "accountBacked": {
+      "plugin": {
+        "name": "@crazygit/pi-codex-image-gen",
+        "version": "0.2.2",
+        "spec": "@crazygit/pi-codex-image-gen@0.2.2"
+      },
+      "model": {
         "provider": "openai-codex",
-        "loginDialog": true,
-        "modelPicker": true,
-        "screenshots": [
-          "10-login-dialog.png",
-          "11-model-picker-after-login.png"
-        ]
+        "id": "gpt-5.6-sol",
+        "auth": "oauth"
+      },
+      "generation": {
+        "surface": "headless",
+        "tool": "codex_generate_image",
+        "processShutdown": "terminated-after-durable-turn",
+        "image": {
+          "sha256": "58d767c24cc0ac38e421d7251ce93dfeaa0cc1764cd5d1619f314d989a6551b7",
+          "bytes": 908088,
+          "width": 1254,
+          "height": 1254
+        }
+      },
+      "edit": {
+        "surface": "web",
+        "tool": "codex_generate_image",
+        "approval": "DSH userQuestions -> Yes",
+        "referenceCount": 1,
+        "image": {
+          "sha256": "0a21836175600e306904ada818163fae7163357b797979240a46e66da220d2e2",
+          "bytes": 918904,
+          "width": 1254,
+          "height": 1254
+        }
       }
     },
     "tuiMcp": {
       "status": "passed",
       "engine": {
-        "version": "0.15.2",
+        "version": "0.16.0",
         "from": "registry",
-        "spec": "pi2dsh@0.15.2"
+        "spec": "pi2dsh@0.16.0"
       },
       "profile": "dsh-tui",
       "piPackage": "pi-mcp-adapter",
@@ -124,20 +143,37 @@
     "presentationSurfaces": {
       "status": "passed",
       "engine": {
-        "version": "0.15.2",
+        "version": "0.16.0",
         "from": "registry",
-        "spec": "pi2dsh@0.15.2"
+        "spec": "pi2dsh@0.16.0"
       },
       "screenshots": [
         "06-presentation-surfaces.png"
       ]
     },
+    "subscriptionLogin": {
+      "status": "passed",
+      "engine": {
+        "version": "0.16.0",
+        "from": "registry",
+        "spec": "pi2dsh@0.16.0"
+      },
+      "accountBacked": {
+        "provider": "openai-codex",
+        "loginDialog": true,
+        "modelPicker": true,
+        "screenshots": [
+          "10-login-dialog.png",
+          "11-model-picker-after-login.png"
+        ]
+      }
+    },
     "sideConversation": {
       "status": "passed",
       "engine": {
-        "version": "0.15.2",
+        "version": "0.16.0",
         "from": "registry",
-        "spec": "pi2dsh@0.15.2"
+        "spec": "pi2dsh@0.16.0"
       },
       "screenshots": [
         "01-side-conversation-main-thread-clean.png",

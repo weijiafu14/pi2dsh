@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-08-22T15:38:54.987Z",
-  "startedAt": "2026-08-22T15:38:18.849Z",
+  "generatedAt": "2026-08-22T16:09:57.627Z",
+  "startedAt": "2026-08-22T16:09:03.048Z",
   "scenario": "authorization-seam-projection",
   "cliSpec": "@deepseek-ai/dsh@0.1.1-rc.2",
   "tuiSpec": "@deepseek-harness-tui/dsh-tui",
-  "engineSpec": "/Users/developer/projj/workspace/pi2dsh",
+  "engineSpec": "pi2dsh@0.16.0",
   "status": "passed",
   "cliVersion": "0.1.1-rc.2",
   "engineVersion": "0.16.0",
@@ -114,5 +114,5 @@
     "credentialLanded": true,
     "signOutMirrored": true
   },
-  "scratch": "/tmp/pi2dsh-authz-e2e.lg0ADV"
+  "scratch": "/tmp/pi2dsh-authz-e2e.vcoxcf"
 }
