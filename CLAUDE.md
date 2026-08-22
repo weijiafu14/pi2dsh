@@ -491,6 +491,13 @@ pnpm verify:release   # verify + 全部 examples（装 npm 上刚发的那版）
   `PI2DSH_DSH_CLI_SPEC` 回测；升级预检的标准姿势=git worktree 切
   devDeps 重装跑全套契约（注意 peer range 与 lockfile 都要动，否则
   半新半旧混装出假故障）。
+  **改动两代共用的用户路径，必须在两代上跑那条路径本身的 example，
+  不能拿各自的场景 E2E 顶数**（2026-08-22 用户当场追问抓到）：为接
+  0.1.1 的 authorization seam 我重构了 `/login` 主干（抽出共享 spine），
+  只在 rc2 上跑了 subscription-login，rc.8 那边跑的是 MCP 场景——
+  `/login` 在旧代根本没被碰过，而它才是两代用户当下唯一的登录入口。
+  姿势：`ONLY=<example> PI2DSH_DSH_BIN=<该代 CLI> PI2DSH_DSH_CWD=<该代
+  CLI 目录> node scripts/verify-examples-e2e.mjs <另存的证据文件>`。
 - profile 的组合安装是 CLI 私有流程：改完 profile 配置要重装时重跑
   `dsh plugin add`，别直接在 profile 目录裸跑 pnpm install。
 - 独立目录装 CLI 时 pnpm 11 的坑：minimumReleaseAge 用

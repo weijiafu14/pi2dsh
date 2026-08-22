@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "pi2dshCommit": "4f26ccc1e08b53c661bfb146d8629514a88cff23",
+  "dshCommit": "npm:@deepseek-ai/dsh@0.1.0-rc.8",
+  "results": {
+    "subscriptionLogin": {
+      "status": "passed",
+      "engine": {
+        "version": "0.16.0",
+        "from": "local",
+        "spec": "file:<working-tree>",
+        "commit": "4f26ccc1e08b53c661bfb146d8629514a88cff23",
+        "dirty": true
+      },
+      "accountBacked": {
+        "provider": "openai-codex",
+        "loginDialog": true,
+        "modelPicker": true,
+        "screenshots": [
+          "10-login-dialog.png",
+          "11-model-picker-after-login.png"
+        ]
+      }
+    }
+  }
+}
