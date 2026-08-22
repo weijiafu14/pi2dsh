@@ -1,27 +1,27 @@
 {
-  "generatedAt": "2026-08-22T07:39:32.446Z",
-  "startedAt": "2026-08-22T07:38:35.818Z",
+  "generatedAt": "2026-08-22T09:47:42.137Z",
+  "startedAt": "2026-08-22T09:46:53.561Z",
   "scenario": "stock-tui-single-path-per-agent",
-  "cliSpec": "@deepseek-ai/dsh@0.1.0-rc.8",
+  "cliSpec": "@deepseek-ai/dsh@0.1.1-rc.2",
   "tuiSpec": "@deepseek-harness-tui/dsh-tui",
-  "engineSpec": "pi2dsh@0.15.0",
+  "engineSpec": "pi2dsh@0.15.1",
   "mcpAdapterSpec": "pi-mcp-adapter@2.27.0",
   "status": "passed",
-  "cliVersion": "0.1.0-rc.8",
-  "dshAgentVersion": "0.1.0-rc.8",
+  "cliVersion": "0.1.1-rc.2",
+  "dshAgentVersion": "0.1.1-rc.2",
   "dshAgentHasAgentSetupSeam": false,
   "tuiVersion": "0.8.8",
   "tuiAdvertisesSetupSeam": false,
-  "engineVersion": "0.15.0",
+  "engineVersion": "0.15.1",
   "agentA": {
     "managerTools": 23,
-    "sessionLog": "/tmp/pi2dsh-singlepath-e2e.G8mqhw/dsh-home/sessions/--private-tmp-pi2dsh-singlepath-e2e.G8mqhw--/6f71e344-31b4-4a96-a6c5-d687b18c93fa/session.jsonl",
-    "marker": "PI2DSH_SINGLEPATH_A_MT42H0OA"
+    "sessionLog": "/tmp/pi2dsh-singlepath-e2e.9vvmRf/dsh-home/sessions/--private-tmp-pi2dsh-singlepath-e2e.9vvmRf--/1315f4ad-65be-4860-bf55-5a617d550130/session.jsonl",
+    "marker": "PI2DSH_SINGLEPATH_A_MT4720AH"
   },
   "agentB": {
     "managerTools": 23,
-    "sessionLog": "/tmp/pi2dsh-singlepath-e2e.G8mqhw/dsh-home/sessions/--private-tmp-pi2dsh-singlepath-e2e.G8mqhw--/06644d38-b342-4193-b4cc-34555222824e/session.jsonl",
-    "marker": "PI2DSH_SINGLEPATH_B_MT42H0OA"
+    "sessionLog": "/tmp/pi2dsh-singlepath-e2e.9vvmRf/dsh-home/sessions/--private-tmp-pi2dsh-singlepath-e2e.9vvmRf--/cc050ec3-571b-4bcb-b26d-9bf539df6d32/session.jsonl",
+    "marker": "PI2DSH_SINGLEPATH_B_MT4720AH"
   },
   "isolation": "marker B absent from agent A session log"
 }

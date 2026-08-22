@@ -5,7 +5,7 @@
 // the package's stream events → DSH chunks.
 import { describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import LlmRuntime from '@deepseek-ai/dsh-llm'
+import LlmRuntime, { LlmAdapter } from '@deepseek-ai/dsh-llm'
 import { registerPiProviderRoute } from '../src/provider-adapter.js'
 import { dshRequestToPiContext, piEventsToDshChunks } from '../src/model-bridge.js'
 
@@ -327,10 +327,17 @@ describe('Pi provider as a DSH llm route', () => {
     ])
   })
 
-  it('refuses an image request it cannot serve instead of dropping the image', async () => {
-    // An adapter that throws reaches the caller as DSH's terminal error chunk
-    // — the harness's other sanctioned error path — with the code intact.
-    const run = async (model: UnknownRecord): Promise<UnknownRecord | undefined> => {
+  it('never silently drops an image: the bridge refuses, or the host explicitly degrades', async () => {
+    // The invariant across host generations is "the model is never asked
+    // about a picture it silently did not receive". Who upholds it moved:
+    // on 0.1.0-rc.8 dispatch reaches the adapter untouched and the BRIDGE
+    // refuses with UNSUPPORTED_CONTENT before the provider is asked; on the
+    // 0.1.1 line (detectable by the LlmAdapter base class gaining
+    // prepareCall) the HOST's dispatch resolves the modality mismatch first,
+    // replacing the image block with an explicit "[image omitted …]" notice
+    // — a visible degradation, not a silent drop, so the host policy wins.
+    const hostResolvesModalities = typeof (LlmAdapter as unknown as { prototype?: { prepareCall?: unknown } }).prototype?.prepareCall === 'function'
+    const run = async (model: UnknownRecord): Promise<{ last: UnknownRecord | undefined; calls: Array<{ context: UnknownRecord }> }> => {
       const ctx = new Context()
       await ctx.plugin(LlmRuntime as never, {} as never)
       const llm = (ctx as unknown as { llm: { stream(o: UnknownRecord): AsyncIterable<UnknownRecord> } }).llm
@@ -343,15 +350,31 @@ describe('Pi provider as a DSH llm route', () => {
       })
       const chunks: UnknownRecord[] = []
       for await (const chunk of llm.stream({ provider: 'pifix', model: 'pifix-1', ...imageRequest })) chunks.push(chunk)
-      // The refusal happens before the provider is asked anything.
-      expect(fixture.calls).toHaveLength(0)
-      return chunks.at(-1)
+      return { last: chunks.at(-1), calls: fixture.calls as never }
     }
-    // The model never declared image input…
-    expect(await run({ id: 'pifix-1', provider: 'pifix', contextWindow: 32000, input: ['text'] }))
-      .toMatchObject({ reason: { kind: 'error', failure: { code: 'UNSUPPORTED_CONTENT', message: /image input/ } } })
-    // …and a vision model with no attachment service to read the bytes from.
-    expect(await run({ id: 'pifix-1', provider: 'pifix', contextWindow: 32000, input: ['text', 'image'] }))
+
+    // A model that never declared image input…
+    const textOnly = await run({ id: 'pifix-1', provider: 'pifix', contextWindow: 32000, input: ['text'] })
+    if (hostResolvesModalities) {
+      // …reaches the provider WITH an explicit omission notice in place of
+      // the image — visible degradation, never a silent drop.
+      expect(textOnly.calls).toHaveLength(1)
+      const sent = (textOnly.calls[0]?.context.messages as Array<{ content: Array<{ type: string; text?: string }> }>)[0]
+      expect(sent?.content.some(block => block.type === 'text' && block.text?.includes('[image omitted') === true)).toBe(true)
+      expect(textOnly.last).toMatchObject({ reason: { kind: 'stop' } })
+    } else {
+      // …is refused by the bridge before the provider is asked anything.
+      expect(textOnly.calls).toHaveLength(0)
+      expect(textOnly.last)
+        .toMatchObject({ reason: { kind: 'error', failure: { code: 'UNSUPPORTED_CONTENT', message: /image input/ } } })
+    }
+
+    // A vision model with no attachment service to read the bytes from is
+    // refused by the bridge on every generation — the host keeps the image
+    // block for a capable model, and the bytes are simply unreachable.
+    const vision = await run({ id: 'pifix-1', provider: 'pifix', contextWindow: 32000, input: ['text', 'image'] })
+    expect(vision.calls).toHaveLength(0)
+    expect(vision.last)
       .toMatchObject({ reason: { kind: 'error', failure: { code: 'UNSUPPORTED_CONTENT', message: /attachment service/ } } })
   })
 

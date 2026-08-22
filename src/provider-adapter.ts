@@ -10,7 +10,7 @@
 // schema, so its protocol, model capabilities and offered compat switches
 // still run through DSH's own transport.
 
-import { LlmError } from '@deepseek-ai/dsh-llm'
+import { LlmAdapter, LlmError } from '@deepseek-ai/dsh-llm'
 import type { PiAiCompatProfile } from '@deepseek-ai/dsh-llm-pi-ai'
 import { blocksContainImage, dshRequestToPiContext, piEventsToDshChunks, type DshAttachmentsLike, type DshLlmLike } from './model-bridge.js'
 import { getSupportedThinkingLevels } from './compat/pi-ai.js'
@@ -150,6 +150,20 @@ function piCarriedFields(model: UnknownRecord): UnknownRecord {
  * Wrap one Pi provider object as a DSH LlmAdapter-shaped route handler.
  * Structural typing carries it through `llm.registerAdapter`.
  */
+/** Build the route handler ON the host's own LlmAdapter base class. The
+ * 0.1.0-rc.8 dispatch reads adapter methods structurally, so a plain object
+ * worked; 0.1.1's dispatch calls `adapter.prepareCall` — a method the BASE
+ * CLASS provides (it binds resolveModel + stream into a one-shot prepared
+ * call). Because `@deepseek-ai/dsh-llm` is a peer, `LlmAdapter` here is
+ * whichever generation the host installed: own-property methods carry the
+ * bridge behavior on both, and everything the base contributes on newer
+ * generations (prepareCall, retry-policy defaults) is inherited instead of
+ * re-implemented. */
+function llmAdapterInstance(methods: UnknownRecord): UnknownRecord {
+  const AdapterBase = LlmAdapter as unknown as new () => UnknownRecord
+  return Object.assign(new AdapterBase(), methods)
+}
+
 export function piProviderDshAdapter(providerId: string, provider: PiTransportProvider, host: ProviderAdapterHost): UnknownRecord {
   let warnedStop = false
   const warnStopUnsupported = (): void => {
@@ -160,7 +174,7 @@ export function piProviderDshAdapter(providerId: string, provider: PiTransportPr
       + ' no layer — they cannot be forwarded, so the model will not halt on them',
     )
   }
-  return {
+  return llmAdapterInstance({
     providerInfo: (id: string) => ({ id, name: typeof provider.name === 'string' ? provider.name : id }),
     providerRetryPolicy: () => undefined,
     // The directory entry carries the Pi model's OWN fields (api, baseUrl,
@@ -279,7 +293,7 @@ export function piProviderDshAdapter(providerId: string, provider: PiTransportPr
         contextWindow,
       )
     },
-  }
+  })
 }
 
 // ---- image-admission companion route ---------------------------------------
@@ -362,7 +376,7 @@ export function imageAdmissionCompanionAdapter(options: CompanionRouteOptions): 
     if (!modalities.includes('image')) modalities.push('image')
     return { ...info, provider: id, inputModalities: modalities }
   }
-  return {
+  return llmAdapterInstance({
     providerInfo: (id: string) => {
       const origin = llm.listProviders().find(provider => provider.id === originalId)
       return { id, name: `${origin?.name ?? originalId} + Vision Bridge` }
@@ -388,7 +402,7 @@ export function imageAdmissionCompanionAdapter(options: CompanionRouteOptions): 
           : {}),
       })
     },
-  }
+  })
 }
 
 export interface RegisterPiProviderRouteOptions {

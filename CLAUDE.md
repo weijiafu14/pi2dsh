@@ -459,15 +459,30 @@ pnpm verify:release   # verify + 全部 examples（装 npm 上刚发的那版）
   本地 deepseek-harness checkout 可能停在实验分支（2026-08-21 就停在废弃的
   core fork 分支上，工作区还有别人的沙箱工作线）——从 checkout 跑 tsx 会把
   workspace 源码链进依赖树，"stock"就不 stock 了。
-- **DSH core 由 CLI 的依赖树提供，profile 只装 surface+插件**：
-  `@deepseek-ai/dsh@0.1.0-rc.8` 的依赖是 exact rc.8 核心包；profile
-  package.json 只有 bundles 和插件三五个条目，正常（pnpm@11 +
-  autoInstallPeers:false）不解析任何 @deepseek-ai 核心包。**若 profile 里
-  出现了自己的 core 拷贝，那是版本混装事故**（rc.8 生态挂 `next` tag、
-  `latest` 还是 rc.6；旧版系统 pnpm 自动装 peers 就会按 latest 拉 rc.6
-  进 profile，遮蔽 CLI 的 rc.8）。**回归断言必须回读 CLI 树里的
-  dsh-agent 版本 + 断言 profile 无 core 拷贝**，singlepath E2E 还断言其
-  lib 里没有 `agent/setup` 字符串（防 fork 污染）。
+- **DSH core 由 CLI 的依赖树提供，profile 只装 surface+插件**：CLI 包的
+  依赖是同版本线核心包；profile package.json 只有 bundles 和插件三五个
+  条目，正常（pnpm@11 + autoInstallPeers:false）不解析任何 @deepseek-ai
+  核心包。**若 profile 里出现了自己的 core 拷贝，或树里两代核心混装，
+  那是版本混装事故**。**回归断言必须回读 CLI 树里的 dsh-agent 版本
+  （与 CLI spec 同版本线）+ 断言 profile 无 core 拷贝**，singlepath E2E
+  还断言其 lib 里没有 `agent/setup` 字符串（防 fork 污染）。
+- **DSH 双版本线口径（2026-08-22 起）**：npm `latest` 已指 `0.1.1-rc.2`
+  （新用户默认装它），rc.8 是既有用户的存量线。桥的 peers 写
+  `^0.1.0-rc.8 || ^0.1.1-rc.1`（照 dsh-TUI 惯例），一份产物双代兼容。
+  已核证的代际差异（契约测试按 `LlmAdapter.prototype.prepareCall` 能力
+  探测分支，不探版本号）：① 0.1.1 的 llm 分发走 adapter.prepareCall
+  ——路由 adapter 必须建在宿主自己的 `LlmAdapter` 基类上（对象字面量在
+  0.1.1 直接炸 `prepareCall is not a function`；基类由 peer 解析到宿主
+  安装的那一代，prepareCall 从基类继承）；② 0.1.1 宿主 dispatch 自己
+  处理模态不匹配：文本模型收图片时替换成显式 `[image omitted …]` 占位
+  （可见降级，桥的拒绝 guard 降为兜底；vision 模型缺附件服务仍由桥
+  拒绝，两代一致）；③ 0.1.1 attachment 服务会重编码存储图片，字节
+  不再 verbatim（断言 PNG 签名+尺寸，不断字节相等）；④ waterfall
+  `system-prompt/assemble`/`tools/pre-execute` 从 agent-loop 移入各
+  子系统，事件名与语义不变。singlepath E2E 默认跑 `latest` 线，rc.8 用
+  `PI2DSH_DSH_CLI_SPEC` 回测；升级预检的标准姿势=git worktree 切
+  devDeps 重装跑全套契约（注意 peer range 与 lockfile 都要动，否则
+  半新半旧混装出假故障）。
 - profile 的组合安装是 CLI 私有流程：改完 profile 配置要重装时重跑
   `dsh plugin add`，别直接在 profile 目录裸跑 pnpm install。
 - 独立目录装 CLI 时 pnpm 11 的坑：minimumReleaseAge 用

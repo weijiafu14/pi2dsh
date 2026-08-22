@@ -37,7 +37,10 @@ const execFile = promisify(execFileCallback)
 const projectRoot = resolve(new URL('..', import.meta.url).pathname)
 const outPath = resolve(process.argv[2] ?? 'community/tui-singlepath-e2e.json')
 
-const DSH_CLI_SPEC = process.env.PI2DSH_DSH_CLI_SPEC ?? '@deepseek-ai/dsh@0.1.0-rc.8'
+// Default follows npm `latest` — the CLI a NEW user installs today. The
+// rc.8 line stays supported: re-run with
+// PI2DSH_DSH_CLI_SPEC=@deepseek-ai/dsh@0.1.0-rc.8 to cover it.
+const DSH_CLI_SPEC = process.env.PI2DSH_DSH_CLI_SPEC ?? '@deepseek-ai/dsh@0.1.1-rc.2'
 const TUI_SPEC = process.env.PI2DSH_TUI_SPEC ?? '@deepseek-harness-tui/dsh-tui'
 const ENGINE_SPEC = process.env.PI2DSH_ENGINE_SPEC ?? projectRoot
 const MCP_ADAPTER_SPEC = process.env.PI2DSH_MCP_ADAPTER_SPEC ?? 'pi-mcp-adapter@2.27.0'
@@ -246,7 +249,11 @@ try {
   const agentPkgPath = sh(`find ${JSON.stringify(join(cliDir, 'node_modules'))} -path '*/node_modules/@deepseek-ai/dsh-agent/package.json' -print | head -n 1`).trim()
   if (agentPkgPath === '') throw new Error('the CLI install did not resolve @deepseek-ai/dsh-agent')
   const agentVersion = JSON.parse(await readFile(agentPkgPath, 'utf8')).version
-  if (agentVersion !== '0.1.0-rc.8') throw new Error(`the CLI resolved dsh-agent@${agentVersion}, expected stock 0.1.0-rc.8`)
+  // The anti-mixing pin follows the CLI under test: core packages ship the
+  // same version line as the CLI, so the expectation derives from the spec
+  // instead of freezing the harness to one release.
+  const expectedCoreVersion = DSH_CLI_SPEC.slice(DSH_CLI_SPEC.lastIndexOf('@') + 1)
+  if (agentVersion !== expectedCoreVersion) throw new Error(`the CLI resolved dsh-agent@${agentVersion}, expected stock ${expectedCoreVersion}`)
   const profileCore = sh(`find ${JSON.stringify(join(profileRoot, 'node_modules'))} -maxdepth 4 -path '*/@deepseek-ai/dsh-agent' -print 2>/dev/null | head -n 1`).trim()
   if (profileCore !== '') throw new Error(`the profile resolved its own core copy at ${profileCore} — it would shadow the CLI's rc.8 core`)
   const agentLib = await readFile(join(agentPkgPath, '..', 'lib', 'index.js'), 'utf8')
