@@ -524,8 +524,16 @@ async function askOne(
     ask(request: UnknownRecord): Promise<{ answers: UnknownRecord[] }>
   }>(ctx, 'userQuestions')
   if (service === undefined) unsupported('ctx.ui AskUser')
-  const result = await service.ask({ questions: [question], ...(agent !== undefined ? { agent } : {}), signal })
-  return answerText(result.answers.find(answer => answer.id === question.id))
+  try {
+    const result = await service.ask({ questions: [question], ...(agent !== undefined ? { agent } : {}), signal })
+    return answerText(result.answers.find(answer => answer.id === question.id))
+  } catch (error) {
+    // Pi's ExtensionUIDialogOptions.signal means "programmatically dismiss
+    // the dialog": a dismissed dialog resolves undefined, same as the user
+    // cancelling — it is not an error the package must handle.
+    if (signal?.aborted === true) return undefined
+    throw error
+  }
 }
 
 function agentSession(agent: UnknownRecord | undefined): { id: string; events: unknown } | undefined {
@@ -674,6 +682,29 @@ async function summarizeAbandonedBranch(
   return result.summary
 }
 
+/** Resolve Pi's official `ExtensionUIDialogOptions` third argument
+ * (`{ signal?, timeout? }`, types.ts:96 at the pinned upstream) into one
+ * abort signal. A bare AbortSignal is also accepted — pi-ai's OAuth prompt
+ * callbacks hand the signal directly. Anything else resolves to undefined.
+ * The `timeout` field is realized with AbortSignal.timeout, so a dialog the
+ * package wants auto-dismissed really leaves the screen. Silently ignoring
+ * the options object is what left the OAuth paste box on screen after the
+ * browser callback had already won (pi-mcp-adapter passes
+ * `ui.input(title, undefined, { signal })` and cancels it in its
+ * waitForAuthorizationResponse finally block). */
+function dialogAbortSignal(opts: unknown): AbortSignal | undefined {
+  if (opts instanceof AbortSignal) return opts
+  if (typeof opts !== 'object' || opts === null) return undefined
+  const record = opts as { signal?: unknown; timeout?: unknown }
+  const signals: AbortSignal[] = []
+  if (record.signal instanceof AbortSignal) signals.push(record.signal)
+  if (typeof record.timeout === 'number' && Number.isFinite(record.timeout) && record.timeout > 0) {
+    signals.push(AbortSignal.timeout(record.timeout))
+  }
+  if (signals.length === 0) return undefined
+  return signals.length === 1 ? signals[0] : AbortSignal.any(signals)
+}
+
 function contextFor(
   ctx: Context,
   state: RuntimeState,
@@ -702,30 +733,30 @@ function contextFor(
     // sends text that is not an option — and the package then rejects its own
     // answer ("Unknown OpenAI Codex login method: 1"). Resolve back to the
     // option here, once, for every package rather than in each caller.
-    select: async (title: unknown, options: unknown[], promptSignal?: unknown) => {
+    select: async (title: unknown, options: unknown[], opts?: unknown) => {
       const labels = options.map(option => String(option))
-      const answered = await askOne(ctx, agent, joinSignals(signal, promptSignal), {
+      const answered = await askOne(ctx, agent, joinSignals(signal, dialogAbortSignal(opts)), {
         id: 'pi2dsh-select',
         question: String(title),
         options: labels.map(label => ({ label })),
       })
       return answered === undefined ? undefined : resolveOfferedChoice(answered, labels)
     },
-    async confirm(title: unknown, message: unknown) {
-      return await askOne(ctx, agent, signal, {
+    async confirm(title: unknown, message: unknown, opts?: unknown) {
+      return await askOne(ctx, agent, joinSignals(signal, dialogAbortSignal(opts)), {
         id: 'pi2dsh-confirm',
         question: String(title),
         detail: String(message),
         options: [{ label: 'Yes' }, { label: 'No' }],
       }) === 'Yes'
     },
-    // The optional third argument is additive: Pi's own ui.input takes two, but
-    // pi-ai's OAuth flows hand each prompt its OWN abort signal and cancel it
-    // when another path wins (the browser callback beating the paste box). Not
-    // honouring it left that box on screen after the login had already
-    // succeeded elsewhere.
-    input: (title: unknown, placeholder?: unknown, promptSignal?: unknown) => askOne(
-      ctx, agent, joinSignals(signal, promptSignal), {
+    // Pi's dialog surfaces take ExtensionUIDialogOptions as their trailing
+    // argument; dialogAbortSignal resolves it (and the bare-signal shape
+    // pi-ai's OAuth prompt callbacks use) so a package cancelling one prompt
+    // path really dismisses the DSH question — the browser callback beating
+    // the paste box must take the paste box off the screen.
+    input: (title: unknown, placeholder?: unknown, opts?: unknown) => askOne(
+      ctx, agent, joinSignals(signal, dialogAbortSignal(opts)), {
         id: 'pi2dsh-input',
         question: String(title),
         ...(placeholder === undefined ? {} : { detail: String(placeholder) }),
@@ -734,8 +765,8 @@ function contextFor(
     // provider simply polls. Keep that expiring code in DSH's live question
     // surface until the flow finishes. Any user dismissal is a cancellation,
     // which oauthInteraction turns into an abort of the package-owned flow.
-    deviceCode: async (title: unknown, detail: unknown, promptSignal?: unknown) => {
-      await askOne(ctx, agent, joinSignals(signal, promptSignal), {
+    deviceCode: async (title: unknown, detail: unknown, opts?: unknown) => {
+      await askOne(ctx, agent, joinSignals(signal, dialogAbortSignal(opts)), {
         id: 'pi2dsh-device-code',
         question: String(title),
         detail: String(detail),

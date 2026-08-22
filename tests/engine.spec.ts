@@ -538,6 +538,87 @@ describe('engine mounting on a real DSH composition', () => {
     await expect(execute(agentB, 'bus_report')).resolves.toBe('')
   })
 
+  it("cancelling a dialog's ExtensionUIDialogOptions.signal dismisses the DSH question and resolves undefined", async () => {
+    // Upstream host-scenario checklist (pi-mcp-adapter OAuth): the package
+    // races the localhost callback against a manual paste box —
+    // `ui.input(title, undefined, { signal })` — and aborts the loser in a
+    // finally block (mcp-auth-flow.ts waitForAuthorizationResponse). Pi's
+    // trailing dialog argument is ExtensionUIDialogOptions ({ signal?,
+    // timeout? }, types.ts:96): treating it as a bare AbortSignal silently
+    // dropped the cancellation, leaving the paste box on screen after the
+    // browser login had already succeeded.
+    const root = await makeProfile({ 'pi-dialog-cancel': '1.0.0' })
+    await installFixturePackage(root, 'pi-dialog-cancel', { pi: { extensions: ['extension.ts'] } }, {
+      'extension.ts': [
+        'export default function extension(pi: any) {',
+        '  pi.registerTool({',
+        "    name: 'dialog_cancel_probe',",
+        "    description: 'Races a dialog against a programmatic dismissal.',",
+        "    parameters: { type: 'object', properties: {}, additionalProperties: false },",
+        '    async execute(_id: string, _args: unknown, _signal: AbortSignal, _update: unknown, ctx: any) {',
+        '      const controller = new AbortController()',
+        "      const pending = ctx.ui.input('Paste the callback URL', undefined, { signal: controller.signal })",
+        '      setTimeout(() => controller.abort(), 25)',
+        '      const answer = await pending',
+        "      return { content: [{ type: 'text', text: `answer:${String(answer)}` }] }",
+        '    },',
+        '  })',
+        '}',
+      ].join('\n'),
+    })
+
+    const ctx = new Context()
+    await ctx.plugin(SessionStore)
+    await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
+    await ctx.plugin(ToolRuntime)
+    await ctx.plugin(CommandRuntime)
+    await ctx.plugin(SkillRegistry)
+    // Human interaction demands the exact live registry agent, so this
+    // scenario runs on a REAL registry-published agent, not a hand-rolled one.
+    const { default: LlmRuntime } = await import('@deepseek-ai/dsh-llm')
+    const { default: AgentRegistry } = await import('@deepseek-ai/dsh-agent')
+    const { default: AgentLoop } = await import('@deepseek-ai/dsh-agent-loop')
+    await ctx.plugin(LlmRuntime as never, {} as never)
+    await ctx.plugin(AgentRegistry as never, {} as never)
+    await ctx.plugin(AgentLoop as never, {} as never)
+    const { default: UserQuestionService } = await import('@deepseek-ai/dsh-user-questions')
+    await ctx.plugin(UserQuestionService as never, {} as never)
+    // A hanging provider standing in for a real UI: it never answers on its
+    // own and withdraws the question only when the request's signal aborts —
+    // exactly what a human-facing surface does when the dialog is dismissed.
+    let sawSignal = false
+    ;(ctx as unknown as { userQuestions: { registerProvider(provider: unknown): unknown } }).userQuestions.registerProvider({
+      async ask(request: { questions: Array<{ id: string }>; signal?: AbortSignal }) {
+        sawSignal = request.signal instanceof AbortSignal
+        return new Promise((_resolve, reject) => {
+          request.signal?.addEventListener('abort', () => { reject(new Error('question withdrawn')) }, { once: true })
+        })
+      },
+    })
+    ;(ctx as unknown as { baseUrl: string }).baseUrl = `file://${root}/cordis.yml`
+    await apply(ctx, {})
+
+    const registry = (ctx as unknown as {
+      agents: { create(options: Record<string, unknown>): Promise<{ agent: Record<string, unknown> }> }
+    }).agents
+    const { agent } = await registry.create({ sessionId: SessionId('pi2dsh-dialog-cancel') })
+
+    const result = await (ctx as unknown as {
+      tools: { execute(request: Record<string, unknown>): Promise<{ content: Array<{ text?: string }> }> }
+    }).tools.execute({
+      signal: new AbortController().signal,
+      callId: CallId('dialog-cancel'),
+      name: 'dialog_cancel_probe',
+      arguments: {},
+      agent,
+    })
+    // The abort reached the DSH question service (the withdrawal really
+    // happened), and Pi's contract held: a dismissed dialog resolves
+    // undefined, it does not throw at the package.
+    expect(sawSignal).toBe(true)
+    expect(result.content[0]?.text).toBe('answer:undefined')
+  })
+
   it('a slow package operation outliving its disposed agent fails catchably, never crashing the host', async () => {
     // Upstream host-scenario checklist (pi-mcp-adapter "initializeMcp vs. a
     // ctx invalidated mid-connect"): a package starts a slow connect-like
