@@ -91,6 +91,37 @@ internal session/message/consent branches remain extensively unit-tested
 upstream, while their user-visible resource, authenticated host and browser-open
 path is also included in the DSH end-to-end matrix above.
 
+## Upstream host-scenario checklist (standard acceptance step)
+
+The upstream suite must NOT be ported wholesale: of its ~106 test files, ~98
+test package-internal modules and the 26-scenario conformance run drives
+`McpServerManager` directly — the host is not on the tested path, so running
+them against pi2dsh proves nothing about the bridge (survey of v2.27.0
+`dd380db`, 2026-08-22). The ~8 files that do construct a host stand-in assert
+`vi.fn()` call counts, which cannot be pointed at a real host without
+rewriting every assertion — and the surfaces they touch are already covered
+by the end-to-end matrix above.
+
+What IS kept, on every package version bump: **diff the scenario titles** of
+the upstream host-facing tests (the files that build a `pi`/`ExtensionAPI`
+stand-in) against the matrix above, and translate any scenario the matrix
+does not cover into a pi2dsh contract test. This costs minutes, and it
+surfaces exactly the cases upstream learned to guard against hosts whose
+shape differs from stock Pi. The 2.27.0 diff produced two:
+
+- **TypeBox surface fidelity** (upstream: "host TypeBox shim omits Unsafe",
+  "internal markers leak into registered schemas") →
+  `tests/upstream-host-scenarios.spec.ts`: the compat shim must supply the
+  complete `Type` including `Unsafe`; normalized schemas are marker-free
+  plain JSON; constraints outside DSH's enforced subset are dropped WITH an
+  explicit warning, never silently.
+- **ctx invalidated mid-connect** (upstream: "initializeMcp vs. a ctx
+  invalidated mid-connect") → `tests/engine.spec.ts` ("a slow package
+  operation outliving its disposed agent"): a late ctx use after agent
+  disposal fails catchably, nothing escapes as an unhandled rejection, the
+  handler received exactly one `session_start`, and a fresh agent still
+  mounts and executes.
+
 ## Known differences from native Pi
 
 These differences are explicit and do not block the standard `mcp.json` path:

@@ -538,6 +538,107 @@ describe('engine mounting on a real DSH composition', () => {
     await expect(execute(agentB, 'bus_report')).resolves.toBe('')
   })
 
+  it('a slow package operation outliving its disposed agent fails catchably, never crashing the host', async () => {
+    // Upstream host-scenario checklist (pi-mcp-adapter "initializeMcp vs. a
+    // ctx invalidated mid-connect"): a package starts a slow connect-like
+    // operation, the agent is disposed before it finishes, and the late ctx
+    // use must be a catchable failure or a no-op — a bridge that lets it
+    // escape as an unhandled rejection takes down the whole DSH host.
+    const root = await makeProfile({ 'pi-race-connect': '1.0.0' })
+    const resultFile = join(root, 'race-result')
+    await installFixturePackage(root, 'pi-race-connect', { pi: { extensions: ['extension.ts'] } }, {
+      'extension.ts': [
+        "import { writeFileSync } from 'node:fs'",
+        `const resultFile = ${JSON.stringify(resultFile)}`,
+        // The write helper swallows fs errors: the temp dir may already be
+        // gone when a late timer fires after the test — that cleanup race is
+        // not the contract under test.
+        'const record = (text: string) => { try { writeFileSync(resultFile, text) } catch {} }',
+        'let starts = 0',
+        'export default function extension(pi: any) {',
+        "  pi.on('session_start', (_event: unknown, ctx: any) => {",
+        '    starts += 1',
+        '    record(`started:${starts}`)',
+        '    setTimeout(() => {',
+        '      try {',
+        "        ctx.sendMessage({ content: 'late after dispose' })",
+        "        record(`completed:${starts}`)",
+        '      } catch {',
+        "        record(`caught:${starts}`)",
+        '      }',
+        '    }, 80)',
+        '  })',
+        '  pi.registerTool({',
+        "    name: 'race_probe',",
+        "    description: 'Liveness probe.',",
+        "    parameters: { type: 'object', properties: {}, additionalProperties: false },",
+        "    async execute() { return { content: [{ type: 'text', text: 'alive' }] } },",
+        '  })',
+        '}',
+      ].join('\n'),
+    })
+
+    const ctx = new Context()
+    await ctx.plugin(SessionStore)
+    await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
+    await ctx.plugin(ToolRuntime)
+    await ctx.plugin(CommandRuntime)
+    await ctx.plugin(SkillRegistry)
+    ;(ctx as unknown as { baseUrl: string }).baseUrl = `file://${root}/cordis.yml`
+    await apply(ctx, {})
+
+    const escaped: unknown[] = []
+    const onRejection = (reason: unknown): void => { escaped.push(reason) }
+    process.on('unhandledRejection', onRejection)
+    try {
+      const sessions = (ctx as unknown as { sessions: { create(id: unknown, options: Record<string, unknown>): { id: unknown } } }).sessions
+      const makeAgent = (id: string): Record<string, unknown> => {
+        const session = sessions.create(SessionId(id), { meta: { createdAt: Date.now(), cwd: root } })
+        return { id: session.id, session, steer() {}, inject() {}, followup() {}, whenIdle: () => Promise.resolve() }
+      }
+      const doomed = makeAgent('pi2dsh-race-doomed')
+      const scope = await mountAgentRuntime(ctx, doomed)
+      // Wait until the package's slow operation has actually started — the
+      // race is only real if dispose lands while it is in flight.
+      const { readFile: readResult } = await import('node:fs/promises')
+      for (let tick = 0; tick < 50; tick += 1) {
+        const marker = await readResult(resultFile, 'utf8').catch(() => undefined)
+        if (marker?.startsWith('started') === true) break
+        await new Promise(resolve => setTimeout(resolve, 20))
+      }
+      // Exactly ONE session_start reached the handler (Pi's once-per-instance
+      // contract) — a doubled dispatch would fork two timers and betray a
+      // duplicated lifecycle delivery.
+      expect(await readResult(resultFile, 'utf8')).toBe('started:1')
+      // Dispose while the package's slow operation is still pending.
+      agentEvents(ctx, doomed as never).emit('agent/disposed', {})
+      await scope.dispose()
+      await new Promise(resolve => setTimeout(resolve, 160))
+
+      // The late ctx use resolved catchably (either the surface no-opped or
+      // threw a catchable error) — and nothing escaped the event loop.
+      const outcome = await readResult(resultFile, 'utf8')
+      expect(['caught:1', 'completed:1']).toContain(outcome)
+      expect(escaped).toEqual([])
+
+      // The host is intact: a fresh agent mounts and executes normally.
+      const survivor = makeAgent('pi2dsh-race-survivor')
+      await mountAgentRuntime(ctx, survivor)
+      const result = await (ctx as unknown as {
+        tools: { execute(request: Record<string, unknown>): Promise<{ content: Array<{ text?: string }> }> }
+      }).tools.execute({
+        signal: new AbortController().signal,
+        callId: CallId('race-probe'),
+        name: 'race_probe',
+        arguments: {},
+        agent: survivor,
+      })
+      expect(result.content[0]?.text).toBe('alive')
+    } finally {
+      process.off('unhandledRejection', onRejection)
+    }
+  })
+
   it('auto-registers a -vision companion for every text-only route, skipping image-capable routes (zero config)', async () => {
     const root = await makeProfile({})
     const { ctx, llm, TextAdapter } = await makeLlmContext(root)
