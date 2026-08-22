@@ -42,7 +42,7 @@ One engine, then whatever plugins you want:
 
 ```sh
 dsh plugin --profile web add pi2dsh
-dsh plugin --profile web add @kassing/pi-vision
+dsh plugin --profile web add pi-mcp-adapter
 ```
 
 Then **restart `dsh`** — plugins mount at startup.
@@ -82,84 +82,65 @@ Two installer messages worth knowing:
 
 Requires Node.js 22.19+ and DeepSeek Harness.
 
-## Walkthrough: give a text-only model eyes
+## Walkthrough: advanced MCP in your terminal
 
-The clearest example of what the bridge buys you. DeepSeek models are
-text-only, so DSH cannot send them an image. The Pi ecosystem has a plugin for
-exactly this — it hands the image to a vision model you choose and injects the
-analysis back into the conversation.
+The clearest example of what the bridge buys you. dsh-TUI ships a native
+`/mcp` command for DSH's official MCP client — it works, and it stays
+untouched. The Pi ecosystem has a much richer MCP power tool: a full-screen
+server manager, lazy tool discovery, one proxy tool instead of flooding the
+model context with dozens of tools, JavaScript orchestration of multiple MCP
+calls, OAuth logins, resources and prompts. With the bridge, that package runs
+unmodified.
 
-### 1. Install the plugin
-
-```sh
-dsh plugin --profile web add @kassing/pi-vision
-```
-
-### 2. Point it at a multimodal model
-
-**This is the step to get right** — the plugin needs its own vision model, and
-it is a different model from the one you chat with. Any OpenAI-compatible
-vision endpoint works (OpenRouter, DashScope/Qwen-VL, a self-hosted vLLM, …).
-
-The plugin reads its configuration from environment variables — the standard
-way Pi plugins are configured, and a plain DSH-side action for you:
+### 1. Install
 
 ```sh
-export VISION_BRIDGE_BASE_URL=https://openrouter.ai/api/v1
-export VISION_BRIDGE_MODEL=qwen/qwen2.5-vl-72b-instruct
-export VISION_BRIDGE_API_KEY=$OPENROUTER_API_KEY
+dsh plugin --profile dsh-tui add @deepseek-harness-tui/dsh-tui   # skip if the profile exists
+dsh plugin --profile dsh-tui add pi2dsh
+dsh plugin --profile dsh-tui add pi-mcp-adapter
 ```
 
-That is enough to work. If you would also like that vision model to appear in
-DSH's own model picker (so you can chat with it directly), add it as a normal
-DSH route as well — the `llm-pi-ai:` section of `$DSH_HOME/settings.yaml`:
+Then restart `dsh` — plugins mount at startup.
 
-```yaml
-llm-pi-ai:
-  providers:
-    openrouter:
-      baseUrl: https://openrouter.ai/api/v1
-      apiKeyEnv: OPENROUTER_API_KEY
-      models:
-        - id: qwen/qwen2.5-vl-72b-instruct
+### 2. Configure your MCP servers
+
+Inside dsh-TUI, run:
+
+```text
+/pi-mcp setup
 ```
 
-Both are ordinary DSH configuration. The bridge owns no model configuration of
-its own, and there is no Pi-format file for you to write.
+The setup flow can adopt MCP server definitions from host configs you already
+have into the adapter's own standard `mcp.json`. No bridge-specific
+configuration exists — everything you touch is the package's own surface.
 
-Avoid GPT-5/o-family models as the vision backend: that generation rejects the
-non-default `temperature` some vision plugins send.
+### 3. Use it
 
-### 3. Ask about an image
-
-In the CLI, mention a path:
-
-```sh
-dsh --profile web "What color fills $PWD/photo.png ? One word."
+```text
+/pi-mcp
 ```
 
-In the web app, **just paste the image** — even though your main model is
-text-only. DSH normally refuses image attachments for a text-only model, so
-the engine registers an *image-admission companion* route for every text-only
-route in your directory, named `<route>-vision`. Pick it in the model picker
-(it shows up as a "+ Vision Bridge" group), paste, and ask.
+opens the full-screen interactive server manager — its footer documents the
+keys for enable/disable, reconnect and OAuth login. The model receives the
+adapter's `mcp` and `mcpScript` tools through DSH's normal tool registry, and
+each agent (`/new` included) gets its own fully connected instance.
 
-What you will see: your image becomes guide text, a
-`pi2dsh:@kassing/pi-vision` context-injection row carries the analysis, and
-your text-only model answers about the picture. Pixels never reach the
-text-only wire.
+dsh-TUI's native command remains separate, and both stay available:
 
-Companions are automatic. To turn them off, or narrow them to specific routes,
-set `visionCompanions` in the engine's plugin config
-(`$DSH_HOME/profiles/web/cordis.patch.yml`):
-
-```yaml
-- id: pi2dsh
-  config:
-    visionCompanions: false
+```text
+/mcp       # native DSH MCP-client status
+/pi-mcp    # the installed Pi adapter's manager
 ```
 
-Full runnable version, with probe images: [`examples/vision-bridge`](examples/vision-bridge/).
+What is verified behind this walkthrough: 16 host-influenced capabilities
+end to end on the stock npm stack — three real transports, discovery, proxy
+and hot-loaded direct tools, `mcpScript`, resources, prompts, images becoming
+real DSH attachments, MCP Apps, tool approval through DSH questions,
+elicitation, sampling against the real DSH model runtime, cancellation and
+session restart. The full evidence matrix:
+[`docs/mcp-compatibility.md`](docs/mcp-compatibility.md).
+
+Full runnable version: [`examples/tui-mcp`](examples/tui-mcp/).
 
 ## What actually works today
 

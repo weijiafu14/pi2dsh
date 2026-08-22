@@ -35,7 +35,7 @@ DSH 插件一样装一个 Pi 插件，它就能用。
 
 ```sh
 dsh plugin --profile web add pi2dsh
-dsh plugin --profile web add @kassing/pi-vision
+dsh plugin --profile web add pi-mcp-adapter
 ```
 
 然后**重启 `dsh`**——插件在启动时挂载。
@@ -70,78 +70,58 @@ Pi 包（每一个都是你显式装的），用同一个桥实例挂载它们�
 
 需要 Node.js 22.19+ 和 DeepSeek Harness。
 
-## 走一遍：让纯文本模型能看图
+## 走一遍：终端里的进阶 MCP
 
-这个例子最能说明这座桥值什么。DeepSeek 系列是纯文本模型，DSH 没法把图片发给它。
-Pi 生态里正好有插件干这件事：把图片交给你指定的视觉模型，再把分析结果注入回对话。
+这个例子最能说明这座桥值什么。dsh-TUI 自带原生的 `/mcp` 命令（DSH 官方 MCP
+客户端）——它能用，也原封不动。而 Pi 生态里有一个功能强得多的 MCP 利器：全屏
+服务器管理器、工具懒加载、用一个代理工具代替把几十个工具塞满模型上下文、用
+JavaScript 编排多次 MCP 调用、OAuth 登录、资源与提示词。装上桥，这个包原样就能跑。
 
-### 1. 装插件
-
-```sh
-dsh plugin --profile web add @kassing/pi-vision
-```
-
-### 2. 给它配一个多模态模型
-
-**这一步是关键**——插件需要它自己的视觉模型，这个模型和你聊天用的那个不是同一个。
-任何 OpenAI 兼容的视觉端点都行（OpenRouter、DashScope/Qwen-VL、自建 vLLM……）。
-
-插件从环境变量读自己的配置——这是 Pi 插件生态的主流做法，对你来说就是一个纯粹的
-DSH 侧动作：
+### 1. 安装
 
 ```sh
-export VISION_BRIDGE_BASE_URL=https://openrouter.ai/api/v1
-export VISION_BRIDGE_MODEL=qwen/qwen2.5-vl-72b-instruct
-export VISION_BRIDGE_API_KEY=$OPENROUTER_API_KEY
+dsh plugin --profile dsh-tui add @deepseek-harness-tui/dsh-tui   # profile 已存在则跳过
+dsh plugin --profile dsh-tui add pi2dsh
+dsh plugin --profile dsh-tui add pi-mcp-adapter
 ```
 
-配到这里就能用了。如果你还想让这个视觉模型出现在 DSH 自己的模型选择器里（这样
-你也能直接和它聊），就再把它按普通 DSH 路由配一份——`$DSH_HOME/settings.yaml`
-的 `llm-pi-ai:` 段：
+然后重启 `dsh`——插件在启动时挂载。
 
-```yaml
-llm-pi-ai:
-  providers:
-    openrouter:
-      baseUrl: https://openrouter.ai/api/v1
-      apiKeyEnv: OPENROUTER_API_KEY
-      models:
-        - id: qwen/qwen2.5-vl-72b-instruct
+### 2. 配置你的 MCP 服务器
+
+在 dsh-TUI 里运行：
+
+```text
+/pi-mcp setup
 ```
 
-这两处都是普通的 DSH 配置。桥自己不持有任何模型配置，也没有任何需要你手写的
-Pi 格式文件。
+setup 流程可以把你已有宿主配置里的 MCP 服务器定义收编进 adapter 自己的标准
+`mcp.json`。不存在任何桥专属的配置——你接触到的一切都是这个包自己的界面。
 
-视觉后端别选 GPT-5/o 系列：那一代模型会拒绝非默认的 `temperature`，而有些视觉
-插件会带这个参数。
+### 3. 用起来
 
-### 3. 问一张图
-
-CLI 里直接提路径：
-
-```sh
-dsh --profile web "$PWD/photo.png 这张图是什么颜色？只答一个词。"
+```text
+/pi-mcp
 ```
 
-Web 里**直接粘图**——哪怕你的主模型是纯文本的。DSH 正常情况下会拒绝给纯文本模型
-上传图片，所以引擎会给模型目录里**每一个纯文本路由**自动注册一个贴图伴生路由，
-名字是 `<路由>-vision`。在模型选择器里选它（显示为 “+ Vision Bridge” 分组），
-粘图，提问。
+打开全屏交互式服务器管理器——底栏写着启用/停用、重连、OAuth 登录的按键。模型
+经 DSH 的正常工具注册表拿到 adapter 的 `mcp` 与 `mcpScript` 工具；每个 Agent
+（包括 `/new` 开的）都有自己独立、完整连接的一份实例。
 
-你会看到：你消息里的图片块变成引导文本，一行 `pi2dsh:@kassing/pi-vision` 的
-上下文注入带着分析结果，然后你的纯文本模型照常回答图片内容。像素从没进过纯文本
-那条线。
+dsh-TUI 的原生命令保持独立，两者共存：
 
-伴生路由是全自动的。想关掉、或者只给某些路由开，在引擎的插件配置里设
-`visionCompanions`（`$DSH_HOME/profiles/web/cordis.patch.yml`）：
-
-```yaml
-- id: pi2dsh
-  config:
-    visionCompanions: false
+```text
+/mcp       # 原生 DSH MCP 客户端状态
+/pi-mcp    # 装入的 Pi adapter 管理器
 ```
 
-完整可跑版本（含纯色探针图）：[`examples/vision-bridge`](examples/vision-bridge/)。
+这条走查背后验证过什么：16 项宿主可影响的能力在 stock npm 全家桶上端到端跑通——
+三种真实传输、发现、代理与热加载直连工具、`mcpScript`、资源、提示词、MCP 图片
+变成真实 DSH 附件、MCP Apps、经 DSH 官方问答的工具审批、elicitation、对着真实
+DSH 模型运行时的 sampling、取消与会话重启。完整证据矩阵：
+[`docs/mcp-compatibility.md`](docs/mcp-compatibility.md)。
+
+完整可跑版本：[`examples/tui-mcp`](examples/tui-mcp/)。
 
 ## 现在到底哪些真能用
 
