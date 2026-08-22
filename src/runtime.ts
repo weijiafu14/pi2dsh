@@ -32,7 +32,7 @@ import {
   generateBranchSummary,
   getAgentDir,
 } from './compat/pi-coding-agent.js'
-import { getKeybindings } from './compat/pi-tui.js'
+import { getKeybindings, stripTerminalSequences } from './compat/pi-tui.js'
 import { childLabel, createBridgedAgentSession, type SubagentHost } from './subagent-bridge.js'
 import { openBrowser } from './compat/vendor/pi-open-browser.js'
 import { BrowserSurfaces, publishAuthorization, registerBrowserSurfaceRoute, revokeAuthorization, surfaceText, type SurfaceKey } from './browser-surfaces.js'
@@ -705,6 +705,75 @@ function dialogAbortSignal(opts: unknown): AbortSignal | undefined {
   return signals.length === 1 ? signals[0] : AbortSignal.any(signals)
 }
 
+const OSC8_HYPERLINK = /\u001b\]8;[^;]*;([^\u0007\u001b]*)(?:\u0007|\u001b\\)([\s\S]*?)\u001b\]8;;(?:\u0007|\u001b\\)/gu
+const MARKDOWN_LINK = /\[([^\]]+)\]\(([^)]+)\)/gu
+
+interface DialogPromptProjection {
+  question: string
+  detail?: string
+}
+
+type DialogLinkMode = 'markdown' | 'terminal'
+
+/**
+ * Translate terminal-oriented Pi dialog copy into DSH's native question
+ * shape. Pi packages legitimately put OSC 8 links and a multi-line body in
+ * the dialog title because Pi's TUI owns that whole text block. DSH separates
+ * a plain-text heading from a Markdown detail block, and its Web client renders
+ * terminal control bytes literally. Keep the plugin's words and destination,
+ * but move them onto the host's real presentation contract.
+ */
+function projectDialogPrompt(
+  title: unknown,
+  supplementalDetail: unknown,
+  linkMode: DialogLinkMode,
+): DialogPromptProjection {
+  const linkedUrls = new Set<string>()
+  const normalize = (value: unknown): string => {
+    const formatted = String(value).replace(
+    OSC8_HYPERLINK,
+    (whole, url: string, label: string) => {
+      linkedUrls.add(url)
+      if (linkMode === 'terminal') return whole
+      const safeLabel = stripTerminalSequences(label).replace(/([\\\[\]])/gu, '\\$1')
+      return `[${safeLabel}](${url})`
+    },
+    )
+    return (linkMode === 'terminal' ? formatted : stripTerminalSequences(formatted)).replace(/\r\n?/gu, '\n')
+  }
+
+  const titleLines = normalize(title).split('\n')
+  while (titleLines[0]?.trim() === '') titleLines.shift()
+  while (titleLines.at(-1)?.trim() === '') titleLines.pop()
+
+  const headingLine = titleLines.shift()?.trim() || 'Input required'
+  const headingHasLink = linkMode === 'terminal'
+    ? headingLine.includes('\u001b]8;')
+    : [...headingLine.matchAll(MARKDOWN_LINK)].length > 0
+  const question = linkMode === 'terminal'
+    ? stripTerminalSequences(headingLine)
+    : headingLine.replace(MARKDOWN_LINK, '$1')
+  if (headingHasLink) titleLines.unshift('', headingLine)
+
+  const detailLines = [...titleLines]
+  if (supplementalDetail !== undefined) {
+    if (detailLines.length > 0 && detailLines.at(-1)?.trim() !== '') detailLines.push('')
+    detailLines.push(...normalize(supplementalDetail).split('\n'))
+  }
+
+  const deduplicated: string[] = []
+  for (const line of detailLines) {
+    if (linkedUrls.has(line.trim())) continue
+    if (line.trim() === '' && deduplicated.at(-1)?.trim() === '') continue
+    deduplicated.push(line.replace(/[ \t]+$/gu, ''))
+  }
+  while (deduplicated[0]?.trim() === '') deduplicated.shift()
+  while (deduplicated.at(-1)?.trim() === '') deduplicated.pop()
+
+  const detail = deduplicated.join('\n')
+  return { question, ...(detail.length === 0 ? {} : { detail }) }
+}
+
 function contextFor(
   ctx: Context,
   state: RuntimeState,
@@ -715,6 +784,11 @@ function contextFor(
 ): UnknownRecord {
   const notices: string[] = []
   const userQuestions = optionalService(ctx, 'userQuestions')
+  // The same native DSH question seam has two renderers: Web consumes
+  // Markdown detail, while dsh-TUI consumes terminal text and preserves OSC 8.
+  // Keep one dialog lifecycle/answer path, choosing only the link encoding the
+  // active public surface actually renders.
+  const dialogLinkMode: DialogLinkMode = optionalService(ctx, 'tuiScenes') === undefined ? 'markdown' : 'terminal'
   const ui = {
     // Pi: `notify(message, type?: 'info' | 'warning' | 'error')`. The severity
     // is the whole point of the second argument — dropping it filed a
@@ -737,7 +811,7 @@ function contextFor(
       const labels = options.map(option => String(option))
       const answered = await askOne(ctx, agent, joinSignals(signal, dialogAbortSignal(opts)), {
         id: 'pi2dsh-select',
-        question: String(title),
+        ...projectDialogPrompt(title, undefined, dialogLinkMode),
         options: labels.map(label => ({ label })),
       })
       return answered === undefined ? undefined : resolveOfferedChoice(answered, labels)
@@ -745,8 +819,7 @@ function contextFor(
     async confirm(title: unknown, message: unknown, opts?: unknown) {
       return await askOne(ctx, agent, joinSignals(signal, dialogAbortSignal(opts)), {
         id: 'pi2dsh-confirm',
-        question: String(title),
-        detail: String(message),
+        ...projectDialogPrompt(title, message, dialogLinkMode),
         options: [{ label: 'Yes' }, { label: 'No' }],
       }) === 'Yes'
     },
@@ -758,8 +831,7 @@ function contextFor(
     input: (title: unknown, placeholder?: unknown, opts?: unknown) => askOne(
       ctx, agent, joinSignals(signal, dialogAbortSignal(opts)), {
         id: 'pi2dsh-input',
-        question: String(title),
-        ...(placeholder === undefined ? {} : { detail: String(placeholder) }),
+        ...projectDialogPrompt(title, placeholder, dialogLinkMode),
       }),
     // Device-code OAuth does not ask for text after announcing the code; the
     // provider simply polls. Keep that expiring code in DSH's live question
@@ -768,15 +840,13 @@ function contextFor(
     deviceCode: async (title: unknown, detail: unknown, opts?: unknown) => {
       await askOne(ctx, agent, joinSignals(signal, dialogAbortSignal(opts)), {
         id: 'pi2dsh-device-code',
-        question: String(title),
-        detail: String(detail),
+        ...projectDialogPrompt(title, detail, dialogLinkMode),
         options: [{ label: 'Cancel login' }],
       })
     },
     editor: (title: unknown, prefill?: unknown) => askOne(ctx, agent, signal, {
       id: 'pi2dsh-editor',
-      question: String(title),
-      ...(prefill === undefined ? {} : { detail: `Current text:\n${String(prefill)}` }),
+      ...projectDialogPrompt(title, prefill === undefined ? undefined : `Current text:\n${String(prefill)}`, dialogLinkMode),
     }),
     // Pi's presentation calls, on DSH's browser surface. Each records what the
     // package put on screen for THIS session; the bridge's own browser half

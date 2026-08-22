@@ -393,6 +393,12 @@ client seam；两个数字都不表示“已经完整”。
 - 理论对应：[DSH / 命令与人机交互](#dsh-interaction)与
   [DSH / 客户端与 Web](#dsh-client)。
 - 需要的公开 seam：`ctx.userQuestions` 与原生客户端渲染。
+- 当前投影：Pi 把终端的一整块多行文案放在 dialog title；DSH 把它拆成纯文本
+  `question` 与原生 `detail`。pi2dsh 以首行为标题、其余为正文；Web detail 使用
+  Markdown 链接，dsh-TUI detail 保留 OSC 8，两个 surface 都去掉重复裸 URL，且
+  不把控制序列显示给用户；`ExtensionUIDialogOptions`
+  的 `signal`/`timeout` 透传到 DSH 问题撤销语义，所以浏览器自动回调赢得 OAuth
+  竞速时，TUI 与 Web 都立即撤掉手工粘贴框。
 - 理论判断：组合承接。
 
 <a id="pi-ui-notifications"></a>

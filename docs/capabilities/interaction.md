@@ -19,10 +19,10 @@ remain headless or become an explicit Web-native projection.
 | [`notify`](#notify-ctxui) | `ctx.ui.*` | Same semantics | Captured as a command result when applicable and emitted through DSH logging at the severity the caller passed (warning and error log as warnings). |
 | [`setStatus`](#setstatus-ctxui) | `ctx.ui.*` | Same semantics | Pi's keyed status entries render in the active DSH front door: dsh-TUI's native status line in terminal mode and package-keyed pills in the bridge's browser half. setStatus(key, undefined) removes exactly one entry. |
 | [`setWidget`](#setwidget-ctxui) | `ctx.ui.*` | Mapped, difference stated | String-array widgets render as a strip in DSH's conversation.input.dock seat (a full-width row of its own above the composer card). setWidget(key, undefined) removes one widget. Component factories are ignored, exactly like Pi's own rpc mode, where widgets travel to a host as lines. |
-| [`select`](#select-ctxui) | `ctx.ui.*` | Same semantics | Mapped to one native DSH userQuestions single-select request. |
-| [`confirm`](#confirm-ctxui) | `ctx.ui.*` | Same semantics | Mapped to one native DSH userQuestions Yes/No request. |
-| [`input`](#input-ctxui) | `ctx.ui.*` | Same semantics | Mapped to one native DSH userQuestions free-text request. |
-| [`editor`](#editor-ctxui) | `ctx.ui.*` | Mapped, difference stated | Mapped to one DSH userQuestions free-text request. The prefill is shown as context but is NOT editable text: the caller receives what the user typed fresh, not an edit of the prefill. |
+| [`select`](#select-ctxui) | `ctx.ui.*` | Same semantics | Mapped to one native DSH userQuestions single-select request. A terminal-oriented multi-line title becomes DSH's plain heading plus native detail; links render as Markdown on Web and OSC 8 in dsh-TUI without visible escape bytes. |
+| [`confirm`](#confirm-ctxui) | `ctx.ui.*` | Same semantics | Mapped to one native DSH userQuestions Yes/No request. A terminal-oriented multi-line title becomes DSH's plain heading plus native detail; links render as Markdown on Web and OSC 8 in dsh-TUI without visible escape bytes. |
+| [`input`](#input-ctxui) | `ctx.ui.*` | Same semantics | Mapped to one native DSH userQuestions free-text request. A terminal-oriented multi-line title becomes DSH's plain heading plus native detail; links render as Markdown on Web and OSC 8 in dsh-TUI without visible escape bytes. |
+| [`editor`](#editor-ctxui) | `ctx.ui.*` | Mapped, difference stated | Mapped to one DSH userQuestions free-text request. The prefill is shown as context but is NOT editable text: the caller receives what the user typed fresh, not an edit of the prefill. Terminal-oriented title formatting uses the same surface-native DSH heading/detail projection. |
 | [`custom`](#custom-ctxui) | `ctx.ui.*` | Mapped, difference stated | In dsh-TUI, runs the real Pi component in a native full-screen scene with raw terminal input, render invalidation, result completion and disposal. In browser/headless compositions it resolves undefined, Pi's own rpc-mode behavior. |
 | [`setWorkingMessage`](#setworkingmessage-ctxui) | `ctx.ui.*` | Mapped, difference stated | A live working message, drawn in DSH's conversation.composer.dock band (under the composer card — the host's ambient-readout seat, where its own stats line sits). Calling with no argument restores the default, i.e. clears it. |
 | [`setWorkingVisible`](#setworkingvisible-ctxui) | `ctx.ui.*` | Mapped, difference stated | Hides or shows the working chrome (message, indicator, hidden-thinking label) without clearing it — Pi's exact semantics. |
@@ -84,25 +84,25 @@ BrowserSurfaces.setWidget keeps the lines per widget key; the client half draws 
 
 `ctx.ui.*` · Same semantics
 
-One native DSH UserQuestionService request carrying Pi's options as the choices. The turn really blocks until a human answers.
+One native DSH UserQuestionService request carrying Pi's options as the choices. The turn really blocks until a human answers; the shared dialog projection separates title/body and selects the link encoding the active public renderer consumes.
 
 ### `confirm` <a id="confirm-ctxui"></a>
 
 `ctx.ui.*` · Same semantics
 
-One native DSH UserQuestionService request with two choices.
+One native DSH UserQuestionService request with two choices, using the shared dialog projection for title/body and surface-native links.
 
 ### `input` <a id="input-ctxui"></a>
 
 `ctx.ui.*` · Same semantics
 
-One native DSH UserQuestionService free-text request.
+One native DSH UserQuestionService free-text request. The shared dialog projection preserves visible copy and link destinations, selects the active renderer's link encoding, and removes duplicate raw-link lines.
 
 ### `editor` <a id="editor-ctxui"></a>
 
 `ctx.ui.*` · Mapped, difference stated
 
-One native DSH UserQuestionService free-text request. DSH has no editable-prefill question type, so the prefill is shown in the question body and the answer comes back as fresh text.
+One native DSH UserQuestionService free-text request. DSH has no editable-prefill question type, so the prefill is shown in the question body and the answer comes back as fresh text; link encoding uses the active public renderer.
 
 ### `custom` <a id="custom-ctxui"></a>
 

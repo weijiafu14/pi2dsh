@@ -547,6 +547,15 @@ describe('engine mounting on a real DSH composition', () => {
     // timeout? }, types.ts:96): treating it as a bare AbortSignal silently
     // dropped the cancellation, leaving the paste box on screen after the
     // browser login had already succeeded.
+    const authorizationUrl = 'https://auth.example.test/authorize?client_id=pi2dsh&state=dialog-projection'
+    const terminalPrompt = [
+      'Complete example OAuth',
+      '',
+      `\u001b]8;;${authorizationUrl}\u001b\\Open authorization page\u001b]8;;\u001b\\`,
+      authorizationUrl,
+      '',
+      'Approve access, then return to DSH.',
+    ].join('\n')
     const root = await makeProfile({ 'pi-dialog-cancel': '1.0.0' })
     await installFixturePackage(root, 'pi-dialog-cancel', { pi: { extensions: ['extension.ts'] } }, {
       'extension.ts': [
@@ -557,7 +566,7 @@ describe('engine mounting on a real DSH composition', () => {
         "    parameters: { type: 'object', properties: {}, additionalProperties: false },",
         '    async execute(_id: string, _args: unknown, _signal: AbortSignal, _update: unknown, ctx: any) {',
         '      const controller = new AbortController()',
-        "      const pending = ctx.ui.input('Paste the callback URL', undefined, { signal: controller.signal })",
+        `      const pending = ctx.ui.input(${JSON.stringify(terminalPrompt)}, undefined, { signal: controller.signal })`,
         '      setTimeout(() => controller.abort(), 25)',
         '      const answer = await pending',
         "      return { content: [{ type: 'text', text: `answer:${String(answer)}` }] }",
@@ -587,9 +596,11 @@ describe('engine mounting on a real DSH composition', () => {
     // own and withdraws the question only when the request's signal aborts —
     // exactly what a human-facing surface does when the dialog is dismissed.
     let sawSignal = false
+    let seenQuestion: { question: string; detail?: string } | undefined
     ;(ctx as unknown as { userQuestions: { registerProvider(provider: unknown): unknown } }).userQuestions.registerProvider({
-      async ask(request: { questions: Array<{ id: string }>; signal?: AbortSignal }) {
+      async ask(request: { questions: Array<{ id: string; question: string; detail?: string }>; signal?: AbortSignal }) {
         sawSignal = request.signal instanceof AbortSignal
+        seenQuestion = request.questions[0]
         return new Promise((_resolve, reject) => {
           request.signal?.addEventListener('abort', () => { reject(new Error('question withdrawn')) }, { once: true })
         })
@@ -617,6 +628,13 @@ describe('engine mounting on a real DSH composition', () => {
     // undefined, it does not throw at the package.
     expect(sawSignal).toBe(true)
     expect(result.content[0]?.text).toBe('answer:undefined')
+    expect(seenQuestion).toEqual({
+      id: 'pi2dsh-input',
+      question: 'Complete example OAuth',
+      detail: `[Open authorization page](${authorizationUrl})\n\nApprove access, then return to DSH.`,
+    })
+    expect(JSON.stringify(seenQuestion)).not.toContain('\u001b')
+    expect(seenQuestion?.detail?.split(authorizationUrl)).toHaveLength(2)
   })
 
   it('a slow package operation outliving its disposed agent fails catchably, never crashing the host', async () => {
