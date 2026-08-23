@@ -277,6 +277,288 @@ describe('Pi createAgentSession bridged onto real DSH agents', () => {
     })
   })
 
+  // Pi's abort() contract: the run stops and STAYS stopped until the next
+  // explicit prompt(). On DSH, a tool result reaching quiescence after the
+  // cancel is waking input that opens a fresh turn — the real-machine stop
+  // scenario caught a "stopped" child finishing its task in that second turn.
+  // The bridge cancels every turn that opens while aborted; prompt() lifts it.
+  it('keeps an aborted child quiet — a post-abort wake is re-cancelled until the next prompt()', async () => {
+    const ctx = new Context()
+    await ctx.plugin(SessionStore)
+    const session = ctx.sessions.create(SessionId(`quiet-${Date.now()}`), {
+      meta: { createdAt: Date.now(), cwd: process.cwd() },
+    })
+    const cancels: unknown[] = []
+    const realGet = (ctx as unknown as { get(name: string): unknown }).get.bind(ctx)
+    ;(ctx as unknown as { get(name: string): unknown }).get = (name: string) =>
+      name === 'agents'
+        ? {
+            async create() {
+              return {
+                agent: { id: session.id, session, cancel: (reason: unknown) => cancels.push(reason) },
+                dispose: async () => {},
+              }
+            },
+          }
+        : realGet(name)
+    const deliveries: Array<{ mode: string, message: unknown }> = []
+    const { session: pi } = await createBridgedAgentSession(makeHost(ctx, deliveries), {})
+    const seen: string[] = []
+    pi.subscribe(event => seen.push(String((event as UnknownRecord).type)))
+    const emit = (event: UnknownRecord): void => {
+      ;(ctx as unknown as { emit(name: string, ...args: unknown[]): void }).emit('session/event', session, event)
+    }
+
+    pi.abort()
+    expect(cancels).toHaveLength(1)
+    // A late tool result wakes the driver: the opened turn is re-cancelled and
+    // not projected to Pi subscribers — the aborted run stays silent. The
+    // guard fires on every opening event, because a cancel issued exactly at
+    // turn/start can race the driver claiming its activity and no-op.
+    emit({ type: 'turn/start', data: { turn: 2 } })
+    expect(cancels).toHaveLength(2)
+    emit({ type: 'step/start', data: { turn: 2, step: 1 } })
+    emit({ type: 'request/header', data: { turn: 2 } })
+    expect(cancels).toHaveLength(4)
+    expect(seen).not.toContain('turn_start')
+
+    // Prompting again is Pi's way to restart an aborted session: turns project.
+    const prompted = pi.prompt('again')
+    await new Promise(resolve => setTimeout(resolve, 10))
+    emit({ type: 'turn/start', data: { turn: 3 } })
+    emit({ type: 'turn/end', data: { turn: 3 } })
+    await prompted
+    expect(seen).toContain('turn_start')
+    // No further cancels once prompt() lifted the suppression.
+    expect(cancels).toHaveLength(4)
+    await pi.dispose()
+  })
+
+  // Pi's contract fires tool_execution_end per finished call. pi-subagents
+  // counts its user-facing "N tool uses" on exactly this event — before the
+  // bridge emitted it, a child that really ran tools reported "0 tool uses"
+  // and the parent model distrusted its own successes.
+  it('projects a durable tool/result into Pi\'s tool_execution_end with the tool name and error flag', async () => {
+    const ctx = new Context()
+    await ctx.plugin(SessionStore)
+    const session = ctx.sessions.create(SessionId(`toolend-${Date.now()}`), {
+      meta: { createdAt: Date.now(), cwd: process.cwd() },
+    })
+    const realGet = (ctx as unknown as { get(name: string): unknown }).get.bind(ctx)
+    ;(ctx as unknown as { get(name: string): unknown }).get = (name: string) =>
+      name === 'agents'
+        ? { async create() { return { agent: { id: session.id, session }, dispose: async () => {} } } }
+        : realGet(name)
+
+    const deliveries: Array<{ mode: string, message: unknown }> = []
+    const { session: pi } = await createBridgedAgentSession(makeHost(ctx, deliveries), {})
+    const ends: UnknownRecord[] = []
+    pi.subscribe(event => {
+      if ((event as UnknownRecord).type === 'tool_execution_end') ends.push(event as UnknownRecord)
+    })
+    const emit = (event: UnknownRecord): void => {
+      ;(ctx as unknown as { emit(name: string, ...args: unknown[]): void }).emit('session/event', session, event)
+    }
+    emit({ type: 'tool/call', data: { turn: 1, step: 1, callId: 'call-1', name: 'bash', arguments: '{}' } })
+    emit({
+      type: 'tool/result',
+      data: {
+        turn: 1,
+        step: 1,
+        message: {
+          role: 'user',
+          source: { kind: 'tool', callId: 'call-1' },
+          content: [{ type: 'tool-result', toolCallId: 'call-1', content: [{ type: 'text', text: 'ok' }], isError: false }],
+        },
+      },
+    })
+    expect(ends).toHaveLength(1)
+    expect(ends[0]).toMatchObject({ toolCallId: 'call-1', toolName: 'bash', isError: false })
+    expect(JSON.stringify(ends[0]?.result)).toContain('ok')
+    await pi.dispose()
+  })
+
+  // On roster-owned surfaces (dsh-tui moves every model-facing tool into the
+  // agent-presets roster and disables the host-layer rows) a child that joins
+  // no preset composition resolves its tools against the EMPTY global layer
+  // and runs toolless. The bridge joins in the roster's official preference
+  // order: inherit the parent's standing composition, else mount the default.
+  function presetHarness(options: {
+    parentPreset?: string
+    composeFromResult?: string
+    defaultPreset?: string
+    rosterOnRoot?: boolean
+  }) {
+    const calls: Array<{ op: string, args: unknown[] }> = []
+    const roster = {
+      composedPreset: (target: unknown) => { calls.push({ op: 'composedPreset', args: [target] }); return options.parentPreset },
+      composeFrom: (child: unknown, parent: unknown) => {
+        calls.push({ op: 'composeFrom', args: [child, parent] })
+        return options.composeFromResult
+      },
+      resolve: async (id?: string) => {
+        calls.push({ op: 'resolve', args: [id] })
+        if (options.defaultPreset === undefined) throw new Error('empty roster')
+        return { id: options.defaultPreset }
+      },
+      mount: async (target: unknown, id: string) => { calls.push({ op: 'mount', args: [target, id] }) },
+    }
+    const ctx = new Context()
+    const created: UnknownRecord[] = []
+    const realGet = (ctx as unknown as { get(name: string): unknown }).get.bind(ctx)
+    ;(ctx as unknown as { get(name: string): unknown }).get = (name: string) => {
+      if (name === 'agents') {
+        return {
+          async create(createOptions: UnknownRecord) {
+            created.push(createOptions)
+            const agent = { id: 'child', session: {} }
+            const setup = createOptions.setup
+            if (typeof setup === 'function') await setup({ get: () => undefined, agent })
+            return { agent, dispose: async () => {} }
+          },
+        }
+      }
+      if (name === 'agentPresets' && options.rosterOnRoot === true) return roster
+      return realGet(name)
+    }
+    const parentCtx = { get: (name: string) => (name === 'agentPresets' && options.rosterOnRoot !== true ? roster : undefined) }
+    return { ctx, created, calls, parentCtx }
+  }
+
+  it('joins the child to the parent\'s standing preset composition when the parent has one', async () => {
+    const { ctx, created, calls, parentCtx } = presetHarness({ parentPreset: 'code', composeFromResult: 'code' })
+    const deliveries: Array<{ mode: string, message: unknown }> = []
+    const host = { ...makeHost(ctx, deliveries), parentAgentContext: () => parentCtx }
+    await createBridgedAgentSession(host, {})
+    expect(calls.some(call => call.op === 'composeFrom')).toBe(true)
+    expect(calls.some(call => call.op === 'mount')).toBe(false)
+    expect((created[0]?.meta as UnknownRecord).agentPreset).toBe('code')
+  })
+
+  it('mounts the roster default when the parent joined no preset (roster reachable from the root ctx)', async () => {
+    const { ctx, created, calls } = presetHarness({ defaultPreset: 'standard', rosterOnRoot: true })
+    const deliveries: Array<{ mode: string, message: unknown }> = []
+    // No parent agent ctx at all — the roster is still reachable via the root.
+    await createBridgedAgentSession(makeHost(ctx, deliveries), {})
+    const mount = calls.find(call => call.op === 'mount')
+    expect(mount?.args[1]).toBe('standard')
+    expect((created[0]?.meta as UnknownRecord).agentPreset).toBe('standard')
+  })
+
+  it('composes nothing on a rosterless deployment, exactly as before', async () => {
+    const ctx = new Context()
+    const created: UnknownRecord[] = []
+    const realGet = (ctx as unknown as { get(name: string): unknown }).get.bind(ctx)
+    ;(ctx as unknown as { get(name: string): unknown }).get = (name: string) =>
+      name === 'agents'
+        ? {
+            async create(createOptions: UnknownRecord) {
+              created.push(createOptions)
+              const agent = { id: 'child', session: {} }
+              if (typeof createOptions.setup === 'function') await (createOptions.setup as (c: unknown) => unknown)({ get: () => undefined, agent })
+              return { agent, dispose: async () => {} }
+            },
+          }
+        : realGet(name)
+    const deliveries: Array<{ mode: string, message: unknown }> = []
+    await createBridgedAgentSession(makeHost(ctx, deliveries), {})
+    expect((created[0]?.meta as UnknownRecord).agentPreset).toBeUndefined()
+  })
+
+  // Pi's reopen contract: a caller hands createAgentSession a SessionManager
+  // opened FROM a session file (pi-subagents' tombstone resurrect). When the
+  // file is an archive this bridge minted, the durable identity it names is a
+  // DSH session — the continuation binds back to THAT session through the
+  // registry's official persisted-resume seam, never a lookalike create.
+  function resumeHarness() {
+    const ctx = new Context()
+    const calls: Array<{ op: 'create' | 'resume', options: UnknownRecord }> = []
+    const sessionEvents: Array<{ type: string }> = []
+    const realGet = (ctx as unknown as { get(name: string): unknown }).get.bind(ctx)
+    ;(ctx as unknown as { get(name: string): unknown }).get = (name: string) => {
+      if (name !== 'agents') return realGet(name)
+      const mint = async (op: 'create' | 'resume', options: UnknownRecord) => {
+        calls.push({ op, options })
+        const agent = {
+          id: op === 'resume' ? options.resumeSessionId : options.sessionId,
+          session: { id: op === 'resume' ? options.resumeSessionId : options.sessionId, append: (type: string) => { sessionEvents.push({ type }) } },
+        }
+        if (typeof options.setup === 'function') await (options.setup as (c: unknown) => unknown)({ get: () => undefined, agent })
+        return { agent, dispose: async () => {} }
+      }
+      return {
+        create: (options: UnknownRecord) => mint('create', options),
+        resume: (options: UnknownRecord) => mint('resume', options),
+      }
+    }
+    const host: SubagentHost = {
+      ...makeHost(ctx, []),
+      sessionManagerFor: session => ({ getSessionFile: () => `/ARCHIVE/${String((session as { id?: unknown }).id)}.jsonl` }),
+      resumeSessionIdFor: file => (typeof file === 'string' && file.startsWith('/ARCHIVE/') && file.endsWith('.jsonl')
+        ? file.slice('/ARCHIVE/'.length, -'.jsonl'.length)
+        : undefined),
+    }
+    return { host, calls, sessionEvents }
+  }
+
+  it('reopens an archived child through the official persisted-resume seam, without a duplicate descriptor', async () => {
+    const { host, calls, sessionEvents } = resumeHarness()
+    const { session: pi } = await createBridgedAgentSession(host, {
+      sessionManager: { getSessionFile: () => '/ARCHIVE/pi2dsh-sub-old-7.jsonl' },
+    })
+    expect(calls).toHaveLength(1)
+    expect(calls[0]?.op).toBe('resume')
+    expect(calls[0]?.options.resumeSessionId).toBe('pi2dsh-sub-old-7')
+    // The original creation already logged subagent/descriptor; a reopen must not duplicate it.
+    expect(sessionEvents.map(event => event.type)).not.toContain('subagent/descriptor')
+    // The reopened child exposes its own archive identity for the NEXT reopen.
+    expect((pi.sessionManager as { getSessionFile(): string }).getSessionFile()).toBe('/ARCHIVE/pi2dsh-sub-old-7.jsonl')
+  })
+
+  it('treats a genuine Pi session file (not our archive) as a fresh create', async () => {
+    const { host, calls, sessionEvents } = resumeHarness()
+    await createBridgedAgentSession(host, {
+      sessionManager: { getSessionFile: () => '/home/user/.pi/agent/sessions/2026-01-01-abc.jsonl' },
+    })
+    expect(calls[0]?.op).toBe('create')
+    expect(sessionEvents.map(event => event.type)).toContain('subagent/descriptor')
+  })
+
+  it('fails loud when a reopen is asked for but the registry has no persisted-resume seam', async () => {
+    const { host } = resumeHarness()
+    const bare = new Context()
+    const realGet = (bare as unknown as { get(name: string): unknown }).get.bind(bare)
+    ;(bare as unknown as { get(name: string): unknown }).get = (name: string) =>
+      name === 'agents'
+        ? { async create() { return { agent: { id: 'x', session: {} }, dispose: async () => {} } } }
+        : realGet(name)
+    await expect(createBridgedAgentSession({ ...host, cordis: bare }, {
+      sessionManager: { getSessionFile: () => '/ARCHIVE/pi2dsh-sub-old-7.jsonl' },
+    })).rejects.toThrowError(/persisted-resume/u)
+  })
+
+  // Pi's model default for a child session is the CALLER's current model. A
+  // child agent with no model option fails its first prompt assembly on
+  // {{model}}-keyed sections (deployment:persona) before any request is made
+  // — the archive-probe child hit exactly that on the real stack.
+  it('routes a child without an explicit Pi model on the parent\'s own route', async () => {
+    const { host, calls } = resumeHarness()
+    await createBridgedAgentSession({
+      ...host,
+      parentModelRoute: () => ({ provider: 'deepseek-official', model: 'deepseek-v4-flash' }),
+    }, {})
+    expect(calls[0]?.options.agentOptions).toEqual({ provider: 'deepseek-official', model: 'deepseek-v4-flash' })
+  })
+
+  it('lets an explicit Pi model on the options win over the parent route', async () => {
+    const { host, calls } = resumeHarness()
+    await createBridgedAgentSession({
+      ...host,
+      parentModelRoute: () => ({ provider: 'deepseek-official', model: 'deepseek-v4-flash' }),
+    }, { model: { provider: 'openai-codex', id: 'gpt-5.6-sol' } })
+    expect(calls[0]?.options.agentOptions).toEqual({ provider: 'openai-codex', model: 'gpt-5.6-sol' })
+  })
+
   it('labels a child by the package that started it, and honours an explicit label', () => {
     expect(childLabel(undefined, 'pi-btw')).toBe('pi-btw side conversation')
     expect(childLabel('   ', 'pi-btw')).toBe('pi-btw side conversation')

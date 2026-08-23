@@ -4959,6 +4959,27 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
         ...(approval !== undefined ? { approvalPolicy: 'never' } : {}),
       }
     },
+    sessionManagerFor: session => {
+      // The child's Pi sessionManager surface: the same readonly projection
+      // the runtime uses everywhere, with getSessionFile answering the
+      // durable archive path — the identity pi-subagents records per child
+      // and reopens `@handle` mentions by.
+      const typed = session as { id?: unknown, meta?: { cwd?: unknown } }
+      const cwd = typeof typed.meta?.cwd === 'string' ? typed.meta.cwd : cwdOf(currentAgent(state))
+      return state.bridge.readonlySessionManager(session as never, cwd) as UnknownRecord
+    },
+    resumeSessionIdFor: file => state.bridge.sessionIdOfArchiveFile(file),
+    parentModelRoute: () => {
+      const parent = currentAgent(state) as { options?: { provider?: unknown, model?: unknown } } | undefined
+      const model = parent?.options?.model
+      if (typeof model !== 'string' || model.length === 0) return undefined
+      return {
+        model,
+        ...(typeof parent?.options?.provider === 'string' && parent.options.provider.length > 0
+          ? { provider: parent.options.provider }
+          : {}),
+      }
+    },
   })
   await registerPromptCommands(ctx, state, rootDir, options.manifest)
   const onExtensionError = (failure: string): void =>

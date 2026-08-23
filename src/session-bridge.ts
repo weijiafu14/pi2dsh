@@ -10,7 +10,7 @@
 // and replayable without touching main-log compatibility.
 
 import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { basename, dirname, join, resolve } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { foldSurface } from '@deepseek-ai/dsh-session'
 import { getAgentDir } from './compat/vendor/pi-config-shim.js'
@@ -81,6 +81,39 @@ export class PiSessionBridge {
   private sidecarPath(sessionId: string): string {
     const safe = sessionId.replace(/[^a-zA-Z0-9._-]+/gu, '_')
     return join(sidecarDir(), `${safe}.jsonl`)
+  }
+
+  /**
+   * The Pi-visible archive file for one DSH session — the established
+   * `<id>.jsonl` convention (getSessionFile/switchSession use the same one).
+   * Guaranteed to EXIST on return: Pi consumers treat the session file as the
+   * durable identity a conversation can be reopened by (pi-subagents guards
+   * its tombstone resurrect with existsSync, and Pi's SessionManager.open
+   * tolerates an empty file), so a merely virtual path would read as "the
+   * conversation is gone".
+   */
+  archiveFileFor(sessionId: string): string {
+    const path = this.sidecarPath(sessionId)
+    if (!existsSync(path)) {
+      mkdirSync(sidecarDir(), { recursive: true })
+      appendFileSync(path, '')
+    }
+    return path
+  }
+
+  /**
+   * The DSH session id an archive-file path names, or undefined for any path
+   * this bridge did not mint (a genuine Pi session file, an in-memory
+   * manager's undefined). The reverse of {@link archiveFileFor} — ids that
+   * survive its sanitization round-trip exactly, which every id this bridge
+   * mints does.
+   */
+  sessionIdOfArchiveFile(path: unknown): string | undefined {
+    if (typeof path !== 'string' || path.length === 0) return undefined
+    const resolved = resolve(path)
+    if (resolve(dirname(resolved)) !== resolve(sidecarDir())) return undefined
+    const base = basename(resolved)
+    return base.endsWith('.jsonl') ? base.slice(0, -'.jsonl'.length) : undefined
   }
 
   load(sessionId: string): void {
@@ -297,7 +330,9 @@ export class PiSessionBridge {
       getCwd: () => cwd,
       getSessionDir: () => sidecarDir(),
       getSessionId: () => session.id,
-      getSessionFile: () => this.sidecarPath(session.id),
+      // The archive path is a REOPENABLE identity to Pi consumers (existsSync
+      // guards, SessionManager.open) — materialized on read, not virtual.
+      getSessionFile: () => this.archiveFileFor(session.id),
       getLeafId: () => leafOf()?.id ?? null,
       getLeafEntry: () => leafOf(),
       getEntry: (id: string) => entriesOf().find(entry => entry.id === id),

@@ -43,6 +43,25 @@ export interface SubagentHost {
    * pinned to 'never' when an approval service exists.
    */
   delegatedPolicyOverrides(): { sandboxMode?: unknown, approvalPolicy?: string }
+  /**
+   * Pi-shaped readonly sessionManager projection over one DSH session. Its
+   * getSessionFile() returns the durable archive path (`<id>.jsonl`
+   * convention) Pi consumers treat as the conversation's reopenable identity
+   * — pi-subagents records it per child and resurrects `@handle` mentions by
+   * reopening exactly that file.
+   */
+  sessionManagerFor?(session: unknown): UnknownRecord
+  /**
+   * The DSH session id an archive path names, or undefined for any path the
+   * bridge did not mint (a genuine Pi session file, an in-memory manager).
+   */
+  resumeSessionIdFor?(file: unknown): string | undefined
+  /**
+   * The delegating parent's own model route. Pi's default for a child session
+   * is the caller's current model; without it the child agent has no model
+   * option and prompt sections keyed on {{model}} fail the first assembly.
+   */
+  parentModelRoute?(): { provider?: string, model?: string } | undefined
 }
 
 export interface CreateAgentSessionOptions {
@@ -80,6 +99,24 @@ function nativeToolNameOf(name: string): string {
 }
 
 /**
+ * The tool schemas a CHILD agent actually resolves — its scoped view when the
+ * service answers for the agent being built, else the global layer. On
+ * roster-owned surfaces the preset tools live above the global layer, so the
+ * scoped read is the one that sees them.
+ */
+function childSchemas(
+  toolsService: { schemas(scope?: unknown): ReadonlyArray<{ name: string }> },
+  childCtx: { agent?: unknown },
+): ReadonlyArray<{ name: string }> {
+  try {
+    if (childCtx.agent !== undefined) return toolsService.schemas(childCtx.agent)
+  } catch {
+    // fall through to the global read below
+  }
+  return toolsService.schemas()
+}
+
+/**
  * Cross-scope subscription base. Session events dispatch under the OWNING
  * session's scope; a package instance mounted per Agent registers listeners
  * inside its own Agent's scope and would never see a child session's events.
@@ -113,6 +150,12 @@ function piMessageText(message: UnknownRecord): string {
 export class PiBridgedAgentSession {
   readonly agent: PiSubagentFacade = {}
   readonly messages: UnknownRecord[] = []
+  /**
+   * Pi's AgentSession.sessionManager surface, projected over the child's DSH
+   * session. getSessionFile() names the durable archive — what pi-subagents
+   * stores as the conversation's reopenable identity (tombstone resurrect).
+   */
+  readonly sessionManager: UnknownRecord | undefined
   // Transcript assigned through Pi's public `state.messages` setter and not
   // yet carried into the child's durable log (see #state).
   #seed: UnknownRecord[] = []
@@ -133,6 +176,8 @@ export class PiBridgedAgentSession {
   #model: unknown
   #streaming = false
   #pendingToolCalls = new Set<string>()
+  /** callId → tool name, so tool_execution_end can name the tool its result belongs to. */
+  #toolCallNames = new Map<string, string>()
   #sessionName = ''
   #turns = 0
   #restrictionDispose: (() => void) | undefined
@@ -148,6 +193,7 @@ export class PiBridgedAgentSession {
     this.#host = host
     this.#handle = handle
     this.#session = (handle.agent as { session?: UnknownRecord }).session ?? {}
+    this.sessionManager = host.sessionManagerFor?.(this.#session)
     this.#tools = tools
     this.#activeToolNames = tools
       .map(tool => (tool as { name?: unknown } | undefined)?.name)
@@ -246,6 +292,20 @@ export class PiBridgedAgentSession {
         }
       }
     }
+    // Pi's abort() contract: the run stops and STAYS stopped until the next
+    // explicit prompt(). DSH's cancel only aborts the active turn — a tool
+    // result reaching quiescence after the abort is waking input that opens
+    // a fresh turn ("runs when the aborted activity converges to idle"), and
+    // the stopped child would finish its task anyway. Keep the child quiet by
+    // cancelling while aborted — and on EVERY opening event, not just
+    // turn/start: a cancel issued the instant the durable turn/start lands can
+    // race the driver claiming its activity ("with no active activity,
+    // cancellation is a no-op"), so the guard fires again at step/start and
+    // request/header until one lands on live activity. prompt() lifts it.
+    if (this.#aborted && (type === 'turn/start' || type === 'step/start' || type === 'request/header')) {
+      this.#cancelChild()
+      return
+    }
     if (type === 'turn/start') {
       this.#streaming = true
       emit({ type: 'turn_start', turnIndex: Number((event.data as UnknownRecord).turn ?? 1) - 1 })
@@ -259,11 +319,34 @@ export class PiBridgedAgentSession {
     }
     if (type === 'tools/result' || type === 'tool/result') {
       const data = event.data as UnknownRecord
-      this.#pendingToolCalls.delete(String(data.callId ?? ''))
+      // DSH records the result as a user-role message whose content blocks are
+      // 'tool-result' entries. Pi's contract is a tool_execution_end event per
+      // finished call ({toolCallId, toolName, result, isError}) — pi-subagents
+      // counts its "tool uses" on exactly this event, so missing it read as
+      // "0 tool uses" while the child was really running tools.
+      const message = data.message as UnknownRecord | undefined
+      const blocks = Array.isArray(message?.content) ? message.content : []
+      for (const block of blocks) {
+        const record = block as UnknownRecord | undefined
+        if (record?.type !== 'tool-result') continue
+        const callId = String(record.toolCallId ?? (message?.source as UnknownRecord | undefined)?.callId ?? data.callId ?? '')
+        this.#pendingToolCalls.delete(callId)
+        const isError = record.isError === true
+        emit({
+          type: 'tool_execution_end',
+          toolCallId: callId,
+          toolName: this.#toolCallNames.get(callId) ?? '',
+          result: { content: record.content ?? [], isError },
+          isError,
+        })
+        this.#toolCallNames.delete(callId)
+      }
+      if (blocks.length === 0) this.#pendingToolCalls.delete(String(data.callId ?? ''))
     }
     if (type === 'tool/call') {
       const data = event.data as UnknownRecord
       this.#pendingToolCalls.add(String(data.callId ?? ''))
+      this.#toolCallNames.set(String(data.callId ?? ''), String(data.name ?? ''))
       let args: unknown = {}
       try {
         args = JSON.parse(String(data.arguments ?? '{}'))
@@ -317,6 +400,9 @@ export class PiBridgedAgentSession {
   }
 
   async prompt(text: string): Promise<void> {
+    // Pi's contract: prompting an aborted session runs it again — the abort
+    // suppression above must not outlive the next explicit prompt.
+    this.#aborted = false
     // Carry a seeded transcript (Pi's `state.messages = …`) into the child's
     // durable log before the prompt it is meant to precede.
     if (this.#seed.length > 0) {
@@ -377,13 +463,27 @@ export class PiBridgedAgentSession {
 
   abort(): void {
     this.#aborted = true
-    // Pi's session.abort() is idempotent and safe at any lifecycle point;
-    // DSH's Agent.cancel throws once the agent is disposed, so contain it.
+    this.#cancelChild()
+  }
+
+  /** One official Agent.cancel, contained but LOUD: a swallowed cancel is a
+   * child that keeps running after its parent was interrupted. */
+  #cancelChild(): void {
+    const cancel = (this.#handle.agent as { cancel?: (reason: UnknownRecord) => void }).cancel
+    if (cancel === undefined) {
+      // Console AND logger, same rule as the engine's mount line: a profile's
+      // logger level must never be able to hide a child that cannot be stopped.
+      const message = '[pi2dsh] subagent abort(): the child agent handle has no cancel — the child cannot be stopped'
+      console.warn(message)
+      this.#host.cordis.logger?.warn?.(message)
+      return
+    }
     try {
-      const cancel = (this.#handle.agent as { cancel?: (reason: UnknownRecord) => void }).cancel
-      cancel?.({ kind: 'hook', reason: 'pi2dsh subagent abort()' })
-    } catch {
-      // already disposed — nothing left to abort
+      cancel.call(this.#handle.agent, { kind: 'hook', reason: 'pi2dsh subagent abort()' })
+    } catch (error) {
+      const message = `[pi2dsh] subagent abort(): Agent.cancel failed (${error instanceof Error ? error.message : String(error)}) — already disposed, or the child kept running`
+      console.warn(message)
+      this.#host.cordis.logger?.warn?.(message)
     }
   }
 
@@ -450,8 +550,15 @@ export class PiBridgedAgentSession {
     try {
       this.#restrictionDispose?.()
       // Same unknown-name tolerance as creation: a name this host does not
-      // carry names nothing (restrict() itself would refuse it).
-      const known = new Set(toolsService.schemas().map(schema => schema.name))
+      // carry names nothing (restrict() itself would refuse it). Known names
+      // come from this child's OWN resolved view, so preset-scoped tools on
+      // roster-owned surfaces stay reachable.
+      let known: Set<string>
+      try {
+        known = new Set(toolsService.schemas(this.#handle.agent).map(schema => schema.name))
+      } catch {
+        known = new Set(toolsService.schemas().map(schema => schema.name))
+      }
       this.#restrictionDispose = toolsService.restrict({
         allow: this.#activeToolNames.map(nativeToolNameOf).filter(name => known.has(name)),
       })
@@ -509,11 +616,23 @@ export async function createBridgedAgentSession(
   // ctx.get() resolves the service without an inject declaration — the bridge
   // is constructed from arbitrary extension call sites, not a fiber of its own.
   const agents = (host.cordis as unknown as { get(name: string): unknown }).get('agents') as
-    | { create?: (options: UnknownRecord) => Promise<{ agent: UnknownRecord, dispose(): Promise<void> }> }
+    | {
+      create?: (options: UnknownRecord) => Promise<{ agent: UnknownRecord, dispose(): Promise<void> }>
+      resume?: (options: UnknownRecord) => Promise<{ agent: UnknownRecord, dispose(): Promise<void> }>
+    }
     | undefined
   if (agents?.create === undefined) {
     throw new Error('pi2dsh: createAgentSession() needs the DSH agent registry in the host composition')
   }
+  // Pi's reopen contract: the caller hands a SessionManager opened FROM a
+  // session file (pi-subagents resurrects an evicted `@handle` this way —
+  // SessionManager.open(tombstone.sessionFile) → createAgentSession). When
+  // that file is an archive this bridge minted, the durable identity it names
+  // is a DSH session — the continuation must bind back to THAT session
+  // through the official persisted-resume seam, not start a lookalike.
+  const providedManager = options.sessionManager as { getSessionFile?(): string | undefined } | undefined
+  const archiveFile = typeof providedManager?.getSessionFile === 'function' ? providedManager.getSessionFile() : undefined
+  const resumeSessionId = host.resumeSessionIdFor?.(archiveFile)
   subagentSerial += 1
   const sessionId = `pi2dsh-sub-${Date.now().toString(36)}-${subagentSerial}`
   let handle
@@ -556,39 +675,52 @@ export async function createBridgedAgentSession(
       ? options.tools.filter((name): name is string => typeof name === 'string')
       : undefined
     const parentCtx = host.parentAgentContext() as { get?(name: string): unknown } | undefined
-    const presetsOfParent = (typeof parentCtx?.get === 'function' ? parentCtx.get('agentPresets') : undefined) as
-      | { composedPreset?(ctx: unknown): string | undefined, composeFrom?(child: unknown, parent: unknown): void }
+    // The agent-presets roster, when the composition carries one. Reachable
+    // through the parent agent's ctx OR the root ctx — on surfaces that move
+    // every model-facing tool into the roster (dsh-tui disables the host-layer
+    // tool rows), a child that joins no preset resolves its tools against the
+    // EMPTY global layer and runs toolless. So joining is not optional there.
+    const roster = ((typeof parentCtx?.get === 'function' ? parentCtx.get('agentPresets') : undefined)
+      ?? (host.cordis as unknown as { get?(name: string): unknown }).get?.('agentPresets')) as
+      | {
+        composedPreset?(ctx: unknown): string | undefined
+        composeFrom?(child: unknown, parent: unknown): string | undefined
+        resolve?(id?: string): Promise<{ id: string }>
+        mount?(ctx: unknown, id: string): Promise<unknown>
+      }
       | undefined
-    const composedPreset = presetsOfParent?.composedPreset?.(parentCtx)
+    // The preset recorded on the child's durable header: the parent's standing
+    // preset when it has one, else the roster default — resolved BEFORE create
+    // because the session boundary snapshots `meta` (same rule the official
+    // hosts follow in their composeAgent).
+    let composedPreset = roster?.composedPreset?.(parentCtx)
+    if (roster !== undefined && composedPreset === undefined && typeof roster.resolve === 'function') {
+      composedPreset = await roster.resolve(undefined).then(preset => preset?.id).catch(() => undefined)
+    }
     const delegated = host.delegatedPolicyOverrides()
-    handle = await agents.create({
-      sessionId,
-      meta: {
-        cwd: typeof options.cwd === 'string' ? options.cwd : host.cwd(),
-        origin: 'subagent',
-        // DSH's durable recursion budget (childSessionMeta semantics): the
-        // child persists parent depth + 1 so resumed children cannot delegate
-        // as if they were top-level.
-        delegationDepth: host.parentDelegationDepth() + 1,
-        ...(host.parentSessionId() !== undefined ? { parentSession: host.parentSessionId() } : {}),
-        ...(typeof composedPreset === 'string' && composedPreset.length > 0 ? { agentPreset: composedPreset } : {}),
-      },
-      ...(typeof requestedModel?.id === 'string' && requestedModel.id.length > 0
-        ? {
-            agentOptions: {
-              model: requestedModel.id,
-              ...(typeof requestedModel.provider === 'string' && requestedModel.provider.length > 0
-                ? { provider: requestedModel.provider }
-                : {}),
-            },
-          }
-        : {}),
-      // The creator-exclusive setup runs on the UNPUBLISHED child scope:
-      // everything contributed here is in place before the first assembly
-      // and unwinds with the child. This is the same shape DSH's own
-      // dsh-subagent delegation uses (policy seed → preset composition →
-      // scope contributions).
-      setup: (childCtx: { get?(name: string): unknown, agent?: { session?: { append?(type: string, data: unknown): void } } } & UnknownRecord) => {
+    // Pi's model default for a child session is the CALLER's current model —
+    // an explicit Pi model on the options wins, else the parent's own route
+    // travels. A child agent without any model option fails its first prompt
+    // assembly on {{model}}-keyed sections before a request is even made.
+    const route = typeof requestedModel?.id === 'string' && requestedModel.id.length > 0
+      ? {
+          model: requestedModel.id,
+          ...(typeof requestedModel.provider === 'string' && requestedModel.provider.length > 0
+            ? { provider: requestedModel.provider }
+            : {}),
+        }
+      : host.parentModelRoute?.()
+    const agentOptionsFragment = typeof route?.model === 'string' && route.model.length > 0
+      ? { agentOptions: route }
+      : {}
+    // The creator-exclusive setup runs on the UNPUBLISHED child scope:
+    // everything contributed here is in place before the first assembly
+    // and unwinds with the child. This is the same shape DSH's own
+    // dsh-subagent delegation uses (policy seed → preset composition →
+    // scope contributions). A persisted resume takes the SAME setup — the
+    // reconstructed session keeps its durable header, but the live scoped
+    // world (preset join, restrictions, custom tools, prompt) is fresh.
+    const setup = async (childCtx: { get?(name: string): unknown, agent?: { session?: { append?(type: string, data: unknown): void } } } & UnknownRecord): Promise<void> => {
         // 1. Delegation policy, official semantics: the parent's explicit
         //    sandbox override travels with the child; approval is pinned so
         //    a headless child never blocks on a dialog nobody is watching.
@@ -601,10 +733,37 @@ export async function createBridgedAgentSession(
             childSession.append('approval/policy', { policy: delegated.approvalPolicy, source: 'delegation' })
           }
         }
-        // 2. The parent's composed preset grants the child the host-native
-        //    toolset (and the rest of the preset's composition). A host
-        //    without the presets service simply contributes nothing here.
-        presetsOfParent?.composeFrom?.(childCtx, parentCtx)
+        // 2. Join the child to a preset composition, in the roster's official
+        //    preference order: inherit the parent's STANDING composition
+        //    (composeFrom — same generation, same tool registrations; how
+        //    DSH's own subagent drivers compose children), else mount the
+        //    roster default (what the official hosts do for a fresh session).
+        //    Only a rosterless deployment composes nothing — there the
+        //    model-facing rows sit in the host composition and the child sees
+        //    them through the global layer. On roster-owned surfaces
+        //    (dsh-tui) skipping this join means a TOOLLESS child, so falling
+        //    through both branches with a roster present is warned loud.
+        if (roster !== undefined) {
+          let joined: string | undefined
+          try {
+            joined = roster.composeFrom?.(childCtx, parentCtx)
+          } catch {
+            joined = undefined
+          }
+          if (joined === undefined && composedPreset !== undefined && typeof roster.mount === 'function') {
+            try {
+              await roster.mount(childCtx, composedPreset)
+              joined = composedPreset
+            } catch {
+              joined = undefined
+            }
+          }
+          if (joined === undefined) {
+            host.cordis.logger?.warn?.(
+              '[pi2dsh] child agent joined no preset composition; on roster-owned surfaces its tools resolve against the empty global layer',
+            )
+          }
+        }
         // 3. Pi's allowlist / noTools, as the official scoped restriction.
         //    Pi built-in names map onto the host's native tools (same names,
         //    with Pi's find/ls served by the host's glob).
@@ -619,10 +778,13 @@ export async function createBridgedAgentSession(
             }
             | undefined
           if (toolsService !== undefined) {
-            // restrict() REFUSES unknown global names; a Pi allowlist naming
-            // a tool this host does not carry simply means that tool does not
-            // exist here (Pi's own semantics for a name that matches nothing).
-            const known = new Set(toolsService.schemas().map(schema => schema.name))
+            // restrict() REFUSES unknown names; a Pi allowlist naming a tool
+            // this host does not carry simply means that tool does not exist
+            // here (Pi's own semantics for a name that matches nothing). The
+            // known set is the CHILD's resolved view — preset-scoped tools
+            // live above the global layer, so the bare schemas() would miss
+            // them on roster-owned surfaces.
+            const known = new Set(childSchemas(toolsService, childCtx).map(schema => schema.name))
             // Keep the disposer: DSH restrictions INTERSECT, so a later
             // setActiveToolsByName must retire this one, not stack on it.
             initialRestrictionDispose = toolsService.restrict({ allow: restriction.filter(name => known.has(name)) })
@@ -642,7 +804,7 @@ export async function createBridgedAgentSession(
             }
             | undefined
           if (toolsService !== undefined) {
-            const known = new Set(toolsService.schemas().map(schema => schema.name))
+            const known = new Set(childSchemas(toolsService, childCtx).map(schema => schema.name))
             toolsService.restrict({ deny: excluded.map(nativeToolNameOf).filter(name => known.has(name)) })
           }
         }
@@ -665,12 +827,39 @@ export async function createBridgedAgentSession(
           }
           prompt.section({ name: 'pi2dsh:subagent-system-prompt', order: -1_000_000, text: systemPrompt, complete: true })
         }
-      },
-    })
+      }
+    if (resumeSessionId !== undefined) {
+      if (typeof agents.resume !== 'function') {
+        throw new Error(
+          'pi2dsh: reopening a child conversation needs the DSH agent registry\'s persisted-resume seam, which this composition does not provide',
+        )
+      }
+      // The durable header (cwd, lineage, preset) is the persisted session's
+      // own; only the live identity and the fresh scoped world are supplied.
+      handle = await agents.resume({ resumeSessionId, ...agentOptionsFragment, setup })
+    } else {
+      handle = await agents.create({
+        sessionId,
+        meta: {
+          cwd: typeof options.cwd === 'string' ? options.cwd : host.cwd(),
+          origin: 'subagent',
+          // DSH's durable recursion budget (childSessionMeta semantics): the
+          // child persists parent depth + 1 so resumed children cannot delegate
+          // as if they were top-level.
+          delegationDepth: host.parentDelegationDepth() + 1,
+          ...(host.parentSessionId() !== undefined ? { parentSession: host.parentSessionId() } : {}),
+          ...(typeof composedPreset === 'string' && composedPreset.length > 0 ? { agentPreset: composedPreset } : {}),
+        },
+        ...agentOptionsFragment,
+        setup,
+      })
+    }
   } catch (error) {
     throw new Error(
-      'pi2dsh: subagent creation needs the DSH host loop (model runtime) to provide the agent factory; '
-      + `this composition cannot run one (${error instanceof Error ? error.message : String(error)})`,
+      resumeSessionId !== undefined
+        ? `pi2dsh: reopening child session ${JSON.stringify(resumeSessionId)} failed — its persisted log may be gone or this composition has no session persistence (${error instanceof Error ? error.message : String(error)})`
+        : 'pi2dsh: subagent creation needs the DSH host loop (model runtime) to provide the agent factory; '
+          + `this composition cannot run one (${error instanceof Error ? error.message : String(error)})`,
     )
   }
   const tools = [
@@ -684,7 +873,9 @@ export async function createBridgedAgentSession(
   // event type is DSH's own — this is the official identity channel, not a
   // vocabulary of ours.
   const childSession = (handle.agent as { session?: { append?(type: string, data: unknown): unknown } }).session
-  if (typeof childSession?.append === 'function') {
+  // A resumed session already carries its descriptor from the original
+  // creation; appending another would duplicate the identity event.
+  if (resumeSessionId === undefined && typeof childSession?.append === 'function') {
     try {
       childSession.append('subagent/descriptor', {
         version: 2,

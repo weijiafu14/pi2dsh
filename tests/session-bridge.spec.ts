@@ -188,3 +188,40 @@ describe('Pi session semantics over a DSH durable session', () => {
     expect(tree[0]!.children).toHaveLength(1)
   })
 })
+
+describe('the durable archive identity Pi consumers reopen a session by', () => {
+  // pi-subagents records session.sessionManager.getSessionFile() per child and
+  // resurrects an evicted `@handle` by existsSync + SessionManager.open on that
+  // exact path — a virtual path reads as "the conversation is gone".
+  it('materializes the archive file on first ask and round-trips the session id', () => {
+    const bridge = new PiSessionBridge()
+    const file = bridge.archiveFileFor('pi2dsh-sub-abc-1')
+    expect(file.endsWith('pi2dsh-sub-abc-1.jsonl')).toBe(true)
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    expect(require('node:fs').existsSync(file)).toBe(true)
+    expect(bridge.sessionIdOfArchiveFile(file)).toBe('pi2dsh-sub-abc-1')
+  })
+
+  it('refuses to claim paths it did not mint', () => {
+    const bridge = new PiSessionBridge()
+    expect(bridge.sessionIdOfArchiveFile(undefined)).toBeUndefined()
+    expect(bridge.sessionIdOfArchiveFile('')).toBeUndefined()
+    // A genuine Pi session file outside the archive dir is NOT ours to rebind.
+    expect(bridge.sessionIdOfArchiveFile('/tmp/elsewhere/2026-01-01-abc.jsonl')).toBeUndefined()
+    // Right directory, wrong extension.
+    expect(bridge.sessionIdOfArchiveFile(bridge.archiveFileFor('x').replace('.jsonl', '.txt'))).toBeUndefined()
+  })
+
+  it('keeps getSessionFile on the readonly projection reopenable (exists on disk)', () => {
+    const bridge = new PiSessionBridge()
+    const projection = bridge.readonlySessionManager(dshSession('proj-1') as never, scratch) as {
+      getSessionFile(): string
+      getSessionId(): string
+    }
+    const file = projection.getSessionFile()
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    expect(require('node:fs').existsSync(file)).toBe(true)
+    expect(bridge.sessionIdOfArchiveFile(file)).toBe('proj-1')
+    expect(projection.getSessionId()).toBe('proj-1')
+  })
+})
