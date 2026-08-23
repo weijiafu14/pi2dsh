@@ -6,6 +6,8 @@
 // the missing screen ownership and raw-key lifecycle. The package keeps its
 // own state and behavior while the bridge translates only the host surface.
 
+import { createRequire } from 'node:module'
+
 type UnknownRecord = Record<string, unknown>
 
 export interface PiCustomComponent {
@@ -332,12 +334,55 @@ export function mountTuiSurfaceAdapter(
 }
 
 /**
- * dsh-TUI handles `/mcp` locally before it asks DSH's command registry. Until
- * it exposes a reserved-command seam, keep its native status command and make
- * an installed Pi MCP manager reachable as `/pi-mcp`.
+ * dsh-TUI dispatches its LOCAL commands before it asks DSH's command
+ * registry ("locals win on name collisions" — its own commands.ts contract),
+ * so a registry command sharing a local name is unreachable from that
+ * surface. The host command keeps its name; the incoming command gets a
+ * `pi-` source prefix — and ONLY on a composition where dsh-TUI is present;
+ * everywhere else the original name stands.
+ *
+ * The reserved-name list is dsh-TUI's `LOCAL_COMMANDS`, which it exports in
+ * code but not through its package exports map (upstream ask filed). Until
+ * that lands, the list is pinned per generation from the published sources:
+ * 0.8.x reserved only /mcp; 0.9.0 reserves the full set below. Generation is
+ * read off the installed package's public ./package.json subpath.
  */
+const DSH_TUI_LOCAL_COMMANDS_0_9 = new Set([
+  'new', 'clear', 'compact', 'resume', 'rename', 'rewind', 'export', 'btw',
+  'trace', 'context', 'status', 'cost', 'config', 'settings', 'doctor',
+  'init', 'agents', 'activity', 'preset', 'theme', 'lang', 'model', 'effort',
+  'thinking', 'tokens', 'provider', 'login', 'logout', 'add-dir', 'hooks',
+  'mcp', 'skills', 'plugins', 'update', 'audit', 'bug', 'practice', 'review',
+  'release-notes', 'vuln-check', 'vim', 'terminal-setup', 'connect',
+  'workspace', 'help', 'tips', 'exit', 'quit', 'q', 'deepseek',
+])
+const DSH_TUI_LOCAL_COMMANDS_LEGACY = new Set(['mcp'])
+
+/** The reserved set for one installed dsh-tui version (undefined = unknown,
+ * assume the current generation). */
+export function tuiLocalCommandsForVersion(version: string | undefined): ReadonlySet<string> {
+  if (version === undefined) return DSH_TUI_LOCAL_COMMANDS_0_9
+  const [major = 0, minor = 0] = version.split('.').map(part => Number.parseInt(part, 10))
+  return major > 0 || minor >= 9 ? DSH_TUI_LOCAL_COMMANDS_0_9 : DSH_TUI_LOCAL_COMMANDS_LEGACY
+}
+
+let cachedTuiLocalCommands: ReadonlySet<string> | undefined
+function dshTuiLocalCommands(): ReadonlySet<string> {
+  if (cachedTuiLocalCommands !== undefined) return cachedTuiLocalCommands
+  let version: string | undefined
+  try {
+    const require = createRequire(import.meta.url)
+    version = (require('@deepseek-harness-tui/dsh-tui/package.json') as { version?: string }).version
+  } catch {
+    // No resolvable dsh-tui package: the composition-level tuiAvailable gate
+    // already answered true, so assume the current generation's list.
+  }
+  cachedTuiLocalCommands = tuiLocalCommandsForVersion(version)
+  return cachedTuiLocalCommands
+}
+
 export function commandNameForDshTui(name: string, tuiAvailable: boolean): string {
-  return tuiAvailable && name === 'mcp' ? 'pi-mcp' : name
+  return tuiAvailable && dshTuiLocalCommands().has(name) ? `pi-${name}` : name
 }
 
 export const tuiSurfaceInternals = {

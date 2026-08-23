@@ -22,6 +22,9 @@ function makeHost(ctx: Context, deliveries: Array<{ mode: string, message: unkno
       return undefined
     },
     messageSource: 'pi2dsh:test',
+    parentAgentContext: () => undefined,
+    registerChildTools: () => {},
+    delegatedPolicyOverrides: () => ({}),
   }
 }
 
@@ -187,10 +190,14 @@ describe('Pi createAgentSession bridged onto real DSH agents', () => {
       : { get: (name: string) => (name === 'systemPrompt' ? { section: (input: UnknownRecord) => sections.push(input) } : undefined) }
     const mockAgents = {
       async create(createOptions: UnknownRecord) {
-        return {
-          agent: { id: String(createOptions.sessionId), session: {}, ...(agentCtx === undefined ? {} : { ctx: agentCtx }) },
-          dispose: async () => {},
+        const agent = { id: String(createOptions.sessionId), session: {}, ...(agentCtx === undefined ? {} : { ctx: agentCtx }) }
+        // The real factory's creator-exclusive contract: setup runs on the
+        // unpublished child scope before publication.
+        const setup = createOptions.setup
+        if (typeof setup === 'function') {
+          await setup(agentCtx === undefined ? { agent } : { ...agentCtx, agent })
         }
+        return { agent, dispose: async () => {} }
       },
     }
     ;(ctx as unknown as { get(name: string): unknown }).get = (name: string) =>

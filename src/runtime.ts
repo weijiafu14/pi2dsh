@@ -3618,6 +3618,56 @@ function registerTool(ctx: Context, state: RuntimeState, tool: PiTool): void {
   }
 }
 
+/**
+ * Register ONE Pi custom tool into a child agent's scope (createAgentSession
+ * customTools). Same translation as {@link registerTool}'s definition, but:
+ * the registration goes through the CHILD ctx (a scoped registration that
+ * unwinds with the child, invisible to the parent and siblings), and the
+ * package's own Pi tool ledger is untouched — a child session's custom tools
+ * belong to that session in Pi, not to the extension's registered set.
+ * Partial-result updates have no Pi-side consumer on this path yet (the
+ * façade projects durable events only), so the update callback is a no-op —
+ * never a fake dispatch.
+ */
+function registerChildPiTool(childCtx: Context, state: RuntimeState, tool: PiTool): void {
+  const normalized = normalizeToolSchema(tool.parameters)
+  for (const warning of normalized.warnings) logger(childCtx).warn(`[pi2dsh] subagent tool ${tool.name}: ${warning}`)
+  const definition: ToolDefinition = {
+    name: tool.name,
+    description: tool.description,
+    parameters: normalized.schema,
+    output: {
+      schema: {},
+      render: (_args, value) => (value as UnknownRecord).content as ContentBlock[],
+      presentationMeta: (_args, value) => jsonValue((value as UnknownRecord).details) as never,
+    },
+    isConcurrencySafe: () => tool.executionMode === 'parallel',
+    async execute(args, exec) {
+      const agent = exec.agent as unknown as UnknownRecord | undefined
+      // Pi's argument gate, unchanged: the tool's own prepareArguments shim,
+      // then schema coercion + check before every execution.
+      const prepared = validateToolArguments(
+        { name: tool.name, parameters: tool.parameters },
+        { name: tool.name, arguments: tool.prepareArguments?.(cloneJson(args)) ?? args },
+      )
+      const result = await normalizeToolResultForDsh(childCtx, await runInPiRuntime(state, agent, () => tool.execute(
+        String(exec.callId),
+        prepared,
+        exec.signal,
+        () => { /* no Pi-side partial-update consumer on the child path */ },
+        contextFor(childCtx, state, agent, exec.signal),
+      )))
+      if (result.terminate === true) exec.concludeTurn()
+      if (result.isError === true) {
+        const message = textBlocks(result.content).map(block => block.text).filter(Boolean).join('\n')
+        throw new Error(message || `Pi tool ${tool.name} failed`)
+      }
+      return result
+    },
+  }
+  ;(childCtx as unknown as { tools: { register(toolDefinition: ToolDefinition): () => void } }).tools.register(definition)
+}
+
 function unregisterTool(state: RuntimeState, name: string): boolean {
   const dispose = state.toolDisposers.get(name)
   if (dispose === undefined) return false
@@ -3933,8 +3983,8 @@ function dshCommandName(ctx: Context, state: RuntimeState, piName: string): stri
   const tuiAvailable = state.tuiSurfaces?.available === true || optionalService(ctx, 'tuiScenes') !== undefined
   const name = commandNameForDshTui(validName, tuiAvailable)
   if (name !== piName) {
-    const reason = name === 'pi-mcp'
-      ? "because dsh-TUI reserves /mcp for its native MCP status view"
+    const reason = name === `pi-${validName}`
+      ? `because dsh-TUI reserves /${validName} for its own local command (locals win on name collisions)`
       : 'to satisfy DSH command naming'
     logger(ctx).warn(`[pi2dsh] Pi command /${piName} registered as /${name} ${reason}`)
   }
@@ -4889,6 +4939,26 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
     messageFromSessionEvent: event => messageFromSessionEvent(ctx, event),
     messageSource: state.messageSource,
     packageName: state.packageName,
+    parentAgentContext: () => (currentAgent(state) as { ctx?: unknown } | undefined)?.ctx,
+    registerChildTools: (childCtx, tools) => {
+      for (const tool of tools) registerChildPiTool(childCtx as Context, state, tool as PiTool)
+    },
+    delegatedPolicyOverrides: () => {
+      // DSH's own delegation capture (dsh-subagent semantics), read off the
+      // parent's public services: only the parent session's EXPLICIT sandbox
+      // override travels, and approval is pinned to 'never' whenever an
+      // approval service exists — a child never blocks on a dialog.
+      const parent = currentAgent(state) as { ctx?: { get?(name: string): unknown }, session?: unknown } | undefined
+      const sandboxPolicy = (typeof parent?.ctx?.get === 'function' ? parent.ctx.get('sandboxPolicy') : undefined) as
+        | { overrideOf?(session: unknown): unknown }
+        | undefined
+      const approval = typeof parent?.ctx?.get === 'function' ? parent.ctx.get('approval') : undefined
+      const sandboxMode = sandboxPolicy?.overrideOf?.(parent?.session)
+      return {
+        ...(sandboxMode !== undefined ? { sandboxMode } : {}),
+        ...(approval !== undefined ? { approvalPolicy: 'never' } : {}),
+      }
+    },
   })
   await registerPromptCommands(ctx, state, rootDir, options.manifest)
   const onExtensionError = (failure: string): void =>

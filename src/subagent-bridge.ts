@@ -29,6 +29,20 @@ export interface SubagentHost {
   messageSource: string
   /** The Pi package that asked for the child, used to label it in DSH's catalog. */
   packageName?: string
+  /** The delegating parent Agent's own ctx (undefined outside an agent scope). */
+  parentAgentContext(): unknown
+  /**
+   * Translate the child's Pi custom tools into DSH tool definitions and
+   * register them THROUGH the unpublished child ctx, so they land in the
+   * child Agent's scope and unwind with it.
+   */
+  registerChildTools(childCtx: unknown, tools: readonly unknown[]): void
+  /**
+   * DSH's official delegation policy capture (dsh-subagent semantics): the
+   * parent session's explicit sandbox override, and the approval policy
+   * pinned to 'never' when an approval service exists.
+   */
+  delegatedPolicyOverrides(): { sandboxMode?: unknown, approvalPolicy?: string }
 }
 
 export interface CreateAgentSessionOptions {
@@ -55,6 +69,15 @@ interface PiSubagentFacade {
 }
 
 let subagentSerial = 0
+
+/**
+ * Pi built-in tool name → the DSH native tool that serves it. The two
+ * vocabularies coincide (read/bash/edit/write/grep); Pi's find and ls are
+ * both served by the host's glob.
+ */
+function nativeToolNameOf(name: string): string {
+  return name === 'find' || name === 'ls' ? 'glob' : name
+}
 
 /**
  * Cross-scope subscription base. Session events dispatch under the OWNING
@@ -112,6 +135,7 @@ export class PiBridgedAgentSession {
   #pendingToolCalls = new Set<string>()
   #sessionName = ''
   #turns = 0
+  #restrictionDispose: (() => void) | undefined
   /** Keeps message projections (which await attachment reads) in log order. */
   #messageProjection: Promise<unknown> = Promise.resolve()
   #aborted = false
@@ -375,16 +399,65 @@ export class PiBridgedAgentSession {
     return { turns: this.#turns, messages: this.messages.length, aborted: this.#aborted }
   }
 
+  /** The child scope's REAL tool schemas (native + scoped custom), in Pi tool shape. */
+  #scopeTools(): Array<{ name: string, description?: unknown, parameters?: unknown }> {
+    const agentCtx = (this.#handle.agent as { ctx?: { get?(name: string): unknown } }).ctx
+    const toolsService = (typeof agentCtx?.get === 'function' ? agentCtx.get('tools') : undefined) as
+      | { schemas?(agent: unknown): ReadonlyArray<{ name: string, description?: unknown, parameters?: unknown }> }
+      | undefined
+    try {
+      return [...(toolsService?.schemas?.(this.#handle.agent) ?? [])]
+    } catch {
+      return []
+    }
+  }
+
   getAllTools(): unknown[] {
-    return [...this.#tools]
+    // The child's real toolset: the visibility-resolved schemas of its own
+    // scope (native tools granted by the preset composition plus the scoped
+    // custom registrations). Custom tool OBJECTS are answered as given —
+    // that is the object the package registered.
+    const custom = new Map(this.#tools
+      .filter((tool): tool is UnknownRecord => typeof (tool as UnknownRecord | undefined)?.name === 'string')
+      .map(tool => [String(tool.name), tool]))
+    return this.#scopeTools().map(schema => custom.get(schema.name) ?? schema)
   }
 
   getActiveToolNames(): string[] {
-    return [...this.#activeToolNames]
+    const fromScope = this.#scopeTools().map(schema => schema.name)
+    return fromScope.length > 0 ? fromScope : [...this.#activeToolNames]
+  }
+
+  /** Hand over the creation-time restriction so a later setActiveToolsByName
+   * retires it instead of intersecting with it. */
+  adoptRestriction(dispose: (() => void) | undefined): void {
+    this.#restrictionDispose = dispose
   }
 
   setActiveToolsByName(names: string[]): void {
     this.#activeToolNames = names.filter(name => typeof name === 'string')
+    // Drive the child scope's REAL restriction: dispose the previous one and
+    // allow exactly the requested set (mapped onto native names). Scoped
+    // custom registrations are outside restriction reach, matching Pi.
+    const agentCtx = (this.#handle.agent as { ctx?: { get?(name: string): unknown } }).ctx
+    const toolsService = (typeof agentCtx?.get === 'function' ? agentCtx.get('tools') : undefined) as
+      | {
+        restrict(filter: { allow?: readonly string[] }): () => void
+        schemas(scope?: unknown): ReadonlyArray<{ name: string }>
+      }
+      | undefined
+    if (toolsService === undefined) return
+    try {
+      this.#restrictionDispose?.()
+      // Same unknown-name tolerance as creation: a name this host does not
+      // carry names nothing (restrict() itself would refuse it).
+      const known = new Set(toolsService.schemas().map(schema => schema.name))
+      this.#restrictionDispose = toolsService.restrict({
+        allow: this.#activeToolNames.map(nativeToolNameOf).filter(name => known.has(name)),
+      })
+    } catch {
+      // The scope may already be disposing; the façade list above still answers.
+    }
   }
 
   async bindExtensions(_bindings: UnknownRecord = {}): Promise<void> {
@@ -444,6 +517,7 @@ export async function createBridgedAgentSession(
   subagentSerial += 1
   const sessionId = `pi2dsh-sub-${Date.now().toString(36)}-${subagentSerial}`
   let handle
+  let initialRestrictionDispose: (() => void) | undefined
   try {
     // A Pi model object on the options routes the child agent: DSH's
     // agentOptions carry the provider route and model id the child's loop
@@ -467,6 +541,26 @@ export async function createBridgedAgentSession(
     const systemPrompt = overrideText !== undefined && overrideText.length > 0
       ? [overrideText, ...appendTexts].join('\n\n')
       : undefined
+    // Pi's tool contract for a child session (core/sdk.ts): `tools` is an
+    // allowlist of NAMES over built-in + extension tools (default: the
+    // built-in coding set), `customTools` are tool OBJECTS registered in
+    // addition, and `noTools` empties the built-in half. On DSH the built-in
+    // half is the host's NATIVE toolset — granted the official way, by
+    // composing the parent's agent preset into the child scope — so a child
+    // bash call runs the host's sandboxed, approval-guarded native tool, not
+    // a bridge copy. The allowlist becomes an official scoped restriction;
+    // scoped registrations (the custom tools) are outside restriction reach,
+    // which is exactly Pi's "custom tools stay enabled" semantics.
+    const customTools = Array.isArray(options.customTools) ? [...options.customTools] : []
+    const requestedNames = Array.isArray(options.tools)
+      ? options.tools.filter((name): name is string => typeof name === 'string')
+      : undefined
+    const parentCtx = host.parentAgentContext() as { get?(name: string): unknown } | undefined
+    const presetsOfParent = (typeof parentCtx?.get === 'function' ? parentCtx.get('agentPresets') : undefined) as
+      | { composedPreset?(ctx: unknown): string | undefined, composeFrom?(child: unknown, parent: unknown): void }
+      | undefined
+    const composedPreset = presetsOfParent?.composedPreset?.(parentCtx)
+    const delegated = host.delegatedPolicyOverrides()
     handle = await agents.create({
       sessionId,
       meta: {
@@ -477,6 +571,7 @@ export async function createBridgedAgentSession(
         // as if they were top-level.
         delegationDepth: host.parentDelegationDepth() + 1,
         ...(host.parentSessionId() !== undefined ? { parentSession: host.parentSessionId() } : {}),
+        ...(typeof composedPreset === 'string' && composedPreset.length > 0 ? { agentPreset: composedPreset } : {}),
       },
       ...(typeof requestedModel?.id === 'string' && requestedModel.id.length > 0
         ? {
@@ -488,23 +583,90 @@ export async function createBridgedAgentSession(
             },
           }
         : {}),
+      // The creator-exclusive setup runs on the UNPUBLISHED child scope:
+      // everything contributed here is in place before the first assembly
+      // and unwinds with the child. This is the same shape DSH's own
+      // dsh-subagent delegation uses (policy seed → preset composition →
+      // scope contributions).
+      setup: (childCtx: { get?(name: string): unknown, agent?: { session?: { append?(type: string, data: unknown): void } } } & UnknownRecord) => {
+        // 1. Delegation policy, official semantics: the parent's explicit
+        //    sandbox override travels with the child; approval is pinned so
+        //    a headless child never blocks on a dialog nobody is watching.
+        const childSession = childCtx.agent?.session
+        if (typeof childSession?.append === 'function') {
+          if (delegated.sandboxMode !== undefined) {
+            childSession.append('sandbox/mode', { mode: delegated.sandboxMode, source: 'delegation' })
+          }
+          if (delegated.approvalPolicy !== undefined) {
+            childSession.append('approval/policy', { policy: delegated.approvalPolicy, source: 'delegation' })
+          }
+        }
+        // 2. The parent's composed preset grants the child the host-native
+        //    toolset (and the rest of the preset's composition). A host
+        //    without the presets service simply contributes nothing here.
+        presetsOfParent?.composeFrom?.(childCtx, parentCtx)
+        // 3. Pi's allowlist / noTools, as the official scoped restriction.
+        //    Pi built-in names map onto the host's native tools (same names,
+        //    with Pi's find/ls served by the host's glob).
+        const restriction = requestedNames !== undefined
+          ? requestedNames.map(nativeToolNameOf)
+          : (options.noTools === 'all' || options.noTools === true || options.noTools === 'builtin' ? [] : undefined)
+        if (restriction !== undefined) {
+          const toolsService = (typeof childCtx.get === 'function' ? childCtx.get('tools') : undefined) as
+            | {
+              restrict(filter: { allow?: readonly string[] }): () => void
+              schemas(scope?: unknown): ReadonlyArray<{ name: string }>
+            }
+            | undefined
+          if (toolsService !== undefined) {
+            // restrict() REFUSES unknown global names; a Pi allowlist naming
+            // a tool this host does not carry simply means that tool does not
+            // exist here (Pi's own semantics for a name that matches nothing).
+            const known = new Set(toolsService.schemas().map(schema => schema.name))
+            // Keep the disposer: DSH restrictions INTERSECT, so a later
+            // setActiveToolsByName must retire this one, not stack on it.
+            initialRestrictionDispose = toolsService.restrict({ allow: restriction.filter(name => known.has(name)) })
+          }
+        }
+        // Pi's excludeTools denylist applies AFTER the allowlist. A separate
+        // restriction (they intersect) carries it; the child cannot re-open a
+        // denied name through setActiveToolsByName, matching Pi's ordering.
+        const excluded = Array.isArray(options.excludeTools)
+          ? options.excludeTools.filter((name): name is string => typeof name === 'string')
+          : []
+        if (excluded.length > 0) {
+          const toolsService = (typeof childCtx.get === 'function' ? childCtx.get('tools') : undefined) as
+            | {
+              restrict(filter: { deny?: readonly string[] }): () => void
+              schemas(scope?: unknown): ReadonlyArray<{ name: string }>
+            }
+            | undefined
+          if (toolsService !== undefined) {
+            const known = new Set(toolsService.schemas().map(schema => schema.name))
+            toolsService.restrict({ deny: excluded.map(nativeToolNameOf).filter(name => known.has(name)) })
+          }
+        }
+        // 4. The custom tools, translated and registered in the child scope.
+        //    `noTools: 'all'` starts with nothing enabled, so they are not
+        //    registered there (Pi's setActiveToolsByName can re-enable the
+        //    built-in half; custom tools under noTools:'all' stay off).
+        if (customTools.length > 0 && options.noTools !== 'all') {
+          host.registerChildTools(childCtx, customTools)
+        }
+        // 5. The caller's system prompt, in place before the first assembly.
+        //    `complete: true` is DSH's sole-prompt-section semantics,
+        //    matching Pi's systemPromptOverride replacing the default.
+        if (systemPrompt !== undefined) {
+          const prompt = (typeof childCtx.get === 'function' ? childCtx.get('systemPrompt') : undefined) as
+            | { section(input: { name: string, order: number, text: string, complete?: boolean }): unknown }
+            | undefined
+          if (prompt === undefined) {
+            throw new Error('pi2dsh: createAgentSession() got a system prompt but the DSH composition has no systemPrompt service to carry it')
+          }
+          prompt.section({ name: 'pi2dsh:subagent-system-prompt', order: -1_000_000, text: systemPrompt, complete: true })
+        }
+      },
     })
-    // Registered through the child's own Agent.ctx: ctx.get() returns a
-    // caller-bound service view, so the section lands in this agent's scope
-    // layer (dsh-scope kScope tag on Agent.ctx) and unwinds on disposal —
-    // never visible to the parent or sibling sessions. `complete: true` is
-    // DSH's sole-prompt-section semantics, matching Pi's systemPromptOverride
-    // replacing the default prompt.
-    if (systemPrompt !== undefined) {
-      const agentCtx = (handle.agent as { ctx?: { get?(name: string): unknown } }).ctx
-      const prompt = (typeof agentCtx?.get === 'function' ? agentCtx.get('systemPrompt') : undefined) as
-        | { section(input: { name: string, order: number, text: string, complete?: boolean }): unknown }
-        | undefined
-      if (prompt === undefined) {
-        throw new Error('pi2dsh: createAgentSession() got a system prompt but the DSH composition has no systemPrompt service to carry it')
-      }
-      prompt.section({ name: 'pi2dsh:subagent-system-prompt', order: -1_000_000, text: systemPrompt, complete: true })
-    }
   } catch (error) {
     throw new Error(
       'pi2dsh: subagent creation needs the DSH host loop (model runtime) to provide the agent factory; '
@@ -538,5 +700,7 @@ export async function createBridgedAgentSession(
       )
     }
   }
-  return { session: new PiBridgedAgentSession(host, handle, tools) }
+  const session = new PiBridgedAgentSession(host, handle, tools)
+  session.adoptRestriction(initialRestrictionDispose)
+  return { session }
 }

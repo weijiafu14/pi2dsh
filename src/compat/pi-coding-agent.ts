@@ -839,11 +839,21 @@ export class ExtensionRunner {
 // factory) with Pi's public AgentSession surface bridged over it. Outside a
 // mounted runtime the call keeps its explicit failure.
 type SubagentSessionFactory = (options: Record<string, unknown>) => Promise<{ session: unknown }>
-let subagentSessionFactory: SubagentSessionFactory | undefined
-const scopedSubagentSessionFactory = new AsyncLocalStorage<SubagentSessionFactory | undefined>()
+// Anchored on globalThis (Symbol.for), NOT module state: the shim can be
+// alive twice in one process — the engine's own chunk plus the jiti-loaded
+// copy extensions import — and a factory installed by one copy must be
+// visible to createAgentSession() in the other. Same state-splitting class
+// the shared host state guards against ("one bridge, not per-copy silos").
+const FACTORY_STORE = globalThis as unknown as Record<symbol, unknown>
+const FACTORY_KEY = Symbol.for('pi2dsh.subagentSessionFactory')
+const SCOPED_FACTORY_KEY = Symbol.for('pi2dsh.scopedSubagentSessionFactory')
+FACTORY_STORE[SCOPED_FACTORY_KEY] ??= new AsyncLocalStorage<SubagentSessionFactory | undefined>()
+const scopedSubagentSessionFactory = FACTORY_STORE[SCOPED_FACTORY_KEY] as AsyncLocalStorage<SubagentSessionFactory | undefined>
+const subagentSessionFactory = (): SubagentSessionFactory | undefined =>
+  FACTORY_STORE[FACTORY_KEY] as SubagentSessionFactory | undefined
 
 export function __setSubagentSessionFactory(factory: SubagentSessionFactory | undefined): void {
-  subagentSessionFactory = factory
+  FACTORY_STORE[FACTORY_KEY] = factory
 }
 
 /** Run extension-owned work with the exact Agent runtime's child-session factory. */
@@ -855,7 +865,7 @@ export function __runWithSubagentSessionFactory<T>(
 }
 
 export async function createAgentSession(options: Record<string, unknown> = {}): Promise<{ session: unknown }> {
-  const factory = scopedSubagentSessionFactory.getStore() ?? subagentSessionFactory
+  const factory = scopedSubagentSessionFactory.getStore() ?? subagentSessionFactory()
   if (factory === undefined) {
     return unsupportedRuntime('createAgentSession() outside a mounted pi2dsh runtime')
   }

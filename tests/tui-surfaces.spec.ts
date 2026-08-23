@@ -6,6 +6,7 @@ import {
   TuiSurfaceAdapter,
   commandNameForDshTui,
   mountTuiSurfaceAdapter,
+  tuiLocalCommandsForVersion,
   tuiSurfaceInternals,
   type TuiSurfaceContext,
 } from '../src/tui-surfaces.js'
@@ -227,6 +228,28 @@ describe('dsh-TUI interop policy', () => {
     expect(commandNameForDshTui('mcp', true)).toBe('pi-mcp')
     expect(commandNameForDshTui('mcp', false)).toBe('mcp')
     expect(commandNameForDshTui('other', true)).toBe('other')
+  })
+
+  it('prefixes EVERY dsh-TUI local command name, only on that surface, and only on collision', () => {
+    // dsh-TUI 0.9.0 reserves these locally (locals win on collisions): a Pi
+    // package's /agents or /btw — and the engine's own /login — would be
+    // unreachable there under their original names.
+    for (const reserved of ['agents', 'btw', 'login', 'model']) {
+      expect(commandNameForDshTui(reserved, true)).toBe(`pi-${reserved}`)
+      expect(commandNameForDshTui(reserved, false)).toBe(reserved)
+    }
+    // No collision → the original name stands, TUI or not.
+    expect(commandNameForDshTui('vision', true)).toBe('vision')
+  })
+
+  it('pins the reserved set per installed dsh-tui generation', () => {
+    // 0.8.x reserved only /mcp; 0.9.0 grew the local set. Unknown → assume
+    // the current generation rather than silently under-renaming.
+    expect(tuiLocalCommandsForVersion('0.8.8').has('agents')).toBe(false)
+    expect(tuiLocalCommandsForVersion('0.8.8').has('mcp')).toBe(true)
+    expect(tuiLocalCommandsForVersion('0.9.0').has('agents')).toBe(true)
+    expect(tuiLocalCommandsForVersion('0.9.0').has('btw')).toBe(true)
+    expect(tuiLocalCommandsForVersion(undefined).has('agents')).toBe(true)
   })
 
   it('reconstructs Pi raw key bytes when the host event has no sequence', () => {
