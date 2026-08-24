@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Real-machine acceptance for the pi-subagents LIFECYCLE surfaces the P0 run
-// left open: steer / resume / stop. Stock stack, no mocks:
+// left open: steer / resume / stop / live-route inheritance / explicit child
+// model + per-child thinking. Stock stack, no mocks:
 //
 //   - CLI:      @deepseek-ai/dsh@0.1.1-rc.2 (npm, stock)
 //   - Engine:   this working tree (or PI2DSH_ENGINE_SPEC)
@@ -22,6 +23,12 @@
 //           turn is interrupted (Esc in the stock TUI — the official
 //           parent-abort → child-stop wiring). The file must still be absent
 //           well after the sleep window — without a real stop it appears.
+//   model-follow: after a real TUI /model switch, an unpinned child must use
+//           the parent's last durable request route, not its creation seed.
+//   explicit-model-thinking: while the parent stays on work-gw, one child is
+//           explicitly pinned to deepseek-official with thinking=max. The
+//           child's durable request header must carry BOTH values and its
+//           real tool effect must land.
 //
 //   node scripts/verify-subagents-lifecycle-e2e.mjs [community/subagents-lifecycle-e2e.json]
 
@@ -54,7 +61,7 @@ const record = async status => {
   await writeFile(outPath, `${JSON.stringify({
     generatedAt: new Date().toISOString(),
     startedAt,
-    scenario: 'pi-subagents-lifecycle (steer / resume / stop)',
+    scenario: 'pi-subagents-lifecycle (steer / resume / stop / model-follow / explicit-model-thinking)',
     cliSpec: DSH_CLI_SPEC,
     engineSpec: ENGINE_SPEC,
     subagentsSpec: SUBAGENTS_SPEC,
@@ -570,6 +577,7 @@ try {
   // ======================================================================
   if (process.env.PI2DSH_SKIP_TUI !== undefined) {
     scenarios.modelFollow = { status: 'skipped', reason: 'PI2DSH_SKIP_TUI set' }
+    scenarios.explicitModelThinking = { status: 'skipped', reason: 'PI2DSH_SKIP_TUI set' }
   } else {
     const FOLLOW_TAG = `FOLLOW_${RUN_TAG}`
     const followMarker = join(workDir, `model-follow-${RUN_TAG}.txt`)
@@ -617,16 +625,18 @@ try {
         const sessions = await loadSessions(marker)
         return sessions.find(s => !s.isChild)
       }
-      const routesOf = parent => (parent?.events ?? [])
+      const configsOf = subject => (subject?.events ?? [])
         .filter(e => e.type === 'request/header')
         .map(e => {
           const data = e.data ?? {}
           const header = data.header ?? {}
           for (const shape of [data.config, header.config, header, data]) {
-            if (typeof shape?.model === 'string') return { provider: shape.provider, model: shape.model }
+            if (typeof shape?.model === 'string') return { ...shape }
           }
           return {}
         })
+      const routesOf = subject => configsOf(subject)
+        .map(config => ({ provider: config.provider, model: config.model }))
       const warmupDeadline = Date.now() + 180_000
       for (;;) {
         const parent = await parentSession(`warmup-${FOLLOW_TAG}`)
@@ -686,12 +696,99 @@ try {
         childRoutes: child === undefined ? null : routesOf(child),
         markerLanded: existsSync(followMarker),
       }
+
+      // Scenario 6 — explicit-model-thinking. Keep this SAME parent on
+      // work-gw, but explicitly pin one child to the official route and max
+      // effort. If either Pi option is dropped, the child's durable header
+      // exposes it; if the request never really runs, the marker stays absent.
+      const explicitProblems = []
+      const EXPLICIT_TAG = `EXPLICIT_${RUN_TAG}`
+      const explicitMarker = join(workDir, `explicit-model-thinking-${RUN_TAG}.txt`)
+      await rm(explicitMarker, { force: true })
+      try {
+        const explicitMessage = [
+          `Call the Agent tool exactly once with description "explicit route and effort probe",`,
+          `subagent_type general-purpose, name "explicit-probe", model "deepseek-official/deepseek-v4-flash",`,
+          `thinking "max", run_in_background false, and prompt: "Run one bash command that writes the single word`,
+          `${EXPLICIT_TAG} into ${explicitMarker}, then reply done."`,
+          `Do not run bash yourself. Then reply done.`,
+        ].join(' ')
+        await execFile('tmux', ['send-keys', '-t', TMUX_SESSION, '-l', explicitMessage])
+        await delay(500)
+        await execFile('tmux', ['send-keys', '-t', TMUX_SESSION, 'Enter'])
+        const explicitDeadline = Date.now() + 300_000
+        while (!existsSync(explicitMarker) && Date.now() < explicitDeadline) await delay(2000)
+        if (!existsSync(explicitMarker)) {
+          explicitProblems.push('the explicitly routed child never wrote its marker — no successful real child turn')
+        }
+        await delay(8000)
+
+        const explicitParent = await parentSession(explicitMarker)
+        const explicitParentConfigs = configsOf(explicitParent)
+        const parentLast = explicitParentConfigs.at(-1) ?? {}
+        if (String(parentLast.provider ?? '') !== 'work-gw') {
+          explicitProblems.push(`the parent left work-gw (${JSON.stringify(explicitParentConfigs)}) — explicit child routing is not isolated evidence`)
+        }
+        const agentCall = explicitParent?.toolCalls.find(call =>
+          call.data?.name === 'Agent' && JSON.stringify(call.data?.arguments ?? {}).includes(explicitMarker))
+        const rawAgentArgs = agentCall?.data?.arguments
+        let agentArgs = {}
+        if (typeof rawAgentArgs === 'object' && rawAgentArgs !== null) {
+          agentArgs = rawAgentArgs
+        } else if (typeof rawAgentArgs === 'string') {
+          try {
+            agentArgs = JSON.parse(rawAgentArgs)
+          } catch {
+            explicitProblems.push(`the Agent tool arguments are not valid JSON (${rawAgentArgs})`)
+          }
+        }
+        if (String(agentArgs.model ?? '') !== 'deepseek-official/deepseek-v4-flash') {
+          explicitProblems.push(`the parent did not explicitly pass the requested child model (${JSON.stringify(agentArgs)})`)
+        }
+        if (String(agentArgs.thinking ?? '') !== 'max') {
+          explicitProblems.push(`the parent did not explicitly pass thinking=max (${JSON.stringify(agentArgs)})`)
+        }
+        if (explicitParent?.toolCalls.some(call => call.data?.name === 'bash')) {
+          explicitProblems.push('the parent ran bash itself — the marker proves nothing about the child')
+        }
+
+        const explicitChildren = (await loadSessions(EXPLICIT_TAG)).filter(session => session.isChild)
+        const explicitChild = explicitChildren.find(session => session.raw.includes(explicitMarker))
+        const childConfigs = explicitChild === undefined ? [] : configsOf(explicitChild)
+        const childFirst = childConfigs[0] ?? {}
+        if (String(childFirst.provider ?? '') !== 'deepseek-official'
+          || String(childFirst.model ?? '') !== 'deepseek-v4-flash') {
+          explicitProblems.push(`the child did not use the explicit route (${JSON.stringify(childConfigs)})`)
+        }
+        if (String(childFirst.reasoningEffort ?? '') !== 'max') {
+          explicitProblems.push(`the child request did not carry reasoningEffort=max (${JSON.stringify(childConfigs)})`)
+        }
+        if (explicitChild !== undefined && !explicitChild.toolCalls.some(call => call.data?.name === 'bash')) {
+          explicitProblems.push('the explicit child made no real bash tool call')
+        }
+        scenarios.explicitModelThinking = {
+          status: explicitProblems.length === 0 ? 'passed' : 'failed',
+          problems: explicitProblems,
+          parentConfigs: explicitParentConfigs,
+          agentArguments: agentArgs,
+          childConfigs,
+          childToolCalls: explicitChild?.toolCalls.map(call => call.data?.name) ?? null,
+          markerLanded: existsSync(explicitMarker),
+        }
+      } catch (error) {
+        scenarios.explicitModelThinking = {
+          status: 'failed',
+          problems: [...explicitProblems, String((error && error.message) || error)],
+        }
+      }
     } catch (error) {
       scenarios.modelFollow = { status: 'failed', problems: [...problems, String((error && error.message) || error)] }
+      scenarios.explicitModelThinking ??= { status: 'failed', problems: ['model-follow setup failed before the explicit child scenario'] }
     } finally {
       await execFile('tmux', ['kill-session', '-t', TMUX_SESSION]).catch(() => {})
     }
     log(`scenario model-follow: ${scenarios.modelFollow.status}${(scenarios.modelFollow.problems ?? []).length > 0 ? ` — ${scenarios.modelFollow.problems.join('; ')}` : ''}`)
+    log(`scenario explicit-model-thinking: ${scenarios.explicitModelThinking.status}${(scenarios.explicitModelThinking.problems ?? []).length > 0 ? ` — ${scenarios.explicitModelThinking.problems.join('; ')}` : ''}`)
   }
 
   const failed = Object.values(scenarios).filter(s => s?.status === 'failed').length

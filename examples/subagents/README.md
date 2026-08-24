@@ -72,7 +72,7 @@ reopens the same conversation from its archive.
 
 ## Verified behaviors
 
-The four lifecycle scenarios run as one repeatable harness —
+The six lifecycle scenarios run as one repeatable harness —
 [`scripts/verify-subagents-lifecycle-e2e.mjs`](../../scripts/verify-subagents-lifecycle-e2e.mjs)
 — on a fresh `DSH_HOME`, the stock npm CLI, the stock package and a real
 model, with falsifiable assertions (each one fails when the feature breaks):
@@ -83,6 +83,8 @@ model, with falsifiable assertions (each one fails when the feature breaks):
 | resume | A codeword that exists only inside a file: turn 1 reads and memorizes it, the resumed turn 2 must write it from memory with reads forbidden, in the same session log |
 | stop | An interrupted parent's child was mid-`sleep`; well past the sleep window its output file must still be absent, and its session log must end aborted, not completed |
 | cross-restart reopen | Two separate OS processes: the second reopens the child by its archive identity through the public Pi ABI and recalls the codeword — same session log grown from one turn to two |
+| live model follow | The parent really calls the official route, switches to an independent gateway with `/model`, then spawns an unpinned child; durable parent/child headers must show `official → gateway` / `gateway only` |
+| explicit model + thinking | The parent stays on the gateway while one child is explicitly pinned to the official model with `thinking: max`; its durable header must carry the official route plus `reasoningEffort: max`, and its real tool effect must land |
 
 Evidence: [`community/subagents-lifecycle-e2e.json`](../../community/subagents-lifecycle-e2e.json)
 and the acceptance report
