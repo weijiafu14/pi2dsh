@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
+import { runtimeInternals } from '../src/runtime.js'
 import { childLabel, createBridgedAgentSession, type SubagentHost } from '../src/subagent-bridge.js'
 
 type UnknownRecord = Record<string, unknown>
@@ -566,5 +567,35 @@ describe('Pi createAgentSession bridged onto real DSH agents', () => {
     // No package context (a bare bridge host) still produces an honest name.
     expect(childLabel(undefined, undefined)).toBe('Pi side conversation')
     expect(childLabel('x'.repeat(200), undefined)).toHaveLength(80)
+  })
+})
+
+describe('the caller route a child inherits is the LIVE one', () => {
+  // DSH's own subagent line reports this exact bug (#455, #2006): children
+  // inherit the parent's CREATION-TIME AgentOptions, so a session that
+  // switched models spawns children on the stale default and they fail on a
+  // provider the user never configured. The bridge resolves the caller's live
+  // route instead — an in-session ctx.setModel override wins over the
+  // creation snapshot — so a Pi package that leaves the model to the caller
+  // gets the model the caller is actually running.
+  it('prefers an in-session setModel override over the creation-time snapshot', () => {
+    const overrides = new WeakMap<object, { provider?: string, model?: string }>()
+    const state = {
+      modelOverrides: overrides,
+      companionRoutes: new Map<string, string>(),
+      modelCatalog: undefined,
+    } as unknown as Parameters<typeof runtimeInternals.currentPiModel>[0]
+    const agent = { options: { provider: 'deepseek-official', model: 'stale-default' } }
+
+    // Before any switch: the creation snapshot is the live route.
+    expect(runtimeInternals.currentPiModel(state, agent)).toMatchObject({
+      id: 'stale-default', provider: 'deepseek-official',
+    })
+
+    // After the session switched models, the override is the live route.
+    overrides.set(agent, { provider: 'my-gateway', model: 'switched-model' })
+    expect(runtimeInternals.currentPiModel(state, agent)).toMatchObject({
+      id: 'switched-model', provider: 'my-gateway',
+    })
   })
 })

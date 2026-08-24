@@ -4970,14 +4970,20 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
     },
     resumeSessionIdFor: file => state.bridge.sessionIdOfArchiveFile(file),
     parentModelRoute: () => {
-      const parent = currentAgent(state) as { options?: { provider?: unknown, model?: unknown } } | undefined
-      const model = parent?.options?.model
+      // The caller's LIVE route, not its creation-time snapshot: currentPiModel
+      // reads the in-session selection (ctx.setModel) first and only falls back
+      // to agent.options. Reading options alone is exactly the inheritance bug
+      // DSH's own subagent line reports (a session that switched models spawns
+      // children on the stale default) — the bridge must not reproduce it.
+      const parent = currentAgent(state)
+      if (parent === undefined) return undefined
+      const live = currentPiModel(state, parent)
+      const model = live?.id
       if (typeof model !== 'string' || model.length === 0) return undefined
+      const provider = live?.provider
       return {
         model,
-        ...(typeof parent?.options?.provider === 'string' && parent.options.provider.length > 0
-          ? { provider: parent.options.provider }
-          : {}),
+        ...(typeof provider === 'string' && provider.length > 0 ? { provider } : {}),
       }
     },
   })
@@ -5053,6 +5059,7 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
 export const runtimeInternals = {
   compactionReason,
   resolveOfferedChoice,
+  currentPiModel,
   dshToPiContent,
   expandPrompt,
   isKnownImageTool,
