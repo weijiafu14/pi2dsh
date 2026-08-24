@@ -62,6 +62,12 @@ export interface SubagentHost {
    * option and prompt sections keyed on {{model}} fail the first assembly.
    */
   parentModelRoute?(): { provider?: string, model?: string } | undefined
+  /**
+   * Claim a freshly created child agent for this instance: its requests join
+   * the instance's agent/request waterfall (which is what carries a per-child
+   * thinking level), and only the creating instance claims it.
+   */
+  adoptChildAgent?(child: unknown, thinkingLevel?: string): void
 }
 
 export interface CreateAgentSessionOptions {
@@ -167,6 +173,7 @@ export class PiBridgedAgentSession {
 
   readonly #host: SubagentHost
   readonly #handle: { agent: UnknownRecord, dispose(): Promise<void> }
+  readonly #thinkingLevel: string
   readonly #session: UnknownRecord
   readonly #tools: unknown[]
   readonly #subscribers = new Set<PiSessionEventHandler>()
@@ -189,7 +196,9 @@ export class PiBridgedAgentSession {
     host: SubagentHost,
     handle: { agent: UnknownRecord, dispose(): Promise<void> },
     tools: unknown[],
+    thinkingLevel?: string,
   ) {
+    this.#thinkingLevel = typeof thinkingLevel === 'string' && thinkingLevel.length > 0 ? thinkingLevel : 'off'
     this.#host = host
     this.#handle = handle
     this.#session = (handle.agent as { session?: UnknownRecord }).session ?? {}
@@ -239,7 +248,7 @@ export class PiBridgedAgentSession {
     this.#state = {
       get systemPrompt(): string { return '' },
       get model(): unknown { return session.#model },
-      get thinkingLevel(): string { return 'off' },
+      get thinkingLevel(): string { return session.#thinkingLevel },
       get tools(): unknown[] { return [...session.#tools] },
       set tools(_next: unknown[]) { /* DSH owns the child's tool scope */ },
       get messages(): UnknownRecord[] { return [...session.messages] },
@@ -452,13 +461,26 @@ export class PiBridgedAgentSession {
     await this.#messageProjection
   }
 
-  steer(text: string): void {
-    void this.#host.piContentToDsh([{ type: 'text', text: String(text) }]).then(blocks => {
-      this.#host.deliver(this.#handle.agent, createUserMessage({
-        content: blocks,
-        source: { kind: 'plugin', plugin: this.#host.messageSource },
-      }), 'steer')
-    })
+  // Pi's AgentSession contract (coding-agent agent-session.ts): steer and
+  // followUp are BOTH async and resolve once the message is queued —
+  // pi-subagents chains `session.steer(msg).catch(...)` directly, so a void
+  // return is a synchronous crash in the caller, not a style choice.
+  async steer(text: string, images?: readonly UnknownRecord[]): Promise<void> {
+    await this.#queueMessage(text, images, 'steer')
+  }
+
+  async followUp(text: string, images?: readonly UnknownRecord[]): Promise<void> {
+    await this.#queueMessage(text, images, 'followup')
+  }
+
+  async #queueMessage(text: string, images: readonly UnknownRecord[] | undefined, mode: 'steer' | 'followup'): Promise<void> {
+    const content: UnknownRecord[] = [{ type: 'text', text: String(text) }]
+    for (const image of images ?? []) content.push(image)
+    const blocks = await this.#host.piContentToDsh(content)
+    this.#host.deliver(this.#handle.agent, createUserMessage({
+      content: blocks,
+      source: { kind: 'plugin', plugin: this.#host.messageSource },
+    }), mode)
   }
 
   abort(): void {
@@ -891,7 +913,13 @@ export async function createBridgedAgentSession(
       )
     }
   }
-  const session = new PiBridgedAgentSession(host, handle, tools)
+  // Pi's thinkingLevel option is per-child request config; DSH carries it on
+  // the instance's agent/request waterfall, which the adoption below joins the
+  // child to. 'off' stays absent — DSH's reasoning contract treats absence as
+  // off, and injecting a literal 'off' would collide with route capabilities.
+  const thinkingLevel = typeof options.thinkingLevel === 'string' ? options.thinkingLevel : undefined
+  host.adoptChildAgent?.(handle.agent, thinkingLevel)
+  const session = new PiBridgedAgentSession(host, handle, tools, thinkingLevel)
   session.adoptRestriction(initialRestrictionDispose)
   return { session }
 }

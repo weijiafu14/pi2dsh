@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-08-23T18:41:21.042Z",
-  "startedAt": "2026-08-23T18:37:29.759Z",
+  "generatedAt": "2026-08-24T08:15:07.065Z",
+  "startedAt": "2026-08-24T08:10:24.324Z",
   "scenario": "pi-subagents-lifecycle (steer / resume / stop)",
   "cliSpec": "@deepseek-ai/dsh@0.1.1-rc.2",
   "engineSpec": "/Users/developer/projj/workspace/pi2dsh",
@@ -12,19 +12,21 @@
       "problems": [],
       "steeredLanded": true,
       "alphaAlsoLanded": false,
+      "spawnTaskVerbatim": true,
       "parentToolCalls": [
         "Agent",
         "steer_subagent",
+        "get_subagent_result",
         "get_subagent_result"
       ],
-      "childFile": "/tmp/pi2dsh-subagents-lifecycle.aILFkb/dsh-home/sessions/--private-tmp-pi2dsh-subagents-lifecycle.aILFkb-workspace--/pi2dsh-sub-mt65gtr9-1/session.jsonl"
+      "childFile": "/tmp/pi2dsh-subagents-lifecycle.BJaNny/dsh-home/sessions/--private-tmp-pi2dsh-subagents-lifecycle.BJaNny-workspace--/pi2dsh-sub-mt6yidda-1/session.jsonl"
     },
     "resume": {
       "status": "passed",
       "problems": [],
-      "attempt": 1,
+      "attempt": 2,
       "recalled": true,
-      "childSessionFile": "/tmp/pi2dsh-subagents-lifecycle.aILFkb/dsh-home/sessions/--private-tmp-pi2dsh-subagents-lifecycle.aILFkb-workspace--/pi2dsh-sub-mt65hkb7-1/session.jsonl",
+      "childSessionFile": "/tmp/pi2dsh-subagents-lifecycle.BJaNny/dsh-home/sessions/--private-tmp-pi2dsh-subagents-lifecycle.BJaNny-workspace--/pi2dsh-sub-mt6yjhor-1/session.jsonl",
       "childTurns": 2,
       "matchedChildLogs": 1
     },
@@ -32,16 +34,16 @@
       "status": "passed",
       "problems": [],
       "recalled": true,
-      "archive": "/tmp/pi2dsh-subagents-lifecycle.aILFkb/dsh-home/pi2dsh/agent/session-entries/pi2dsh-sub-mt65htbi-1.jsonl",
-      "childSessionFile": "/tmp/pi2dsh-subagents-lifecycle.aILFkb/dsh-home/sessions/--private-tmp-pi2dsh-subagents-lifecycle.aILFkb-workspace--/pi2dsh-sub-mt65htbi-1/session.jsonl",
+      "archive": "/tmp/pi2dsh-subagents-lifecycle.BJaNny/dsh-home/pi2dsh/agent/session-entries/pi2dsh-sub-mt6yjrhn-1.jsonl",
+      "childSessionFile": "/tmp/pi2dsh-subagents-lifecycle.BJaNny/dsh-home/sessions/--private-tmp-pi2dsh-subagents-lifecycle.BJaNny-workspace--/pi2dsh-sub-mt6yjrhn-1/session.jsonl",
       "childTurns": 2
     },
     "stopChildTurnEnds": [
       "{\"kind\":\"aborted\",\"reason\":{\"kind\":\"hook\",\"reason\":\"pi2dsh subagent abort()\"}}",
       "{\"kind\":\"aborted\",\"reason\":{\"kind\":\"hook\",\"reason\":\"pi2dsh subagent abort()\"}}"
     ],
-    "stopPaneTail": "▄▀ █▄▄▄▄ █▄▄▄▄ █   █\n   ▄▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▄  ▄▀▀▀▀▀           █   █  ▄▀▄  █▀▀▀▄ █   █ █▀▀▀▀ █▀▀▀▀ █▀▀▀▀\n   ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀           █   █ █   █ █   █ ██  █ █     █     █\n   ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀            █▀▀▀█ █▀▀▀█ █▄▄▄▀ █ █ █ █▀▀▀   ▀▀▀▄  ▀▀▀▄\n   ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀             █   █ █   █ █ █   █  ██ █         █     █\n    ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀              █   █ █   █ █   █ █   █ █▄▄▄▄ █▄▄▄▀ █▄▄▄▀\n      ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▄             deepseek-v4-flash · Max effort\n         ▀▀▀▀▀▀▀▀▀▀▀  ▀▀▀▀▀▀▀             /private/tmp/pi2dsh-subagents-lifecycle.aILFkb/workspace\n                                          Tip: /skills lists the skill catalog · /tips more tips\n\n        Explore the uncharted!\n\n❯ Call the Agent tool exactly once: subagent_type general-purpose, name \"sleeper\", run_in_background false, prompt: \"Run the bash command `sleep 90`. When it finishes, write\n  the file /tmp/pi2dsh-subagents-lifecycle.aILFkb/workspace/stopped-agent-output-MT65G7XB.txt containing SHOULD_NOT_EXIST_MT65G7XB using bash, then reply done.\" Do not run bash\n  yourself.\n\n⚓ Thinking (ctrl+o to expand)\n\n⏺\n\n✗ Agent({\"description\": \"Sleep then write marker file\", \"name\": \"sleeper\", \"prompt\": \"Run the bash command `sleep 90`. When it finishes, write the file /tmp/pi2dsh-suba…) · 3s\n ⎿ AbortError: ABORTED — Error: tool call aborted\n   ⌘t for the full trajectory\n\nInterrupted · What should DeepSeek do instead?\n\n╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮\n❯\n╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯\n deepseek-v4-flash · max · cache 0.0% · workspace                                                                                                               ctx 1.1% (11k/1.0m)\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
-    "stopManagerScreen": "  /private/tmp/pi2dsh-subagents-lifecycle.aILFkb/workspace\n                                          Tip: /skills lists the skill catalog · /tips more tips\n\n        Explore the uncharted!\n\n❯ Call the Agent tool exactly once: subagent_type general-purpose, name \"sleeper\", run_in_background false, prompt: \"Run the bash command `sleep 90`. When it finishes, write\n  the file /tmp/pi2dsh-subagents-lifecycle.aILFkb/workspace/stopped-agent-output-MT65G7XB.txt containing SHOULD_NOT_EXIST_MT65G7XB using bash, then reply done.\" Do not run bash\n  yourself.\n\n⚓ Thinking (ctrl+o to expand)\n\n⏺\n\n✗ Agent({\"description\": \"Sleep then write marker file\", \"name\": \"sleeper\", \"prompt\": \"Run the bash command `sleep 90`. When it finishes, write the file /tmp/pi2dsh-suba…) · 3s\n ⎿ AbortError: ABORTED — Error: tool call aborted\n   ⌘t for the full trajectory\n\nInterrupted · What should DeepSeek do instead?\n\n  ──────────────────────────────────────────────────────────────────────────────  📋 Question 1/1   ──────────────────────────────────────────────────────────────────────────────\n\n  Agents\n\n\n  ❯● Running agents (1) — 0 running, 0 done\n   ○ Agent types (3)\n   ○ Scheduled jobs (0)\n   ○ Create new agent\n   ○ Settings\n   ✎ Custom answer：Type directly…\n\n  ↑/↓ select · Type text to attach an answer · Enter submit · Esc cancel\n deepseek-v4-flash · max · cache 0.0% · workspace                                                                                                               ctx 1.1% (11k/1.0m)\n\n\n\n\n",
+    "stopPaneTail": "  ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀              █   █ █   █ █   █ █   █ █▄▄▄▄ █▄▄▄▀ █▄▄▄▀\n      ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▄             deepseek-chat · Max effort\n         ▀▀▀▀▀▀▀▀▀▀▀  ▀▀▀▀▀▀▀             /private/tmp/pi2dsh-subagents-lifecycle.BJaNny/workspace\n                                          Tip: Drag-select copies instantly in fullscreen; Esc cancels · /tips more tips\n\n        Explore the uncharted!\n\n❯ Call the Agent tool exactly once: subagent_type general-purpose, name \"sleeper\", run_in_background false, prompt: \"Run the bash command `sleep 90`. When it finishes, write\n  the file /tmp/pi2dsh-subagents-lifecycle.BJaNny/workspace/stopped-agent-output-MT6YHMMC.txt containing SHOULD_NOT_EXIST_MT6YHMMC using bash, then reply done.\" Do not run bash\n  yourself.\n\n⏺\n\n• Agent({\"subagent_type\":\"general-purpose\",\"name\":\"sleeper\",\"run_in_background\":false,\"prompt\":\"Run the bash command `sleep 90`. When it finishes, write the file /tmp/p…) · 0s\n ⎿ Error: Validation failed for tool \"Agent\":\n     - description: must have required properties description\n\n   … +7 lines (ctrl+o to expand)\n\n⏺ I need to add the required description parameter.\n\n✗ Agent({\"description\":\"Run sleep then write file\",\"name\":\"sleeper\",\"prompt\":\"Run the bash command `sleep 90`. When it finishes, write the file /tmp/pi2dsh-subagents-li…) · 2s\n ⎿ AbortError: ABORTED — Error: tool call aborted\n   ⌘t for the full trajectory\n\nInterrupted · What should DeepSeek do instead?\n\n╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮\n❯\n╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯\n deepseek-chat · max · cache 97.8% · workspace                                                                                                                  ctx 8.2% (11k/131k)\n\n\n\n\n\n\n\n\n",
+    "stopManagerScreen": " When it finishes, write\n  the file /tmp/pi2dsh-subagents-lifecycle.BJaNny/workspace/stopped-agent-output-MT6YHMMC.txt containing SHOULD_NOT_EXIST_MT6YHMMC using bash, then reply done.\" Do not run bash\n  yourself.\n\n⏺\n\n• Agent({\"subagent_type\":\"general-purpose\",\"name\":\"sleeper\",\"run_in_background\":false,\"prompt\":\"Run the bash command `sleep 90`. When it finishes, write the file /tmp/p…) · 0s\n ⎿ Error: Validation failed for tool \"Agent\":\n     - description: must have required properties description\n\n   … +7 lines (ctrl+o to expand)\n\n⏺ I need to add the required description parameter.\n\n✗ Agent({\"description\":\"Run sleep then write file\",\"name\":\"sleeper\",\"prompt\":\"Run the bash command `sleep 90`. When it finishes, write the file /tmp/pi2dsh-subagents-li…) · 2s\n ⎿ AbortError: ABORTED — Error: tool call aborted\n   ⌘t for the full trajectory\n\nInterrupted · What should DeepSeek do instead?\n\n  ──────────────────────────────────────────────────────────────────────────────  📋 Question 1/1   ──────────────────────────────────────────────────────────────────────────────\n\n  Agents\n\n\n  ❯● Running agents (1) — 0 running, 0 done\n   ○ Agent types (3)\n   ○ Scheduled jobs (0)\n   ○ Create new agent\n   ○ Settings\n   ✎ Custom answer：Type directly…\n\n  ↑/↓ select · Type text to attach an answer · Enter submit · Esc cancel\n deepseek-chat · max · cache 97.8% · workspace                                                                                                                  ctx 8.2% (11k/131k)\n\n",
     "stop": {
       "status": "passed",
       "problems": [],
@@ -49,10 +51,33 @@
       "interrupted": true,
       "outputFileAbsentAfterWindow": true
     },
+    "modelFollowPickerScreen": "y: warmup-FOLLOW_MT6YHMMC\n\n⏺ warmup-FOLLOW_MT6YHMMC\n                                                                                                                                               Model switched to Work Gateway Model\n╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮\n❯\n╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯\n deepseek-chat · max · cache 0.0% · workspace                                                                                                                   ctx 1.0% (10k/1.0m)\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
+    "modelFollow": {
+      "status": "passed",
+      "problems": [],
+      "defaultProvider": "deepseek-official",
+      "parentRoutes": [
+        {
+          "provider": "deepseek-official",
+          "model": "deepseek-v4-flash"
+        },
+        {
+          "provider": "work-gw",
+          "model": "deepseek-chat"
+        }
+      ],
+      "childRoutes": [
+        {
+          "provider": "work-gw",
+          "model": "deepseek-chat"
+        }
+      ],
+      "markerLanded": true
+    },
     "stack": {
       "cliVersion": "0.1.1-rc.2",
-      "engineVersion": "0.16.0",
-      "scratch": "/tmp/pi2dsh-subagents-lifecycle.aILFkb"
+      "engineVersion": "0.16.2",
+      "scratch": "/tmp/pi2dsh-subagents-lifecycle.BJaNny"
     }
   }
 }

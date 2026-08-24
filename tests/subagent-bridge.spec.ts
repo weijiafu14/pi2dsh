@@ -335,6 +335,43 @@ describe('Pi createAgentSession bridged onto real DSH agents', () => {
     await pi.dispose()
   })
 
+  // Pi's AgentSession exposes steer AND followUp as async faces that resolve
+  // once the message is queued — pi-subagents chains `.catch` on the return
+  // value directly, so anything but a Promise is a synchronous crash there.
+  it('queues steer and followUp through the delivery channel and returns awaitable promises', async () => {
+    const ctx = new Context()
+    await ctx.plugin(SessionStore)
+    const session = ctx.sessions.create(SessionId(`queue-${Date.now()}`), {
+      meta: { createdAt: Date.now(), cwd: process.cwd() },
+    })
+    const realGet = (ctx as unknown as { get(name: string): unknown }).get.bind(ctx)
+    ;(ctx as unknown as { get(name: string): unknown }).get = (name: string) =>
+      name === 'agents'
+        ? {
+            async create() {
+              return {
+                agent: { id: session.id, session, cancel: () => {} },
+                dispose: async () => {},
+              }
+            },
+          }
+        : realGet(name)
+    const deliveries: Array<{ mode: string, message: unknown }> = []
+    const { session: pi } = await createBridgedAgentSession(makeHost(ctx, deliveries), {})
+
+    const steered = pi.steer('change of plan')
+    expect(steered).toBeInstanceOf(Promise)
+    await steered
+    const followed = pi.followUp('and afterwards')
+    expect(followed).toBeInstanceOf(Promise)
+    await followed
+
+    expect(deliveries.map(d => d.mode)).toEqual(['steer', 'followup'])
+    expect(JSON.stringify(deliveries[0]?.message)).toContain('change of plan')
+    expect(JSON.stringify(deliveries[1]?.message)).toContain('and afterwards')
+    await pi.dispose()
+  })
+
   // Pi's contract fires tool_execution_end per finished call. pi-subagents
   // counts its user-facing "N tool uses" on exactly this event — before the
   // bridge emitted it, a child that really ran tools reported "0 tool uses"
@@ -597,5 +634,79 @@ describe('the caller route a child inherits is the LIVE one', () => {
     expect(runtimeInternals.currentPiModel(state, agent)).toMatchObject({
       id: 'switched-model', provider: 'my-gateway',
     })
+  })
+})
+
+describe('per-child thinking level and adoption', () => {
+  // Pi's createAgentSession thinkingLevel is per-child request config. On DSH
+  // it rides the instance's agent/request waterfall, which only covers agents
+  // the instance claims — so creation must ADOPT the child (#2970/#3008-shaped
+  // gap: the option used to be accepted and silently dropped, with the state
+  // getter hardwired to 'off').
+  async function harness(adopted: Array<{ child: unknown, level?: string }>) {
+    const ctx = new Context()
+    await ctx.plugin(SessionStore)
+    const session = ctx.sessions.create(SessionId(`think-${Date.now()}-${Math.random().toString(36).slice(2)}`), {
+      meta: { createdAt: Date.now(), cwd: process.cwd() },
+    })
+    const realGet = (ctx as unknown as { get(name: string): unknown }).get.bind(ctx)
+    ;(ctx as unknown as { get(name: string): unknown }).get = (name: string) =>
+      name === 'agents'
+        ? { async create() { return { agent: { id: session.id, session }, dispose: async () => {} } } }
+        : realGet(name)
+    const host: SubagentHost = {
+      ...makeHost(ctx, []),
+      adoptChildAgent: (child, level) => adopted.push({ child, ...(level === undefined ? {} : { level }) }),
+    }
+    return host
+  }
+
+  it('adopts the child with its thinking level and answers it on state', async () => {
+    const adopted: Array<{ child: unknown, level?: string }> = []
+    const { session: pi } = await createBridgedAgentSession(await harness(adopted), { thinkingLevel: 'high' })
+    expect(adopted).toHaveLength(1)
+    expect(adopted[0]?.level).toBe('high')
+    expect(adopted[0]?.child).toBeDefined()
+    expect((pi as unknown as { state: { thinkingLevel: string } }).state.thinkingLevel).toBe('high')
+  })
+
+  it('defaults the state thinking level to off and still adopts (waterfall membership)', async () => {
+    const adopted: Array<{ child: unknown, level?: string }> = []
+    const { session: pi } = await createBridgedAgentSession(await harness(adopted), {})
+    expect(adopted).toHaveLength(1)
+    expect(adopted[0]?.level).toBeUndefined()
+    expect((pi as unknown as { state: { thinkingLevel: string } }).state.thinkingLevel).toBe('off')
+  })
+})
+
+describe('the durable last-request route', () => {
+  // A DSH UI or /model switch never rewrites the creation-time AgentOptions —
+  // it lands in the session log as the next request/header. Reading only the
+  // snapshot is the stale-inheritance bug (#455/#2006 shape); the durable
+  // header is the authority between explicit Pi setModel and the snapshot.
+  it('reads the last request/header in any of its observed nestings', () => {
+    const route = { provider: 'work-gw', model: 'deepseek-chat' }
+    for (const data of [
+      { config: route },
+      { header: { config: route } },
+      { header: route },
+    ]) {
+      const session = { id: 's', events: [
+        { type: 'request/header', data: { config: { provider: 'old', model: 'old-model' } } },
+        { type: 'request/header', data },
+      ] }
+      expect(runtimeInternals.lastRequestRouteOf(session as never)).toEqual(route)
+    }
+    expect(runtimeInternals.lastRequestRouteOf({ id: 's', events: [] } as never)).toBeUndefined()
+  })
+
+  it('resolves by authority: setModel override, then durable header, then snapshot', () => {
+    const override = { provider: 'pi-set', model: 'pi-model' }
+    const durable = { provider: 'work-gw', model: 'switched' }
+    const snapshot = { provider: 'deepseek-official', model: 'stale' }
+    expect(runtimeInternals.resolveCallerRoute(override, durable, snapshot)).toEqual(override)
+    expect(runtimeInternals.resolveCallerRoute(undefined, durable, snapshot)).toEqual(durable)
+    expect(runtimeInternals.resolveCallerRoute(undefined, undefined, snapshot)).toEqual(snapshot)
+    expect(runtimeInternals.resolveCallerRoute(undefined, undefined, undefined)).toBeUndefined()
   })
 })

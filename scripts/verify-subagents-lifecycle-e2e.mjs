@@ -225,6 +225,24 @@ try {
   const engineVersion = JSON.parse(await readFile(join(home, 'profiles', 'headless', 'node_modules', 'pi2dsh', 'package.json'), 'utf8')).version
   log(`stock stack: cli ${cliVersion}, engine ${engineVersion}`)
 
+  // A second REAL route for the model-follow scenario: an llm-pi-ai alias of
+  // the same DeepSeek endpoint (same key, same wire — only the route name
+  // differs). No mock: requests through it are real model calls.
+  await writeFile(join(home, 'settings.yaml'), [
+    'llm-pi-ai:',
+    '  providers:',
+    '    work-gw:',
+    '      displayName: Work Gateway',
+    '      api: openai-completions',
+    '      baseURL: https://api.deepseek.com/v1',
+    '      apiKeyEnv: DEEPSEEK_API_KEY',
+    '      models:',
+    '        - id: deepseek-chat',
+    '          name: Work Gateway Model',
+    '          contextWindow: 131072',
+    '',
+  ].join('\n'))
+
   // ======================================================================
   // Scenario 1 — steer: a mid-run steer_subagent reaches the child model.
   // ======================================================================
@@ -256,7 +274,12 @@ try {
 
     const sessions = await loadSessions(RUN_TAG)
     const parent = sessions.find(s => !s.isChild && s.toolCalls.some(c => c.data?.name === 'Agent'))
-    const child = sessions.find(s => s.isChild && s.raw.includes('sleep 25'))
+    // The child is identified by the STEER_TAG — the one string that must
+    // reach the child's durable log for the scenario to mean anything. The
+    // spawn task text is NOT reliable for identification: the parent model
+    // sometimes paraphrases the prompt it forwards (seen live: "sleep 25"
+    // rewritten away), which is model behaviour, not a bridge property.
+    const child = sessions.find(s => s.isChild && s.raw.includes(STEER_TAG))
     const problems = []
     const steeredLanded = existsSync(steeredPath) && readFileSync(steeredPath, 'utf8').includes(STEER_TAG)
     if (!steeredLanded) problems.push('steered file missing or wrong — the steer never reached the child model')
@@ -265,9 +288,8 @@ try {
       if (!parent.toolCalls.some(c => c.data?.name === 'steer_subagent')) problems.push('parent never called steer_subagent')
       if (parent.toolCalls.some(c => c.data?.name === 'bash')) problems.push('parent ran bash itself — the file proves nothing')
     }
-    if (child === undefined) problems.push('no child session carrying the spawn task')
+    if (child === undefined) problems.push('no child session carrying the steer text')
     if (child !== undefined) {
-      if (!child.raw.includes(STEER_TAG)) problems.push('steer text absent from the child durable log')
       const firstRequest = child.events.findIndex(e => e.type === 'request/header')
       const steerEvent = child.events.findIndex(e => JSON.stringify(e).includes(STEER_TAG) && e.type !== 'request/header')
       if (firstRequest !== -1 && steerEvent !== -1 && steerEvent < firstRequest) {
@@ -279,6 +301,7 @@ try {
       problems,
       steeredLanded,
       alphaAlsoLanded: existsSync(alphaPath),
+      spawnTaskVerbatim: child?.raw.includes('sleep 25') ?? null,
       parentToolCalls: parent?.toolCalls.map(c => c.data?.name) ?? null,
       childFile: child?.file ?? null,
       outputTail: problems.length > 0 ? output.slice(-1200) : undefined,
@@ -536,6 +559,139 @@ try {
       outputFileAbsentAfterWindow: !existsSync(cPath),
     }
     log(`scenario stop: ${scenarios.stop.status}${problems.length > 0 ? ` — ${problems.join('; ')}` : ''}`)
+  }
+
+  // ======================================================================
+  // Scenario 5 — model-follow: a child spawned AFTER a real /model switch in
+  // the TUI runs on the switched route, not the creation-time default.
+  // The stale-inheritance shape DSH's own subagent line reports (#455/#2006):
+  // the parent's AgentOptions snapshot never learns of a UI switch — the
+  // bridge must read the caller's live route off the durable request/header.
+  // ======================================================================
+  if (process.env.PI2DSH_SKIP_TUI !== undefined) {
+    scenarios.modelFollow = { status: 'skipped', reason: 'PI2DSH_SKIP_TUI set' }
+  } else {
+    const FOLLOW_TAG = `FOLLOW_${RUN_TAG}`
+    const followMarker = join(workDir, `model-follow-${RUN_TAG}.txt`)
+    await rm(followMarker, { force: true })
+    const TMUX_SESSION = 'pi2dsh-subagents-modelfollow-tui'
+    await execFile('tmux', ['kill-session', '-t', TMUX_SESSION]).catch(() => {})
+    const launcher = join(root, 'launch-tui-follow.sh')
+    await writeFile(launcher, `#!/bin/sh\nexec "${dshBin}" --profile tui\n`)
+    await chmod(launcher, 0o755)
+    log('scenario model-follow: booting the stock TUI …')
+    await execFile('tmux', ['new-session', '-d', '-s', TMUX_SESSION, '-x', '180', '-y', '50', '-c', workDir,
+      'env', `DSH_HOME=${home}`, `DEEPSEEK_API_KEY=${apiKey}`, 'NO_COLOR=1', launcher,
+    ], { timeout: 30_000 })
+    const capture = async () => {
+      const { stdout } = await execFile('tmux', ['capture-pane', '-p', '-t', TMUX_SESSION, '-S', '-200'], { timeout: 15_000 })
+      return stdout
+    }
+    const problems = []
+    try {
+      const composerDeadline = Date.now() + 120_000
+      for (;;) {
+        const screen = await capture()
+        if (/(Ctrl|\/help|❯|›|deepseek)/iu.test(screen)) break
+        if (Date.now() > composerDeadline) throw new Error('TUI composer never appeared')
+        await delay(1500)
+      }
+      // Pin the STARTING route deterministically: the default model selection
+      // is DSH_HOME-level persistent, so a reused home may remember work-gw
+      // from an earlier run — force the official route first, then the later
+      // switch is observable as a CHANGE.
+      await execFile('tmux', ['send-keys', '-t', TMUX_SESSION, '-l', '/model deepseek-official/deepseek-v4-flash'])
+      await delay(800)
+      await execFile('tmux', ['send-keys', '-t', TMUX_SESSION, 'Enter'])
+      await delay(2500)
+      // Turn 1 on the DEFAULT route: pins the parent's creation-time snapshot
+      // in the durable log, so the later switch is observable as a CHANGE.
+      await execFile('tmux', ['send-keys', '-t', TMUX_SESSION, '-l', `Reply with exactly: warmup-${FOLLOW_TAG}`])
+      await delay(500)
+      await execFile('tmux', ['send-keys', '-t', TMUX_SESSION, 'Enter'])
+      // Several sessions in a shared home can carry the tag (a resumed
+      // recent session, another scenario's TUI): the parent is identified by
+      // content unique to its phase — the warmup text before the spawn, the
+      // marker path (only the spawn prompt carries it) afterwards.
+      const parentSession = async marker => {
+        const sessions = await loadSessions(marker)
+        return sessions.find(s => !s.isChild)
+      }
+      const routesOf = parent => (parent?.events ?? [])
+        .filter(e => e.type === 'request/header')
+        .map(e => {
+          const data = e.data ?? {}
+          const header = data.header ?? {}
+          for (const shape of [data.config, header.config, header, data]) {
+            if (typeof shape?.model === 'string') return { provider: shape.provider, model: shape.model }
+          }
+          return {}
+        })
+      const warmupDeadline = Date.now() + 180_000
+      for (;;) {
+        const parent = await parentSession(`warmup-${FOLLOW_TAG}`)
+        if (parent !== undefined && routesOf(parent).length > 0
+          && parent.events.some(e => e.type === 'turn/end')) break
+        if (Date.now() > warmupDeadline) throw new Error('the warmup turn never completed')
+        await delay(2000)
+      }
+      const before = routesOf(await parentSession(`warmup-${FOLLOW_TAG}`))
+      const defaultProvider = String(before[0]?.provider ?? '')
+      if (defaultProvider === 'work-gw') problems.push('the warmup turn already ran on work-gw — nothing to switch from')
+
+      // The real /model switch, parameterized: the picker's Enter confirms
+      // whatever is highlighted (the CURRENT model), so driving the menu from
+      // tmux re-selects the old route — the argument form switches exactly.
+      await execFile('tmux', ['send-keys', '-t', TMUX_SESSION, '-l', '/model work-gw/deepseek-chat'])
+      await delay(800)
+      await execFile('tmux', ['send-keys', '-t', TMUX_SESSION, 'Enter'])
+      await delay(2500)
+      scenarios.modelFollowPickerScreen = (await capture().catch(() => '')).slice(-800)
+
+      // Turn 2: spawn a child. Its own durable request/header is the verdict.
+      const spawnMessage = [
+        `Call the Agent tool exactly once: subagent_type general-purpose, name "follower", run_in_background false,`,
+        `prompt: "Run one bash command that writes the single word DONE_${FOLLOW_TAG} into ${followMarker}, then reply done."`,
+        `Do not run bash yourself. Then reply done.`,
+      ].join(' ')
+      await execFile('tmux', ['send-keys', '-t', TMUX_SESSION, '-l', spawnMessage])
+      await delay(500)
+      await execFile('tmux', ['send-keys', '-t', TMUX_SESSION, 'Enter'])
+      const spawnDeadline = Date.now() + 300_000
+      while (!existsSync(followMarker) && Date.now() < spawnDeadline) await delay(2000)
+      if (!existsSync(followMarker)) problems.push('the child never wrote its marker — the delegation turn did not finish')
+      await delay(8000)
+
+      const parent = await parentSession(followMarker)
+      const parentRoutes = routesOf(parent)
+      const last = parentRoutes.at(-1) ?? {}
+      if (String(last.provider ?? '') !== 'work-gw') {
+        problems.push(`the parent's last request did not run on work-gw (${JSON.stringify(parentRoutes)}) — the /model switch did not take (harness)`)
+      }
+      const children = (await loadSessions(FOLLOW_TAG)).filter(s => s.isChild)
+      const child = children.find(s => s.raw.includes(followMarker))
+      if (child === undefined) {
+        problems.push('no child session carrying the delegation task')
+      } else {
+        const childRoutes = routesOf(child)
+        if (!childRoutes.some(route => String(route.provider ?? '') === 'work-gw')) {
+          problems.push(`the child ran on ${JSON.stringify(childRoutes)} instead of work-gw — it inherited the stale creation-time route`)
+        }
+      }
+      scenarios.modelFollow = {
+        status: problems.length === 0 ? 'passed' : 'failed',
+        problems,
+        defaultProvider,
+        parentRoutes,
+        childRoutes: child === undefined ? null : routesOf(child),
+        markerLanded: existsSync(followMarker),
+      }
+    } catch (error) {
+      scenarios.modelFollow = { status: 'failed', problems: [...problems, String((error && error.message) || error)] }
+    } finally {
+      await execFile('tmux', ['kill-session', '-t', TMUX_SESSION]).catch(() => {})
+    }
+    log(`scenario model-follow: ${scenarios.modelFollow.status}${(scenarios.modelFollow.problems ?? []).length > 0 ? ` — ${scenarios.modelFollow.problems.join('; ')}` : ''}`)
   }
 
   const failed = Object.values(scenarios).filter(s => s?.status === 'failed').length

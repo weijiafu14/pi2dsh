@@ -1,4 +1,4 @@
-# pi-subagents 完整端到端验收报告（steer / resume / stop / resume-archive）
+# pi-subagents 完整端到端验收报告（steer / resume / stop / resume-archive / model-follow）
 
 日期：2026-08-24。栈：stock `@deepseek-ai/dsh@0.1.1-rc.2`（npm）+ 本工作树引擎 +
 stock `@tintinweb/pi-subagents@0.18.0`（npm）+ 真 DeepSeek（父子两级全真模型调用）。
@@ -19,14 +19,15 @@ scratch 路径）。本报告与上一轮 P0 验收
 | resume | resume 的子代理延续同一会话与记忆 | 暗号只存在于磁盘文件（任何提示词不含）；第 1 轮子代理读文件记住，resume 后第 2 轮禁读、默写暗号到新文件。判据：新文件内容对上 + 两轮在**同一个**子会话日志（turn/start ≥ 2）+ 第 2 轮无 read 调用 + resume 提示词里没有暗号（防模型作弊，真拦下过一次） |
 | stop | 父被打断时运行中的子代理连带停住并保持安静 | TUI 前台子代理跑 `sleep 90` 后写文件；Esc 重试直到父轮**持久日志**记下 aborted/user；等过 sleep 窗口后文件必须不存在（不停它必然出现）；子会话 turn/end 必须只有 aborted 没有 completed |
 | resume-archive | **跨进程重启**后按归档身份重开的子代理是同一段对话 | 进程 1：探针经公共 ABI 造子代理读盘上暗号并记住，落盘其归档身份（`session.sessionManager.getSessionFile()`）；进程 2（全新 dsh 进程）：`SessionManager.open(归档)` 交回 `createAgentSession`——pi-subagents 墓碑复活的同款形状。判据：默写暗号成功 + 两轮在**同一个** DSH 子会话日志（跨两个操作系统进程增长）+ 会话号与记录的身份一致 + 身份证事件不重复 + 进程 2 零 read |
+| model-follow | 用户在 DSH UI 会话中途 `/model` 切换后，新 spawn 的无模型子代理跟随**切换后的实时路由** | settings 配一个独立网关 provider（work-gw）；先把默认路由钉到官方线并跑 warmup 轮（断言 warmup 真跑在官方线上——防"本来就在 work-gw"的假阳性）；TUI 敲参数化 `/model work-gw/deepseek-chat` 切换后 spawn 子代理。判据全部读**持久会话日志的 request/header**（不认屏幕文字）：父会话先官方线后 work-gw 两条俱在 + 子会话请求只在 work-gw + 子代理写的 marker 落盘。父会话按"只有真父才有的内容"（warmup 文本 / marker 路径）选取，防同 home 多会话误配 |
 
-双端：headless CLI（steer/resume）+ stock dsh-TUI 0.9.0 真机（stop、/pi-agents 菜单）。
+双端：headless CLI（steer/resume）+ stock dsh-TUI 0.9.0 真机（stop、model-follow、/pi-agents 菜单）。
 **边界声明**：dsh web 浏览器端未在本轮覆盖——pi-subagents 在 web 的面同为斜杠命令与
 工具，无独立呈现面；如需 web 实证另开场景。
 
-## 二、验收过程抓出并修复的三个桥缺陷
+## 二、验收过程抓出并修复的九个桥缺陷
 
-三个都是真机验收抓出、契约测试钉死（`tests/subagent-bridge.spec.ts` 18 条 + `tests/session-bridge.spec.ts` 归档 3 条，全绿）：
+全部真机验收抓出、契约测试钉死（`tests/subagent-bridge.spec.ts` + `tests/session-bridge.spec.ts`，全绿）：
 
 1. **tool_execution_end 没投影 →"0 tool uses"假象**。pi-subagents 在
    session.subscribe 的 `tool_execution_end` 上计数"N tool uses"；桥只发了
@@ -65,9 +66,23 @@ scratch 路径）。本报告与上一轮 P0 验收
    时走 `agents.resume({resumeSessionId, setup})`——父子血缘、会话正文、身份
    证全读原生持久层，桥零对照表；重开不重复追加身份证事件。真机证据：两个
    独立 dsh 进程，同一份 `session.jsonl` 从 1 轮长到 2 轮，暗号凭记忆默写成功。
-7. **子代理模型默认 = 调用者当前路由**（Pi 语义）：无模型选项的子代理会在
-   首次提示词装配的 `{{model}}` 变量上直接炸轮（真机抓到），pi-subagents 恰好
-   总传模型所以从未暴露。
+7. **子代理模型默认 = 调用者当前路由，且是实时路由**（Pi 语义）：无模型选项的
+   子代理会在首次提示词装配的 `{{model}}` 变量上直接炸轮（真机抓到），
+   pi-subagents 恰好总传模型所以从未暴露。路由解析三级：options 上的显式
+   Pi 模型 → 调用者持久会话日志最后一条 `request/header` 里的路由（**DSH UI
+   会话中途 `/model` 切换因此被继承**，model-follow 场景真机实证）→ 创建时
+   快照兜底。第一版实现读的是创建时快照、第二版读 `currentPiModel`（对 UI
+   切换仍失明，同 #455/#2006 的病灶形状）——持久日志才是路由权威。
+8. **per-child thinkingLevel 经官方 agent/request waterfall 下发**：子代理自己
+   的推理档位翻译成它专属的 `reasoningEffort` 注入，不外泄给兄弟或父代理
+   （契约测试钉死）。
+9. **steer/followUp 必须是 async 面（Pi AgentSession ABI）**：桥的 steer 原返回
+   void 且没暴露 followUp，而 pi-subagents 直接 `session.steer(msg).catch(...)`
+   ——同步就炸 `Cannot read properties of undefined (reading 'catch')`。投递
+   Promise 早已排队所以 steer 内容照常送达（这就是"每轮 steer 都过、但输出里
+   总有一条报错"的原因：工具向父模型报了错，功能却带伤工作）。正式轮输出
+   尾部的这条报错暴露了它。修复：steer/followUp 均为 async、await 投递完成，
+   与 Pi 上游 `agent-session.ts` 同签名（含 images 参数）。
 
 另有两处纪律修复：abort 里对 `Agent.cancel` 缺失/抛错的静默吞错改为
 console+logger 双通道告警（`?.` 不许吞真实失败）；abort 静默守护从只盯
@@ -101,8 +116,9 @@ turn/start 加宽到 step/start 与 request/header——cancel 恰在 turn/start
 
 ## 五、结论
 
-steer / resume / stop / resume-archive 四场景在全新 DSH_HOME、stock npm 栈、
-真模型上全部通过（跨进程重开走公共 Pi ABI 与官方 persisted-resume seam）；
+steer / resume / stop / resume-archive / model-follow 五场景在全新 DSH_HOME、
+stock npm 栈、真模型上全部通过（跨进程重开走公共 Pi ABI 与官方
+persisted-resume seam，实时模型继承在 stock TUI 真机上以持久日志证据实证）；
 连同上一轮的子代理工具 P0 与撞名别名验收，pi-subagents 的核心工作流
 （spawn / 后台 / steer / 等待结果 / resume / 停止 / TUI 管理菜单）已在
 headless + dsh-TUI 双端实证。0.16.1 已按用户拍板发布，发版后完整回归证据见 community/examples-e2e.json 与 step-seams-e2e.json。

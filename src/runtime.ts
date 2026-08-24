@@ -203,6 +203,10 @@ interface RuntimeState {
   // Per-agent model/thinking overrides applied through the agent/request waterfall.
   modelOverrides: WeakMap<object, { provider?: string; model?: string }>
   thinkingLevels: WeakMap<object, string>
+  // Child agents THIS instance created through createAgentSession: the
+  // agent/request waterfall covers them (their thinking level rides it), and
+  // nobody else's instance claims them.
+  childAgents: WeakSet<object>
   // Per-agent, per-turn system-prompt override returned by before_agent_start
   // (Pi resets to the base prompt when a turn's handlers return none).
   turnSystemPromptOverrides: WeakMap<object, string>
@@ -571,6 +575,50 @@ function currentPiModel(state: RuntimeState, agent: UnknownRecord): UnknownRecor
   if (id.length === 0) return override
   const known = provider.length > 0 ? state.modelCatalog?.find(provider, id) : undefined
   return known ?? { id, name: id, provider, api: 'faux', input: ['text'], reasoning: false }
+}
+
+/**
+ * The provider/model of a session's LAST model request, read off the durable
+ * log's request/header — the authority on what the caller is ACTUALLY running.
+ * A UI/`/model` switch never touches the creation-time AgentOptions snapshot,
+ * so a child inheriting the snapshot runs on a stale route (the exact
+ * inheritance bug DSH's own subagent line reports); the durable header is
+ * where the live truth lands, in either of its two observed nestings.
+ */
+function lastRequestRouteOf(session: UnknownRecord | undefined): { provider?: string, model?: string } | undefined {
+  if (session === undefined) return undefined
+  const events = eventsOf(session)
+  for (let i = events.length - 1; i >= 0; i -= 1) {
+    const event = events[i] as UnknownRecord
+    if (event.type !== 'request/header') continue
+    const data = (event.data ?? {}) as UnknownRecord
+    const header = (data.header ?? {}) as UnknownRecord
+    for (const shape of [data.config, header.config, header, data] as Array<UnknownRecord | undefined>) {
+      if (typeof shape?.model === 'string' && shape.model.length > 0) {
+        return {
+          model: shape.model,
+          ...(typeof shape.provider === 'string' && shape.provider.length > 0 ? { provider: shape.provider } : {}),
+        }
+      }
+    }
+    return undefined
+  }
+  return undefined
+}
+
+/**
+ * The route a spawned child inherits, by authority: an explicit Pi
+ * ctx.setModel() override wins, then the caller's last durable request
+ * (UI/`/model` switches land there), then the creation-time snapshot.
+ */
+function resolveCallerRoute(
+  override: { provider?: string, model?: string } | undefined,
+  durable: { provider?: string, model?: string } | undefined,
+  snapshot: { provider?: string, model?: string } | undefined,
+): { provider?: string, model?: string } | undefined {
+  const pick = override ?? durable ?? snapshot
+  if (typeof pick?.model !== 'string' || pick.model.length === 0) return undefined
+  return pick
 }
 
 /** A session's durable events, whether the store exposes them as value or method. */
@@ -3689,6 +3737,10 @@ function acceptsAgent(state: RuntimeState, agent: UnknownRecord | undefined): bo
   // The host anchor serves no Agent at all: every live Agent has its own
   // instance, so anchor participation would double-run session lifecycles.
   if (state.hostAnchor) return false
+  // A child THIS instance spawned belongs to it on the request boundary too:
+  // its per-agent thinking level rides the same agent/request waterfall. The
+  // WeakSet is instance-local, so no other package's instance claims it.
+  if (agent !== undefined && state.childAgents.has(agent)) return true
   if (state.ownerAgent !== undefined) return agent === state.ownerAgent
   return !isSubagentOrigin(agent)
 }
@@ -4709,6 +4761,7 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
     toolsExpanded: false,
     modelOverrides: new WeakMap(),
     thinkingLevels: new WeakMap(),
+    childAgents: new WeakSet(),
     turnSystemPromptOverrides: new WeakMap(),
     projection: Promise.resolve(),
     terminateBatch: new WeakMap(),
@@ -4970,20 +5023,27 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
     },
     resumeSessionIdFor: file => state.bridge.sessionIdOfArchiveFile(file),
     parentModelRoute: () => {
-      // The caller's LIVE route, not its creation-time snapshot: currentPiModel
-      // reads the in-session selection (ctx.setModel) first and only falls back
-      // to agent.options. Reading options alone is exactly the inheritance bug
-      // DSH's own subagent line reports (a session that switched models spawns
-      // children on the stale default) — the bridge must not reproduce it.
+      // The caller's LIVE route, by authority: an explicit Pi ctx.setModel()
+      // override, else the last durable request/header (where a DSH UI or
+      // /model switch actually lands — the snapshot never learns of it), else
+      // the creation-time AgentOptions snapshot. Snapshot-only reading is the
+      // exact inheritance bug DSH's own subagent line reports.
       const parent = currentAgent(state)
       if (parent === undefined) return undefined
-      const live = currentPiModel(state, parent)
-      const model = live?.id
-      if (typeof model !== 'string' || model.length === 0) return undefined
-      const provider = live?.provider
-      return {
-        model,
-        ...(typeof provider === 'string' && provider.length > 0 ? { provider } : {}),
+      const options = parent.options as { provider?: unknown, model?: unknown } | undefined
+      return resolveCallerRoute(
+        state.modelOverrides.get(parent),
+        lastRequestRouteOf(agentSession(parent)),
+        typeof options?.model === 'string'
+          ? { model: options.model, ...(typeof options.provider === 'string' ? { provider: options.provider } : {}) }
+          : undefined,
+      )
+    },
+    adoptChildAgent: (child, thinkingLevel) => {
+      if (typeof child !== 'object' || child === null) return
+      state.childAgents.add(child)
+      if (typeof thinkingLevel === 'string' && thinkingLevel.length > 0 && thinkingLevel !== 'off') {
+        state.thinkingLevels.set(child, thinkingLevel)
       }
     },
   })
@@ -5060,6 +5120,8 @@ export const runtimeInternals = {
   compactionReason,
   resolveOfferedChoice,
   currentPiModel,
+  lastRequestRouteOf,
+  resolveCallerRoute,
   dshToPiContent,
   expandPrompt,
   isKnownImageTool,
