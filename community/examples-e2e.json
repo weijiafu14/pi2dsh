@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pi2dshCommit": "0f808b34b041afdd3bbde29249b9ccb53f67b93b",
+  "pi2dshCommit": "efb57d3e38ae75f198c1097afaf5c6cee8c0ebf6",
   "dshCommit": "npm:@deepseek-ai/dsh@0.1.1-rc.2",
   "results": {
     "alibabaTokenPlan": {
@@ -15,11 +15,15 @@
       "status": "skipped",
       "reason": "no complete OpenAI-compatible or Pi-registry vision model configured"
     },
+    "codexImageGen": {
+      "status": "skipped",
+      "reason": "CODEX_AUTH_FILE not set"
+    },
     "gatewayCompat": {
       "engine": {
-        "version": "0.16.0",
+        "version": "0.16.2",
         "from": "registry",
-        "spec": "pi2dsh@0.16.0"
+        "spec": "pi2dsh@0.16.2"
       },
       "status": "passed",
       "requests": 2,
@@ -46,12 +50,38 @@
         "user: Current runtime context. This snapshot supersedes earlier ru"
       ]
     },
+    "sideConversation": {
+      "status": "passed",
+      "engine": {
+        "version": "0.16.2",
+        "from": "registry",
+        "spec": "pi2dsh@0.16.2"
+      },
+      "screenshots": [
+        "01-side-conversation-main-thread-clean.png",
+        "02-side-conversation-panel.png",
+        "03-side-conversation-host-catalog.png",
+        "04-side-conversation-injected-on-request.png",
+        "05-side-conversation-child-view.png"
+      ]
+    },
+    "presentationSurfaces": {
+      "status": "passed",
+      "engine": {
+        "version": "0.16.2",
+        "from": "registry",
+        "spec": "pi2dsh@0.16.2"
+      },
+      "screenshots": [
+        "06-presentation-surfaces.png"
+      ]
+    },
     "customGateways": {
       "status": "passed",
       "engine": {
-        "version": "0.16.0",
+        "version": "0.16.2",
         "from": "registry",
-        "spec": "pi2dsh@0.16.0"
+        "spec": "pi2dsh@0.16.2"
       },
       "seenByPackage": {
         "provider": "my-gateway",
@@ -61,54 +91,21 @@
       },
       "requestedThroughGateway": true
     },
-    "codexImageGen": {
-      "schemaVersion": 1,
-      "status": "passed",
+    "subscriptionLogin": {
+      "status": "partial",
       "engine": {
-        "name": "pi2dsh",
-        "version": "0.16.0",
-        "spec": "pi2dsh@0.16.0"
+        "version": "0.16.2",
+        "from": "registry",
+        "spec": "pi2dsh@0.16.2"
       },
-      "plugin": {
-        "name": "@crazygit/pi-codex-image-gen",
-        "version": "0.2.2",
-        "spec": "@crazygit/pi-codex-image-gen@0.2.2"
-      },
-      "model": {
-        "provider": "openai-codex",
-        "id": "gpt-5.6-sol",
-        "auth": "oauth"
-      },
-      "generation": {
-        "surface": "headless",
-        "tool": "codex_generate_image",
-        "processShutdown": "terminated-after-durable-turn",
-        "image": {
-          "sha256": "58d767c24cc0ac38e421d7251ce93dfeaa0cc1764cd5d1619f314d989a6551b7",
-          "bytes": 908088,
-          "width": 1254,
-          "height": 1254
-        }
-      },
-      "edit": {
-        "surface": "web",
-        "tool": "codex_generate_image",
-        "approval": "DSH userQuestions -> Yes",
-        "referenceCount": 1,
-        "image": {
-          "sha256": "0a21836175600e306904ada818163fae7163357b797979240a46e66da220d2e2",
-          "bytes": 918904,
-          "width": 1254,
-          "height": 1254
-        }
-      }
+      "note": "pre-login discovery and native route passed; set CODEX_AUTH_FILE to verify the post-login model picker"
     },
     "tuiMcp": {
       "status": "passed",
       "engine": {
-        "version": "0.16.0",
+        "version": "0.16.2",
         "from": "registry",
-        "spec": "pi2dsh@0.16.0"
+        "spec": "pi2dsh@0.16.2"
       },
       "profile": "dsh-tui",
       "piPackage": "pi-mcp-adapter",
@@ -140,48 +137,16 @@
         "session-restart"
       ]
     },
-    "presentationSurfaces": {
+    "subagents": {
       "status": "passed",
-      "engine": {
-        "version": "0.16.0",
-        "from": "registry",
-        "spec": "pi2dsh@0.16.0"
-      },
-      "screenshots": [
-        "06-presentation-surfaces.png"
-      ]
-    },
-    "subscriptionLogin": {
-      "status": "passed",
-      "engine": {
-        "version": "0.16.0",
-        "from": "registry",
-        "spec": "pi2dsh@0.16.0"
-      },
-      "accountBacked": {
-        "provider": "openai-codex",
-        "loginDialog": true,
-        "modelPicker": true,
-        "screenshots": [
-          "10-login-dialog.png",
-          "11-model-picker-after-login.png"
-        ]
+      "engine": "0.16.2",
+      "cli": "0.1.1-rc.2",
+      "scenarios": {
+        "steer": "passed",
+        "resume": "passed",
+        "resumeArchive": "passed",
+        "stop": "passed"
       }
-    },
-    "sideConversation": {
-      "status": "passed",
-      "engine": {
-        "version": "0.16.0",
-        "from": "registry",
-        "spec": "pi2dsh@0.16.0"
-      },
-      "screenshots": [
-        "01-side-conversation-main-thread-clean.png",
-        "02-side-conversation-panel.png",
-        "03-side-conversation-host-catalog.png",
-        "04-side-conversation-injected-on-request.png",
-        "05-side-conversation-child-view.png"
-      ]
     }
   }
 }

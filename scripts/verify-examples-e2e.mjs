@@ -1059,6 +1059,61 @@ async function runTuiMcp() {
   }
 }
 
+
+/**
+ * examples/subagents — the pi-subagents lifecycle, delegated to its own
+ * real-machine harness (scripts/verify-subagents-lifecycle-e2e.mjs): steer,
+ * resume, stop and cross-restart reopen on the stock CLI, the stock package
+ * and a real model. That script owns its skip logic (no DeepSeek credential
+ * -> skipped) and its own evidence file; this wrapper folds the verdict into
+ * the examples evidence so the example regresses with the rest.
+ */
+async function runSubagents() {
+  const scratch = await mkdtemp(join(tmpdir(), 'pi2dsh-ex-subagents-'))
+  const evidence = join(scratch, 'subagents.json')
+  let output = ''
+  await new Promise(done => {
+    const child = spawn(process.execPath, [
+      resolve(projectRoot, 'scripts', 'verify-subagents-lifecycle-e2e.mjs'), evidence,
+    ], {
+      cwd: projectRoot,
+      // The harness reads PI2DSH_ENGINE_SPEC itself; a file: spec means the
+      // working tree, which is also its own default.
+      env: { ...process.env, ...(engineSpec.startsWith('file:') ? {} : { PI2DSH_ENGINE_SPEC: engineSpec }) },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    })
+    child.stdout.on('data', chunk => { output += String(chunk) })
+    child.stderr.on('data', chunk => { output += String(chunk) })
+    child.on('exit', () => done(undefined))
+    child.on('error', () => done(undefined))
+  })
+  let verdict
+  try {
+    verdict = JSON.parse(await readFile(evidence, 'utf8'))
+  } catch {
+    results.subagents = { status: 'failed', error: `the lifecycle harness left no evidence; tail: ${output.slice(-600)}` }
+    return
+  }
+  const scenarios = verdict.scenarios ?? {}
+  if (verdict.status === 'skipped') {
+    results.subagents = { status: 'skipped', reason: scenarios.all?.reason ?? 'lifecycle harness skipped' }
+    return
+  }
+  const digest = Object.fromEntries(Object.entries(scenarios)
+    .filter(([, value]) => value !== null && typeof value === 'object' && typeof value.status === 'string')
+    .map(([name, value]) => [name, value.status]))
+  results.subagents = {
+    status: verdict.status === 'passed' ? 'passed' : 'failed',
+    engine: scenarios.stack?.engineVersion,
+    cli: scenarios.stack?.cliVersion,
+    scenarios: digest,
+    ...(verdict.status === 'passed' ? {} : { error: Object.entries(scenarios)
+      .flatMap(([name, value]) => (Array.isArray(value?.problems) && value.problems.length > 0
+        ? [`${name}: ${value.problems.join('; ')}`] : []))
+      .join(' | ') || 'see the lifecycle evidence file' }),
+  }
+}
+
 const SCENARIOS = [
   ['gateway-compat', runGatewayCompat, 'gatewayCompat'],
   ['alibaba-token-plan', runAlibabaTokenPlan, 'alibabaTokenPlan'],
@@ -1070,6 +1125,7 @@ const SCENARIOS = [
   ['subscription-login', runSubscriptionLogin, 'subscriptionLogin'],
   ['codex-image-gen', runCodexImageGen, 'codexImageGen'],
   ['tui-mcp', runTuiMcp, 'tuiMcp'],
+  ['subagents', runSubagents, 'subagents'],
 ]
 const selected = SCENARIOS.filter(([name]) => only === undefined || only === name)
 if (selected.length === 0) {

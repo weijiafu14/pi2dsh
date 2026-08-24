@@ -139,6 +139,7 @@ DSH 模型运行时的 sampling、取消与会话重启。完整证据矩阵：
 | [`pi-btw`](https://www.npmjs.com/package/pi-btw) | `/btw <问题>` 跑成 DSH 子代理界面里的真子会话；`/btw-inject`；`/btw --save`；主会话保持干净 | CLI + Web | [`side-conversation`](examples/side-conversation/) |
 | [`pi-powerline-footer`](https://www.npmjs.com/package/pi-powerline-footer) | 终端状态条（模型、思考档位、项目、上下文用量）画进 DSH 的 widget dock，带颜色 | Web | [`presentation-surfaces`](examples/presentation-surfaces/) |
 | [`pi-mcp-adapter`](https://www.npmjs.com/package/pi-mcp-adapter) | 完整管理界面画进 dsh-TUI；stdio/Streamable HTTP/SSE；发现、直连/代理/脚本调用、resources、prompts、图片、结构化内容、MCP Apps、审批、elicitation、sampling、取消与重启全部穿过 DSH 运行时；原生 `/mcp` 与 `/pi-mcp` 共存 | dsh-TUI | [`tui-mcp`](examples/tui-mcp/) · [证据矩阵](docs/mcp-compatibility.md) |
+| [`@tintinweb/pi-subagents`](https://www.npmjs.com/package/@tintinweb/pi-subagents) | 模型自己带团队：派子代理（真宿主原生工具）、后台跑+完成通知、运行中转向、等结果、带记忆续命、真停得住的打断、`/pi-agents` 管理面、跨重启按归档身份重开——每个子代理都是原生 DSH 会话 | CLI + dsh-TUI | [`subagents`](examples/subagents/) · [验收报告](community/subagents-acceptance-report.md) |
 | [`pi-provider-alibaba`](https://www.npmjs.com/package/pi-provider-alibaba) | 阿里云 Token Plan（中国区）专属 key：实时目录、冷启动动态模型、完整工具闭环与重启均已实测；包也声明 Coding/API 路由，但必须分别使用不可混用的专属凭证 | CLI + Web | [`alibaba-token-plan`](examples/alibaba-token-plan/) |
 | [`pi-vision-tool`](https://www.npmjs.com/package/pi-vision-tool) | 工具注册，且带一个 DSH 需要转换的 JSON Schema 形状（`anyOf` → `oneOf`） | CLI + Web | — |
 | [`pi-approval-guardian`](https://www.npmjs.com/package/pi-approval-guardian) | 每次工具调用先由第二个模型审批；放行与拒绝两条路都看到了 | CLI（裸环境） | — |
@@ -169,7 +170,7 @@ Pi 目录里**月下载量前 50 的包**，每个都在真实 DSH 运行时里�
 | **MCP** | `pi-mcp-adapter` · `pi-mcp-extension` |
 | **联网搜索与抓取** | `pi-web-access` · `pi-deepseek-search` · `pi-web-search` · `@ollama/pi-web-search` · `@juicesharp/rpiv-web-tools` |
 | **代码导航与编辑** | `pi-lens`（ast-grep）· `@narumitw/pi-lsp` · `pi-readseek` · `@ff-labs/pi-fff` · `pi-landstrip` · `pi-hashline-edit-pro`¹ |
-| **子代理与后台任务** | `@tintinweb/pi-subagents` · `@gotgenes/pi-subagents` · `pi-background-tasks`² · `@mjasnikovs/pi-task` |
+| **子代理与后台任务** | `@gotgenes/pi-subagents` · `pi-background-tasks`² · `@mjasnikovs/pi-task` |
 | **记忆** | `pi-hermes-memory` · `pi-goosedump` |
 | **计划与目标** | `@narumitw/pi-goal` · `pi-goal-list-loop-audit` · `@narumitw/pi-plan-mode` · `@juicesharp/rpiv-todo` |
 | **问你 / 审批** | `@juicesharp/rpiv-ask-user-question` · `pi-ask-user` · `@gotgenes/pi-permission-system` · `@juicesharp/rpiv-advisor` |
@@ -358,6 +359,7 @@ loop 上实际跑过才会进来。
 | [`alibaba-token-plan`](examples/alibaba-token-plan/) | 通过原版 Pi provider 使用阿里云百炼 Plan；包含动态 DeepSeek 模型、工具闭环与重启验证 |
 | [`custom-gateways`](examples/custom-gateways/) | 按 DSH 官方方式接任何 OpenAI 兼容网关，每个 Pi 插件都能看到它 |
 | [`tui-mcp`](examples/tui-mcp/) | 保留 dsh-TUI 原生 `/mcp`，把 Pi 生态管理面作为 `/pi-mcp` 加进来，并让完整的宿主相关 MCP 功能面穿过 DSH 运行时 |
+| [`subagents`](examples/subagents/) | 模型自己带小团队：派单、后台、中途转向、收结果、带记忆续命、真停得住、`/pi-agents` 管理、跨重启重开 |
 
 ## 其它工具
 
