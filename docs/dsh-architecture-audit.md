@@ -59,7 +59,7 @@ goal/plan/job 也不等于验证 DSH 的同名 subsystem。这些结论应作为
   消费者需求因此在桥内就地满足；本缺口的意义从"必需"降为"终局单源"——
   条目进原生日志后档案文件退化为纯存在位（Pi 的 existsSync 契约仍需真 inode）。
 - **最小上游能力**：开放 ignorable append，或提供有命名空间的事件类型注册。
-  提案草稿：[`community/upstream-proposal-plugin-session-entries.md`](../community/upstream-proposal-plugin-session-entries.md)（未发出，等拍板）。
+  提案已发出并带真机实验：[DSH Discussion #2708](https://github.com/deepseek-ai/deepseek-harness/discussions/2708)；内部底稿存 [`community/upstream-proposal-plugin-session-entries.md`](../community/upstream-proposal-plugin-session-entries.md)。
 - **证据**：[`verify-out-of-repo-event-type.mjs`](../scripts/verify-out-of-repo-event-type.mjs)、
   [DSH Discussion #2708](https://github.com/deepseek-ai/deepseek-harness/discussions/2708)。
 - **0.1.1-rc.2 源码复核（2026-08-22）**：seam 仍缺，且三处坐标钉死——

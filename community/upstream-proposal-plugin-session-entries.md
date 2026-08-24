@@ -1,7 +1,10 @@
 # 上游提案草稿：仓外插件的会话自定义条目通道（ignorable append）
 
-状态：**草稿，未发出**。发往 deepseek-harness 仓库（discussion 或 issue）前等用户拍板。
-以下英文正文为拟发内容，中文部分是给我们自己的说明。
+状态：**提案已在上游存在，无需再发**——
+[deepseek-harness Discussion #2708](https://github.com/deepseek-ai/deepseek-harness/discussions/2708)
+（2026-08-17 发出，标题即本提案，附真机实验跟帖：往真实会话日志注入
+带/不带 ignorable 的未知类型、在 dsh web 里真点验证读路径行为）。
+本文件保留为内部归档与后续跟进底稿；如需追帖，先对 #2708 现状再拍板。
 
 ## 背景（内部说明，不随提案发出）
 
