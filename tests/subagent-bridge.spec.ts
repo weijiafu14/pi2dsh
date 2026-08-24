@@ -575,6 +575,57 @@ describe('Pi createAgentSession bridged onto real DSH agents', () => {
     })).rejects.toThrowError(/persisted-resume/u)
   })
 
+  // The archive's existence tells Pi consumers "this conversation can be
+  // reopened" (existsSync is an OS call the bridge cannot intercept). When a
+  // reopen fails, DSH's own verdict — the persistence list() — decides
+  // whether the session is truly gone; only that POSITIVE verdict retires
+  // the archive, so a composition merely lacking persistence never destroys
+  // a valid identity token.
+  function failingResumeHarness(verdict: boolean | undefined) {
+    const { host } = resumeHarness()
+    const discarded: string[] = []
+    const bare = new Context()
+    const realGet = (bare as unknown as { get(name: string): unknown }).get.bind(bare)
+    ;(bare as unknown as { get(name: string): unknown }).get = (name: string) =>
+      name === 'agents'
+        ? {
+            async create() { return { agent: { id: 'x', session: {} }, dispose: async () => {} } },
+            async resume() { throw new Error('backend load failed') },
+          }
+        : realGet(name)
+    const wired: SubagentHost = {
+      ...host,
+      cordis: bare,
+      ...(verdict === undefined ? {} : { sessionGoneFromPersistence: async () => verdict }),
+      discardStaleArchive: sessionId => { discarded.push(sessionId) },
+    }
+    return { wired, discarded }
+  }
+
+  it('retires the archive when the persistence layer positively says the session is gone', async () => {
+    const { wired, discarded } = failingResumeHarness(true)
+    await expect(createBridgedAgentSession(wired, {
+      sessionManager: { getSessionFile: () => '/ARCHIVE/pi2dsh-sub-old-7.jsonl' },
+    })).rejects.toThrowError(/no longer exists.*retired/u)
+    expect(discarded).toEqual(['pi2dsh-sub-old-7'])
+  })
+
+  it('keeps the archive when the session is still listed — the failure is not "gone"', async () => {
+    const { wired, discarded } = failingResumeHarness(false)
+    await expect(createBridgedAgentSession(wired, {
+      sessionManager: { getSessionFile: () => '/ARCHIVE/pi2dsh-sub-old-7.jsonl' },
+    })).rejects.toThrowError(/may lack session persistence/u)
+    expect(discarded).toEqual([])
+  })
+
+  it('keeps the archive when no persistence verdict is available — absence proves nothing', async () => {
+    const { wired, discarded } = failingResumeHarness(undefined)
+    await expect(createBridgedAgentSession(wired, {
+      sessionManager: { getSessionFile: () => '/ARCHIVE/pi2dsh-sub-old-7.jsonl' },
+    })).rejects.toThrowError(/may lack session persistence/u)
+    expect(discarded).toEqual([])
+  })
+
   // Pi's model default for a child session is the CALLER's current model. A
   // child agent with no model option fails its first prompt assembly on
   // {{model}}-keyed sections (deployment:persona) before any request is made

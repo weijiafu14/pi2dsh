@@ -420,6 +420,18 @@ try {
     } else {
       const identity = JSON.parse(readFileSync(identityPath, 'utf8'))
       if (!existsSync(String(identity.archive))) problems.push('the archive path does not exist on disk')
+      else {
+        // The archive must BE a Pi session file, not a bare inode: its first
+        // line is a genuine Pi header (real Pi's SessionManager.open parses
+        // it). This fails on the pre-Pi-format private shape and on an empty
+        // token file alike.
+        try {
+          const firstLine = JSON.parse(readFileSync(String(identity.archive), 'utf8').split('\n')[0])
+          if (firstLine?.type !== 'session') problems.push(`the archive's first line is not a Pi session header (${JSON.stringify(firstLine?.type)})`)
+        } catch {
+          problems.push('the archive\'s first line is not parseable as a Pi session header')
+        }
+      }
       log('scenario resume-archive: process 2 (reopen + recall from memory) …')
       const promptB = [
         `Call the sub_archive_resume tool exactly once with arguments {"identity": "${identityPath}", "recall": "${recallPath}"}.`,

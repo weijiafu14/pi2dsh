@@ -57,6 +57,15 @@ export interface SubagentHost {
    */
   resumeSessionIdFor?(file: unknown): string | undefined
   /**
+   * Whether the host's session persistence POSITIVELY lacks this session —
+   * DSH's own post-resume-failure verdict shape (`persistence.list()` in
+   * agent-loop's restoreOrCreateConfigured). undefined = cannot tell (no
+   * persistence service or list failed), and nothing may be retired on it.
+   */
+  sessionGoneFromPersistence?(sessionId: string): Promise<boolean | undefined>
+  /** Retire a stale archive identity this bridge minted, so existsSync answers honestly again. */
+  discardStaleArchive?(sessionId: string): void
+  /**
    * The delegating parent's own model route. Pi's default for a child session
    * is the caller's current model; without it the child agent has no model
    * option and prompt sections keyed on {{model}} fail the first assembly.
@@ -877,11 +886,27 @@ export async function createBridgedAgentSession(
       })
     }
   } catch (error) {
+    if (resumeSessionId !== undefined) {
+      // Distinguish "the conversation is gone" from "this composition cannot
+      // resume" by DSH's own verdict: after a failed resume, the persistence
+      // list() decides whether the session still exists (the exact check
+      // agent-loop's restoreOrCreateConfigured performs). Only a POSITIVE
+      // "gone" retires the archive identity — an absent persistence service
+      // proves nothing and must not destroy a valid token.
+      if (await host.sessionGoneFromPersistence?.(resumeSessionId) === true) {
+        host.discardStaleArchive?.(resumeSessionId)
+        throw new Error(
+          `pi2dsh: child session ${JSON.stringify(resumeSessionId)} no longer exists in the host's session persistence — `
+          + `the conversation is gone and its archive identity has been retired (${error instanceof Error ? error.message : String(error)})`,
+        )
+      }
+      throw new Error(
+        `pi2dsh: reopening child session ${JSON.stringify(resumeSessionId)} failed — this composition may lack session persistence (${error instanceof Error ? error.message : String(error)})`,
+      )
+    }
     throw new Error(
-      resumeSessionId !== undefined
-        ? `pi2dsh: reopening child session ${JSON.stringify(resumeSessionId)} failed — its persisted log may be gone or this composition has no session persistence (${error instanceof Error ? error.message : String(error)})`
-        : 'pi2dsh: subagent creation needs the DSH host loop (model runtime) to provide the agent factory; '
-          + `this composition cannot run one (${error instanceof Error ? error.message : String(error)})`,
+      'pi2dsh: subagent creation needs the DSH host loop (model runtime) to provide the agent factory; '
+      + `this composition cannot run one (${error instanceof Error ? error.message : String(error)})`,
     )
   }
   const tools = [

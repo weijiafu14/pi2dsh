@@ -455,6 +455,12 @@ pnpm verify:release   # verify + 全部 examples（装 npm 上刚发的那版）
 
 - DSH CLI 必须在 deepseek-harness 目录跑（`node --import tsx/esm
   apps/cli/src/bin.ts`）；发现"跑很久"先查结果文件而不是傻等。
+- **真机 E2E 在跑的整个期间不许并发跑 build/verify/重活**（2026-08-24 事故：
+  E2E 跑到一半我起了 build+verify，机器被挤占后三个场景以三种环境形态连环
+  假失败——子会话匹配空、探针没落盘、tmux 面板起不来；干净重跑全绿）。
+  此前只写了"安装阶段"不并发（dist 竞态），实际模型轮次和 TUI 启动全程都
+  对时序敏感。判据：E2E 失败形状若是"环境类"（超时/进程没起来/文件没出现）
+  且当时机器上有并发重活，先干净重跑再定性，不许直接改产品代码。
 - **stock 验证优先用 npm CLI，不用本地 checkout**：`@deepseek-ai/dsh` 是
   npm 发布的 CLI 包（一个空目录 `pnpm add @deepseek-ai/dsh@0.1.0-rc.8` 即得
   `node_modules/.bin/dsh`），真机装置见 scripts/verify-tui-singlepath-e2e.mjs。

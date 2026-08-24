@@ -23,16 +23,16 @@
 //     registration surface exists (their KNOWN_SESSION_EVENT_TYPES comment
 //     defers it "until such a consumer exists").
 //
-// Known limit, documented rather than papered over: the file's existence is
-// minted while the native session is alive, but nothing deletes it if the
-// native store later loses the session — a resurrect attempt then fails
-// LOUDLY at the official resume seam instead of being pre-filtered by
-// existsSync. Auto-deleting on resume failure would be worse: the failure is
-// indistinguishable from "this composition has no session persistence", and
-// destroying a valid identity token on a composition quirk lies in the other
-// direction.
+// Lifecycle honesty: the file is minted while the native session is alive.
+// If the native store later loses the session, the next reopen attempt fails
+// at the official resume seam and DSH's own persistence list() delivers the
+// verdict (the same check agent-loop's restoreOrCreateConfigured uses) — a
+// POSITIVE "gone" retires the file via discardArchive so existsSync answers
+// honestly from then on. A composition merely lacking persistence returns no
+// verdict and retires nothing: absence of evidence never destroys a valid
+// identity token.
 
-import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs'
+import { appendFileSync, existsSync, mkdirSync, readFileSync, unlinkSync } from 'node:fs'
 import { basename, dirname, join, resolve } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { foldSurface } from '@deepseek-ai/dsh-session'
@@ -199,6 +199,22 @@ export class PiSessionBridge {
     if (resolve(dirname(resolved)) !== resolve(sidecarDir())) return undefined
     const base = basename(resolved)
     return base.endsWith('.jsonl') ? base.slice(0, -'.jsonl'.length) : undefined
+  }
+
+  /**
+   * Retire one archive this bridge minted: the file whose existence tells Pi
+   * consumers "this conversation can be reopened". Called ONLY on a positive
+   * persistence-layer verdict that the DSH session is gone, so existsSync
+   * answers honestly again.
+   */
+  discardArchive(sessionId: string): void {
+    try {
+      unlinkSync(this.sidecarPath(sessionId))
+    } catch {
+      // Already gone — retiring an absent identity is a no-op, not a failure.
+    }
+    this.records.delete(sessionId)
+    this.loaded.delete(sessionId)
   }
 
   load(sessionId: string): void {

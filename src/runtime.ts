@@ -5022,6 +5022,20 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
       return state.bridge.readonlySessionManager(session as never, cwd) as UnknownRecord
     },
     resumeSessionIdFor: file => state.bridge.sessionIdOfArchiveFile(file),
+    sessionGoneFromPersistence: async sessionId => {
+      // DSH's own verdict shape (agent-loop restoreOrCreateConfigured): the
+      // persistence list() is the authority on whether a session still
+      // exists. No service / a failed list = "cannot tell", never "gone".
+      const persistence = optionalService<{ list?(): Promise<Array<{ id?: unknown }>> }>(ctx, 'sessionPersistence')
+      if (typeof persistence?.list !== 'function') return undefined
+      try {
+        const headers = await persistence.list()
+        return !headers.some(header => String((header as { id?: unknown } | undefined)?.id ?? '') === sessionId)
+      } catch {
+        return undefined
+      }
+    },
+    discardStaleArchive: sessionId => state.bridge.discardArchive(sessionId),
     parentModelRoute: () => {
       // The caller's LIVE route, by authority: an explicit Pi ctx.setModel()
       // override, else the last durable request/header (where a DSH UI or
