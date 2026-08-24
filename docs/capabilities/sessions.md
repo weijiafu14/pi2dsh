@@ -17,10 +17,10 @@ does not exercise the separate `ctx.subagents` provider seam. See
 
 | Pi surface | Kind | Status | What it does on DSH |
 |---|---|---|---|
-| [`appendEntry`](#appendentry-pi) | `pi.*` | Mapped, difference stated | Persisted in a pi2dsh sidecar next to the DSH session and replayed on session start; DSH's main log stays untouched because it has no out-of-repo plugin-event channel yet. |
-| [`setSessionName`](#setsessionname-pi) | `pi.*` | Same semantics | Renames the DSH session through ctx.sessionTitle, so every DSH surface shows it and the title is pinned against automatic regeneration, and announces it through session_info_changed. A composition that mounts no title service falls back to the pi2dsh sidecar, as does a blank name (DSH requires visible characters in a title; Pi does not). |
-| [`getSessionName`](#getsessionname-pi) | `pi.*` | Same semantics | Reads DSH's own session title, so it agrees with what DSH displays and sees titles DSH generated itself; falls back to the sidecar when no title service is mounted. |
-| [`setLabel`](#setlabel-pi) | `pi.*` | Mapped, difference stated | Persisted in the pi2dsh sidecar and reflected by the sessionManager projection. |
+| [`appendEntry`](#appendentry-pi) | `pi.*` | Mapped, difference stated | Persisted as a genuine Pi custom entry line in the per-session Pi-format archive (the same file getSessionFile() names, parseable by Pi's own SessionManager) and replayed on session start; DSH's main log stays untouched because its persistence read path refuses out-of-vocabulary event types and Session.append cannot set the ignorable escape hatch. |
+| [`setSessionName`](#setsessionname-pi) | `pi.*` | Same semantics | Renames the DSH session through ctx.sessionTitle, so every DSH surface shows it and the title is pinned against automatic regeneration, and announces it through session_info_changed. A composition that mounts no title service falls back to a session_info entry in the Pi-format archive, as does a blank name (DSH requires visible characters in a title; Pi does not). |
+| [`getSessionName`](#getsessionname-pi) | `pi.*` | Same semantics | Reads DSH's own session title, so it agrees with what DSH displays and sees titles DSH generated itself; falls back to the archive's session_info entry when no title service is mounted. |
+| [`setLabel`](#setlabel-pi) | `pi.*` | Mapped, difference stated | Persisted as a Pi label entry line in the per-session Pi-format archive and reflected by the sessionManager projection. |
 | [`session_start`](#session_start-event) | `event` | Same semantics | Mapped to agent/session-start. |
 | [`session_shutdown`](#session_shutdown-event) | `event` | Same semantics | Mapped to agent disposal and plugin teardown with duplicate suppression. |
 | [`session_info_changed`](#session_info_changed-event) | `event` | Mapped, difference stated | Fired by setSessionName() and projected from DSH session/title events. |
@@ -33,7 +33,7 @@ does not exercise the separate `ctx.subagents` provider seam. See
 | [`cwd`](#cwd-ctx) | `ctx.*` | Same semantics | Mapped to the active DSH agent session working directory. |
 | [`hasUI`](#hasui-ctx) | `ctx.*` | Same semantics | Reports whether a real interactive surface exists: true for dsh-TUI's mounted scene service or for a DSH user-question provider; false for a genuinely headless composition and for child-agent questions that DSH refuses. |
 | [`mode`](#mode-ctx) | `ctx.*` | Same semantics | Reports tui when dsh-TUI's public scene service is mounted, rpc in browser/headless compositions. |
-| [`sessionManager`](#sessionmanager-ctx) | `ctx.*` | Mapped, difference stated | A real read-only projection: DSH durable messages plus pi2dsh sidecar entries, exposed through Pi's exact 14-method surface as a single-branch tree. buildContextEntries is compaction-aware — entries a compaction summarized away are gone, exactly as they are for the model — while getEntries stays the append-only log, which is the same split Pi makes. |
+| [`sessionManager`](#sessionmanager-ctx) | `ctx.*` | Mapped, difference stated | A real read-only projection: DSH durable messages plus the session's Pi-only entries (customs, labels, branch summaries — stored as genuine Pi entry lines in the per-session archive file), exposed through Pi's exact 14-method surface as a single-branch tree. Conversation content is never duplicated: it projects live from the native DSH log at call time. buildContextEntries is compaction-aware — entries a compaction summarized away are gone, exactly as they are for the model — while getEntries stays the append-only log, which is the same split Pi makes. |
 | [`shutdown`](#shutdown-ctx) | `ctx.*` | Mapped, difference stated | Pi defines shutdown behavior as host-provided (runner.ts bindExtensions); this host absorbs the request — the user owns DSH process exit — and informs the user once. The package keeps running. |
 | [`compact`](#compact-ctx) | `ctx.*` | Mapped, difference stated | Pi's fire-and-forget trigger, translated to DSH's official manual compaction (ctx.compaction.compactNow on the live agent). onComplete receives the real summary text and the shadowed-content token estimate as tokensBefore; firstKeptEntryId is empty because the DSH log has no Pi entry ids. Without a compaction service the gap flows through Pi's onError callback and the capability ledger. |
 | [`newSession`](#newsession-ctx) | `ctx.*` | Mapped, difference stated | Really creates a DSH session (ctx.sessions.create) with parent lineage; withSession runs against a projection context bound to it, whose sendMessage/sendUserMessage/appendEntry write into THAT session rather than the one the call came from. DSH has no host-level "current session pointer" a plugin could move — which session the surface shows stays a host choice, announced once. |
@@ -52,25 +52,25 @@ taken on trust.
 
 `pi.*` · Mapped, difference stated
 
-A pi2dsh sidecar file beside the DSH session, replayed at session start. DSH's own log has no channel for event types declared outside the harness, and writing unknown types into it corrupts the session for every other reader.
+A Pi entry line appended to the session's Pi-format archive file, replayed at session start. These entries are sole originals, not copies of anything native. DSH's own log has no channel for event types declared outside the harness — its read path refuses unknown types without the envelope's ignorable marker, which Session.append cannot set — so writing them there corrupts the session for every other reader. The native registration surface is explicitly deferred upstream "until such a consumer exists"; migrating these entries there is the endgame.
 
 ### `setSessionName` <a id="setsessionname-pi"></a>
 
 `pi.*` · Same semantics
 
-ctx.sessionTitle.rename, which is also what pins the title against DSH's automatic regeneration, followed by a session_info_changed dispatch. A composition with no title service — or a blank name, which DSH refuses and Pi allows — falls back to the sidecar.
+ctx.sessionTitle.rename, which is also what pins the title against DSH's automatic regeneration, followed by a session_info_changed dispatch. A composition with no title service — or a blank name, which DSH refuses and Pi allows — falls back to a session_info entry in the Pi-format archive.
 
 ### `getSessionName` <a id="getsessionname-pi"></a>
 
 `pi.*` · Same semantics
 
-ctx.sessionTitle.get, so the answer agrees with what DSH displays and includes titles DSH generated itself; sidecar fallback when no title service is mounted.
+ctx.sessionTitle.get, so the answer agrees with what DSH displays and includes titles DSH generated itself; archive session_info fallback when no title service is mounted.
 
 ### `setLabel` <a id="setlabel-pi"></a>
 
 `pi.*` · Mapped, difference stated
 
-Stored in the pi2dsh sidecar and read back through the sessionManager projection.
+A Pi label entry line in the session's Pi-format archive, read back through the sessionManager projection.
 
 ### `session_start` <a id="session_start-event"></a>
 
@@ -148,7 +148,7 @@ Derived from the live optional TuiSurfaceAdapter. This is the branch interactive
 
 `ctx.*` · Mapped, difference stated
 
-A read-only projection folded from two ordered sources — DSH's durable session log and the pi2dsh sidecar — into the single chain Pi's 14-method surface walks. Compaction awareness comes from the same fold: entries a compaction summarized away are dropped from the context view and kept in the log view.
+A read-only projection folded from two ordered sources — DSH's durable session log (single authority for conversation, projected live) and the per-session Pi-format archive holding only Pi-only entries — into the single chain Pi's 14-method surface walks. Compaction awareness comes from the same fold: entries a compaction summarized away are dropped from the context view and kept in the log view.
 
 ### `shutdown` <a id="shutdown-ctx"></a>
 

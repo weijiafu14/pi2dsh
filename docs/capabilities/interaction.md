@@ -54,7 +54,7 @@ A custom message is a durable DSH log entry carrying Pi's role:"custom" marker (
 
 `pi.*` · Mapped, difference stated
 
-Custom entries live in the pi2dsh sidecar (DSH's durable log has no channel for event types declared outside the harness, so the host's own conversation view can never show them). The registered EntryRenderer runs per entry, its component is projected through render(width), and the text is seated in the conversation flow. A renderer that throws contributes nothing and leaves every other package's entries — and the request — intact.
+Custom entries live as Pi entry lines in the per-session Pi-format archive (DSH's durable log has no channel for event types declared outside the harness, so the host's own conversation view can never show them). The registered EntryRenderer runs per entry, its component is projected through render(width), and the text is seated in the conversation flow. A renderer that throws contributes nothing and leaves every other package's entries — and the request — intact.
 
 ### `registerMarkdownTransformer` <a id="registermarkdowntransformer-pi"></a>
 

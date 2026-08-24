@@ -212,6 +212,56 @@ describe('the durable archive identity Pi consumers reopen a session by', () => 
     expect(bridge.sessionIdOfArchiveFile(bridge.archiveFileFor('x').replace('.jsonl', '.txt'))).toBeUndefined()
   })
 
+  it('mints the archive as a genuine Pi session file: header line + Pi entry lines', async () => {
+    const bridge = new PiSessionBridge()
+    const manager = bridge.readonlySessionManager(dshSession('pi2dsh-sub-fmt-1') as never, '/work/dir') as {
+      getSessionFile(): string
+    }
+    const file = manager.getSessionFile()
+    bridge.appendCustomEntry('pi2dsh-sub-fmt-1', 'subagents:record', { status: 'completed' })
+    bridge.appendLabel('pi2dsh-sub-fmt-1', 'dsh-0', 'pin')
+
+    const lines = require('node:fs').readFileSync(file, 'utf8').trim().split('\n').map((l: string) => JSON.parse(l))
+    expect(lines[0]).toMatchObject({ type: 'session', version: 3, id: 'pi2dsh-sub-fmt-1', cwd: '/work/dir' })
+    expect(lines[1]).toMatchObject({ type: 'custom', customType: 'subagents:record', parentId: null, data: { status: 'completed' } })
+    expect(lines[2]).toMatchObject({ type: 'label', targetId: 'dsh-0', label: 'pin' })
+    // No private {kind: …} shapes on disk — every line is a Pi shape.
+    expect(lines.some((l: Record<string, unknown>) => 'kind' in l)).toBe(false)
+
+    // The REAL Pi parser (vendored, logic unchanged) reads the file as-is:
+    // this is the ABI the file exists to honour, not our own reader again.
+    const { loadEntriesFromFile } = await import('../src/compat/vendor/pi-session-manager.js')
+    const parsed = loadEntriesFromFile(file)
+    expect(parsed.map((entry: { type: string }) => entry.type)).toEqual(['session', 'custom', 'label'])
+
+    // And a fresh bridge (process restart) round-trips it back.
+    const reader = new PiSessionBridge()
+    expect(reader.customEntries('pi2dsh-sub-fmt-1')[0]).toMatchObject({ customType: 'subagents:record' })
+    expect(reader.labels('pi2dsh-sub-fmt-1').get('dsh-0')).toBe('pin')
+  })
+
+  it('still loads archives written in the pre-Pi-format private shape', () => {
+    const fs = require('node:fs')
+    const bridge = new PiSessionBridge()
+    const file = bridge.archiveFileFor('legacy-1')
+    fs.appendFileSync(file, `${JSON.stringify({ kind: 'custom', id: 'c1', timestamp: '2026-01-01T00:00:00.000Z', customType: 'old', data: 7 })}\n`)
+    fs.appendFileSync(file, `${JSON.stringify({ kind: 'name', id: 'n1', timestamp: '2026-01-01T00:00:01.000Z', name: 'kept' })}\n`)
+    const reader = new PiSessionBridge()
+    expect(reader.customEntries('legacy-1')[0]).toMatchObject({ customType: 'old', data: 7 })
+    expect(reader.getName('legacy-1')).toBe('kept')
+  })
+
+  it('upgrades a pre-existing empty archive with the Pi header in place', () => {
+    const fs = require('node:fs')
+    const bridge = new PiSessionBridge()
+    // A file minted by an older engine is empty; place one at the real path.
+    const path = join(require('node:path').dirname(bridge.archiveFileFor('probe-x')), 'empty-1.jsonl')
+    fs.writeFileSync(path, '')
+    expect(bridge.archiveFileFor('empty-1', '/w')).toBe(path)
+    const first = JSON.parse(fs.readFileSync(path, 'utf8').trim().split('\n')[0])
+    expect(first).toMatchObject({ type: 'session', id: 'empty-1', cwd: '/w' })
+  })
+
   it('keeps getSessionFile on the readonly projection reopenable (exists on disk)', () => {
     const bridge = new PiSessionBridge()
     const projection = bridge.readonlySessionManager(dshSession('proj-1') as never, scratch) as {

@@ -46,7 +46,7 @@
 
 | ID | 缺少的公开能力 | 真实后果 |
 |---|---|---|
-| `DSH-ARCH-001` | 仓外插件写 namespaced、可安全回放的自定义 session 事实 | pi-btw 自定义 entry 只能进入 sidecar，因此该项只有 3 级 |
+| `DSH-ARCH-001` | 仓外插件写 namespaced、可安全回放的自定义 session 事实 | pi-btw 自定义 entry 只能进入引擎的 per-session Pi 格式档案（2026-08-24 起为真 Pi 格式，此前是私有 sidecar 记录），仍非原生日志，因此该项只有 3 级 |
 | `DSH-ARCH-003` | 已有 adapter 最终 request/response 周围的通用 middleware | 插件只能拥有整条 transport，不能增强已有 adapter |
 | `DSH-ARCH-004` | 压缩执行前的取消/替换 waterfall | 插件只能知道压缩已经发生，不能改变压缩决定 |
 | `DSH-ARCH-005` | 早于项目资源加载的 trust policy | 普通仓外插件挂载后再判断信任已经太晚 |

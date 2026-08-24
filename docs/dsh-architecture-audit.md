@@ -53,8 +53,13 @@ goal/plan/job 也不等于验证 DSH 的同名 subsystem。这些结论应作为
 - **Pi 消费面**：`appendEntry(customType, data)`、自定义 renderer、label 和部分分支信息。
 - **卡点**：未知事件需要 `ignorable: true` 才能安全前向读取，但仓外插件不能通过公开
   `Session.append()` 设置它，也没有运行时 `registerEventType()`。
-- **当前旁路**：pi2dsh sidecar。
+- **当前旁路**（2026-08-24 起新形态）：per-session **Pi 格式档案文件**（真 Pi
+  header 行 + Pi entry 行，Pi 自家 `SessionManager` 可直接解析；对话正文不复制，
+  始终活投影自原生日志）。此前的私有 JSON 记录格式已废弃（读兼容保留）。
+  消费者需求因此在桥内就地满足；本缺口的意义从"必需"降为"终局单源"——
+  条目进原生日志后档案文件退化为纯存在位（Pi 的 existsSync 契约仍需真 inode）。
 - **最小上游能力**：开放 ignorable append，或提供有命名空间的事件类型注册。
+  提案草稿：[`community/upstream-proposal-plugin-session-entries.md`](../community/upstream-proposal-plugin-session-entries.md)（未发出，等拍板）。
 - **证据**：[`verify-out-of-repo-event-type.mjs`](../scripts/verify-out-of-repo-event-type.mjs)、
   [DSH Discussion #2708](https://github.com/deepseek-ai/deepseek-harness/discussions/2708)。
 - **0.1.1-rc.2 源码复核（2026-08-22）**：seam 仍缺，且三处坐标钉死——

@@ -1,13 +1,36 @@
 // Pi session semantics over a DSH durable session.
 //
-// DSH's append-only event log is authoritative for messages; Pi-only state
-// (custom entries, labels, a session name fallback) persists in a pi2dsh
-// sidecar JSONL next to DSH's home. The sidecar exists because DSH currently
-// has no channel for out-of-repo plugin events: `Session.append()` cannot set
-// the envelope's `ignorable: true`, so an unknown event type appended to the
-// main log would make other builds refuse to reload the whole session. Until
-// DSH grows that registration surface, the sidecar keeps Pi entries durable
-// and replayable without touching main-log compatibility.
+// Single authority, live projection: DSH's append-only event log is the ONLY
+// store for conversation content, and every read below projects from it at
+// call time — nothing conversation-shaped is ever written to a second file.
+//
+// What DOES live on disk here is the Pi-visible session file, one per DSH
+// session, in genuine Pi session-file format (a Pi `{type:"session"}` header
+// line followed by Pi entry lines). It exists for two reasons, both forced by
+// Pi's own ABI:
+//
+//  1. Pi's contract IS a file. `getSessionFile()` hands consumers a path they
+//     probe with plain `existsSync` (pi-subagents' tombstone resurrect) and
+//     hand back to `SessionManager.open()` — the OS call cannot be
+//     intercepted, so a real inode must exist. The header line makes the file
+//     honestly parseable as a Pi session.
+//  2. Pi-ONLY entries (a package's appendEntry customs, labels, branch
+//     summaries, a session_info name fallback) have no home in the native
+//     log: DSH's persistence read path refuses logs carrying out-of-vocabulary
+//     event types, and `Session.append()` cannot set the envelope's
+//     `ignorable: true` escape hatch. These entries are sole originals, not
+//     copies — the file is where they live until DSH's deferred plugin-event
+//     registration surface exists (their KNOWN_SESSION_EVENT_TYPES comment
+//     defers it "until such a consumer exists").
+//
+// Known limit, documented rather than papered over: the file's existence is
+// minted while the native session is alive, but nothing deletes it if the
+// native store later loses the session — a resurrect attempt then fails
+// LOUDLY at the official resume seam instead of being pre-filtered by
+// existsSync. Auto-deleting on resume failure would be worse: the failure is
+// indistinguishable from "this composition has no session persistence", and
+// destroying a valid identity token on a composition quirk lies in the other
+// direction.
 
 import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { basename, dirname, join, resolve } from 'node:path'
@@ -41,6 +64,63 @@ interface SidecarRecord {
   name?: string
   summary?: string
   fromId?: string
+}
+
+/** One Pi-only record as the Pi session-file entry line it is stored as. */
+function piEntryLineOf(record: SidecarRecord): string {
+  const base = { id: record.id, parentId: null, timestamp: record.timestamp }
+  switch (record.kind) {
+    case 'custom':
+      return JSON.stringify({
+        type: 'custom', ...base, customType: record.customType,
+        ...(record.data === undefined ? {} : { data: record.data }),
+      })
+    case 'label':
+      return JSON.stringify({
+        type: 'label', ...base, targetId: record.targetId,
+        ...(record.label === undefined ? {} : { label: record.label }),
+      })
+    case 'branch_summary':
+      return JSON.stringify({ type: 'branch_summary', ...base, fromId: record.fromId, summary: record.summary })
+    case 'name':
+      return JSON.stringify({ type: 'session_info', ...base, name: record.name })
+  }
+}
+
+/**
+ * Normalize one parsed session-file line back into a record. Understands the
+ * Pi entry shapes this bridge writes today AND the pre-0.18 private
+ * `{kind: …}` lines, so archives written by older engines keep loading. A Pi
+ * header line and anything unrecognized return undefined.
+ */
+function recordOfParsedLine(parsed: UnknownRecord): SidecarRecord | undefined {
+  if (typeof parsed.kind === 'string') return parsed as unknown as SidecarRecord
+  const id = typeof parsed.id === 'string' ? parsed.id : undefined
+  const timestamp = typeof parsed.timestamp === 'string' ? parsed.timestamp : undefined
+  if (id === undefined || timestamp === undefined) return undefined
+  switch (parsed.type) {
+    case 'custom':
+      return {
+        kind: 'custom', id, timestamp, customType: String(parsed.customType ?? ''),
+        ...(parsed.data === undefined ? {} : { data: parsed.data }),
+      }
+    case 'label':
+      return {
+        kind: 'label', id, timestamp,
+        ...(typeof parsed.targetId === 'string' ? { targetId: parsed.targetId } : {}),
+        ...(typeof parsed.label === 'string' ? { label: parsed.label } : {}),
+      }
+    case 'branch_summary':
+      return {
+        kind: 'branch_summary', id, timestamp,
+        ...(typeof parsed.summary === 'string' ? { summary: parsed.summary } : {}),
+        ...(typeof parsed.fromId === 'string' ? { fromId: parsed.fromId } : {}),
+      }
+    case 'session_info':
+      return { kind: 'name', id, timestamp, ...(typeof parsed.name === 'string' ? { name: parsed.name } : {}) }
+    default:
+      return undefined
+  }
 }
 
 export interface PiProjectedEntry {
@@ -86,17 +166,22 @@ export class PiSessionBridge {
   /**
    * The Pi-visible archive file for one DSH session — the established
    * `<id>.jsonl` convention (getSessionFile/switchSession use the same one).
-   * Guaranteed to EXIST on return: Pi consumers treat the session file as the
-   * durable identity a conversation can be reopened by (pi-subagents guards
-   * its tombstone resurrect with existsSync, and Pi's SessionManager.open
-   * tolerates an empty file), so a merely virtual path would read as "the
-   * conversation is gone".
+   * Guaranteed to EXIST on return, and to start with a genuine Pi
+   * `{type:"session"}` header line: Pi consumers treat the session file as
+   * the durable identity a conversation can be reopened by (pi-subagents
+   * guards its tombstone resurrect with existsSync), and real Pi parsing
+   * (`SessionManager.open` reads the header for id/cwd) must see a Pi file,
+   * not a bare inode. An empty pre-existing file is upgraded in place.
    */
-  archiveFileFor(sessionId: string): string {
+  archiveFileFor(sessionId: string, cwd?: string): string {
     const path = this.sidecarPath(sessionId)
-    if (!existsSync(path)) {
+    const needsHeader = !existsSync(path) || readFileSync(path, 'utf8').trim().length === 0
+    if (needsHeader) {
       mkdirSync(sidecarDir(), { recursive: true })
-      appendFileSync(path, '')
+      appendFileSync(path, `${JSON.stringify({
+        type: 'session', version: 3, id: sessionId,
+        timestamp: new Date().toISOString(), cwd: cwd ?? process.cwd(),
+      })}\n`)
     }
     return path
   }
@@ -128,7 +213,8 @@ export class PiSessionBridge {
     for (const line of readFileSync(path, 'utf8').split('\n')) {
       if (line.trim().length === 0) continue
       try {
-        parsed.push(JSON.parse(line) as SidecarRecord)
+        const record = recordOfParsedLine(JSON.parse(line) as UnknownRecord)
+        if (record !== undefined) parsed.push(record)
       } catch {
         // A torn tail line from a crashed process is dropped, like DSH's own
         // never-finished trailing fragments.
@@ -142,8 +228,9 @@ export class PiSessionBridge {
     const list = this.records.get(sessionId) ?? []
     list.push(record)
     this.records.set(sessionId, list)
-    mkdirSync(sidecarDir(), { recursive: true })
-    appendFileSync(this.sidecarPath(sessionId), `${JSON.stringify(record)}\n`)
+    // The archive must open with its Pi header before any entry follows it.
+    this.archiveFileFor(sessionId)
+    appendFileSync(this.sidecarPath(sessionId), `${piEntryLineOf(record)}\n`)
   }
 
   appendCustomEntry(sessionId: string, customType: string, data: unknown): string {
@@ -332,7 +419,7 @@ export class PiSessionBridge {
       getSessionId: () => session.id,
       // The archive path is a REOPENABLE identity to Pi consumers (existsSync
       // guards, SessionManager.open) — materialized on read, not virtual.
-      getSessionFile: () => this.archiveFileFor(session.id),
+      getSessionFile: () => this.archiveFileFor(session.id, cwd),
       getLeafId: () => leafOf()?.id ?? null,
       getLeafEntry: () => leafOf(),
       getEntry: (id: string) => entriesOf().find(entry => entry.id === id),

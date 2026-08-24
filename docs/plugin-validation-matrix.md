@@ -29,7 +29,7 @@
 ```text
 pi-btw 注册命令并创建侧边会话
 → pi2dsh 翻译命令、child agent/session 和面板数据
-→ ctx.commands + ctx.agents + client slot；自定义 entry 进入 sidecar
+→ ctx.commands + ctx.agents + client slot；自定义 entry 进入 per-session Pi 格式档案
 → 子会话本体进入 DSH session 权威，Pi 自定义事实没有进入原生日志
 → 主会话保持干净，浮层可见答案，子会话可打开和续聊
 ```
