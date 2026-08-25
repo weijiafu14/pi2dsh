@@ -1,154 +1,178 @@
 {
-  "schemaVersion": 1,
-  "pi2dshCommit": "d623bb7cb2e2b8513f936b994a1fe80d72bcc683",
-  "dshCommit": "npm:@deepseek-ai/dsh@0.1.1-rc.2",
-  "results": {
-    "alibabaTokenPlan": {
-      "status": "skipped",
-      "reason": "ALIBABA_TOKEN_PLAN_API_KEY not set"
-    },
-    "visionBridge": {
-      "status": "skipped",
-      "reason": "no complete OpenAI-compatible or Pi-registry vision model configured"
-    },
-    "visionBridgeWeb": {
-      "status": "skipped",
-      "reason": "no complete OpenAI-compatible or Pi-registry vision model configured"
-    },
-    "codexImageGen": {
-      "status": "skipped",
-      "reason": "CODEX_AUTH_FILE not set"
-    },
-    "gatewayCompat": {
-      "engine": {
-        "version": "0.17.1",
-        "from": "registry",
-        "spec": "pi2dsh@0.17.1"
-      },
-      "status": "passed",
-      "requests": 2,
-      "roles": [
-        "system",
-        "user",
-        "user"
-      ],
-      "maxTokensField": "max_tokens",
-      "store": null,
-      "reasoningEffort": "high",
-      "bodyKeys": [
-        "max_tokens",
-        "messages",
-        "model",
-        "reasoning_effort",
-        "stream",
-        "stream_options",
-        "tools"
-      ],
-      "previews": [
-        "system: You are an AI agent powered by DeepSeek Harness. You are a ",
-        "user: Reply with exactly: gateway-compat-ok",
-        "user: Current runtime context. This snapshot supersedes earlier ru"
-      ]
-    },
-    "customGateways": {
-      "status": "passed",
-      "engine": {
-        "version": "0.17.1",
-        "from": "registry",
-        "spec": "pi2dsh@0.17.1"
-      },
-      "seenByPackage": {
-        "provider": "my-gateway",
-        "id": "deepseek-chat",
-        "api": "faux",
-        "contextWindow": 131072
-      },
-      "requestedThroughGateway": true
-    },
-    "subscriptionLogin": {
-      "status": "partial",
-      "engine": {
-        "version": "0.17.1",
-        "from": "registry",
-        "spec": "pi2dsh@0.17.1"
-      },
-      "note": "pre-login discovery and native route passed; set CODEX_AUTH_FILE to verify the post-login model picker"
-    },
-    "presentationSurfaces": {
-      "status": "passed",
-      "engine": {
-        "version": "0.17.1",
-        "from": "registry",
-        "spec": "pi2dsh@0.17.1"
-      },
-      "screenshots": [
-        "06-presentation-surfaces.png"
-      ]
-    },
-    "tuiMcp": {
-      "status": "passed",
-      "engine": {
-        "version": "0.17.1",
-        "from": "registry",
-        "spec": "pi2dsh@0.17.1"
-      },
-      "profile": "dsh-tui",
-      "piPackage": "pi-mcp-adapter",
-      "piPackageVersion": "2.27.0",
-      "command": "/pi-mcp",
-      "nativeCommandPreserved": "/mcp",
-      "mcpServer": "@modelcontextprotocol/server-everything",
-      "transports": [
-        "stdio",
-        "streamable-http",
-        "sse"
-      ],
-      "capabilities": [
-        "manager",
-        "discovery",
-        "proxy",
-        "direct-tools",
-        "mcpScript",
-        "resources",
-        "prompts",
-        "images",
-        "structured-content",
-        "mcp-app-ui",
-        "approval",
-        "elicitation",
-        "sampling",
-        "cancellation",
-        "reconnect",
-        "session-restart"
-      ]
-    },
-    "sideConversation": {
-      "status": "passed",
-      "engine": {
-        "version": "0.17.1",
-        "from": "registry",
-        "spec": "pi2dsh@0.17.1"
-      },
-      "screenshots": [
-        "01-side-conversation-main-thread-clean.png",
-        "02-side-conversation-panel.png",
-        "03-side-conversation-host-catalog.png",
-        "04-side-conversation-injected-on-request.png",
-        "05-side-conversation-child-view.png"
-      ]
-    },
-    "subagents": {
-      "status": "passed",
-      "engine": "0.17.1",
-      "cli": "0.1.1-rc.2",
-      "scenarios": {
-        "steer": "passed",
-        "resume": "passed",
-        "resumeArchive": "passed",
-        "stop": "passed",
-        "modelFollow": "passed",
-        "explicitModelThinking": "passed"
-      }
-    }
+ "schemaVersion": 1,
+ "pi2dshCommit": "9e95fa1d0b21070c5378d50a2cf9acbf95151dba",
+ "dshCommit": "npm:@deepseek-ai/dsh@0.1.1-rc.2",
+ "results": {
+  "alibabaTokenPlan": {
+   "status": "skipped",
+   "reason": "ALIBABA_TOKEN_PLAN_API_KEY not set"
+  },
+  "visionBridge": {
+   "status": "skipped",
+   "reason": "no complete OpenAI-compatible or Pi-registry vision model configured"
+  },
+  "visionBridgeWeb": {
+   "status": "skipped",
+   "reason": "no complete OpenAI-compatible or Pi-registry vision model configured"
+  },
+  "codexImageGen": {
+   "status": "skipped",
+   "reason": "CODEX_AUTH_FILE not set"
+  },
+  "dshX": {
+   "status": "passed",
+   "engine": {
+    "version": "0.19.0",
+    "from": "registry",
+    "spec": "pi2dsh@0.19.0"
+   },
+   "suite": [
+    "pi-mcp-adapter",
+    "@tintinweb/pi-subagents",
+    "pi-btw",
+    "@crazygit/pi-codex-image-gen"
+   ],
+   "commands": {
+    "pi-mcp-adapter": "mcp",
+    "@tintinweb/pi-subagents": "agents",
+    "pi-btw": "btw"
+   },
+   "note": "first parallel-round attempt failed on a harness bug (engine spec string pasted into the dependency field); this is the standalone re-run against the same npm engine"
+  },
+  "customGateways": {
+   "status": "passed",
+   "engine": {
+    "version": "0.19.0",
+    "from": "registry",
+    "spec": "pi2dsh@0.19.0"
+   },
+   "seenByPackage": {
+    "provider": "my-gateway",
+    "id": "deepseek-chat",
+    "api": "faux",
+    "contextWindow": 131072
+   },
+   "requestedThroughGateway": true
+  },
+  "tuiMcp": {
+   "status": "passed",
+   "engine": {
+    "version": "0.19.0",
+    "from": "registry",
+    "spec": "pi2dsh@0.19.0"
+   },
+   "profile": "dsh-tui",
+   "piPackage": "pi-mcp-adapter",
+   "piPackageVersion": "2.27.0",
+   "command": "/pi-mcp",
+   "nativeCommandPreserved": "/mcp",
+   "mcpServer": "@modelcontextprotocol/server-everything",
+   "transports": [
+    "stdio",
+    "streamable-http",
+    "sse"
+   ],
+   "capabilities": [
+    "manager",
+    "discovery",
+    "proxy",
+    "direct-tools",
+    "mcpScript",
+    "resources",
+    "prompts",
+    "images",
+    "structured-content",
+    "mcp-app-ui",
+    "approval",
+    "elicitation",
+    "sampling",
+    "cancellation",
+    "reconnect",
+    "session-restart"
+   ],
+   "note": "first attempts hit two upstream breakages of 2026-08-25: dsh-TUI 0.9.1+ pulls @google/genai install scripts (pnpm hard-blocks), and the official @deepseek-ai core packages moved npm latest to 0.0.1-rc.1 which broke pnpm's tag fallback for dsh-TUI's release-range deps — NO dsh-TUI version installs unpinned; the harness now pins core overrides from the CLI tree"
+  },
+  "gatewayCompat": {
+   "engine": {
+    "version": "0.19.0",
+    "from": "registry",
+    "spec": "pi2dsh@0.19.0"
+   },
+   "status": "passed",
+   "requests": 2,
+   "roles": [
+    "system",
+    "user",
+    "user"
+   ],
+   "maxTokensField": "max_tokens",
+   "store": null,
+   "reasoningEffort": "high",
+   "bodyKeys": [
+    "max_tokens",
+    "messages",
+    "model",
+    "reasoning_effort",
+    "stream",
+    "stream_options",
+    "tools"
+   ],
+   "previews": [
+    "system: You are an AI agent powered by DeepSeek Harness. You are a ",
+    "user: Reply with exactly: gateway-compat-ok",
+    "user: Current runtime context. This snapshot supersedes earlier ru"
+   ]
+  },
+  "subscriptionLogin": {
+   "status": "partial",
+   "engine": {
+    "version": "0.19.0",
+    "from": "registry",
+    "spec": "pi2dsh@0.19.0"
+   },
+   "note": "pre-login discovery and native route passed; set CODEX_AUTH_FILE to verify the post-login model picker"
+  },
+  "presentationSurfaces": {
+   "status": "passed",
+   "engine": {
+    "version": "0.19.0",
+    "from": "registry",
+    "spec": "pi2dsh@0.19.0"
+   },
+   "screenshots": [
+    "06-presentation-surfaces.png"
+   ]
+  },
+  "sideConversation": {
+   "status": "passed",
+   "engine": {
+    "version": "0.19.0",
+    "from": "registry",
+    "spec": "pi2dsh@0.19.0"
+   },
+   "screenshots": [
+    "00-side-conversation-btw-scene.png",
+    "01-side-conversation-main-thread-clean.png",
+    "02-side-conversation-panel.png",
+    "03-side-conversation-host-catalog.png",
+    "04-side-conversation-injected-on-request.png",
+    "05-side-conversation-child-view.png"
+   ],
+   "note": "first attempt predated the capture flow for the web BTW modal that pi2dsh 0.19.0's scene seat newly renders; the re-run asserts the answer INSIDE the modal, closes it, then the original panel/clean-main assertions"
+  },
+  "subagents": {
+   "status": "passed",
+   "engine": "0.19.0",
+   "cli": "0.1.1-rc.2",
+   "scenarios": {
+    "steer": "passed",
+    "resume": "passed",
+    "resumeArchive": "passed",
+    "stop": "passed",
+    "modelFollow": "passed",
+    "explicitModelThinking": "passed"
+   },
+   "note": "same two 2026-08-25 upstream breakages as tui-mcp (genai install scripts + core latest tag moved); re-run green with the harness core-overrides pre-seed"
   }
+ }
 }

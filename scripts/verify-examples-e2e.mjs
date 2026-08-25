@@ -42,6 +42,7 @@
 // every captured artifact before anything is written.
 
 import assert from 'node:assert/strict'
+import { existsSync } from 'node:fs'
 import { execFile as execFileCallback, spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { chmod, mkdir, mkdtemp, readFile, readdir, rm, stat, symlink, writeFile } from 'node:fs/promises'
@@ -163,16 +164,59 @@ async function makeHome(scratch, extraEnv = {}) {
     PNPM_CONFIG_MINIMUM_RELEASE_AGE: '0',
     ...extraEnv,
   }
-  const runDsh = args => execFile(
-    directDshBin === undefined ? 'node' : directDshBin,
-    directDshBin === undefined ? ['--import', 'tsx/esm', dshBin, ...args] : args,
-    {
-    cwd: dshCwd,
-    env,
-    timeout: 300_000,
-    maxBuffer: 16 * 1024 * 1024,
-    },
-  )
+  const runDsh = async args => {
+    // Two upstream breakages this file pre-empts in every profile, the same
+    // way a user following the READMEs would:
+    //  - dsh-TUI 0.9.1+ pulls pi-ai -> @google/genai -> protobufjs, whose
+    //    install scripts pnpm blocks (ERR_PNPM_IGNORED_BUILDS); declared as
+    //    "installed, scripts not run", the CLI install dir's own stance.
+    //  - On 2026-08-25 the official @deepseek-ai core packages moved their
+    //    npm `latest` tag to 0.0.1-rc.1, which broke pnpm's tag fallback for
+    //    dsh-TUI's release-range (^0.1.1) core deps — NO version of dsh-TUI
+    //    installs without pinning. The overrides pin every core package to
+    //    the CLI's own generation, read from the CLI tree rather than a
+    //    hand-copied list.
+    const profileFlag = args.indexOf('--profile')
+    if (args[0] === 'plugin' && profileFlag !== -1 && args.includes('add')) {
+      const profileDir = join(home, 'profiles', String(args[profileFlag + 1]))
+      const workspaceFile = join(profileDir, 'pnpm-workspace.yaml')
+      await mkdir(profileDir, { recursive: true })
+      if (!existsSync(workspaceFile)) {
+        const lines = [
+          'minimumReleaseAge: 0',
+          'allowBuilds:',
+          "  '@google/genai': false",
+          '  protobufjs: false',
+        ]
+        const pnpmStore = directDshBin === undefined
+          ? join(dshRoot, 'node_modules', '.pnpm')
+          : resolve(directDshBin, '..', '..', '.pnpm')
+        if (existsSync(pnpmStore)) {
+          const core = new Set()
+          for (const entry of await readdir(pnpmStore)) {
+            if (entry.startsWith('@deepseek-ai+dsh')) {
+              core.add(`@deepseek-ai/${entry.slice('@deepseek-ai+'.length).split('@0')[0]}`)
+            }
+          }
+          if (core.size > 0) {
+            lines.push('overrides:')
+            for (const name of [...core].sort()) lines.push(`  "${name}": 0.1.1-rc.2`)
+          }
+        }
+        await writeFile(workspaceFile, `${lines.join('\n')}\n`)
+      }
+    }
+    return execFile(
+      directDshBin === undefined ? 'node' : directDshBin,
+      directDshBin === undefined ? ['--import', 'tsx/esm', dshBin, ...args] : args,
+      {
+        cwd: dshCwd,
+        env,
+        timeout: 300_000,
+        maxBuffer: 16 * 1024 * 1024,
+      },
+    )
+  }
   return { home, env, runDsh }
 }
 
@@ -987,7 +1031,10 @@ async function runTuiMcp() {
   const scratch = await mkdtemp(join(tmpdir(), 'pi2dsh-ex-tui-mcp-'))
   try {
     const { home, env, runDsh } = await makeHome(scratch)
-    await runDsh(['plugin', '--profile', 'dsh-tui', 'add', '@deepseek-harness-tui/dsh-tui'])
+    // Pinned: dsh-TUI 0.9.1/0.9.2 (2026-08-25) declare release-range deps
+    // (>=0.1.1) that match no published rc of the DSH core line — they are
+    // uninstallable upstream bugs; 0.9.0 is the last installable version.
+    await runDsh(['plugin', '--profile', 'dsh-tui', 'add', process.env.PI2DSH_TUI_SPEC ?? '@deepseek-harness-tui/dsh-tui@0.9.0'])
     await runDsh(['plugin', '--profile', 'dsh-tui', 'add', engineSpec])
     await runDsh(['plugin', '--profile', 'dsh-tui', 'add', 'pi-mcp-adapter'])
     const profileRoot = join(home, 'profiles', 'dsh-tui')
@@ -1129,7 +1176,9 @@ async function runDshX() {
     const suiteDir = join(scratch, 'dsh-x')
     await mkdir(suiteDir, { recursive: true })
     const manifest = JSON.parse(await readFile(join(projectRoot, 'dsh-x/package.json'), 'utf8'))
-    manifest.dependencies.pi2dsh = engineSpec
+    // A dependency value is a version/range/file: URL — never "name@version"
+    // (that spelling is only valid on an install command line).
+    manifest.dependencies.pi2dsh = engineSpec.startsWith('pi2dsh@') ? engineSpec.slice('pi2dsh@'.length) : engineSpec
     await writeFile(join(suiteDir, 'package.json'), JSON.stringify(manifest, null, 2))
     await writeFile(join(suiteDir, 'cordis.patch.yml'), await readFile(join(projectRoot, 'dsh-x/cordis.patch.yml'), 'utf8'))
     await writeFile(join(suiteDir, 'index.mjs'), await readFile(join(projectRoot, 'dsh-x/index.mjs'), 'utf8'))

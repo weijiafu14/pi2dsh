@@ -27,6 +27,28 @@ await page.getByRole('button', { name: UI.newSession }).first().click({ timeout:
 await send(MAIN_QUESTION)
 await send(SIDE_QUESTION)
 
+// Since pi2dsh 0.19.0 the web runs Pi's full-screen custom UI: `/btw` opens
+// pi-btw's own focused modal on the scene overlay. Assert the answer arrives
+// INSIDE the modal (only a working scene satisfies that), keep its screenshot,
+// then dismiss it — the rest of the flow asserts the panel and the clean main
+// thread exactly as before. A composition without the scene (older engine)
+// simply never shows the modal and the flow continues unchanged.
+const scene = page.locator('[data-pi2dsh="scene"]')
+const sceneAppeared = await scene.waitFor({ timeout: 30_000 }).then(() => true).catch(() => false)
+if (sceneAppeared) {
+  await page.waitForFunction(
+    () => {
+      const node = document.querySelector('[data-pi2dsh="scene"]')
+      return node !== null && /herbert/iu.test(node.textContent ?? '')
+    },
+    undefined,
+    { timeout: 120_000 },
+  )
+  await shot('00-side-conversation-btw-scene')
+  await scene.locator('button[title="Close"]').click()
+  await scene.waitFor({ state: 'detached', timeout: 30_000 }).catch(() => scene.waitFor({ state: 'hidden', timeout: 10_000 }))
+}
+
 // The child is registered the moment it starts, so the count alone does not
 // mean the side thread has answered. The catalog row's own activity does:
 // wait there until it goes idle, then close the popover again.

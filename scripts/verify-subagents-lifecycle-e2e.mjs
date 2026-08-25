@@ -210,7 +210,37 @@ try {
     const profileRoot = join(home, 'profiles', profile)
     if (!existsSync(join(profileRoot, 'node_modules', 'pi2dsh'))) {
       log(`installing ${profile} profile …`)
-      const extra = profile === 'tui' ? ['-w', process.env.PI2DSH_TUI_SPEC ?? '@deepseek-harness-tui/dsh-tui'] : []
+      // dsh-TUI 0.9.1+ drags pi-ai -> @google/genai -> protobufjs into the
+      // profile tree; their install scripts stay unrun, declared exactly as
+      // the CLI install dir above declares them. And since 2026-08-25 the
+      // official core packages' npm `latest` tag points at 0.0.1-rc.1, which
+      // broke pnpm's tag fallback for dsh-TUI's release-range core deps —
+      // the overrides pin every core package to the CLI's own generation,
+      // read from the CLI tree rather than a hand-copied list.
+      await mkdir(profileRoot, { recursive: true })
+      if (!existsSync(join(profileRoot, 'pnpm-workspace.yaml'))) {
+        const workspaceLines = [
+          'minimumReleaseAge: 0',
+          'allowBuilds:',
+          "  '@google/genai': false",
+          '  protobufjs: false',
+        ]
+        const pnpmStore = join(cliDir, 'node_modules', '.pnpm')
+        if (existsSync(pnpmStore)) {
+          const core = new Set()
+          for (const entry of await readdir(pnpmStore)) {
+            if (entry.startsWith('@deepseek-ai+dsh')) {
+              core.add(`@deepseek-ai/${entry.slice('@deepseek-ai+'.length).split('@0')[0]}`)
+            }
+          }
+          if (core.size > 0) {
+            workspaceLines.push('overrides:')
+            for (const name of [...core].sort()) workspaceLines.push(`  "${name}": ${cliVersion}`)
+          }
+        }
+        await writeFile(join(profileRoot, 'pnpm-workspace.yaml'), `${workspaceLines.join('\n')}\n`)
+      }
+      const extra = profile === 'tui' ? ['-w', process.env.PI2DSH_TUI_SPEC ?? '@deepseek-harness-tui/dsh-tui@0.9.0'] : []
       const probe = profile === 'headless' ? [PROBE_DIR] : []
       await execFile(dshBin, ['plugin', '--profile', profile, 'add', ...extra, ENGINE_SPEC, SUBAGENTS_SPEC, ...probe], {
         env: baseEnv, timeout: 600_000, maxBuffer: 32 * 1024 * 1024,
