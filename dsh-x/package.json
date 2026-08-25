@@ -1,0 +1,50 @@
+{
+  "name": "dsh-x",
+  "version": "0.1.0",
+  "description": "Batteries-included capability suite for DeepSeek Harness: MCP manager with lazy proxy + OAuth, parallel steerable subagents, side conversations, image generation — one install, every piece verified end to end.",
+  "license": "MIT",
+  "author": "pi2dsh contributors",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/weijiafu14/pi2dsh.git",
+    "directory": "dsh-x"
+  },
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "dsh-plugin",
+    "mcp",
+    "subagents",
+    "pi2dsh"
+  ],
+  "type": "module",
+  "exports": {
+    ".": "./index.mjs",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.mjs",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "pi2dsh": {
+    "suite": [
+      "pi-mcp-adapter",
+      "@tintinweb/pi-subagents",
+      "pi-btw",
+      "@crazygit/pi-codex-image-gen"
+    ]
+  },
+  "dependencies": {
+    "@crazygit/pi-codex-image-gen": "0.2.2",
+    "@tintinweb/pi-subagents": "0.18.0",
+    "pi-btw": "0.4.1",
+    "pi-mcp-adapter": "2.27.0",
+    "pi2dsh": "^0.18.0"
+  }
+}

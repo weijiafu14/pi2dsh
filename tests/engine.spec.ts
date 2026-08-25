@@ -106,6 +106,37 @@ describe('engine discovery', () => {
     expect(narrowed.map(pkg => pkg.name)).toEqual(['pi-marked'])
   })
 
+  // A suite (dsh-x's shape): one profile dependency whose manifest lists the
+  // Pi packages it carries. Members are the suite's OWN dependencies — under
+  // pnpm's isolated layout they are unreachable from the profile root, so
+  // each member must resolve anchored at the suite package.
+  it('expands a pi2dsh.suite manifest into members anchored at the suite package', async () => {
+    const root = await makeProfile({ 'dsh-x': '1.0.0', 'pi-direct': '1.0.0' })
+    await installFixturePackage(root, 'pi-direct', { pi: { extensions: ['main.js'] } }, { 'main.js': '' })
+    await installFixturePackage(root, 'dsh-x', {
+      pi2dsh: { suite: ['pi-suite-member', 'pi-direct', 'pi2dsh', '', 42] },
+      dsh: { bundle: { patch: './cordis.patch.yml' } },
+    })
+    const found = await discoverProfilePiPackages(root)
+    // Members surface without a profile-root install; the engine itself and
+    // junk entries are dropped; a name discovered both directly and via the
+    // suite mounts once (profile order first).
+    expect(found.map(pkg => pkg.name).sort()).toEqual(['pi-direct', 'pi-suite-member'])
+    const member = found.find(pkg => pkg.name === 'pi-suite-member')
+    expect(member?.anchor).toBe(join(root, 'node_modules', 'dsh-x', 'package.json'))
+    const direct = found.find(pkg => pkg.name === 'pi-direct')
+    expect(direct?.anchor).toBeUndefined()
+  })
+
+  it('suite members honor exclude like any discovered package', async () => {
+    const root = await makeProfile({ 'dsh-x': '1.0.0' })
+    await installFixturePackage(root, 'dsh-x', {
+      pi2dsh: { suite: ['pi-kept', 'pi-dropped'] },
+    })
+    const found = await discoverProfilePiPackages(root, { exclude: ['pi-dropped'] })
+    expect(found.map(pkg => pkg.name)).toEqual(['pi-kept'])
+  })
+
 })
 
 describe('engine mounting on a real DSH composition', () => {

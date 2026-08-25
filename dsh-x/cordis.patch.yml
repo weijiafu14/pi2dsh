@@ -1,0 +1,17 @@
+# dsh-x mounts the pi2dsh engine with the suite's defaults. The engine then
+# reads dsh-x's own `pi2dsh.suite` manifest and mounts the bundled Pi
+# packages — the user installs exactly one thing.
+#
+# The module is "dsh-x" (this package re-exports the engine): DSH's loader
+# resolves patch rows from the profile root, where only dsh-x is visible;
+# the engine itself is dsh-x's dependency. The row id stays `pi2dsh` so the
+# documented config-override path (`- id: pi2dsh` in the profile's user
+# patch layer) works identically under both install shapes.
+#
+# visionCompanions is off by design in this suite: image admission through
+# companion routes is not part of the dsh-x v1 surface.
+- insert:
+    - id: pi2dsh
+      name: "dsh-x"
+      config:
+        visionCompanions: false

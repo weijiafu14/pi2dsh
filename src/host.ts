@@ -23,6 +23,12 @@ export interface PiHostPackageSpec {
   name: string
   /** Optional per-package config forwarded to the runtime. */
   config?: UnknownRecord
+  /**
+   * Resolution anchor for THIS package (a package.json path). A suite's
+   * members are its own dependencies, so under pnpm's isolated layout they
+   * resolve from the suite package, not from the profile root.
+   */
+  anchor?: string
 }
 
 export interface PiHostConfig {
@@ -133,7 +139,7 @@ export async function preparePiHost(config: PiHostConfig, anchor?: string): Prom
   const prepared: PreparedPiHostPackage[] = []
   for (const spec of normalizeSpecs(config)) {
     try {
-      const dir = resolveInstalledDir(anchorPath, spec.name)
+      const dir = resolveInstalledDir(spec.anchor ?? anchorPath, spec.name)
       const pkg = await resolvePiPackage(dir)
       try {
         const manifest = await manifestForInstalled(pkg)

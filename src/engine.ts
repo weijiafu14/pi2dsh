@@ -56,6 +56,10 @@ export function findProfileRoot(start: string): string | undefined {
 interface DiscoveredPackage {
   name: string
   dir: string
+  /** Resolution anchor when the package is carried by a suite (its members
+   * are the suite's dependencies, unreachable from the profile root under
+   * pnpm's isolated layout). */
+  anchor?: string
 }
 
 interface ProfileManifest {
@@ -102,6 +106,21 @@ export async function discoverProfilePiPackages(
       warn(`[pi2dsh engine] cannot read ${name}/package.json (${error instanceof Error ? error.message : String(error)}); skipping`)
       continue
     }
+    // A suite: `pi2dsh: { suite: [names...] }` mounts the listed Pi packages
+    // as if the user had added each one. The list is an explicit manifest —
+    // the same discovery covenant as the profile dependency list, one hop
+    // deeper — and the members are the suite's own dependencies, so each
+    // resolves anchored at the suite package (pnpm keeps transitive
+    // dependencies out of the profile root). One level only, no recursion.
+    const suite = (packageJson.pi2dsh as { suite?: unknown } | undefined)?.suite
+    if (Array.isArray(suite)) {
+      for (const member of suite) {
+        if (typeof member !== 'string' || member.length === 0) continue
+        if (member === 'pi2dsh' || excluded.has(member)) continue
+        discovered.push({ name: member, dir, anchor: join(dir, 'package.json') })
+      }
+      continue
+    }
     // A dsh.bundle-declaring package is a DSH plugin layer, never a Pi package.
     if ((packageJson.dsh as { bundle?: unknown } | undefined)?.bundle !== undefined) continue
     if (packageJson.pi !== undefined && typeof packageJson.pi === 'object') {
@@ -122,7 +141,17 @@ export async function discoverProfilePiPackages(
       // Not resolvable as a Pi package — a plain library.
     }
   }
-  return discovered
+  // One mount per name. A package that is both a direct dependency and a
+  // suite member mounts as the DIRECT dependency (the user's own explicit
+  // add, resolved from the profile root) — the suite copy yields.
+  const byName = new Map<string, DiscoveredPackage>()
+  for (const pkg of discovered) {
+    const existing = byName.get(pkg.name)
+    if (existing === undefined || (existing.anchor !== undefined && pkg.anchor === undefined)) {
+      byName.set(pkg.name, pkg)
+    }
+  }
+  return [...byName.values()]
 }
 
 interface AgentScopedMount {
@@ -330,7 +359,7 @@ export async function apply(ctx: Context, config: EngineConfig = {}): Promise<vo
       },
     }])
 
-    const packages = Array.isArray(config.packages) && config.packages.length > 0
+    const packages: Array<{ name: string, anchor?: string }> = Array.isArray(config.packages) && config.packages.length > 0
       ? config.packages.map(name => ({ name }))
       : await discoverProfilePiPackages(profileRoot, {
           ...(Array.isArray(config.exclude) ? { exclude: config.exclude } : {}),
@@ -343,7 +372,10 @@ export async function apply(ctx: Context, config: EngineConfig = {}): Promise<vo
     }
     info(`[pi2dsh engine] preparing ${packages.length} Pi package(s): ${packages.map(pkg => pkg.name).join(', ')}`)
     const prepared = await preparePiHost(
-      { packages: packages.map(pkg => ({ name: pkg.name })) },
+      {
+        packages: packages.map(pkg =>
+          pkg.anchor === undefined ? { name: pkg.name } : { name: pkg.name, anchor: pkg.anchor }),
+      },
       join(profileRoot, 'package.json'),
     )
     // Host anchors, before the per-Agent gates open: every package's

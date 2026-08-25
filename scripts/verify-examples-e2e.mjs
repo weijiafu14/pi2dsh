@@ -1114,6 +1114,84 @@ async function runSubagents() {
   }
 }
 
+// ---------------------------------------------------------------------------
+// dsh-x — the capability suite: ONE `dsh plugin add` carries the engine and
+// its pinned Pi packages, and the web composer really offers their commands.
+// ---------------------------------------------------------------------------
+async function runDshX() {
+  const playwrightFrom = process.env.PLAYWRIGHT_FROM ?? join(dshRoot, 'apps/web')
+  const scratch = await mkdtemp(join(tmpdir(), 'pi2dsh-ex-dshx-'))
+  let web
+  try {
+    // Stage the suite with its engine dependency pointed at THIS run's engine
+    // (the local tree, or the release spec under test); everything else stays
+    // the suite's published pinned set.
+    const suiteDir = join(scratch, 'dsh-x')
+    await mkdir(suiteDir, { recursive: true })
+    const manifest = JSON.parse(await readFile(join(projectRoot, 'dsh-x/package.json'), 'utf8'))
+    manifest.dependencies.pi2dsh = engineSpec
+    await writeFile(join(suiteDir, 'package.json'), JSON.stringify(manifest, null, 2))
+    await writeFile(join(suiteDir, 'cordis.patch.yml'), await readFile(join(projectRoot, 'dsh-x/cordis.patch.yml'), 'utf8'))
+    await writeFile(join(suiteDir, 'index.mjs'), await readFile(join(projectRoot, 'dsh-x/index.mjs'), 'utf8'))
+
+    const { home, env, runDsh } = await makeHome(scratch)
+    // Pack the staged suite: pnpm links path installs back to their source
+    // directory (where the suite's own dependencies are unresolvable), while
+    // a tarball install is a real install — the shape an npm user gets.
+    const packOut = await execFile('npm', ['pack', '--json', '--pack-destination', scratch], { cwd: suiteDir, env, timeout: 120_000 })
+    const tarball = join(scratch, JSON.parse(packOut.stdout)[0].filename)
+    // The ONLY install a dsh-x user runs.
+    await runDsh(['plugin', '--profile', 'web', 'add', tarball])
+    const profileManifest = JSON.parse(await readFile(join(home, 'profiles/web/package.json'), 'utf8'))
+    const bundles = profileManifest.dsh?.profile?.bundles ?? []
+    assert(bundles.includes('dsh-x'), `dsh-x missing from the profile's bundle layers: ${JSON.stringify(bundles)}`)
+
+    const port = Number(process.env.DSHX_PORT ?? 5189)
+    web = spawnWeb(port, env)
+    let webLog = ''
+    web.stdout.on('data', chunk => { webLog += String(chunk) })
+    web.stderr.on('data', chunk => { webLog += String(chunk) })
+    const url = `http://127.0.0.1:${port}`
+    const deadline = Date.now() + 90_000
+    for (;;) {
+      if (web.exitCode !== null) throw new Error(`dsh web exited on startup:\n${webLog}`)
+      if (await fetch(url).then(() => true).catch(() => false)) break
+      if (Date.now() > deadline) throw new Error(`dsh web never came up:\n${webLog}`)
+      await new Promise(done => setTimeout(done, 500))
+    }
+
+    // The suite's own patch mounted the engine, the engine expanded the suite
+    // manifest to all four members, and companions stayed off (v1 surface).
+    const mountDeadline = Date.now() + 60_000
+    while (!/preparing 4 Pi package\(s\)/u.test(webLog) && Date.now() < mountDeadline) {
+      await new Promise(done => setTimeout(done, 500))
+    }
+    assert(/preparing 4 Pi package\(s\)/u.test(webLog), `the engine never prepared the 4 suite packages:\n${webLog.slice(-2000)}`)
+    for (const name of ['pi-mcp-adapter', '@tintinweb/pi-subagents', 'pi-btw', '@crazygit/pi-codex-image-gen']) {
+      assert(webLog.includes(name), `suite member ${name} is missing from the engine mount line`)
+    }
+    assert(!/companion route/u.test(webLog), 'vision companions must stay OFF under dsh-x, but a companion route registered')
+    assert(!/failed to mount/u.test(webLog), `a suite member failed to mount:\n${webLog.split('\n').filter(line => /failed to mount/u.test(line)).join('\n')}`)
+
+    // The falsifiable web check: each member's command offered by the popover.
+    await execFile('node', [join(projectRoot, 'scripts/dsh-x-web-probe.mjs'), join(scratch, 'shots'), '--url', url], {
+      cwd: projectRoot,
+      env: { ...env, PLAYWRIGHT_FROM: playwrightFrom },
+      timeout: 180_000,
+      maxBuffer: 16 * 1024 * 1024,
+    }).catch(error => { console.log(String(error.stdout ?? ''), String(error.stderr ?? '')); throw error })
+
+    results.dshX = {
+      status: 'passed',
+      engine: await installedEngineVersion(home, 'web'),
+      suite: ['pi-mcp-adapter', '@tintinweb/pi-subagents', 'pi-btw', '@crazygit/pi-codex-image-gen'],
+    }
+  } finally {
+    web?.kill('SIGTERM')
+    await rm(scratch, { recursive: true, force: true })
+  }
+}
+
 const SCENARIOS = [
   ['gateway-compat', runGatewayCompat, 'gatewayCompat'],
   ['alibaba-token-plan', runAlibabaTokenPlan, 'alibabaTokenPlan'],
@@ -1126,6 +1204,7 @@ const SCENARIOS = [
   ['codex-image-gen', runCodexImageGen, 'codexImageGen'],
   ['tui-mcp', runTuiMcp, 'tuiMcp'],
   ['subagents', runSubagents, 'subagents'],
+  ['dsh-x', runDshX, 'dshX'],
 ]
 const selected = SCENARIOS.filter(([name]) => only === undefined || only === name)
 if (selected.length === 0) {
