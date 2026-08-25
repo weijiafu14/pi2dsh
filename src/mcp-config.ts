@@ -99,9 +99,12 @@ export function collectPiMcpServers(cwd: string, extraPaths: string[] = []): { s
       const existing = servers.get(name)
       // Later (higher-precedence) layers override whole entries; a bare
       // `disabled` toggle updates the effective server from a lower layer.
+      // The toggle keeps the DEFINING file's sourcePath — a project-local
+      // disable of a global server must not reclassify it as project-defined
+      // (the Settings view groups by where the definition lives).
       if (existing !== undefined && typeof record === 'object' && record !== null
         && record.command === undefined && record.url === undefined && typeof record.disabled === 'boolean') {
-        servers.set(name, { ...existing, disabled: record.disabled, sourcePath: path })
+        servers.set(name, { ...existing, disabled: record.disabled })
         continue
       }
       const server = parseServer(name, raw, path)

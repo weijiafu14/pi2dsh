@@ -40,9 +40,20 @@ install and asserts each bundled package's own command is offered by the
 composer — not that a file exists somewhere.
 
 ```sh
-dsh plugin --profile web add dsh-work-x
+dsh plugin --profile web add dsh-work-x dsh-better-sidebar
 dsh web --port 5179
 ```
+
+[`dsh-better-sidebar`](https://www.npmjs.com/package/dsh-better-sidebar) is the
+community sidebar the suite's product UI seats into: its Tasks page shows your
+subagents natively (click through to steer or stop them), and dsh-work-x adds an
+**MCP tab** there — this session's servers grouped by layer (project /
+global), with per-project enable/disable. A machine-wide view of the same
+servers lives in **Settings → MCP** and works with or without the sidebar.
+Without `dsh-better-sidebar` everything still runs; you just lose those two
+panels. (DSH has no way yet for one plugin to declare a companion bundle —
+[we've proposed one](https://github.com/deepseek-ai/deepseek-harness/discussions/4543) —
+so the install command names both.)
 
 ## Configuration
 

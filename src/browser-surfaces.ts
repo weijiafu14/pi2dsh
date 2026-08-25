@@ -666,7 +666,7 @@ export function revokeAuthorization(path: string): void {
  */
 export interface BrowserSurfaceHooks {
   mcpState?(session: string): Promise<unknown>
-  mcpAction?(session: string, server: string, disabled: boolean): Promise<unknown>
+  mcpAction?(session: string, server: string, disabled: boolean, scope: 'project' | 'global'): Promise<unknown>
 }
 
 export function registerBrowserSurfaceRoute(ctx: Context, registry: BrowserSurfaces, hooks?: BrowserSurfaceHooks): boolean {
@@ -732,11 +732,12 @@ export function registerBrowserSurfaceRoute(ctx: Context, registry: BrowserSurfa
         })
         let outcome: unknown
         try {
-          const payload = JSON.parse(raw || '{}') as { session?: unknown, server?: unknown, disabled?: unknown }
+          const payload = JSON.parse(raw || '{}') as { session?: unknown, server?: unknown, disabled?: unknown, scope?: unknown }
           if (typeof payload.session !== 'string' || typeof payload.server !== 'string' || typeof payload.disabled !== 'boolean') {
             throw new TypeError('mcp-action needs { session, server, disabled }')
           }
-          outcome = await hooks.mcpAction(payload.session, payload.server, payload.disabled)
+          const scope = payload.scope === 'global' ? 'global' : 'project'
+          outcome = await hooks.mcpAction(payload.session, payload.server, payload.disabled, scope)
         } catch (error) {
           response.writeHead(400, { 'content-type': 'application/json; charset=utf-8' })
           response.end(JSON.stringify({ error: error instanceof Error ? error.message : String(error) }))

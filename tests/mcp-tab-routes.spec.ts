@@ -52,6 +52,16 @@ async function post(path: string, payload: Json): Promise<{ status: number, body
 
 beforeAll(async () => {
   scratch = await mkdtemp(join(tmpdir(), 'pi2dsh-mcp-tab-'))
+  // Sandbox the cross-project agent-dir layer into the scratch (the same
+  // env knob the vendored Pi config shim honors), so the layer/scope tests
+  // never read or write the real machine's global config.
+  process.env.PI_CODING_AGENT_DIR = join(scratch, 'agent')
+  await mkdir(join(scratch, 'agent'), { recursive: true })
+  await writeFile(join(scratch, 'agent', 'mcp.json'), JSON.stringify({
+    mcpServers: {
+      homeboard: { url: 'https://global.example.invalid/mcp' },
+    },
+  }))
   // A real workspace-level MCP config, secrets included — the route must
   // serve the shape WITHOUT the secret values.
   await writeFile(join(scratch, '.mcp.json'), JSON.stringify({
@@ -98,6 +108,7 @@ beforeAll(async () => {
 })
 
 afterAll(async () => {
+  delete process.env.PI_CODING_AGENT_DIR
   await rm(scratch, { recursive: true, force: true })
 })
 
@@ -106,13 +117,17 @@ describe('the MCP tab routes', () => {
     const { status, body } = await get(`/pi2dsh/mcp-state?session=${SESSION}`)
     expect(status).toBe(200)
     const servers = body.servers as Json[]
-    expect(servers.map(server => server.name).sort()).toEqual(['everything', 'remote'])
+    expect(servers.map(server => server.name).sort()).toEqual(['everything', 'homeboard', 'remote'])
     const everything = servers.find(server => server.name === 'everything') as Json
     expect(everything.transport).toBe('stdio')
     expect(everything.target).toContain('server-everything')
     expect(everything.envKeys).toEqual(['API_TOKEN'])
+    expect(everything.layer).toBe('project')
     const remote = servers.find(server => server.name === 'remote') as Json
     expect(remote.headerKeys).toEqual(['Authorization'])
+    expect(remote.layer).toBe('project')
+    const homeboard = servers.find(server => server.name === 'homeboard') as Json
+    expect(homeboard.layer).toBe('global')
     // The whole payload, as the browser receives it, never carries a secret.
     const wire = JSON.stringify(body)
     expect(wire).not.toContain('super-secret-value')
@@ -139,6 +154,41 @@ describe('the MCP tab routes', () => {
     const state = await get(`/pi2dsh/mcp-state?session=${SESSION}`)
     const everything = (state.body.servers as Json[]).find(server => server.name === 'everything') as Json
     expect(everything.disabled).toBe(false)
+  })
+
+  it('global scope persists into the agent-dir layer, keeping the definition and leaving the project override alone', async () => {
+    const { status, body } = await post('/pi2dsh/mcp-action', { session: SESSION, server: 'homeboard', disabled: true, scope: 'global' })
+    expect(status).toBe(200)
+    expect(body.ok).toBe(true)
+    const globalLayer = JSON.parse(await readFile(join(scratch, 'agent', 'mcp.json'), 'utf8')) as Json
+    // The write merges into the defining entry: definition preserved, only
+    // the flag added.
+    expect((globalLayer.mcpServers as Json).homeboard).toEqual({ url: 'https://global.example.invalid/mcp', disabled: true })
+    const projectOverride = JSON.parse(await readFile(join(scratch, '.pi', 'mcp.json'), 'utf8')) as Json
+    expect((projectOverride.mcpServers as Json).homeboard).toBeUndefined()
+    const state = await get(`/pi2dsh/mcp-state?session=${SESSION}`)
+    const homeboard = (state.body.servers as Json[]).find(server => server.name === 'homeboard') as Json
+    expect(homeboard.disabled).toBe(true)
+    await post('/pi2dsh/mcp-action', { session: SESSION, server: 'homeboard', disabled: false, scope: 'global' })
+  })
+
+  it('a project-scope disable of a GLOBAL server keeps it classified global — the toggle does not move the definition', async () => {
+    await post('/pi2dsh/mcp-action', { session: SESSION, server: 'homeboard', disabled: true, scope: 'project' })
+    const state = await get(`/pi2dsh/mcp-state?session=${SESSION}`)
+    const homeboard = (state.body.servers as Json[]).find(server => server.name === 'homeboard') as Json
+    expect(homeboard.disabled).toBe(true)
+    expect(homeboard.layer).toBe('global')
+    expect(homeboard.sourcePath).toBe(join(scratch, 'agent', 'mcp.json'))
+    await post('/pi2dsh/mcp-action', { session: SESSION, server: 'homeboard', disabled: false, scope: 'project' })
+  })
+
+  it('the sessionless (Settings) view anchors at home: global layers visible, this project\'s servers not', async () => {
+    const { status, body } = await get('/pi2dsh/mcp-state?session=')
+    expect(status).toBe(200)
+    const servers = body.servers as Json[]
+    const homeboard = servers.find(server => server.name === 'homeboard') as Json
+    expect(homeboard.layer).toBe('global')
+    expect(servers.find(server => server.name === 'everything')).toBeUndefined()
   })
 
   it('refuses an unknown server and a malformed body without touching disk', async () => {

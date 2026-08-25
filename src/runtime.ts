@@ -4,7 +4,7 @@
 // 包级资源边界切模块，纯搬家不改逻辑；动手前先给出切分方案对齐再执行。
 import { access, mkdir, readFile, writeFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { homedir, tmpdir } from 'node:os'
 import { EventEmitter } from 'node:events'
 import { AsyncLocalStorage } from 'node:async_hooks'
 import { createRequire } from 'node:module'
@@ -36,7 +36,7 @@ import { getKeybindings, stripTerminalSequences } from './compat/pi-tui.js'
 import { childLabel, createBridgedAgentSession, type SubagentHost } from './subagent-bridge.js'
 import { openBrowser } from './compat/vendor/pi-open-browser.js'
 import { BrowserSurfaces, publishAuthorization, registerBrowserSurfaceRoute, revokeAuthorization, surfaceText, type SurfaceKey } from './browser-surfaces.js'
-import { collectPiMcpServers } from './mcp-config.js'
+import { collectPiMcpServers, piMcpConfigPaths } from './mcp-config.js'
 
 /** Fallback thread ids when a child session reports none. */
 let sidePanelSerial = 0
@@ -4993,13 +4993,21 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
       const sessions = (ctx as unknown as { get(name: string): unknown }).get('sessions') as
         { get?(id: string): { header?: { cwd?: string } } | undefined } | undefined
       // Creation metadata lives on the session's durable header (a storage
-      // concern, deliberately outside the event log).
+      // concern, deliberately outside the event log). No session (the global
+      // Settings view) means no workspace: the home directory anchors the
+      // read so only the cross-project layers can match.
       const cwd = sessions?.get?.(session)?.header?.cwd
-      return typeof cwd === 'string' && cwd.length > 0 ? cwd : process.cwd()
+      if (typeof cwd === 'string' && cwd.length > 0) return cwd
+      return session === '' ? homedir() : process.cwd()
     }
+    // The first four config layers are cross-project (home + agent dir); the
+    // cwd-relative pair is the project layer. The split is positional in
+    // piMcpConfigPaths on purpose — one authority for the layer order.
+    const globalLayerPaths = (cwd: string): Set<string> => new Set(piMcpConfigPaths(cwd).slice(0, 4))
     state.shared.browserSurfacesRouted = registerBrowserSurfaceRoute(ctx, browserSurfaces, {
       async mcpState(session) {
         const cwd = sessionCwd(session)
+        const globals = globalLayerPaths(cwd)
         const { servers, sources } = collectPiMcpServers(cwd)
         return {
           cwd,
@@ -5012,16 +5020,22 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
               : server.url ?? '',
             disabled: server.disabled,
             sourcePath: server.sourcePath,
+            layer: globals.has(server.sourcePath) ? 'global' : 'project',
             envKeys: Object.keys(server.env ?? {}),
             headerKeys: Object.keys(server.headers ?? {}),
           })),
         }
       },
-      async mcpAction(session, server, disabled) {
+      async mcpAction(session, server, disabled, scope) {
         const cwd = sessionCwd(session)
         const { servers } = collectPiMcpServers(cwd)
         if (!servers.has(server)) throw new TypeError(`unknown MCP server ${JSON.stringify(server)}`)
-        const overridePath = join(cwd, '.pi', 'mcp.json')
+        // 'project' writes the workspace override (this project only, the
+        // adapter's own /mcp disable file); 'global' writes the agent-dir
+        // layer every project reads. Both persist ONLY the disabled flag.
+        const overridePath = scope === 'global'
+          ? [...globalLayerPaths(cwd)][3]!
+          : join(cwd, '.pi', 'mcp.json')
         let current: Record<string, unknown> = {}
         try {
           current = JSON.parse(await readFile(overridePath, 'utf8')) as Record<string, unknown>

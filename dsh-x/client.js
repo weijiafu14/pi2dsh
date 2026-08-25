@@ -838,6 +838,13 @@ window.__ModuleLoader__.load({
 				justifyContent: "space-between",
 				alignItems: "baseline"
 			},
+			group: {
+				font: "600 11px/1.4 system-ui, sans-serif",
+				opacity: .55,
+				textTransform: "uppercase",
+				letterSpacing: "0.06em",
+				marginTop: "4px"
+			},
 			sub: {
 				opacity: .65,
 				fontSize: "12px"
@@ -903,16 +910,15 @@ window.__ModuleLoader__.load({
 				borderRadius: "4px"
 			}
 		};
-		function McpTab({ scope, visible }) {
+		function useMcpState(session, active) {
 			const [state, setState] = (0, react.useState)(void 0);
-			const [note, setNote] = (0, react.useState)(void 0);
 			const [failed, setFailed] = (0, react.useState)(false);
 			(0, react.useEffect)(() => {
-				if (!visible) return;
+				if (!active) return;
 				let live = true;
 				const pull = async () => {
 					try {
-						const response = await fetch(`/pi2dsh/mcp-state?session=${encodeURIComponent(scope.sessionId ?? "")}`);
+						const response = await fetch(`/pi2dsh/mcp-state?session=${encodeURIComponent(session)}`);
 						if (!live) return;
 						if (!response.ok) {
 							setFailed(true);
@@ -932,35 +938,79 @@ window.__ModuleLoader__.load({
 					live = false;
 					window.clearInterval(timer);
 				};
-			}, [visible, scope.sessionId]);
-			const toggle = async (server) => {
-				try {
-					const response = await fetch("/pi2dsh/mcp-action", {
-						method: "POST",
-						headers: { "content-type": "application/json" },
-						body: JSON.stringify({
-							session: scope.sessionId ?? "",
-							server: server.name,
-							disabled: !server.disabled
-						})
-					});
-					const payload = await response.json();
-					if (!response.ok) {
-						setNote(String(payload.error ?? "the toggle failed"));
-						return;
-					}
-					setNote(`${server.name} ${server.disabled ? "enabled" : "disabled"} — ${String(payload.note ?? "")}`);
-					setState((current) => current === void 0 ? current : {
-						...current,
-						servers: current.servers.map((entry) => entry.name === server.name ? {
-							...entry,
-							disabled: !server.disabled
-						} : entry)
-					});
-				} catch (error) {
-					setNote(String(error));
-				}
+			}, [active, session]);
+			return {
+				state,
+				failed,
+				patch: (update) => setState((current) => current === void 0 ? current : update(current))
 			};
+		}
+		function serverCard(server, onToggle, toggleTitle) {
+			return (0, react.createElement)("div", {
+				key: server.name,
+				style: {
+					...ui.card,
+					opacity: server.disabled ? .55 : 1
+				},
+				"data-dsh-x": "mcp-server"
+			}, (0, react.createElement)("div", { style: ui.cardHead }, (0, react.createElement)("span", { style: ui.name }, server.name), (0, react.createElement)("span", { style: ui.badge }, server.transport), server.disabled ? (0, react.createElement)("span", { style: ui.badge }, "disabled") : null, (0, react.createElement)("button", {
+				style: ui.toggle,
+				title: toggleTitle,
+				onClick: () => onToggle(server)
+			}, server.disabled ? "Enable" : "Disable")), (0, react.createElement)("div", { style: ui.target }, server.target), (0, react.createElement)("div", { style: ui.meta }, `from ${server.sourcePath.split("/").slice(-2).join("/")}` + (server.envKeys.length > 0 ? ` · env: ${server.envKeys.join(", ")}` : "") + (server.headerKeys.length > 0 ? ` · headers: ${server.headerKeys.join(", ")}` : "")));
+		}
+		function emptyGuide() {
+			return (0, react.createElement)("div", { style: ui.empty }, "No MCP servers configured yet. Add one to ", (0, react.createElement)("span", { style: ui.code }, ".mcp.json"), " in your workspace, or globally to ", (0, react.createElement)("span", { style: ui.code }, "~/.config/mcp/mcp.json"), " (the same format Claude Code and Cursor read):", (0, react.createElement)("pre", { style: {
+				...ui.code,
+				display: "block",
+				padding: "8px",
+				marginTop: "6px",
+				whiteSpace: "pre"
+			} }, "{\n  \"mcpServers\": {\n    \"everything\": {\n      \"command\": \"npx\",\n      \"args\": [\"-y\", \"@modelcontextprotocol/server-everything\"]\n    }\n  }\n}"), "New sessions pick it up automatically. For discovery, OAuth and per-tool controls, run ", (0, react.createElement)("span", { style: ui.code }, "/mcp"), " in the composer.");
+		}
+		function useToggle(session, scope, patch) {
+			const [note, setNote] = (0, react.useState)(void 0);
+			const toggle = (server) => {
+				(async () => {
+					try {
+						const response = await fetch("/pi2dsh/mcp-action", {
+							method: "POST",
+							headers: { "content-type": "application/json" },
+							body: JSON.stringify({
+								session,
+								server: server.name,
+								disabled: !server.disabled,
+								scope
+							})
+						});
+						const payload = await response.json();
+						if (!response.ok) {
+							setNote(String(payload.error ?? "the toggle failed"));
+							return;
+						}
+						setNote(`${server.name} ${server.disabled ? "enabled" : "disabled"} (${scope}) — ${String(payload.note ?? "")}`);
+						patch((current) => ({
+							...current,
+							servers: current.servers.map((entry) => entry.name === server.name ? {
+								...entry,
+								disabled: !server.disabled
+							} : entry)
+						}));
+					} catch (error) {
+						setNote(String(error));
+					}
+				})();
+			};
+			return {
+				note,
+				toggle
+			};
+		}
+		/** The SESSION view: this session's merged config, grouped by layer. */
+		function SessionMcpTab({ scope, visible }) {
+			const session = scope.sessionId ?? "";
+			const { state, failed, patch } = useMcpState(session, visible);
+			const { note, toggle } = useToggle(session, "project", patch);
 			if (failed && state === void 0) return (0, react.createElement)("div", {
 				style: ui.root,
 				"data-dsh-x": "mcp-tab"
@@ -972,38 +1022,57 @@ window.__ModuleLoader__.load({
 			return (0, react.createElement)("div", {
 				style: ui.root,
 				"data-dsh-x": "mcp-tab"
-			}, (0, react.createElement)("div", { style: ui.headline }, (0, react.createElement)("span", null, "MCP servers"), (0, react.createElement)("span", { style: ui.sub }, `${state.servers.length} configured`)), note === void 0 ? null : (0, react.createElement)("div", {
+			}, (0, react.createElement)("div", { style: ui.headline }, (0, react.createElement)("span", null, "MCP servers · this session"), (0, react.createElement)("span", { style: ui.sub }, `${state.servers.length} configured`)), note === void 0 ? null : (0, react.createElement)("div", {
 				style: ui.note,
 				"data-dsh-x": "mcp-note"
-			}, note), state.servers.length === 0 ? (0, react.createElement)("div", { style: ui.empty }, "No MCP servers configured yet. Add one to ", (0, react.createElement)("span", { style: ui.code }, ".mcp.json"), " in your workspace (the same format Claude Code and Cursor read):", (0, react.createElement)("pre", { style: {
-				...ui.code,
-				display: "block",
-				padding: "8px",
-				marginTop: "6px",
-				whiteSpace: "pre"
-			} }, "{\n  \"mcpServers\": {\n    \"everything\": {\n      \"command\": \"npx\",\n      \"args\": [\"-y\", \"@modelcontextprotocol/server-everything\"]\n    }\n  }\n}"), "New sessions pick it up automatically. For discovery, OAuth and per-tool controls, run ", (0, react.createElement)("span", { style: ui.code }, "/mcp"), " in the composer.") : state.servers.map((server) => (0, react.createElement)("div", {
-				key: server.name,
-				style: {
-					...ui.card,
-					opacity: server.disabled ? .55 : 1
-				},
-				"data-dsh-x": "mcp-server"
-			}, (0, react.createElement)("div", { style: ui.cardHead }, (0, react.createElement)("span", { style: ui.name }, server.name), (0, react.createElement)("span", { style: ui.badge }, server.transport), server.disabled ? (0, react.createElement)("span", { style: ui.badge }, "disabled") : null, (0, react.createElement)("button", {
-				style: ui.toggle,
-				title: server.disabled ? "Enable this server" : "Disable this server",
-				onClick: () => {
-					toggle(server);
-				}
-			}, server.disabled ? "Enable" : "Disable")), (0, react.createElement)("div", { style: ui.target }, server.target), (0, react.createElement)("div", { style: ui.meta }, `from ${server.sourcePath.split("/").slice(-2).join("/")}` + (server.envKeys.length > 0 ? ` · env: ${server.envKeys.join(", ")}` : "") + (server.headerKeys.length > 0 ? ` · headers: ${server.headerKeys.join(", ")}` : "")))), (0, react.createElement)("div", { style: ui.meta }, `layers: ${state.sources.length === 0 ? "none found" : state.sources.map((source) => source.split("/").slice(-2).join("/")).join(" → ")}`));
+			}, note), state.servers.length === 0 ? emptyGuide() : [["project", "This project"], ["global", "Global (all projects)"]].map(([layer, title]) => {
+				const members = state.servers.filter((server) => server.layer === layer);
+				if (members.length === 0) return null;
+				return (0, react.createElement)("div", {
+					key: layer,
+					style: { display: "contents" }
+				}, (0, react.createElement)("div", { style: ui.group }, title), ...members.map((server) => serverCard(server, toggle, server.disabled ? "Enable for this project" : "Disable for this project")));
+			}), (0, react.createElement)("div", { style: ui.meta }, `layers: ${state.sources.length === 0 ? "none found" : state.sources.map((source) => source.split("/").slice(-2).join("/")).join(" → ")}`));
 		}
-		/** Seat the tab in better-sidebar when (and only when) it is composed. */
+		/** The GLOBAL view (Settings → MCP): cross-project layers only. */
+		function SettingsMcpSection() {
+			const { state, failed, patch } = useMcpState("", true);
+			const { note, toggle } = useToggle("", "global", patch);
+			if (failed && state === void 0) return (0, react.createElement)("div", {
+				style: ui.root,
+				"data-dsh-x": "mcp-settings"
+			}, (0, react.createElement)("div", { style: ui.empty }, "The MCP state route is not answering — is the pi2dsh engine mounted in this profile?"));
+			if (state === void 0) return (0, react.createElement)("div", {
+				style: ui.root,
+				"data-dsh-x": "mcp-settings"
+			}, (0, react.createElement)("div", { style: ui.sub }, "Loading MCP configuration…"));
+			const globals = state.servers.filter((server) => server.layer === "global");
+			return (0, react.createElement)("div", {
+				style: ui.root,
+				"data-dsh-x": "mcp-settings"
+			}, (0, react.createElement)("div", { style: ui.headline }, (0, react.createElement)("span", null, "MCP servers · global"), (0, react.createElement)("span", { style: ui.sub }, `${globals.length} configured`)), (0, react.createElement)("div", { style: ui.sub }, "Cross-project servers from your machine-level config layers. Project-level servers live in each workspace's .mcp.json and show up in the session sidebar."), note === void 0 ? null : (0, react.createElement)("div", {
+				style: ui.note,
+				"data-dsh-x": "mcp-note"
+			}, note), globals.length === 0 ? emptyGuide() : globals.map((server) => serverCard(server, toggle, server.disabled ? "Enable everywhere" : "Disable everywhere")), (0, react.createElement)("div", { style: ui.meta }, `layers: ${state.sources.length === 0 ? "none found" : state.sources.map((source) => source.split("/").slice(-2).join("/")).join(" → ")}`));
+		}
+		/** Seat both views: the sidebar tab (optional) and the Settings section. */
 		function registerMcpTab(ctx) {
 			ctx.inject(["betterSidebar"], (scope) => {
-				scope.betterSidebar.registerTab({
+				scope.betterSidebar?.registerTab({
 					id: "dsh-work-x:mcp",
 					title: "MCP",
-					component: McpTab
+					component: SessionMcpTab
 				});
+			});
+			ctx.inject(["slots"], (scope) => {
+				const slots = scope.slots;
+				if (slots === void 0) return;
+				slots.inject("settings.section", () => slots.register({
+					name: "settings.section",
+					id: "dsh-work-x-mcp",
+					order: 60,
+					label: () => "MCP"
+				}, SettingsMcpSection));
 			});
 		}
 		//#endregion
