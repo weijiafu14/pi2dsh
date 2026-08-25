@@ -170,13 +170,17 @@ export async function preparePiHost(config: PiHostConfig, anchor?: string): Prom
   return prepared
 }
 
-/** Mount prepared Pi package runtimes into one exact DSH context. */
+/**
+ * Mount prepared Pi package runtimes into one exact DSH context.
+ * @returns per-package mount failures (empty when every package mounted) —
+ *   Pi's per-extension error isolation, consumable by bindExtensions' onError.
+ */
 export async function applyPreparedPiHost(
   ctx: Context,
   prepared: readonly PreparedPiHostPackage[],
   ownerAgent?: UnknownRecord,
   mode: { hostAnchor?: boolean } = {},
-): Promise<void> {
+): Promise<Array<{ name: string, error: string }>> {
   const errors: Array<{ name: string; error: string }> = []
   for (const pkg of prepared) {
     try {
@@ -214,4 +218,5 @@ export async function applyPreparedPiHost(
   if (errors.length > 0 && errors.length === prepared.length) {
     throw new Error(`pi2dsh host mounted no packages; first failure: ${errors[0]!.name}: ${errors[0]!.error}`)
   }
+  return errors
 }

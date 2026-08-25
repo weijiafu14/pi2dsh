@@ -57,4 +57,24 @@ export default defineConfig([
       intro: 'var module = { exports: {} }; var exports = module.exports;',
     },
   },
+  // The dsh-x suite's browser half: the engine's client (source-level import)
+  // plus the suite's own product UI (the MCP tab), registered under the
+  // suite's OWN loader id — the host serves one bundle per client-declaring
+  // package, and in a suite install only dsh-x is visible at the profile root.
+  {
+    entry: ['dsh-x/src/client.ts'],
+    outDir: 'dsh-x',
+    format: 'cjs',
+    platform: 'browser',
+    dts: false,
+    sourcemap: false,
+    clean: false,
+    external: [...PLATFORM_MODULES, /^@deepseek-ai\//],
+    outputOptions: {
+      entryFileNames: 'client.js',
+      banner: 'window.__ModuleLoader__.load({ id: "dsh-x", factory: (require) => {',
+      footer: 'return module.exports; } });',
+      intro: 'var module = { exports: {} }; var exports = module.exports;',
+    },
+  },
 ])

@@ -659,7 +659,17 @@ export function revokeAuthorization(path: string): void {
   pendingAuthorizations.delete(path.slice('/pi2dsh/authorize/'.length))
 }
 
-export function registerBrowserSurfaceRoute(ctx: Context, registry: BrowserSurfaces): boolean {
+/**
+ * Structured data the runtime can serve to product-layer UI (dsh-x's MCP tab).
+ * The registry stays generic: these are injected by the runtime, which owns
+ * the semantics (session cwd, the MCP config layers, the write discipline).
+ */
+export interface BrowserSurfaceHooks {
+  mcpState?(session: string): Promise<unknown>
+  mcpAction?(session: string, server: string, disabled: boolean): Promise<unknown>
+}
+
+export function registerBrowserSurfaceRoute(ctx: Context, registry: BrowserSurfaces, hooks?: BrowserSurfaceHooks): boolean {
   const web = (ctx as unknown as { get(name: string): unknown }).get('webServer') as WebServerLike | undefined
   if (web === undefined || typeof web.register !== 'function') return false
   ctx.effect(() => web.register({
@@ -693,6 +703,47 @@ export function registerBrowserSurfaceRoute(ctx: Context, registry: BrowserSurfa
         }
         response.writeHead(204)
         response.end()
+        return
+      }
+      // The MCP tab's structured faces, when the runtime provided them: the
+      // configured-server view and the disable/enable toggle.
+      if (url.pathname === '/pi2dsh/mcp-state' && (method === 'GET' || method === 'HEAD')) {
+        if (hooks?.mcpState === undefined) {
+          response.writeHead(404)
+          response.end()
+          return
+        }
+        const body = JSON.stringify(await hooks.mcpState(url.searchParams.get('session') ?? ''))
+        response.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+        response.end(method === 'HEAD' ? undefined : body)
+        return
+      }
+      if (url.pathname === '/pi2dsh/mcp-action' && method === 'POST') {
+        if (hooks?.mcpAction === undefined) {
+          response.writeHead(404)
+          response.end()
+          return
+        }
+        const chunks: Buffer[] = []
+        const raw = await new Promise<string>((settle) => {
+          const stream = req as unknown as { on(event: string, handler: (chunk?: unknown) => void): void }
+          stream.on('data', chunk => chunks.push(Buffer.from(chunk as Uint8Array)))
+          stream.on('end', () => settle(Buffer.concat(chunks).toString('utf8')))
+        })
+        let outcome: unknown
+        try {
+          const payload = JSON.parse(raw || '{}') as { session?: unknown, server?: unknown, disabled?: unknown }
+          if (typeof payload.session !== 'string' || typeof payload.server !== 'string' || typeof payload.disabled !== 'boolean') {
+            throw new TypeError('mcp-action needs { session, server, disabled }')
+          }
+          outcome = await hooks.mcpAction(payload.session, payload.server, payload.disabled)
+        } catch (error) {
+          response.writeHead(400, { 'content-type': 'application/json; charset=utf-8' })
+          response.end(JSON.stringify({ error: error instanceof Error ? error.message : String(error) }))
+          return
+        }
+        response.writeHead(200, { 'content-type': 'application/json; charset=utf-8' })
+        response.end(JSON.stringify(outcome ?? { ok: true }))
         return
       }
       // The scene overlay's two writes: raw keyboard input into the live Pi

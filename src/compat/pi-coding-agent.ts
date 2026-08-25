@@ -714,11 +714,27 @@ export class FileSettingsStorage extends InMemorySettingsStorage {}
 // stays fail-closed because host trust is a DSH decision.
 export { ProjectTrustStore } from './vendor/pi-trust-store.js'
 
+// The host's installed Pi packages, projected as "default-discovered
+// extensions": each entry is a package's DECLARED pi extension file (absolute,
+// inside the installed dir), so a creator's own filtering code — pi-subagents'
+// extensions/exclude_extensions/ext: machinery canonicalizes by basename and
+// by the owning manifest's npm short name — runs unchanged on real paths and
+// produces exactly the names it produces on Pi. The engine provides the list
+// once at apply; a composition without the engine (bare test hosts) leaves it
+// empty, which is the pre-existing headless behavior.
+let discoveredPiExtensionEntries: ReadonlyArray<{ path: string }> = []
+
+export function providePiExtensionDiscovery(entries: ReadonlyArray<{ path: string }>): void {
+  discoveredPiExtensionEntries = entries.map(entry => ({ path: entry.path }))
+}
+
 // Pi's resource loader, headless: subagent packages construct one to control
-// a child session's resources (extensions/skills off, a system-prompt
-// override on). In the pi2dsh host the child shares the DSH composition's
-// registrations, so the loader carries the overrides and empty resource sets
-// — the exact result Pi produces under noExtensions/noSkills/noThemes.
+// a child session's resources. Discovery mirrors real Pi: the default set is
+// the host's installed Pi packages (see providePiExtensionDiscovery), a
+// truthy `noExtensions` empties it, and the caller's `extensionsOverride`
+// runs over the result — the creator's own filter code, on real data. Path
+// entries (`additionalExtensionPaths`) cannot be loaded fresh on this host
+// and surface as per-entry errors, Pi's own diagnostics shape.
 export class DefaultResourceLoader {
   readonly #options: SettingsRecord
 
@@ -727,7 +743,20 @@ export class DefaultResourceLoader {
   }
 
   getExtensions(): { extensions: unknown[], errors: unknown[] } {
-    const base = { extensions: [], errors: [] }
+    const errors: unknown[] = []
+    const additional = this.#options.additionalExtensionPaths
+    if (Array.isArray(additional)) {
+      for (const path of additional) {
+        errors.push({
+          path: String(path),
+          error: 'path-loaded extensions are not supported on this host; install the package with `dsh plugin add <pkg>`',
+        })
+      }
+    }
+    const base = {
+      extensions: this.#options.noExtensions === true ? [] : discoveredPiExtensionEntries.map(entry => ({ ...entry })),
+      errors,
+    }
     const override = this.#options.extensionsOverride
     return typeof override === 'function' ? (override as (b: unknown) => never)(base) : base
   }

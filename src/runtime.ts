@@ -9,7 +9,7 @@ import { EventEmitter } from 'node:events'
 import { AsyncLocalStorage } from 'node:async_hooks'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { createJiti } from 'jiti'
 import type { Context } from '@deepseek-ai/cordis'
 import { createUserMessage, type ContentBlock } from '@deepseek-ai/dsh-llm'
@@ -36,6 +36,7 @@ import { getKeybindings, stripTerminalSequences } from './compat/pi-tui.js'
 import { childLabel, createBridgedAgentSession, type SubagentHost } from './subagent-bridge.js'
 import { openBrowser } from './compat/vendor/pi-open-browser.js'
 import { BrowserSurfaces, publishAuthorization, registerBrowserSurfaceRoute, revokeAuthorization, surfaceText, type SurfaceKey } from './browser-surfaces.js'
+import { collectPiMcpServers } from './mcp-config.js'
 
 /** Fallback thread ids when a child session reports none. */
 let sidePanelSerial = 0
@@ -4898,7 +4899,63 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
   // The panel's registry and its read route: host-level, mounted once.
   const browserSurfaces = state.shared.browserSurfaces ??= new BrowserSurfaces()
   if (state.shared.browserSurfacesRouted !== true) {
-    state.shared.browserSurfacesRouted = registerBrowserSurfaceRoute(ctx, browserSurfaces)
+    // Structured MCP faces for the product-layer tab. The state face reads
+    // the MCP ecosystem's own layered config files (the exact layers the
+    // adapter reads); the action face persists ONLY the `disabled` flag into
+    // the project-local override layer — byte-for-byte the file and shape
+    // pi-mcp-adapter's own /mcp disable command writes, never touching the
+    // server's source file and never copying credentials. Secret values stay
+    // server-side: env/header VALUES are never serialized, only key names.
+    const sessionCwd = (session: string): string => {
+      const sessions = (ctx as unknown as { get(name: string): unknown }).get('sessions') as
+        { get?(id: string): { header?: { cwd?: string } } | undefined } | undefined
+      // Creation metadata lives on the session's durable header (a storage
+      // concern, deliberately outside the event log).
+      const cwd = sessions?.get?.(session)?.header?.cwd
+      return typeof cwd === 'string' && cwd.length > 0 ? cwd : process.cwd()
+    }
+    state.shared.browserSurfacesRouted = registerBrowserSurfaceRoute(ctx, browserSurfaces, {
+      async mcpState(session) {
+        const cwd = sessionCwd(session)
+        const { servers, sources } = collectPiMcpServers(cwd)
+        return {
+          cwd,
+          sources,
+          servers: [...servers.values()].map(server => ({
+            name: server.name,
+            transport: server.transport,
+            target: server.transport === 'stdio'
+              ? [server.command, ...(server.args ?? [])].filter(Boolean).join(' ')
+              : server.url ?? '',
+            disabled: server.disabled,
+            sourcePath: server.sourcePath,
+            envKeys: Object.keys(server.env ?? {}),
+            headerKeys: Object.keys(server.headers ?? {}),
+          })),
+        }
+      },
+      async mcpAction(session, server, disabled) {
+        const cwd = sessionCwd(session)
+        const { servers } = collectPiMcpServers(cwd)
+        if (!servers.has(server)) throw new TypeError(`unknown MCP server ${JSON.stringify(server)}`)
+        const overridePath = join(cwd, '.pi', 'mcp.json')
+        let current: Record<string, unknown> = {}
+        try {
+          current = JSON.parse(await readFile(overridePath, 'utf8')) as Record<string, unknown>
+        } catch { /* absent or unreadable: start a fresh override layer */ }
+        const mcpServers = (typeof current.mcpServers === 'object' && current.mcpServers !== null
+          ? current.mcpServers
+          : {}) as Record<string, unknown>
+        const entry = (typeof mcpServers[server] === 'object' && mcpServers[server] !== null
+          ? mcpServers[server]
+          : {}) as Record<string, unknown>
+        mcpServers[server] = { ...entry, disabled }
+        current.mcpServers = mcpServers
+        await mkdir(dirname(overridePath), { recursive: true })
+        await writeFile(overridePath, `${JSON.stringify(current, null, 2)}\n`)
+        return { ok: true, note: 'run /reload (or restart the session) to apply' }
+      },
+    })
   }
   // Pi's custom entries, drawn by the package's OWN renderer. `appendEntry`
   // writes to the pi2dsh sidecar (DSH's log has no channel for event types
