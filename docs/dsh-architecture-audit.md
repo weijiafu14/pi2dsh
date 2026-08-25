@@ -104,6 +104,25 @@ goal/plan/job 也不等于验证 DSH 的同名 subsystem。这些结论应作为
 - **最小上游能力**：压缩执行前返回继续、取消或替换摘要的 async waterfall。
 - **证据**：[`capabilities/sessions.md`](capabilities/sessions.md)。
 
+### DSH-ARCH-006：插件无法声明对另一插件 bundle 的依赖
+
+- **消费面**：套件/发行版形态的 DSH 插件（真实消费者 `dsh-work-x`：需要携带
+  `dsh-better-sidebar` 作为展示层搭档，以及自己的 pi2dsh 引擎）。
+- **卡点（五层证据，2026-08-25 全部真机实测）**：① 官方 in-box meta-bundle
+  （dsh-base 一个条目带出全家）能工作靠的是**安装树特权**——成员包名的模块
+  解析落在 CLI 安装树的 pnpm 隐藏 hoist（`resolveBundleDir` 注释明言 in-box
+  bundle 永远来自 dsh 安装树）；② 第三方 bundle 的传递依赖从 profile 根
+  `ERR_MODULE_NOT_FOUND`（loader `Entry._init` 实测栈）；③ `dsh.profile.bundles`
+  是 profile 侧清单，reconcile 只记用户显式 add 的包名，**包侧不存在"被装时
+  请一并挂载我的搭档"的声明字段**（app-boot 通读）；④ client-modules 扫组合
+  树行但行名解析同撞 ①；⑤ 旁路代价：pi2dsh 引擎经套件薄入口 re-export +
+  client 产物内嵌才能随套件工作，而 7MB 级独立 client 插件（better-sidebar）
+  无法也不应内嵌——只能教用户一条命令装两个包。
+- **最小上游能力**：`dsh.bundle` 增加 companion/依赖 bundle 声明（`dsh plugin
+  add` 时展开），或 loader/client-modules 对 bundle 行的模块解析增加"声明
+  bundle 自身目录"锚点（等价于把 in-box 的安装树特权泛化给第三方）。
+- **证据**：`dsh-x/`（套件旁路全套）、本仓库 2026-08-25 真机解析探针记录。
+
 ### DSH-ARCH-005：资源加载前没有 trust policy
 
 - **Pi 消费面**：`project_trust`、`isProjectTrusted`。
