@@ -70,6 +70,28 @@ Pi 包（每一个都是你显式装的），用同一个桥实例挂载它们�
 
 需要 Node.js 22.19+ 和 DeepSeek Harness。
 
+### 引擎配置
+
+引擎从自己的插件行读一个 `config` 块。目前只有一个 opt-in：
+
+```yaml
+# $DSH_HOME/profiles/<profile>/cordis.patch.yml
+- id: pi2dsh
+  config:
+    serveNativeSubagents: true
+```
+
+`serveNativeSubagents`（默认**关**）：让 DSH 原生子代理——DSH 自己的
+subagent 委派所创建、会话带 subagent 血统的孩子——拿到 profile 里全部已
+发现的 Pi 包，挂在孩子**自己的** agent scope 上：包的 tools/commands/
+prompt 段只对这个孩子可见，孩子结束全部随之卸载。关掉时，这类孩子就是
+普通 DSH agent，与引入前完全一致。
+
+Pi 子代理桥（`@tintinweb/pi-subagents` 一类包经 subagent bridge 创建的
+孩子）不受这个开关影响：它们本来就走创建方包自己的 per-spawn loader
+挂载，桥用 `pi2dsh-sub-` 会话 id 前缀认出它们（前缀在持久化 resume 后
+依然稳定），所以任何孩子都不会被挂两次。
+
 ## 走一遍：终端里的进阶 MCP
 
 这个例子最能说明这座桥值什么。dsh-TUI 自带原生的 `/mcp` 命令（DSH 官方 MCP

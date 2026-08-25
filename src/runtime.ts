@@ -2744,6 +2744,11 @@ export function registerChildExtensionCatalog(ctx: Context, catalog: ChildExtens
   sharedHostStateOf(ctx).childExtensions = catalog
 }
 
+/** Read the installed-package catalog registered on shared host state, or undefined. */
+export function getSharedChildExtensionCatalog(ctx: Context): ChildExtensionCatalog | undefined {
+  return sharedHostStateOf(ctx).childExtensions
+}
+
 /**
  * Which installed packages a creator's resource loader selects for its child
  * — the creator's OWN filter code decides (the loader's getExtensions applies
