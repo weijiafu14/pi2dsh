@@ -1,5 +1,5 @@
 window.__ModuleLoader__.load({
-	id: "dsh-x",
+	id: "dsh-work-x",
 	factory: (require) => {
 		var module = { exports: {} };
 		var exports = module.exports;
@@ -1000,7 +1000,7 @@ window.__ModuleLoader__.load({
 		function registerMcpTab(ctx) {
 			ctx.inject(["betterSidebar"], (scope) => {
 				scope.betterSidebar.registerTab({
-					id: "dsh-x:mcp",
+					id: "dsh-work-x:mcp",
 					title: "MCP",
 					component: McpTab
 				});

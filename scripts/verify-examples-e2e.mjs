@@ -1193,7 +1193,7 @@ async function runDshX() {
     await runDsh(['plugin', '--profile', 'web', 'add', tarball])
     const profileManifest = JSON.parse(await readFile(join(home, 'profiles/web/package.json'), 'utf8'))
     const bundles = profileManifest.dsh?.profile?.bundles ?? []
-    assert(bundles.includes('dsh-x'), `dsh-x missing from the profile's bundle layers: ${JSON.stringify(bundles)}`)
+    assert(bundles.includes('dsh-work-x'), `dsh-work-x missing from the profile's bundle layers: ${JSON.stringify(bundles)}`)
 
     const port = Number(process.env.DSHX_PORT ?? 5189)
     web = spawnWeb(port, env)

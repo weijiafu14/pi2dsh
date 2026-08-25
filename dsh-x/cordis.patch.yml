@@ -12,6 +12,6 @@
 # companion routes is not part of the dsh-x v1 surface.
 - insert:
     - id: pi2dsh
-      name: "dsh-x"
+      name: "dsh-work-x"
       config:
         visionCompanions: false

@@ -27,7 +27,7 @@ export default defineConfig([
     dts: true,
     sourcemap: true,
     clean: true,
-    deps: { neverBundle: [/^@deepseek-ai\//] },
+    deps: { neverBundle: [/^@deepseek-ai\//, /^@xmoon76\/dsh-pi-tui(?:\/|$)/] },
     // Pi's license ships next to the vendored Pi code; the file must be in the
     // npm artifact (dist is the only published directory).
     copy: [{ from: 'src/compat/vendor/PI-LICENSE', to: 'dist/compat/vendor' }],
@@ -72,7 +72,7 @@ export default defineConfig([
     external: [...PLATFORM_MODULES, /^@deepseek-ai\//],
     outputOptions: {
       entryFileNames: 'client.js',
-      banner: 'window.__ModuleLoader__.load({ id: "dsh-x", factory: (require) => {',
+      banner: 'window.__ModuleLoader__.load({ id: "dsh-work-x", factory: (require) => {',
       footer: 'return module.exports; } });',
       intro: 'var module = { exports: {} }; var exports = module.exports;',
     },

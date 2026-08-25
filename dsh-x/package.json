@@ -1,5 +1,5 @@
 {
-  "name": "dsh-x",
+  "name": "dsh-work-x",
   "version": "0.1.0",
   "description": "Batteries-included capability suite for DeepSeek Harness: MCP manager with lazy proxy + OAuth, parallel steerable subagents, side conversations, image generation — one install, every piece verified end to end.",
   "license": "MIT",

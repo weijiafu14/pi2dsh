@@ -1,9 +1,9 @@
-# dsh-x
+# dsh-work-x
 
 **One install that turns a stock [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) into a batteries-included agent workstation.**
 
 ```sh
-dsh plugin --profile <your-profile> add dsh-x
+dsh plugin --profile <your-profile> add dsh-work-x
 ```
 
 Restart `dsh` (plugins mount at startup). That is the entire setup: the suite
@@ -34,13 +34,13 @@ profile already has.
 
 ## Web first
 
-dsh-x targets `dsh web` (and the desktop shells that wrap it) as its primary
+dsh-work-x targets `dsh web` (and the desktop shells that wrap it) as its primary
 surface. The automated regression drives a real browser against a clean
 install and asserts each bundled package's own command is offered by the
 composer — not that a file exists somewhere.
 
 ```sh
-dsh plugin --profile web add dsh-x
+dsh plugin --profile web add dsh-work-x
 dsh web --port 5179
 ```
 
@@ -61,16 +61,16 @@ slash commands, as documented by the plugin.
 
 ## How it works
 
-`dsh-x` is a normal DSH bundle. Its patch mounts the pi2dsh engine (re-exported
+`dsh-work-x` is a normal DSH bundle. Its patch mounts the pi2dsh engine (re-exported
 through this package, so it resolves under pnpm's isolated layout), and the
 engine reads this package's `pi2dsh.suite` manifest — an explicit list, one
 dependency-hop from your profile — and mounts each member exactly as if you
 had `dsh plugin add`-ed it yourself. No directory scanning, no forks, no
-patched DSH internals; remove it with `dsh plugin remove dsh-x` and the whole
+patched DSH internals; remove it with `dsh plugin remove dsh-work-x` and the whole
 suite is gone.
 
 ## Relation to pi2dsh
 
-dsh-x is the curated product; [pi2dsh](../README.md) is the engine and remains
+dsh-work-x is the curated product; [pi2dsh](../README.md) is the engine and remains
 independently installable for anyone who wants to pick their own Pi packages.
 Anything verified for pi2dsh is inherited here at the same version pins.

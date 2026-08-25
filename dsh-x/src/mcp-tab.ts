@@ -177,7 +177,7 @@ function McpTab({ scope, visible }: { scope: SidebarTabScope, visible: boolean }
 export function registerMcpTab(ctx: McpTabContext): void {
   ctx.inject(['betterSidebar'], (scope) => {
     scope.betterSidebar.registerTab({
-      id: 'dsh-x:mcp',
+      id: 'dsh-work-x:mcp',
       title: 'MCP',
       component: McpTab,
     })
