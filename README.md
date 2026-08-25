@@ -82,6 +82,31 @@ Two installer messages worth knowing:
 
 Requires Node.js 22.19+ and DeepSeek Harness.
 
+### Engine configuration
+
+The engine reads one `config` block from its plugin row. Today it takes a
+single opt-in:
+
+```yaml
+# $DSH_HOME/profiles/<profile>/cordis.patch.yml
+- id: pi2dsh
+  config:
+    serveNativeSubagents: true
+```
+
+`serveNativeSubagents` (default: **off**) serves DSH-native subagents with
+the profile's Pi packages. With it on, a child agent DSH spawns through its
+own subagent delegation (one whose session carries the subagent origin)
+receives every discovered Pi package mounted on its own agent scope — the
+package's tools, commands and prompt sections appear for that child only,
+and every contribution unwinds when the child ends. With it off, such
+children run as plain DSH agents, exactly as before.
+
+Pi subagent-bridge children are unaffected either way: they already receive
+the creator package's own per-spawn loader mount, and the bridge recognizes
+them by the `pi2dsh-sub-` session-id prefix (stable across a persisted
+resume), so no child is ever mounted twice.
+
 ## Walkthrough: advanced MCP in your terminal
 
 The clearest example of what the bridge buys you. dsh-TUI ships a native

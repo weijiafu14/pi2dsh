@@ -24,7 +24,7 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { Context } from '@deepseek-ai/cordis'
 import { applyPreparedPiHost, preparePiHost, type PreparedPiHostPackage } from './host.js'
-import { registerChildExtensionCatalog, registerVisionCompanions } from './runtime.js'
+import { getSharedChildExtensionCatalog, registerChildExtensionCatalog, registerVisionCompanions, runtimeInternals } from './runtime.js'
 import { providePiExtensionDiscovery } from './compat/pi-coding-agent.js'
 import { resolvePiPackage } from './source.js'
 
@@ -41,6 +41,14 @@ export interface EngineConfig {
    * turns companions off; an explicit \`{ <route>: [modelIds] }\` narrows.
    */
   visionCompanions?: false | Record<string, readonly string[]>
+  /**
+   * Serve DSH-native subagents with the profile's Pi packages (default: OFF —
+   * such children run as plain DSH agents, today's behavior). Children the Pi
+   * subagent bridge mints are NEVER covered: they already receive the creator's
+   * own per-spawn loader mount and are recognized by the `pi2dsh-sub-` session-id
+   * prefix.
+   */
+  serveNativeSubagents?: boolean
 }
 
 /** Locate the DSH profile root: the nearest ancestor holding cordis.yml. */
@@ -315,6 +323,174 @@ export function installAgentScopedMounts(
   })
 }
 
+/** Session-id prefix minted by the Pi subagent bridge (src/subagent-bridge.ts). */
+export const BRIDGE_CHILD_SESSION_ID_PREFIX = 'pi2dsh-sub-'
+
+/**
+ * Optional coverage for DSH-native subagents, enabled by the
+ * `serveNativeSubagents` engine config.
+ *
+ * The Pi subagent bridge already serves the children IT mints: the creator's
+ * per-spawn loader mount (a8b7a0a) runs at creation and again on a persisted
+ * resume. This covers the OTHER lineage — children a DSH surface mints
+ * directly (DSH-native delegation, headless subagents, a second agent in the
+ * web UI) — which carry no Pi lineage and would otherwise run as plain DSH
+ * agents with none of the profile's Pi extensions.
+ *
+ * One lineage check per created Agent (maintainer point 2): subagent origin
+ * AND a session id that does not carry the bridge prefix. The bridge mints
+ * `pi2dsh-sub-` ids at creation and a persisted resume keeps the original id,
+ * so the skip holds on both bridge paths and a bridge child is never mounted
+ * twice.
+ *
+ * The mount reuses the engine's own child-extension catalog (maintainer
+ * point 3) — the same object the bridge's hook consumes — so a native child's
+ * tool set is exactly Pi's default-discovered set (the catalog's no-loader
+ * path), the mount lands on the child's OWN ctx and unwinds with the child,
+ * and there is no second registration path to drift out of sync.
+ *
+ * Partition with the root-mount path: agents the registry reports as runtime
+ * roots are installAgentScopedMounts' territory (it gates them the same way
+ * this path does). Live delegation shows a DSH-native child of a top-level
+ * session CAN be a runtime root — serving it here as well raced two mount
+ * passes onto the same scope (each package survived via the prompt-section
+ * guard, but the double attempt is exactly what this flag must not do). This
+ * listener therefore serves exactly the remainder: subagent-origin,
+ * non-bridge, non-root agents. The predicate is the root path's own, applied
+ * at the same event; its fail-open (roots() unavailable ⇒ every agent is a
+ * root) mirrors here as fail-closed (this listener serves nothing).
+ *
+ * The readiness promise is memoized on the child's SCOPE (agent.ctx), not the
+ * agent object: a re-announced agent for the same session reuses the scope,
+ * and the dedupe must key on what the mount actually lands in.
+ *
+ * First-turn gates mirror the root path's exactly: the child's first prompt
+ * assembly and its direct tool executions await the mount, and the
+ * pre-waterfall tools snapshot is reconciled against the official scoped
+ * projection. Without the gate a mount that lands after the first turn's
+ * snapshot leaves the child's first (and sometimes only) turn tool-less —
+ * proven live at depth 2, where the child's grandchild saw zero extension
+ * tools because its mount raced its first model call.
+ *
+ * A mount failure never takes the child down: the same capability-gap
+ * discipline as root mounting — the child keeps running as a plain DSH agent
+ * and the failure is reported loudly once.
+ */
+export function installNativeSubagentMounts(
+  ctx: Context,
+  preparedPackages: Promise<readonly PreparedPiHostPackage[]>,
+  enabled: boolean,
+  report: { warn(message: string): void },
+): void {
+  if (!enabled) return
+  const host = ctx as unknown as EngineHostContext
+
+  // The root path's own predicate, applied at the same event it applies its
+  // (see installAgentScopedMounts): a runtime root is served — and gated —
+  // there. Failing closed keeps the partition exact when roots() is absent.
+  const isRootAgent = (agent: object): boolean => {
+    let agents: AgentRegistryLike | undefined
+    try {
+      agents = host.get?.('agents') as AgentRegistryLike | undefined
+    } catch {
+      return true
+    }
+    const roots = agents?.roots
+    if (typeof roots !== 'function') return true
+    try {
+      return (roots.call(agents) as unknown[]).includes(agent)
+    } catch {
+      return true
+    }
+  }
+
+  // child scope (agent.ctx) -> its mount's readiness. Reading the catalog
+  // after preparation (never before) covers children published while the
+  // engine was still preparing; no catalog = plain child, exactly the bridge
+  // hook's no-catalog behavior.
+  const mounts = new WeakMap<object, Promise<void>>()
+
+  const ensureMount = (agent: AgentLike): Promise<void> => {
+    const scope = agent.ctx
+    let ready = mounts.get(scope)
+    if (ready === undefined) {
+      ready = preparedPackages.then(async () => {
+        const catalog = getSharedChildExtensionCatalog(ctx)
+        if (catalog === undefined) return
+        // Native children have no creator loader: the full discovered set is
+        // Pi's default discovery (the no-loader path of
+        // resolveChildExtensionPackages).
+        const names = [...new Set(catalog.packageByEntryPath.values())]
+        if (names.length === 0) return
+        try {
+          const failures = await catalog.mount(agent as unknown as Record<string, unknown>, names)
+          for (const failure of failures) {
+            // Same message shape the bridge's own mount path uses.
+            report.warn(`[pi2dsh] child extension ${failure.name} did not mount: ${failure.error}`)
+          }
+        } catch (error) {
+          report.warn(`[pi2dsh] child extension mount failed: ${error instanceof Error ? error.message : String(error)}`)
+        }
+      })
+      mounts.set(scope, ready)
+    }
+    return ready
+  }
+
+  const handle = (agent: AgentLike): void => {
+    // The single lineage check: DSH-native subagents only. Pi-origin
+    // (bridge) children are already served by the creator's per-spawn loader
+    // mount; the `pi2dsh-sub-` prefix identifies them on creation AND on a
+    // persisted resume, where the original session id survives.
+    if (!runtimeInternals.isSubagentOrigin(agent as unknown as Record<string, unknown>)) return
+    const session = (agent as { session?: { id?: unknown } }).session ?? agent
+    if (String((session as { id?: unknown }).id ?? '').startsWith(BRIDGE_CHILD_SESSION_ID_PREFIX)) return
+    // Runtime roots are the root-mount path's territory; serving them here
+    // would race a second mount onto the same scope.
+    if (isRootAgent(agent)) return
+    void ensureMount(agent)
+  }
+
+  host.on('agent/created', ((payload: { agent: AgentLike }) => {
+    if (payload.agent !== undefined) handle(payload.agent)
+  }) as never)
+
+  // Correctness boundary #1 (mirror of the root path's): no prompt assembly
+  // for a served child proceeds before its mount lands, and the pre-waterfall
+  // tools snapshot is reconciled against the official scoped projection.
+  host.on('system-prompt/assemble', (async (
+    assembly: { tools: Array<{ name: string }> },
+    context: { agent?: AgentLike },
+    next: () => Promise<unknown>,
+  ) => {
+    const agent = context.agent
+    const ready = agent === undefined ? undefined : mounts.get(agent.ctx)
+    if (ready !== undefined) {
+      await ready
+      const schemas = host.tools?.schemas
+      if (typeof schemas === 'function') {
+        const present = new Set(assembly.tools.map(tool => tool.name))
+        for (const schema of schemas.call(host.tools, agent)) {
+          if (!present.has(schema.name)) assembly.tools.push(schema)
+        }
+      }
+    }
+    return next()
+  }) as never)
+
+  // Correctness boundary #2 (mirror of the root path's): direct tool
+  // executions for a served child wait for the same mount.
+  host.on('tools/pre-execute', (async (
+    exec: { agent?: AgentLike },
+    next: () => Promise<unknown>,
+  ) => {
+    const agent = exec.agent
+    const ready = agent === undefined ? undefined : mounts.get(agent.ctx)
+    if (ready !== undefined) await ready
+    return next()
+  }) as never)
+}
+
 /** Cordis plugin surface: `dsh plugin add pi2dsh` mounts this. */
 export const name = 'pi2dsh'
 export const inject = ['tools', 'systemPrompt', 'commands', 'skills']
@@ -345,6 +521,7 @@ export async function apply(ctx: Context, config: EngineConfig = {}): Promise<vo
     resolvePrepared = resolve
   })
   installAgentScopedMounts(ctx, preparedPackages, { warn })
+  installNativeSubagentMounts(ctx, preparedPackages, config.serveNativeSubagents === true, { warn })
 
   registerVisionCompanions(ctx, config.visionCompanions)
 
