@@ -22,3 +22,13 @@ Either way the test you wrote (the gated/ungated assembly probe is a genuinely g
 bindExtensions no-op（src/subagent-bridge.ts:601）；正解=bindExtensions 真实现
 （一份运行时、scope 授权、Pi 的 extensions 配置语义），已向作者提供两条合入路径
 （maintainer edits 推 rework / 保留署名另开分支），等作者回应。
+
+---
+第二轮回复存档：2026-08-26 发于 https://github.com/weijiafu14/pi2dsh/pull/2#issuecomment-5412672003
+背景：作者澄清其场景是 DSH 原生子代理（不经 createAgentSession），a8b7a0a 未覆盖；
+提出基于我们 per-child 机制的收窄 rework。我方接受并给出设计四条：
+① 按出身分流不按开关接管（Pi 造的孩子永远走桥听创建者配置；开关只管原生的）
+② 分流器=一行血缘判据（pi2dsh-sub- 会话号前缀），缺它必双挂载，须契约测试钉死
+③ 复用 ChildExtensionCatalog.mount（per-child 实例+dispose unwind+逐扩展隔离白拿）
+④ 命名 serveNativeSubagents + 验收清单（默认关零变化/双挂载测试/unwind 测试/
+真机 E2E/上游 feature 文档）。等作者按此 rework。
