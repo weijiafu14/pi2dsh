@@ -32,7 +32,7 @@ does not exercise the separate `ctx.subagents` provider seam. See
 | [`session_tree`](#session_tree-event) | `event` | Mapped, difference stated | Registration is accepted; Pi session-tree navigation never occurs on DSH surfaces, so the handler never fires. Loading is unaffected. |
 | [`cwd`](#cwd-ctx) | `ctx.*` | Same semantics | Mapped to the active DSH agent session working directory. |
 | [`hasUI`](#hasui-ctx) | `ctx.*` | Same semantics | Reports whether a real interactive surface exists: true for dsh-TUI's mounted scene service or for a DSH user-question provider; false for a genuinely headless composition and for child-agent questions that DSH refuses. |
-| [`mode`](#mode-ctx) | `ctx.*` | Same semantics | Reports tui when dsh-TUI's public scene service is mounted, rpc in browser/headless compositions. |
+| [`mode`](#mode-ctx) | `ctx.*` | Same semantics | Reports tui whenever a full-screen custom seat exists — dsh-TUI's scene service in the terminal, the bridge's web scene seat in a browser composition — and rpc only in headless compositions. Pi packages read mode as "can I show interactive UI here?", and on the web the answer is yes. |
 | [`sessionManager`](#sessionmanager-ctx) | `ctx.*` | Mapped, difference stated | A real read-only projection: DSH durable messages plus the session's Pi-only entries (customs, labels, branch summaries — stored as genuine Pi entry lines in the per-session archive file), exposed through Pi's exact 14-method surface as a single-branch tree. Conversation content is never duplicated: it projects live from the native DSH log at call time. buildContextEntries is compaction-aware — entries a compaction summarized away are gone, exactly as they are for the model — while getEntries stays the append-only log, which is the same split Pi makes. |
 | [`shutdown`](#shutdown-ctx) | `ctx.*` | Mapped, difference stated | Pi defines shutdown behavior as host-provided (runner.ts bindExtensions); this host absorbs the request — the user owns DSH process exit — and informs the user once. The package keeps running. |
 | [`compact`](#compact-ctx) | `ctx.*` | Mapped, difference stated | Pi's fire-and-forget trigger, translated to DSH's official manual compaction (ctx.compaction.compactNow on the live agent). onComplete receives the real summary text and the shadowed-content token estimate as tokensBefore; firstKeptEntryId is empty because the DSH log has no Pi entry ids. Without a compaction service the gap flows through Pi's onError callback and the capability ledger. |
@@ -142,7 +142,7 @@ The terminal answer comes from the optional public tuiScenes service. The questi
 
 `ctx.*` · Same semantics
 
-Derived from the live optional TuiSurfaceAdapter. This is the branch interactive Pi plugins use before calling ui.custom; it changes with the Cordis service lifecycle rather than being a constant.
+Derived from the live optional TuiSurfaceAdapter, else from the browser half's routed scene seat. This is the branch interactive Pi plugins take before calling ui.custom; it changes with the Cordis service lifecycle rather than being a constant.
 
 ### `sessionManager` <a id="sessionmanager-ctx"></a>
 

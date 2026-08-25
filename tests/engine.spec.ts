@@ -3,6 +3,7 @@
 // manifest-driven (the profile's direct dependencies — each one an explicit
 // `dsh plugin add`), identification uses Pi's own markers, and explicit
 // config narrows or overrides it.
+import { realpathSync } from 'node:fs'
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -123,7 +124,10 @@ describe('engine discovery', () => {
     // suite mounts once (profile order first).
     expect(found.map(pkg => pkg.name).sort()).toEqual(['pi-direct', 'pi-suite-member'])
     const member = found.find(pkg => pkg.name === 'pi-suite-member')
-    expect(member?.anchor).toBe(join(root, 'node_modules', 'dsh-x', 'package.json'))
+    // The anchor is the suite's REAL directory: under pnpm the profile entry
+    // is a symlink into .pnpm, and only the realpath has the suite's own
+    // dependencies as resolvable neighbours.
+    expect(member?.anchor).toBe(join(realpathSync(join(root, 'node_modules', 'dsh-x')), 'package.json'))
     const direct = found.find(pkg => pkg.name === 'pi-direct')
     expect(direct?.anchor).toBeUndefined()
   })

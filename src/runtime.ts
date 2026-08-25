@@ -1219,7 +1219,15 @@ function contextFor(
   const base: UnknownRecord = {
     ...replacedSessionActions,
     ui,
-    get mode(): 'tui' | 'rpc' { return state.tuiSurfaces?.available === true ? 'tui' : 'rpc' },
+    // Pi's mode answers ONE question for packages: "can I show interactive
+    // full-screen UI here?" (pi-mcp-adapter opens its manager only in tui
+    // mode). The browser composition can — ui.custom runs the real component
+    // on the web scene seat — so it reports tui exactly like the terminal;
+    // only a composition with neither seat (headless CLI) is rpc.
+    get mode(): 'tui' | 'rpc' {
+      if (state.tuiSurfaces?.available === true) return 'tui'
+      return state.shared.browserSurfaces !== undefined && state.shared.browserSurfacesRouted === true ? 'tui' : 'rpc'
+    },
     // A getter, not a value: this context is rebuilt for every dispatched
     // event, and the probe below costs a register/dispose. Packages read
     // `hasUI` rarely, and reading it lazily also makes the answer current at

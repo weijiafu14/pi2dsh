@@ -20,16 +20,22 @@
   "type": "module",
   "exports": {
     ".": "./index.mjs",
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./client": "./client.js"
   },
   "files": [
-    "index.mjs",
+    "README.md",
+    "client.js",
     "cordis.patch.yml",
-    "README.md"
+    "index.mjs"
   ],
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [],
+      "platform": "web"
     }
   },
   "pi2dsh": {
@@ -46,5 +52,8 @@
     "pi-btw": "0.4.1",
     "pi-mcp-adapter": "2.27.0",
     "pi2dsh": "^0.19.0"
+  },
+  "scripts": {
+    "prepack": "node ../scripts/build-dsh-x-client.mjs"
   }
 }

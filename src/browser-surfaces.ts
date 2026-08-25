@@ -149,6 +149,9 @@ export class BrowserSurfaces {
           if (typeof component?.render !== 'function') {
             this.#scene = undefined
             this.#invalidateScene()
+            // Console AND the caller: a package may swallow the rejection, and
+            // a scene that silently never opens is undiagnosable from the UI.
+            console.warn(`[pi2dsh] web scene for ${packageName}: component lacks render(width)`)
             reject(new TypeError('Pi custom component must implement render(width)'))
             return
           }
@@ -158,6 +161,7 @@ export class BrowserSurfaces {
           if (this.#scene !== run) return
           this.#scene = undefined
           this.#invalidateScene()
+          console.warn(`[pi2dsh] web scene for ${packageName}: component factory failed: ${error instanceof Error ? error.stack ?? error.message : String(error)}`)
           reject(error)
         })
     })
@@ -183,6 +187,7 @@ export class BrowserSurfaces {
       const failed = this.#scene
       this.#scene = undefined
       this.#invalidateScene()
+      console.warn(`[pi2dsh] web scene for ${scene.package}: render(width) failed: ${error instanceof Error ? error.stack ?? error.message : String(error)}`)
       failed?.reject(error)
       return { open: false, revision: this.#sceneRevision }
     }

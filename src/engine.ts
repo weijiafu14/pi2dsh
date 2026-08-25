@@ -19,7 +19,7 @@
 // with Pi's directory conventions as fallback).
 
 import { readFile } from 'node:fs/promises'
-import { existsSync } from 'node:fs'
+import { existsSync, realpathSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { Context } from '@deepseek-ai/cordis'
@@ -114,10 +114,18 @@ export async function discoverProfilePiPackages(
     // dependencies out of the profile root). One level only, no recursion.
     const suite = (packageJson.pi2dsh as { suite?: unknown } | undefined)?.suite
     if (Array.isArray(suite)) {
+      // The anchor must be the suite's REAL directory: the profile's
+      // node_modules entry is a pnpm symlink into .pnpm, and Node resolution
+      // walks up from the anchor's literal path — only the realpath has the
+      // suite's own dependencies as .pnpm neighbours.
+      let anchorDir = dir
+      try {
+        anchorDir = realpathSync(dir)
+      } catch { /* an unreadable dir keeps the literal path and fails loud in prepare */ }
       for (const member of suite) {
         if (typeof member !== 'string' || member.length === 0) continue
         if (member === 'pi2dsh' || excluded.has(member)) continue
-        discovered.push({ name: member, dir, anchor: join(dir, 'package.json') })
+        discovered.push({ name: member, dir, anchor: join(anchorDir, 'package.json') })
       }
       continue
     }
