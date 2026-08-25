@@ -1,0 +1,13 @@
+{
+  "generatedAt": "2026-08-25T15:34:55.128Z",
+  "startedAt": "2026-08-25T15:34:04.015Z",
+  "scenario": "dsh-work-x suite: a pi-subagents child uses pi-mcp-adapter against a real MCP server",
+  "cliSpec": "@deepseek-ai/dsh@0.1.1-rc.2",
+  "engineSpec": "/Users/developer/projj/workspace/pi2dsh",
+  "mcpServer": "@modelcontextprotocol/server-everything@2026.8.18",
+  "status": "passed",
+  "problems": [],
+  "childFile": "/tmp/pi2dsh-workx-mcp.DWOLfy/dsh-home/sessions/--private-tmp-pi2dsh-workx-mcp.DWOLfy-workspace--/pi2dsh-sub-mt8tsy95-1/session.jsonl.zstd",
+  "cliVersion": "0.1.1-rc.2",
+  "suiteTarball": "dsh-work-x-0.1.0.tgz"
+}
