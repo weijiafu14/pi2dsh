@@ -737,9 +737,18 @@ export function providePiExtensionDiscovery(entries: ReadonlyArray<{ path: strin
 // and surface as per-entry errors, Pi's own diagnostics shape.
 export class DefaultResourceLoader {
   readonly #options: SettingsRecord
+  /** Resolves an entry path to the LIVE Pi tool ledger of the package mounted
+   * for this loader's child — attached by the bridge after the child mount.
+   * Pi's Extension.tools shape: consumers (pi-subagents' extension tool
+   * scope) read `.keys()` off it every turn, so late registrations count. */
+  #childToolResolver: ((path: string) => ReadonlyMap<string, unknown> | undefined) | undefined
 
   constructor(options: SettingsRecord = {}) {
     this.#options = options
+  }
+
+  attachChildToolResolver(resolver: (path: string) => ReadonlyMap<string, unknown> | undefined): void {
+    this.#childToolResolver = resolver
   }
 
   getExtensions(): { extensions: unknown[], errors: unknown[] } {
@@ -754,7 +763,12 @@ export class DefaultResourceLoader {
       }
     }
     const base = {
-      extensions: this.#options.noExtensions === true ? [] : discoveredPiExtensionEntries.map(entry => ({ ...entry })),
+      extensions: this.#options.noExtensions === true
+        ? []
+        : discoveredPiExtensionEntries.map(entry => ({
+            ...entry,
+            tools: this.#childToolResolver?.(entry.path) ?? new Map<string, unknown>(),
+          })),
       errors,
     }
     const override = this.#options.extensionsOverride

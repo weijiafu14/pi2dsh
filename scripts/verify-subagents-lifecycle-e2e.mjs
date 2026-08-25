@@ -535,7 +535,11 @@ try {
       }
       const message = [
         `Call the Agent tool exactly once: subagent_type general-purpose, name "sleeper", run_in_background false,`,
-        `prompt: "Run the bash command \`sleep 90\`. When it finishes, write the file ${cPath} containing ${STOP_TAG}`,
+        // A backgrounded sleep returns immediately and lets the model write
+        // the file before any abort can land (seen live) — the FOREGROUND
+        // blocking run is the scenario's whole point, so forbid backgrounding.
+        `prompt: "Run the bash command \`sleep 90\` in the FOREGROUND and wait for it to finish — do not set run_in_background,`,
+        `do not append &. When it finishes, write the file ${cPath} containing ${STOP_TAG}`,
         `using bash, then reply done." Do not run bash yourself.`,
       ].join(' ')
       await execFile('tmux', ['send-keys', '-t', TMUX_SESSION, '-l', message])
@@ -831,6 +835,84 @@ try {
     }
     log(`scenario model-follow: ${scenarios.modelFollow.status}${(scenarios.modelFollow.problems ?? []).length > 0 ? ` — ${scenarios.modelFollow.problems.join('; ')}` : ''}`)
     log(`scenario explicit-model-thinking: ${scenarios.explicitModelThinking.status}${(scenarios.explicitModelThinking.problems ?? []).length > 0 ? ` — ${scenarios.explicitModelThinking.problems.join('; ')}` : ''}`)
+  }
+
+  // ======================================================================
+  // Scenario 7 — child-extensions: a pi-subagents child is served the
+  // installed Pi packages exactly as real Pi loads them (default extensions
+  // on), and the creator's own narrowing (`extensions: false` in the agent
+  // type's frontmatter — pi-subagents' native config format) really empties
+  // the set. Falsifiable both ways: the positive child's durable log must
+  // carry a non-error probe_touch tool/result (a tool the FIXTURE package
+  // registers — a model cannot call a tool absent from its registry), and
+  // the negative child, restricted to `tools: read` with extensions off,
+  // must show no probe_touch call and produce no file.
+  // ======================================================================
+  {
+    const EXT_TAG = `EXT_${RUN_TAG}`
+    const touchedPath = join(workDir, `ext-touched-${RUN_TAG}.txt`)
+    const deniedPath = join(workDir, `ext-denied-${RUN_TAG}.txt`)
+    await rm(touchedPath, { force: true })
+    await rm(deniedPath, { force: true })
+    const agentsDir = join(workDir, '.pi', 'agents')
+    await mkdir(agentsDir, { recursive: true })
+    await writeFile(join(agentsDir, 'no-ext.md'), [
+      '---',
+      'name: no-ext',
+      'description: extension-free read-only probe agent',
+      'tools: read',
+      'extensions: false',
+      '---',
+      'You are a minimal agent. Follow the instructions exactly.',
+      '',
+    ].join('\n'))
+
+    log('scenario child-extensions: positive (default extensions reach the child) …')
+    const promptOn = [
+      'Do these steps in order and do not call probe_touch or bash yourself — only the subagent may.',
+      'Step 1: call the Agent tool once: subagent_type general-purpose, name "toucher", run_in_background false,',
+      `prompt: "Call the probe_touch tool exactly once with arguments {\\"out\\": \\"${touchedPath}\\", \\"text\\": \\"${EXT_TAG}\\"}. Then reply done.".`,
+      'Step 2: reply with the agent\'s report only.',
+    ].join(' ')
+    const outputOn = await runHeadlessTurn(promptOn, touchedPath, 420_000)
+
+    log('scenario child-extensions: negative (extensions: false narrows to nothing) …')
+    const promptOff = [
+      'Do these steps in order and do not call probe_touch or bash yourself — only the subagent may.',
+      'Step 1: call the Agent tool once: subagent_type no-ext, name "denied", run_in_background false,',
+      `prompt: "Call the probe_touch tool exactly once with arguments {\\"out\\": \\"${deniedPath}\\", \\"text\\": \\"${EXT_TAG}\\"}. If the tool does not exist, reply exactly: no such tool.".`,
+      'Step 2: reply with the agent\'s report only.',
+    ].join(' ')
+    const outputOff = await runHeadlessTurn(promptOff, undefined, 300_000)
+
+    const problems = []
+    const sessions = await loadSessions(RUN_TAG)
+    const touchChild = sessions.find(s => s.isChild && s.raw.includes(touchedPath))
+    const deniedChild = sessions.find(s => s.isChild && s.raw.includes(deniedPath))
+    const touched = existsSync(touchedPath) && readFileSync(touchedPath, 'utf8').includes(EXT_TAG)
+    if (!touched) problems.push('the probe_touch effect file is missing or wrong — the extension tool never worked in the child')
+    if (touchChild === undefined) problems.push('no child session carrying the positive probe task')
+    if (touchChild !== undefined) {
+      const call = touchChild.toolCalls.some(c => c.data?.name === 'probe_touch')
+      if (!call) problems.push('the positive child\'s durable log has no probe_touch tool/call — the file proves nothing')
+      const failedResult = touchChild.events.some(e => e.type === 'tool/result'
+        && JSON.stringify(e).includes('probe_touch') && JSON.stringify(e).includes('"isError":true'))
+      if (failedResult) problems.push('probe_touch errored in the positive child')
+    }
+    if (deniedChild === undefined) problems.push('no child session carrying the negative probe task')
+    if (deniedChild !== undefined && deniedChild.toolCalls.some(c => c.data?.name === 'probe_touch')) {
+      problems.push('the extensions:false child could still call probe_touch — the creator\'s narrowing did not reach the bridge')
+    }
+    if (existsSync(deniedPath)) problems.push('the denied child produced the effect file — narrowing failed')
+    scenarios.childExtensions = {
+      status: problems.length === 0 ? 'passed' : 'failed',
+      problems,
+      touched,
+      positiveChild: touchChild?.file ?? null,
+      negativeChild: deniedChild?.file ?? null,
+      outputTail: problems.length > 0 ? `${outputOn.slice(-800)}\n---\n${outputOff.slice(-800)}` : undefined,
+    }
+    log(`scenario child-extensions: ${scenarios.childExtensions.status}${problems.length > 0 ? ` — ${problems.join('; ')}` : ''}`)
   }
 
   const failed = Object.values(scenarios).filter(s => s?.status === 'failed').length

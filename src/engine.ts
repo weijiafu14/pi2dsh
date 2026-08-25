@@ -20,11 +20,12 @@
 
 import { readFile } from 'node:fs/promises'
 import { existsSync, realpathSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { Context } from '@deepseek-ai/cordis'
 import { applyPreparedPiHost, preparePiHost, type PreparedPiHostPackage } from './host.js'
-import { registerVisionCompanions } from './runtime.js'
+import { registerChildExtensionCatalog, registerVisionCompanions } from './runtime.js'
+import { providePiExtensionDiscovery } from './compat/pi-coding-agent.js'
 import { resolvePiPackage } from './source.js'
 
 export interface EngineConfig {
@@ -386,6 +387,33 @@ export async function apply(ctx: Context, config: EngineConfig = {}): Promise<vo
       },
       join(profileRoot, 'package.json'),
     )
+    // Child-extension catalog: what real Pi's createAgentSession "default-
+    // discovered extensions" means on this host. Entries are each package's
+    // DECLARED pi extension files (absolute, inside the installed dir), so a
+    // creator's own filter code (pi-subagents' extensions/exclude/ext:
+    // machinery) canonicalizes them exactly as it does on Pi. Mounting lands
+    // on the child agent's OWN ctx — contributions unwind with the agent,
+    // which is what makes per-child instances leak-free by construction.
+    const entryCatalog = new Map<string, string>()
+    for (const pkg of prepared) {
+      const rootDir = fileURLToPath(pkg.rootUrl)
+      // Resolved keys, because the consumer looks entries up by resolved path.
+      for (const rel of pkg.manifest.extensions) entryCatalog.set(resolve(rootDir, rel), pkg.name)
+    }
+    providePiExtensionDiscovery([...entryCatalog.keys()].map(path => ({ path })))
+    registerChildExtensionCatalog(ctx, {
+      packageByEntryPath: entryCatalog,
+      mount: async (childAgent, packageNames) => {
+        const wanted = new Set(packageNames)
+        const subset = prepared.filter(pkg => wanted.has(pkg.name))
+        const scope = (childAgent as { ctx?: Context }).ctx
+        if (scope === undefined) {
+          return subset.map(pkg => ({ name: pkg.name, error: 'the child agent exposes no ctx scope to mount into' }))
+        }
+        return applyPreparedPiHost(scope, subset, childAgent)
+      },
+    })
+
     // Host anchors, before the per-Agent gates open: every package's
     // HOST-level contributions (provider routes, OAuth accounts, /login,
     // credential recovery, companions, skills) exist from engine apply — a

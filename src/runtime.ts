@@ -9,7 +9,7 @@ import { EventEmitter } from 'node:events'
 import { AsyncLocalStorage } from 'node:async_hooks'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
-import { dirname, join } from 'node:path'
+import { dirname, join, resolve as pathResolve } from 'node:path'
 import { createJiti } from 'jiti'
 import type { Context } from '@deepseek-ai/cordis'
 import { createUserMessage, type ContentBlock } from '@deepseek-ai/dsh-llm'
@@ -2702,6 +2702,14 @@ interface SharedHostState {
   // a second flow cannot be started. On DSH /login is an ordinary command a
   // user can run again, so the bridge has to enforce what Pi's shape enforced.
   activeLogin?: ActiveLogin | undefined
+  // The engine's installed-package extension catalog for CHILD sessions —
+  // what "default-discovered extensions" means when a Pi creator spawns a
+  // child (real Pi loads them into every child unless the creator narrows).
+  childExtensions?: ChildExtensionCatalog
+  // Per (agent × package): the live Pi tool ledger of the instance mounted
+  // for that agent, so a creator's loader can present Pi's Extension.tools
+  // shape (pi-subagents' ext: tool scope reads it live every turn).
+  childPackageTools?: WeakMap<object, Map<string, ReadonlyMap<string, unknown>>>
 }
 
 interface ActiveLogin {
@@ -2714,6 +2722,66 @@ interface ActiveLogin {
 }
 
 const SHARED_HOST_STATE = new WeakMap<object, SharedHostState>()
+
+/**
+ * The engine's installed-package extension catalog, for serving CHILD
+ * sessions: real Pi's createAgentSession loads the default-discovered
+ * extensions into every child unless the creator's loader narrows them.
+ * The catalog is what "default-discovered" means on this host.
+ */
+export interface ChildExtensionCatalog {
+  /** Absolute declared-entry path → installed package name. */
+  packageByEntryPath: ReadonlyMap<string, string>
+  /**
+   * Mount the named packages onto one child agent (its own agent-local ctx —
+   * contributions unwind with the agent, DSH's documented scope semantics).
+   * @returns per-package failures, Pi's per-extension error isolation.
+   */
+  mount(childAgent: UnknownRecord, packageNames: readonly string[]): Promise<Array<{ name: string, error: string }>>
+}
+
+export function registerChildExtensionCatalog(ctx: Context, catalog: ChildExtensionCatalog): void {
+  sharedHostStateOf(ctx).childExtensions = catalog
+}
+
+/**
+ * Which installed packages a creator's resource loader selects for its child
+ * — the creator's OWN filter code decides (the loader's getExtensions applies
+ * noExtensions and extensionsOverride), this only maps the surviving entry
+ * paths back to package names. No loader at all means Pi's default: the full
+ * discovered set (sdk.ts builds a default loader and loads everything).
+ */
+function resolveChildExtensionPackages(
+  loader: unknown,
+  catalog: ChildExtensionCatalog,
+): { names: string[], failures: Array<{ name: string, error: string }> } {
+  if (loader === undefined || loader === null) {
+    return { names: [...new Set(catalog.packageByEntryPath.values())], failures: [] }
+  }
+  const getExtensions = (loader as { getExtensions?: () => { extensions?: unknown[] } }).getExtensions
+  if (typeof getExtensions !== 'function') return { names: [], failures: [] }
+  const names = new Set<string>()
+  const failures: Array<{ name: string, error: string }> = []
+  let entries: unknown[]
+  try {
+    entries = getExtensions.call(loader)?.extensions ?? []
+  } catch (error) {
+    return { names: [], failures: [{ name: 'resourceLoader.getExtensions', error: error instanceof Error ? error.message : String(error) }] }
+  }
+  for (const entry of entries) {
+    const path = (entry as { path?: unknown } | undefined)?.path
+    if (typeof path !== 'string' || path.length === 0) continue
+    const name = catalog.packageByEntryPath.get(pathResolve(path))
+    if (name !== undefined) names.add(name)
+    else {
+      failures.push({
+        name: path,
+        error: 'not an installed DSH plugin — path-loaded extensions are not supported on this host; install it with `dsh plugin add <pkg>`',
+      })
+    }
+  }
+  return { names: [...names], failures }
+}
 
 /**
  * Pi's provider ledger is layered, not flat (model-runtime.ts:742-786 at the
@@ -4741,6 +4809,16 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
   const ownerAgent = typeof scopedOwner === 'object' && scopedOwner !== null
     ? scopedOwner as UnknownRecord
     : undefined
+  if (ownerAgent !== undefined && options.hostAnchor !== true) {
+    // The instance's LIVE Pi tool ledger, findable by (agent, package):
+    // pi-subagents' extension tool scope re-derives a child's active set from
+    // "the loader's live extension maps" every turn — this reference is that
+    // map on this host, late registrations included by construction.
+    shared.childPackageTools ??= new WeakMap()
+    const byPackage = shared.childPackageTools.get(ownerAgent) ?? new Map<string, ReadonlyMap<string, unknown>>()
+    byPackage.set(options.manifest.package.name, runtimeTools)
+    shared.childPackageTools.set(ownerAgent, byPackage)
+  }
   const state: RuntimeState = {
     shared,
     packageName: options.manifest.package.name,
@@ -5103,6 +5181,32 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
       return state.bridge.readonlySessionManager(session as never, cwd) as UnknownRecord
     },
     resumeSessionIdFor: file => state.bridge.sessionIdOfArchiveFile(file),
+    mountChildExtensions: async (childAgent, loader) => {
+      // Real Pi loads the (creator-filtered) extension set into every child
+      // at createAgentSession. The engine's catalog is that set here; a
+      // composition without the engine has no catalog and mounts nothing —
+      // the pre-existing plain-child behavior.
+      const shared = sharedHostStateOf(ctx)
+      const catalog = shared.childExtensions
+      if (catalog === undefined) return []
+      const { names, failures } = resolveChildExtensionPackages(loader, catalog)
+      if (names.length === 0) return failures
+      const mountFailures = await catalog.mount(childAgent, names)
+      // pi-subagents' extension tool scope reads Extension.tools off the
+      // loader's entries every turn; wire the entries to the live per-child
+      // ledgers so that read answers with what really registered here.
+      const attachable = loader as { attachChildToolResolver?(fn: (path: string) => ReadonlyMap<string, unknown> | undefined): void } | null | undefined
+      if (typeof attachable?.attachChildToolResolver === 'function') {
+        // Bound call — the resolver setter writes a private field; an unbound
+        // reference loses `this` and crashed the whole mount (caught live).
+        attachable.attachChildToolResolver(path => {
+          const packageName = catalog.packageByEntryPath.get(pathResolve(path))
+          if (packageName === undefined) return undefined
+          return shared.childPackageTools?.get(childAgent as object)?.get(packageName)
+        })
+      }
+      return [...failures, ...mountFailures]
+    },
     sessionGoneFromPersistence: async sessionId => {
       // DSH's own verdict shape (agent-loop restoreOrCreateConfigured): the
       // persistence list() is the authority on whether a session still
@@ -5217,6 +5321,7 @@ export const runtimeInternals = {
   currentPiModel,
   lastRequestRouteOf,
   resolveCallerRoute,
+  resolveChildExtensionPackages,
   dshToPiContent,
   expandPrompt,
   isKnownImageTool,

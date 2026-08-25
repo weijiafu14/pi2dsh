@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-08-24T10:11:33.519Z",
-  "startedAt": "2026-08-24T10:06:44.994Z",
+  "generatedAt": "2026-08-25T10:30:13.270Z",
+  "startedAt": "2026-08-25T10:24:59.162Z",
   "scenario": "pi-subagents-lifecycle (steer / resume / stop / model-follow / explicit-model-thinking)",
   "cliSpec": "@deepseek-ai/dsh@0.1.1-rc.2",
-  "engineSpec": "pi2dsh@0.17.0",
+  "engineSpec": "/Users/developer/projj/workspace/pi2dsh",
   "subagentsSpec": "@tintinweb/pi-subagents@0.18.0",
   "status": "passed",
   "scenarios": {
@@ -11,17 +11,21 @@
       "status": "passed",
       "problems": [],
       "steeredLanded": true,
-      "alphaAlsoLanded": false,
+      "alphaAlsoLanded": true,
       "spawnTaskVerbatim": true,
-      "parentToolCalls": ["Agent", "steer_subagent", "get_subagent_result"],
-      "childFile": "/tmp/pi2dsh-subagents-lifecycle.CoOlxl/dsh-home/sessions/--private-tmp-pi2dsh-subagents-lifecycle.CoOlxl-workspace--/pi2dsh-sub-mt72o6pz-1/session.jsonl"
+      "parentToolCalls": [
+        "Agent",
+        "steer_subagent",
+        "get_subagent_result"
+      ],
+      "childFile": "/tmp/pi2dsh-subagents-lifecycle.ou0B1G/dsh-home/sessions/--private-tmp-pi2dsh-subagents-lifecycle.ou0B1G-workspace--/pi2dsh-sub-mt8irfrg-1/session.jsonl"
     },
     "resume": {
       "status": "passed",
       "problems": [],
       "attempt": 1,
       "recalled": true,
-      "childSessionFile": "/tmp/pi2dsh-subagents-lifecycle.CoOlxl/dsh-home/sessions/--private-tmp-pi2dsh-subagents-lifecycle.CoOlxl-workspace--/pi2dsh-sub-mt72ox5c-1/session.jsonl",
+      "childSessionFile": "/tmp/pi2dsh-subagents-lifecycle.ou0B1G/dsh-home/sessions/--private-tmp-pi2dsh-subagents-lifecycle.ou0B1G-workspace--/pi2dsh-sub-mt8isarw-1/session.jsonl",
       "childTurns": 2,
       "matchedChildLogs": 1
     },
@@ -29,14 +33,15 @@
       "status": "passed",
       "problems": [],
       "recalled": true,
-      "archive": "/tmp/pi2dsh-subagents-lifecycle.CoOlxl/dsh-home/pi2dsh/agent/session-entries/pi2dsh-sub-mt72p5i0-1.jsonl",
-      "childSessionFile": "/tmp/pi2dsh-subagents-lifecycle.CoOlxl/dsh-home/sessions/--private-tmp-pi2dsh-subagents-lifecycle.CoOlxl-workspace--/pi2dsh-sub-mt72p5i0-1/session.jsonl",
+      "archive": "/tmp/pi2dsh-subagents-lifecycle.ou0B1G/dsh-home/pi2dsh/agent/session-entries/pi2dsh-sub-mt8ism5l-1.jsonl",
+      "childSessionFile": "/tmp/pi2dsh-subagents-lifecycle.ou0B1G/dsh-home/sessions/--private-tmp-pi2dsh-subagents-lifecycle.ou0B1G-workspace--/pi2dsh-sub-mt8ism5l-1/session.jsonl",
       "childTurns": 2
     },
     "stopChildTurnEnds": [
-      "{\"kind\":\"aborted\",\"reason\":{\"kind\":\"hook\",\"reason\":\"pi2dsh subagent abort()\"}}",
       "{\"kind\":\"aborted\",\"reason\":{\"kind\":\"hook\",\"reason\":\"pi2dsh subagent abort()\"}}"
     ],
+    "stopPaneTail": "         █   █ █   █ █   █ ██  █ █     █     █\n   ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀            █▀▀▀█ █▀▀▀█ █▄▄▄▀ █ █ █ █▀▀▀   ▀▀▀▄  ▀▀▀▄\n   ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀             █   █ █   █ █ █   █  ██ █         █     █\n    ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀              █   █ █   █ █   █ █   █ █▄▄▄▄ █▄▄▄▀ █▄▄▄▀\n      ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▄             deepseek-chat · Max effort\n         ▀▀▀▀▀▀▀▀▀▀▀  ▀▀▀▀▀▀▀             /private/tmp/pi2dsh-subagents-lifecycle.ou0B1G/workspace\n                                          Tip: Ctrl+R searches input history; press again for next match · /tips more tips\n\n        Explore the uncharted!\n\n❯ Call the Agent tool exactly once: subagent_type general-purpose, name \"sleeper\", run_in_background false, prompt: \"Run the bash command `sleep 90` in the FOREGROUND and wait\n  for it to finish — do not set run_in_background, do not append &. When it finishes, write the file\n  /tmp/pi2dsh-subagents-lifecycle.ou0B1G/workspace/stopped-agent-output-MT8IQJVE.txt containing SHOULD_NOT_EXIST_MT8IQJVE using bash, then reply done.\" Do not run bash yourself.\n\n⏺ I'll call the Agent tool exactly once as instructed.\n\n✗ Agent({\"description\":\"Run sleep in foreground\",\"prompt\":\"Run the bash command `sleep 90` in the FOREGROUND and wait for it to finish — do not set run_in_background, d…) · 2s\n ⎿ AbortError: ABORTED — Error: tool call aborted\n   ⌘t for the full trajectory\n\nInterrupted · What should DeepSeek do instead?\n\n╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮\n❯\n╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯\n deepseek-chat · max · cache 0.0% · workspace                                                                                                                   ctx 8.0% (10k/131k)\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
+    "stopManagerScreen": " again for next match · /tips more tips\n\n        Explore the uncharted!\n\n❯ Call the Agent tool exactly once: subagent_type general-purpose, name \"sleeper\", run_in_background false, prompt: \"Run the bash command `sleep 90` in the FOREGROUND and wait\n  for it to finish — do not set run_in_background, do not append &. When it finishes, write the file\n  /tmp/pi2dsh-subagents-lifecycle.ou0B1G/workspace/stopped-agent-output-MT8IQJVE.txt containing SHOULD_NOT_EXIST_MT8IQJVE using bash, then reply done.\" Do not run bash yourself.\n\n⏺ I'll call the Agent tool exactly once as instructed.\n\n✗ Agent({\"description\":\"Run sleep in foreground\",\"prompt\":\"Run the bash command `sleep 90` in the FOREGROUND and wait for it to finish — do not set run_in_background, d…) · 2s\n ⎿ AbortError: ABORTED — Error: tool call aborted\n   ⌘t for the full trajectory\n\nInterrupted · What should DeepSeek do instead?\n\n  ──────────────────────────────────────────────────────────────────────────────  📋 Question 1/1   ──────────────────────────────────────────────────────────────────────────────\n\n  Agents\n\n\n  ❯● Running agents (1) — 0 running, 0 done\n   ○ Agent types (3)\n   ○ Scheduled jobs (0)\n   ○ Create new agent\n   ○ Settings\n   ✎ Custom answer：Type directly…\n\n  ↑/↓ select · Type text to attach an answer · Enter submit · Esc cancel\n deepseek-chat · max · cache 0.0% · workspace                                                                                                                   ctx 8.0% (10k/131k)\n\n\n\n\n\n\n",
     "stop": {
       "status": "passed",
       "problems": [],
@@ -44,16 +49,26 @@
       "interrupted": true,
       "outputFileAbsentAfterWindow": true
     },
+    "modelFollowPickerScreen": "Thinking (ctrl+o to expand)\n\n⏺ warmup-FOLLOW_MT8IQJVE\n                                                                                                                                               Model switched to Work Gateway Model\n╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮\n❯\n╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯\n deepseek-chat · max · cache 0.0% · workspace                                                                                                                   ctx 1.0% (10k/1.0m)\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
     "modelFollow": {
       "status": "passed",
       "problems": [],
       "defaultProvider": "deepseek-official",
       "parentRoutes": [
-        {"provider": "deepseek-official", "model": "deepseek-v4-flash"},
-        {"provider": "work-gw", "model": "deepseek-chat"}
+        {
+          "provider": "deepseek-official",
+          "model": "deepseek-v4-flash"
+        },
+        {
+          "provider": "work-gw",
+          "model": "deepseek-chat"
+        }
       ],
       "childRoutes": [
-        {"provider": "work-gw", "model": "deepseek-chat"}
+        {
+          "provider": "work-gw",
+          "model": "deepseek-chat"
+        }
       ],
       "markerLanded": true
     },
@@ -61,28 +76,50 @@
       "status": "passed",
       "problems": [],
       "parentConfigs": [
-        {"provider": "deepseek-official", "model": "deepseek-v4-flash", "reasoningEffort": "max", "maxTokens": 256000},
-        {"provider": "work-gw", "model": "deepseek-chat"}
+        {
+          "provider": "deepseek-official",
+          "model": "deepseek-v4-flash",
+          "reasoningEffort": "max",
+          "maxTokens": 256000
+        },
+        {
+          "provider": "work-gw",
+          "model": "deepseek-chat"
+        }
       ],
       "agentArguments": {
         "description": "explicit route and effort probe",
         "name": "explicit-probe",
         "model": "deepseek-official/deepseek-v4-flash",
         "thinking": "max",
-        "prompt": "Run one bash command that writes the single word EXPLICIT_MT72N8XU into /tmp/pi2dsh-subagents-lifecycle.CoOlxl/workspace/explicit-model-thinking-MT72N8XU.txt, then reply done.",
         "run_in_background": false,
-        "subagent_type": "general-purpose"
+        "subagent_type": "general-purpose",
+        "prompt": "Run one bash command that writes the single word EXPLICIT_MT8IQJVE into /tmp/pi2dsh-subagents-lifecycle.ou0B1G/workspace/explicit-model-thinking-MT8IQJVE.txt, then reply done."
       },
       "childConfigs": [
-        {"provider": "deepseek-official", "model": "deepseek-v4-flash", "maxTokens": 256000, "reasoningEffort": "max"}
+        {
+          "provider": "deepseek-official",
+          "model": "deepseek-v4-flash",
+          "maxTokens": 256000,
+          "reasoningEffort": "max"
+        }
       ],
-      "childToolCalls": ["bash"],
+      "childToolCalls": [
+        "bash"
+      ],
       "markerLanded": true
+    },
+    "childExtensions": {
+      "status": "passed",
+      "problems": [],
+      "touched": true,
+      "positiveChild": "/tmp/pi2dsh-subagents-lifecycle.ou0B1G/dsh-home/sessions/--private-tmp-pi2dsh-subagents-lifecycle.ou0B1G-workspace--/pi2dsh-sub-mt8iwzp5-1/session.jsonl",
+      "negativeChild": "/tmp/pi2dsh-subagents-lifecycle.ou0B1G/dsh-home/sessions/--private-tmp-pi2dsh-subagents-lifecycle.ou0B1G-workspace--/pi2dsh-sub-mt8ix72i-1/session.jsonl"
     },
     "stack": {
       "cliVersion": "0.1.1-rc.2",
-      "engineVersion": "0.17.0",
-      "scratch": "/tmp/pi2dsh-subagents-lifecycle.CoOlxl"
+      "engineVersion": "0.19.0",
+      "scratch": "/tmp/pi2dsh-subagents-lifecycle.ou0B1G"
     }
   }
 }

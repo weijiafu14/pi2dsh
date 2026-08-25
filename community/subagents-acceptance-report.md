@@ -1,4 +1,4 @@
-# pi-subagents 完整端到端验收报告（steer / resume / stop / resume-archive / model-follow / explicit-model-thinking）
+# pi-subagents 完整端到端验收报告（steer / resume / stop / resume-archive / model-follow / explicit-model-thinking / child-extensions）
 
 日期：2026-08-24。栈：stock `@deepseek-ai/dsh@0.1.1-rc.2`（npm）+ npm `pi2dsh@0.17.0` +
 stock `@tintinweb/pi-subagents@0.18.0`（npm）+ 真 DeepSeek（父子两级全真模型调用）。
@@ -21,12 +21,13 @@ scratch 路径）。本报告与上一轮 P0 验收
 | resume-archive | **跨进程重启**后按归档身份重开的子代理是同一段对话 | 进程 1：探针经公共 ABI 造子代理读盘上暗号并记住，落盘其归档身份（`session.sessionManager.getSessionFile()`）；进程 2（全新 dsh 进程）：`SessionManager.open(归档)` 交回 `createAgentSession`——pi-subagents 墓碑复活的同款形状。判据：默写暗号成功 + 两轮在**同一个** DSH 子会话日志（跨两个操作系统进程增长）+ 会话号与记录的身份一致 + 身份证事件不重复 + 进程 2 零 read |
 | model-follow | 用户在 DSH UI 会话中途 `/model` 切换后，新 spawn 的无模型子代理跟随**切换后的实时路由** | settings 配一个独立网关 provider（work-gw）；先把默认路由钉到官方线并跑 warmup 轮（断言 warmup 真跑在官方线上——防"本来就在 work-gw"的假阳性）；TUI 敲参数化 `/model work-gw/deepseek-chat` 切换后 spawn 子代理。判据全部读**持久会话日志的 request/header**（不认屏幕文字）：父会话先官方线后 work-gw 两条俱在 + 子会话请求只在 work-gw + 子代理写的 marker 落盘。父会话按"只有真父才有的内容"（warmup 文本 / marker 路径）选取，防同 home 多会话误配 |
 | explicit-model-thinking | 显式 child model 与 per-child thinking 同时真正进入子请求，而且不污染父路由 | 同一 TUI 父会话保持在 `work-gw/deepseek-chat`，Agent 调用显式传 `model: deepseek-official/deepseek-v4-flash` + `thinking: max`。判据读取父 tool/call 参数与父子持久 `request/header`：父最后请求仍是 work-gw；子请求是 official + `reasoningEffort: max`；父没有 bash；子真实 bash 落 marker。模型或 thinking 任一被桥丢弃、路由串回父级、或请求没真正运行都会红 |
+| child-extensions | 子代理按真 Pi 语义获得**安装包扩展面**（默认 extensions: true），且创建者的 `extensions: false` 收窄真生效 | 正向：子代理必须成功调用**另一个安装包**（探针 fixture）注册的 `probe_touch` 工具——判据是子会话持久日志里的非错 tool/result + 落盘效应文件（模型无法调用不在注册表里的工具，文件伪造不了 tool/call 记录）；父被禁止亲自调用。反向：用 pi-subagents 自己的 agent 类型 frontmatter 写 `extensions: false` + `tools: read`，spawn 的子代理必须调不到 probe_touch（日志零调用、文件不存在）——收窄没传到桥就会红 |
 
-双端：headless CLI（steer/resume）+ stock dsh-TUI 0.9.0 真机（stop、model-follow、explicit-model-thinking、/pi-agents 菜单）。
+双端：headless CLI（steer/resume/child-extensions）+ stock dsh-TUI 0.9.0 真机（stop、model-follow、explicit-model-thinking、/pi-agents 菜单）。
 **边界声明**：dsh web 浏览器端未在本轮覆盖——pi-subagents 在 web 的面同为斜杠命令与
 工具，无独立呈现面；如需 web 实证另开场景。
 
-## 二、验收过程抓出并修复的九个桥缺陷
+## 二、验收过程抓出并修复的十个桥缺陷
 
 全部真机验收抓出、契约测试钉死（`tests/subagent-bridge.spec.ts` + `tests/session-bridge.spec.ts`，全绿）：
 
@@ -79,7 +80,21 @@ scratch 路径）。本报告与上一轮 P0 验收
    契约测试钉死作用域；`explicit-model-thinking` 又在 npm 0.17.0 真机上证明父保持
    work-gw、显式 child 跑 official 且持久 header 带 `reasoningEffort: max`，子真实
    调用 bash 落盘。因此显式模型与独立推理档位不是只到配置对象。
-9. **steer/followUp 必须是 async 面（Pi AgentSession ABI）**：桥的 steer 原返回
+9. **bindExtensions 从 no-op 变真实现——子代理按真 Pi 语义获得扩展面**
+   （2026-08-25，PR #2 审核倒查出的兼容缺口）。真 Pi 的 createAgentSession
+   默认给每个子代理装载"默认发现的扩展"（sdk 无 loader 时自建并全量加载；
+   工厂每子代理重跑，源码实锤），我们此前把 bindExtensions 做成 no-op，
+   子代理拿不到 MCP 工具与记忆注入。真实现：vendored 资源加载器把 DSH
+   已装 Pi 包如实列为"默认发现的扩展"（条目=包声明的 pi 入口绝对路径，
+   创建者自己的过滤代码——extensions/exclude/ext: 选择器——原样跑在真
+   数据上）；选中的包以 per-child 实例挂到子 agent 自己的 ctx（随 agent
+   dispose 自动 unwind，构造上零泄漏）；loader 条目的 Extension.tools 是
+   接到子实例活账本的**活映射**（pi-subagents 每轮 renarrow 现读，晚注册
+   的工具也被正确判定）；挂载失败按 Pi 的逐扩展隔离经 bindExtensions 的
+   onError 上报，永不炸子会话。已知时序细节成文：session_start 在创建时
+   而非 bind 调用时到达子侧包实例。验收中抓到并修复：解析器解绑调用丢
+   this 当场炸（真机暴露，契约测试钉死活映射行为）。
+10. **steer/followUp 必须是 async 面（Pi AgentSession ABI）**：桥的 steer 原返回
    void 且没暴露 followUp，而 pi-subagents 直接 `session.steer(msg).catch(...)`
    ——同步就炸 `Cannot read properties of undefined (reading 'catch')`。投递
    Promise 早已排队所以 steer 内容照常送达（这就是"每轮 steer 都过、但输出里
@@ -119,7 +134,7 @@ turn/start 加宽到 step/start 与 request/header——cancel 恰在 turn/start
 
 ## 五、结论
 
-steer / resume / stop / resume-archive / model-follow / explicit-model-thinking 六场景在全新 DSH_HOME、
+steer / resume / stop / resume-archive / model-follow / explicit-model-thinking / child-extensions 七场景在全新 DSH_HOME、
 stock npm 栈、真模型上全部通过（跨进程重开走公共 Pi ABI 与官方
 persisted-resume seam，实时模型继承、显式 child route 与 per-child reasoning 均在
 stock TUI 真机上以持久日志 + 可观察工具效果实证）；

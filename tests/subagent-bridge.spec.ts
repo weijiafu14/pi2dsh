@@ -626,6 +626,48 @@ describe('Pi createAgentSession bridged onto real DSH agents', () => {
     expect(discarded).toEqual([])
   })
 
+  // Real Pi loads a child's extension set inside createAgentSession (the
+  // creator's loader filters it) and bindExtensions reports per-extension
+  // errors. The bridge mirrors both: the host hook is called with the
+  // creator's loader at creation, and recorded failures reach the binding's
+  // onError in Pi's {extensionPath, error} shape.
+  it('mounts child extensions at creation with the creator\'s loader and reports failures via bindExtensions', async () => {
+    const { host } = resumeHarness()
+    const mountCalls: Array<{ agent: unknown, loader: unknown }> = []
+    const creatorLoader = { getExtensions: () => ({ extensions: [] }) }
+    const wired: SubagentHost = {
+      ...host,
+      mountChildExtensions: async (agent, loader) => {
+        mountCalls.push({ agent, loader })
+        return [{ name: 'pi-broken-ext', error: 'factory exploded' }]
+      },
+    }
+    const { session: pi } = await createBridgedAgentSession(wired, { resourceLoader: creatorLoader })
+    expect(mountCalls).toHaveLength(1)
+    expect(mountCalls[0]!.loader).toBe(creatorLoader)
+
+    const reported: Array<{ extensionPath: string, error: string }> = []
+    await pi.bindExtensions({ onError: (failure: { extensionPath: string, error: string }) => reported.push(failure) })
+    expect(reported).toEqual([{ extensionPath: 'pi-broken-ext', error: 'factory exploded' }])
+    // A binding without onError, and a binder that throws, are both contained.
+    await pi.bindExtensions({})
+    await pi.bindExtensions({ onError: () => { throw new Error('binder bug') } })
+    await pi.dispose()
+  })
+
+  it('a failing extension mount never takes the child session down', async () => {
+    const { host } = resumeHarness()
+    const wired: SubagentHost = {
+      ...host,
+      mountChildExtensions: async () => { throw new Error('catalog unavailable') },
+    }
+    const { session: pi } = await createBridgedAgentSession(wired, {})
+    const reported: Array<{ extensionPath: string }> = []
+    await pi.bindExtensions({ onError: (failure: { extensionPath: string }) => reported.push(failure) })
+    expect(reported[0]!.extensionPath).toBe('pi2dsh:child-extensions')
+    await pi.dispose()
+  })
+
   // Pi's model default for a child session is the CALLER's current model. A
   // child agent with no model option fails its first prompt assembly on
   // {{model}}-keyed sections (deployment:persona) before any request is made

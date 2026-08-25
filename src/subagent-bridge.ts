@@ -57,6 +57,16 @@ export interface SubagentHost {
    */
   resumeSessionIdFor?(file: unknown): string | undefined
   /**
+   * Serve the child the extension set a real Pi createAgentSession loads:
+   * the host's installed Pi packages, filtered by the creator's resource
+   * loader (its own getExtensions applies noExtensions/extensionsOverride —
+   * the creator's code decides, not this bridge). No loader means Pi's
+   * default: everything discovered. Resolves with per-extension failures
+   * (Pi's per-extension error isolation — a failed extension never takes
+   * the child down).
+   */
+  mountChildExtensions?(childAgent: UnknownRecord, loader: unknown): Promise<Array<{ name: string, error: string }>>
+  /**
    * Whether the host's session persistence POSITIVELY lacks this session —
    * DSH's own post-resume-failure verdict shape (`persistence.list()` in
    * agent-loop's restoreOrCreateConfigured). undefined = cannot tell (no
@@ -598,10 +608,33 @@ export class PiBridgedAgentSession {
     }
   }
 
-  async bindExtensions(_bindings: UnknownRecord = {}): Promise<void> {
-    // The parent pi2dsh runtime already owns extension binding for the host
-    // composition; a child session shares those registrations. Kept as an
-    // accepted no-op so Pi's construction sequence proceeds unchanged.
+  /** Per-extension mount failures recorded at creation, for bindExtensions' onError. */
+  #extensionFailures: ReadonlyArray<{ name: string, error: string }> = []
+
+  adoptExtensionFailures(failures: ReadonlyArray<{ name: string, error: string }>): void {
+    this.#extensionFailures = failures
+  }
+
+  async bindExtensions(bindings: UnknownRecord = {}): Promise<void> {
+    // Real Pi loads extensions at createAgentSession and bindExtensions wires
+    // bindings + fires session_start. Here the creator-filtered installed
+    // packages were mounted at creation (same load timing as Pi's sdk), and
+    // each per-child instance dispatches its own session lifecycle — so this
+    // face's remaining job is Pi's per-extension error isolation: report the
+    // recorded mount failures to the binding's onError, the exact shape
+    // pi-subagents surfaces as extension-error tool activity. One timing
+    // nuance is documented in compatibility.ts: session_start reaches the
+    // child-bound packages at creation rather than at this call.
+    const onError = (bindings as { onError?: (failure: { extensionPath: string, error: string }) => void }).onError
+    if (typeof onError !== 'function') return
+    for (const failure of this.#extensionFailures) {
+      try {
+        onError({ extensionPath: failure.name, error: failure.error })
+      } catch {
+        // The binding's own throw is the binder's bug; Pi does not let it
+        // cascade into the session either.
+      }
+    }
   }
 
   async dispose(): Promise<void> {
@@ -944,7 +977,26 @@ export async function createBridgedAgentSession(
   // off, and injecting a literal 'off' would collide with route capabilities.
   const thinkingLevel = typeof options.thinkingLevel === 'string' ? options.thinkingLevel : undefined
   host.adoptChildAgent?.(handle.agent, thinkingLevel)
+  // Real Pi loads the child's extension set inside createAgentSession (the
+  // sdk builds a default loader when none is passed and loads everything the
+  // creator's loader admits). The same timing here: the creator-filtered
+  // installed packages mount onto the child agent's own ctx before this call
+  // returns, so their tools exist before the first prompt, and they unwind
+  // with the agent. Per-extension failures never take the child down (Pi's
+  // isolation); bindExtensions reports them to the binding's onError.
+  let extensionFailures: Array<{ name: string, error: string }> = []
+  try {
+    extensionFailures = await host.mountChildExtensions?.(handle.agent, options.resourceLoader) ?? []
+  } catch (error) {
+    extensionFailures = [{ name: 'pi2dsh:child-extensions', error: error instanceof Error ? error.message : String(error) }]
+  }
+  for (const failure of extensionFailures) {
+    const message = `[pi2dsh] child extension ${JSON.stringify(failure.name)} did not mount: ${failure.error}`
+    host.cordis.logger?.warn?.(message)
+    console.warn(message)
+  }
   const session = new PiBridgedAgentSession(host, handle, tools, thinkingLevel)
   session.adoptRestriction(initialRestrictionDispose)
+  session.adoptExtensionFailures(extensionFailures)
   return { session }
 }

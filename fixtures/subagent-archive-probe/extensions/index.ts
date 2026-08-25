@@ -15,6 +15,23 @@ import { Type } from 'typebox'
 import { createAgentSession, SessionManager } from '@earendil-works/pi-coding-agent'
 
 export default function probe(pi: any): void {
+  // Effect probe for the child-extension E2E: a tool THIS package registers,
+  // called from inside a pi-subagents child. The file it writes can only
+  // appear if the extension set really mounted into that child — the model
+  // cannot fake a tool that is not in its registry.
+  pi.registerTool({
+    name: 'probe_touch',
+    label: 'Touch probe',
+    description: 'Write the given text to the given path (extension-reach probe).',
+    parameters: Type.Object({
+      out: Type.String({ description: 'Path to write.' }),
+      text: Type.String({ description: 'Text to write.' }),
+    }),
+    async execute(_toolCallId: string, params: { out: string, text: string }) {
+      writeFileSync(params.out, params.text)
+      return { content: [{ type: 'text', text: `touched ${params.out}` }], isError: false }
+    },
+  })
   pi.registerTool({
     name: 'sub_archive_spawn',
     label: 'Archive spawn probe',
