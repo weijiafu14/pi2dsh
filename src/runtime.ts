@@ -932,17 +932,33 @@ function contextFor(
     // session list, and quietly rewriting it would outlive the turn that asked.
     setTitle: (title: unknown) => putSurface(ctx, state, agent, 'title', title),
     // A terminal composition gets the package's real Pi component through
-    // dsh-TUI's public full-screen scene seam. Browser/headless compositions
-    // keep Pi's own rpc-mode behavior and resolve undefined.
+    // dsh-TUI's public full-screen scene seam. A browser composition gets the
+    // SAME component on the web overlay: the contract is ANSI frames plus raw
+    // key input either way, and the browser half already speaks both. Only a
+    // composition with neither seat (headless CLI) keeps Pi's own rpc-mode
+    // behavior and resolves undefined.
     custom: async (factory: unknown, options?: unknown) => {
+      if (typeof factory !== 'function') return undefined
       const surfaces = state.tuiSurfaces
-      if (surfaces === undefined || typeof factory !== 'function') return undefined
-      return surfaces.custom(
-        factory as PiCustomFactory<unknown>,
-        state.theme,
-        getKeybindings(),
-        options as PiCustomOptions | undefined,
-      )
+      if (surfaces !== undefined) {
+        return surfaces.custom(
+          factory as PiCustomFactory<unknown>,
+          state.theme,
+          getKeybindings(),
+          options as PiCustomOptions | undefined,
+        )
+      }
+      const browser = state.shared.browserSurfaces
+      if (browser !== undefined && state.shared.browserSurfacesRouted === true) {
+        return browser.openScene(
+          state.packageName,
+          factory as PiCustomFactory<unknown>,
+          state.theme,
+          getKeybindings(),
+          options as PiCustomOptions | undefined,
+        )
+      }
+      return undefined
     },
     // Pi's editor calls, on DSH's real composer. `inputActions.setDraft` is
     // part of the session standard kit every session-scoped slot component

@@ -1174,17 +1174,21 @@ async function runDshX() {
     assert(!/failed to mount/u.test(webLog), `a suite member failed to mount:\n${webLog.split('\n').filter(line => /failed to mount/u.test(line)).join('\n')}`)
 
     // The falsifiable web check: each member's command offered by the popover.
-    await execFile('node', [join(projectRoot, 'scripts/dsh-x-web-probe.mjs'), join(scratch, 'shots'), '--url', url], {
+    const probe = await execFile('node', [join(projectRoot, 'scripts/dsh-x-web-probe.mjs'), join(scratch, 'shots'), '--url', url], {
       cwd: projectRoot,
       env: { ...env, PLAYWRIGHT_FROM: playwrightFrom },
       timeout: 180_000,
       maxBuffer: 16 * 1024 * 1024,
     }).catch(error => { console.log(String(error.stdout ?? ''), String(error.stderr ?? '')); throw error })
+    // Which spelling each surface mounted IS part of the evidence: original
+    // names on the web (no reserved-name list there) vs pi- fallbacks.
+    const mountedLine = /popover: (\{.*\})/u.exec(String(probe.stdout))?.[1]
 
     results.dshX = {
       status: 'passed',
       engine: await installedEngineVersion(home, 'web'),
       suite: ['pi-mcp-adapter', '@tintinweb/pi-subagents', 'pi-btw', '@crazygit/pi-codex-image-gen'],
+      ...(mountedLine === undefined ? {} : { commands: JSON.parse(mountedLine) }),
     }
   } finally {
     web?.kill('SIGTERM')

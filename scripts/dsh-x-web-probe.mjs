@@ -12,9 +12,13 @@ import { openApp } from '../docs/posting-kit/web-drive.mjs'
 // Colliding names get a `pi-` prefix ONLY on surfaces where the host really
 // owns the name — so each entry probes both spellings and records which one
 // this surface mounted.
+// Original names FIRST: on the web (no dsh-TUI reserved-name list) every
+// suite command should mount under its own Pi name — /mcp, /agents, /btw.
+// The pi- spelling is the TUI-collision fallback, probed second so a run
+// that only satisfies the fallback is visible in the recorded mount table.
 const COMMANDS = [
-  { variants: [{ prefix: '/pi-mc', full: 'pi-mcp' }, { prefix: '/mc', full: 'mcp' }], owner: 'pi-mcp-adapter' },
-  { variants: [{ prefix: '/pi-agent', full: 'pi-agents' }, { prefix: '/agen', full: 'agents' }], owner: '@tintinweb/pi-subagents' },
+  { variants: [{ prefix: '/mc', full: 'mcp' }, { prefix: '/pi-mc', full: 'pi-mcp' }], owner: 'pi-mcp-adapter' },
+  { variants: [{ prefix: '/agen', full: 'agents' }, { prefix: '/pi-agent', full: 'pi-agents' }], owner: '@tintinweb/pi-subagents' },
   { variants: [{ prefix: '/bt', full: 'btw' }], owner: 'pi-btw' },
 ]
 

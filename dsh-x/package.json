@@ -45,6 +45,6 @@
     "@tintinweb/pi-subagents": "0.18.0",
     "pi-btw": "0.4.1",
     "pi-mcp-adapter": "2.27.0",
-    "pi2dsh": "^0.18.0"
+    "pi2dsh": "^0.19.0"
   }
 }
