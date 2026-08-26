@@ -24,6 +24,7 @@
 // re-invoked on every mount, so a function-attached counter makes each mount
 // register a DISTINCT name. A double mount is therefore visible as a second
 // name per package, and same-name masking in the tool registry cannot hide it.
+import { readFileSync } from 'node:fs'
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -81,11 +82,19 @@ async function installFixturePackage(
   }
 }
 
-function probeExtension(prefix: string): string {
+function probeExtension(prefix: string, ledgerPath: string): string {
   return [
+    "import { appendFileSync } from 'node:fs'",
     'export default function probe(pi) {',
     '  probe.mounts = (probe.mounts ?? 0) + 1',
     '  const n = probe.mounts',
+    // Durable factory-invocation ledger. Registry-side oracles (name counts,
+    // per-mount numbered names) CANNOT see a raced double mount: the second
+    // apply onto the same scope trips DSH's duplicate prompt-section rejection
+    // and unwinds itself, so the surviving registrations look exactly like a
+    // single mount. The ledger records every factory invocation regardless of
+    // whether its registrations survive.
+    '  appendFileSync(' + JSON.stringify(ledgerPath) + ", '" + prefix + "\\n')",
     '  pi.registerTool({',
     '    name: `native_' + prefix + '_${n}`,',
     '    label: `Native probe ' + prefix + ' #${n}`,',
@@ -109,13 +118,24 @@ function probeExtension(prefix: string): string {
 
 async function makeProbeProfile(): Promise<string> {
   const root = await makeProfile({ 'pi-probe-a': '1.0.0', 'pi-probe-b': '1.0.0' })
+  const ledger = join(root, 'factory-invocations.log')
   await installFixturePackage(root, 'pi-probe-a', { pi: { extensions: ['extensions/probe.js'] } }, {
-    'extensions/probe.js': probeExtension('a'),
+    'extensions/probe.js': probeExtension('a', ledger),
   })
   await installFixturePackage(root, 'pi-probe-b', { pi: { extensions: ['extensions/probe.js'] } }, {
-    'extensions/probe.js': probeExtension('b'),
+    'extensions/probe.js': probeExtension('b', ledger),
   })
   return root
+}
+
+/** Factory invocations recorded so far for one package's extension. */
+function ledgerCount(profileRoot: string, prefix: string): number {
+  try {
+    return readFileSync(join(profileRoot, 'factory-invocations.log'), 'utf8')
+      .split('\n').filter(line => line === prefix).length
+  } catch {
+    return 0
+  }
 }
 
 /**
@@ -312,43 +332,65 @@ describe('serveNativeSubagents opt-in', () => {
     await waitFor(() => nativeNames(ctx, rootHandle.agent).length === 2, 'root probe tools')
     const rootNames = nativeNames(ctx, rootHandle.agent)
 
-    // A subagent-origin child created through the HOST-LEVEL agents service
-    // — the shape DSH's delegation tools produce live (their create call is
-    // traced through a non-agent scope, so the registry records no runtime
-    // owner): the registry reports the child as a runtime root, and the
-    // root-mount path serves it. The native listener must NOT serve it as
-    // well — a second pass would surface a second name per package.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const hostAgents = (ctx as any).get('agents')
-    const rootChild = await hostAgents.create({
-      sessionId: SessionId('rootchild-child'),
-      meta: { origin: 'subagent' },
-    })
+    // Falsifiable oracle for the partition (mutation-proven): registry-side
+    // signals CANNOT catch a raced double serve — the second apply onto the
+    // same scope trips DSH's duplicate prompt-section rejection, unwinds
+    // itself, and leaves the survivor looking exactly like a single mount
+    // (name counts AND per-mount numbered names both stay clean). What a
+    // double serve DOES leave behind: a second factory invocation in the
+    // on-disk ledger, and the loser's mount-failure warning. Sample both
+    // around the child's creation.
+    const invocationsBefore = ledgerCount(root, 'a')
+    const warns: string[] = []
+    const originalWarn = console.warn
+    console.warn = (...args: unknown[]) => { warns.push(args.map(String).join(' ')) }
 
-    const agents = (ctx as unknown as { agents: { roots(): unknown[] } }).agents
-    expect(agents.roots().includes(rootChild.agent)).toBe(true)
+    try {
+      // A subagent-origin child created through the HOST-LEVEL agents service
+      // — the shape DSH's delegation tools produce live (their create call is
+      // traced through a non-agent scope, so the registry records no runtime
+      // owner): the registry reports the child as a runtime root, and the
+      // root-mount path serves it. The native listener must NOT serve it too.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const hostAgents = (ctx as any).get('agents')
+      const rootChild = await hostAgents.create({
+        sessionId: SessionId('rootchild-child'),
+        meta: { origin: 'subagent' },
+      })
 
-    // Served exactly once: the root path's mount.
-    await waitFor(() => nativeNames(ctx, rootChild.agent).length === 2, 'root child probe tools')
-    const childNames = nativeNames(ctx, rootChild.agent)
-    expectOnePerPackage(childNames)
-    expect(childNames.filter(name => rootNames.includes(name))).toEqual([])
+      const agents = (ctx as unknown as { agents: { roots(): unknown[] } }).agents
+      expect(agents.roots().includes(rootChild.agent)).toBe(true)
 
-    // The stable-name gate tool is live for the root child too (its path is
-    // gated the same way), even though it is not this listener's child.
-    const tools = (ctx as unknown as { tools: ToolsFace }).tools
-    const gateResult = await tools.execute({
-      signal: new AbortController().signal,
-      callId: CallId('rootchild-gate'),
-      name: 'gate_probe_a',
-      arguments: {},
-      agent: rootChild.agent as never,
-    })
-    expect(gateResult.isError ?? false).toBe(false)
-    expect(gateResult.content[0]?.text).toBe('gate-ok')
+      // Served exactly once: the root path's mount.
+      await waitFor(() => nativeNames(ctx, rootChild.agent).length === 2, 'root child probe tools')
+      const childNames = nativeNames(ctx, rootChild.agent)
+      expectOnePerPackage(childNames)
+      expect(childNames.filter(name => rootNames.includes(name))).toEqual([])
 
-    await rootChild.dispose()
-    await rootHandle.dispose()
+      // Let any raced second mount land before sampling the ledger.
+      await delay(300)
+      expect(ledgerCount(root, 'a')).toBe(invocationsBefore + 1)
+      expect(ledgerCount(root, 'b')).toBe(invocationsBefore + 1)
+      expect(warns.filter(line => /did not mount|failed to mount/.test(line))).toEqual([])
+
+      // The stable-name gate tool is live for the root child too (its path is
+      // gated the same way), even though it is not this listener's child.
+      const tools = (ctx as unknown as { tools: ToolsFace }).tools
+      const gateResult = await tools.execute({
+        signal: new AbortController().signal,
+        callId: CallId('rootchild-gate'),
+        name: 'gate_probe_a',
+        arguments: {},
+        agent: rootChild.agent as never,
+      })
+      expect(gateResult.isError ?? false).toBe(false)
+      expect(gateResult.content[0]?.text).toBe('gate-ok')
+
+      await rootChild.dispose()
+      await rootHandle.dispose()
+    } finally {
+      console.warn = originalWarn
+    }
   }, 20000)
 
   it('never double-mounts bridge children (pi2dsh-sub- prefix skip)', async () => {

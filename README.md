@@ -102,10 +102,15 @@ package's tools, commands and prompt sections appear for that child only,
 and every contribution unwinds when the child ends. With it off, such
 children run as plain DSH agents, exactly as before.
 
-Pi subagent-bridge children are unaffected either way: they already receive
-the creator package's own per-spawn loader mount, and the bridge recognizes
-them by the `pi2dsh-sub-` session-id prefix (stable across a persisted
-resume), so no child is ever mounted twice.
+The mount is guaranteed for the child's **first** turn: prompt assembly and
+tool execution wait for it, so even a child that runs a single turn sees the
+full tool set. Each child is served exactly once, whichever path DSH created
+it through — children the agent registry reports as runtime roots are served
+by the engine's root mount path, and the subagent path serves the rest; the
+two never overlap. Pi subagent-bridge children are unaffected either way:
+they already receive the creator package's own per-spawn loader mount, and
+the bridge recognizes them by the `pi2dsh-sub-` session-id prefix (stable
+across a persisted resume), so no child is ever mounted twice.
 
 ## Walkthrough: advanced MCP in your terminal
 

@@ -87,10 +87,14 @@ subagent 委派所创建、会话带 subagent 血统的孩子——拿到 profil
 prompt 段只对这个孩子可见，孩子结束全部随之卸载。关掉时，这类孩子就是
 普通 DSH agent，与引入前完全一致。
 
-Pi 子代理桥（`@tintinweb/pi-subagents` 一类包经 subagent bridge 创建的
-孩子）不受这个开关影响：它们本来就走创建方包自己的 per-spawn loader
-挂载，桥用 `pi2dsh-sub-` 会话 id 前缀认出它们（前缀在持久化 resume 后
-依然稳定），所以任何孩子都不会被挂两次。
+挂载对孩子的**首轮**有保证：prompt 装配和工具执行都会等挂载落地，只跑
+一轮的孩子也能看到完整工具集。每个孩子恰好被伺候一次，不管 DSH 从哪条
+路径创建它——agent registry 报为 runtime root 的孩子由引擎的根挂载路径
+负责，其余由子代理路径负责，两边永不重叠。Pi 子代理桥
+（`@tintinweb/pi-subagents` 一类包经 subagent bridge 创建的孩子）不受
+这个开关影响：它们本来就走创建方包自己的 per-spawn loader 挂载，桥用
+`pi2dsh-sub-` 会话 id 前缀认出它们（前缀在持久化 resume 后依然稳定），
+所以任何孩子都不会被挂两次。
 
 ## 走一遍：终端里的进阶 MCP
 

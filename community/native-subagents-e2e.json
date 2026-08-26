@@ -1,0 +1,25 @@
+{
+  "scenario": "serveNativeSubagents (stock native delegation, flag on/off)",
+  "status": "passed",
+  "startedAt": "2026-08-26T01:55:32.827Z",
+  "finishedAt": "2026-08-26T01:55:48.897Z",
+  "runTag": "MT9FZ9EJ",
+  "scenarios": {
+    "flagOn": {
+      "status": "passed",
+      "probeFile": "written with the exact tag",
+      "parentSession": "/tmp/pi2dsh-native-subagents.N620aO/dsh-home/sessions/--private-tmp-pi2dsh-native-subagents.N620aO-workspace--/session-10ca5a65-732f-4033-ae3a-24f58da2c6d2/session.jsonl",
+      "childSession": "/tmp/pi2dsh-native-subagents.N620aO/dsh-home/sessions/--private-tmp-pi2dsh-native-subagents.N620aO-workspace--/9e4a474a-aaec-4e88-8659-8307038e9029/session.jsonl",
+      "childSessionId": "9e4a474a-aaec-4e88-8659-8307038e9029",
+      "problems": []
+    },
+    "flagOff": {
+      "status": "passed",
+      "parentSession": "/tmp/pi2dsh-native-subagents.N620aO/dsh-home/sessions/--private-tmp-pi2dsh-native-subagents.N620aO-workspace--/session-6fdadbdc-338a-4c04-b08b-407ff2c0720c/session.jsonl",
+      "childSessions": [
+        "/tmp/pi2dsh-native-subagents.N620aO/dsh-home/sessions/--private-tmp-pi2dsh-native-subagents.N620aO-workspace--/4ad50e27-ab1b-4e0d-b5e3-1bb5f2b34379/session.jsonl"
+      ],
+      "problems": []
+    }
+  }
+}

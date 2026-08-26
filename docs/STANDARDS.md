@@ -379,13 +379,42 @@ Pi 0.84.1 declarations 逐项对照后，当前规则的上游形状行应是 11
   `serveNativeSubagents`（默认关）：开时这类孩子拿全量发现集（无 loader
   路径 = Pi 的默认发现语义），挂在孩子**自己的** agent scope 上，随孩子
   卸载；关时就是普通 DSH agent，与引入前行为完全一致。
+- **runtime-root 分区（v3，真机委派实测出）**：DSH 委派工具经非 agent
+  scope 调 create，registry 记不到 runtime owner，于是这类原生孩子会被
+  `agents.roots()` 报成 runtime root——而 root 是根挂载路径
+  （installAgentScopedMounts）的领地，它已经负责挂载和门禁。native 路径
+  用**根路径同一判据、在同一事件上**跳过 roots；根路径判据的 fail-open
+  （roots() 不可用 ⇒ 人人是 root）在 native 侧镜像为 fail-closed（一个
+  也不伺候），两边判到哪都不会产生既没人管、又两人管的 Agent。
 
-**判据**：同一孩子身上出现第二次扩展挂载 = 违约。契约测试
-（`tests/native-subagents.spec.ts`）用"每次挂载自增命名"的探针包把双挂
-变成可见的第二个工具名——工具撞名会被注册表按名归并，双挂在计数上看不
-见，只有 per-mount 唯一命名才露馅。三条断言：默认关零变化；旗开后原生
-孩子恰好每包一个实例、名字与根不重名、execute 走孩子自己的挂载、dispose
-随孩子卸载；桥前缀孩子只被桥挂一次，后续 tick 不出现第二组。
+**v3 的另外两个机制**（与分区一起构成完整实现）：
+
+- **挂载 memo 键在孩子的 scope（`agent.ctx`）而非 agent 对象**：同一会话
+  重新 announce 的 agent 复用 scope，去重必须键在挂载真正落进去的东西上。
+- **首轮 gate 与根路径逐字镜像**：被伺候孩子的首次 prompt assembly 和
+  直接工具执行都 await 自己的挂载；waterfall 之前快照的 `assembly.tools`
+  用官方 `tools.schemas(agent)` 补齐。没有 gate，挂载落在首轮快照之后就
+  是首轮零工具——深度 2 真机实锤（孙代理首个模型调用与挂载竞态）。
+
+**判据**：同一孩子身上出现第二次扩展挂载尝试 = 违约。**注册表侧信号
+（工具名计数、per-mount 自增命名）抓不住违约**——变异实证（删掉
+roots-skip 后全套名字断言照绿）：第二次 apply 落到同一 scope 会撞 DSH
+的重复 prompt-section 名（`pi2dsh:tool-guidance:<pkg>`），第二次挂载
+自我 unwind，幸存者在注册表里与单次挂载不可区分。可证伪的信号只有两个，
+契约测试（`tests/native-subagents.spec.ts`）双管齐下：
+
+1. **工厂调用落盘台账**：探针扩展每次工厂被调用就向 profile 里追加一行
+   （磁盘台账穿透 jiti/loader 隔离，且不管注册是否幸存都留痕）。断言
+   "孩子创建前后台账恰好 +1/包"。
+2. **挂载失败 warn 捕获**：断言窗口内没有 `failed to mount`/
+   `did not mount` 告警——被 guard 吸收的那次尝试必然在这里留声。
+
+改动分区/血统逻辑后必须重跑变异验证：临时删掉 roots-skip，双伺候测试
+必须变红；恢复后必须变绿。断言"在功能坏掉时会不会照样过"（4.5 节判据）
+在这里的具体形态就是这条变异。其余断言：默认关零变化；旗开后原生孩子
+恰好每包一个实例、名字与根不重名、execute 走孩子自己的挂载、gate 下
+先于挂载发出的执行与 assembly 都能拿到工具、dispose 随孩子卸载；桥前缀
+孩子只被桥挂一次，后续 tick 不出现第二组。
 
 **由来（2026-08-25 上游返工四要点）**：初版 PR 对所有 subagent 血统无差
 别挂全量发现集——桥孩子本来就有创建方 loader 挂载，两条路径叠加即每包
