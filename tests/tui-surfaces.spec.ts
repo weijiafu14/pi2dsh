@@ -5,7 +5,9 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   TuiSurfaceAdapter,
   commandNameForDshTui,
+  commandNameForTerminal,
   mountTuiSurfaceAdapter,
+  shouldRegisterCompatibilityCommand,
   tuiLocalCommandsForVersion,
   tuiSurfaceInternals,
   type TuiSurfaceContext,
@@ -224,6 +226,16 @@ describe('dsh-TUI surface adapter', () => {
 })
 
 describe('dsh-TUI interop policy', () => {
+  it('aliases by the active host command set rather than a consumer package name', () => {
+    const native = new Set(['login', 'tasks'])
+    expect(commandNameForTerminal('login', native)).toBe('pi-login')
+    expect(commandNameForTerminal('tasks', native)).toBe('pi-tasks')
+    expect(commandNameForTerminal('mcp', native)).toBe('mcp')
+    expect(commandNameForTerminal('login', undefined)).toBe('login')
+    expect(shouldRegisterCompatibilityCommand('login', native)).toBe(false)
+    expect(shouldRegisterCompatibilityCommand('mcp', native)).toBe(true)
+  })
+
   it('keeps dsh-TUI native /mcp and exposes the Pi manager as /pi-mcp only on that surface', () => {
     expect(commandNameForDshTui('mcp', true)).toBe('pi-mcp')
     expect(commandNameForDshTui('mcp', false)).toBe('mcp')

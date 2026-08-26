@@ -11,7 +11,7 @@ being sent as chat. Pi's never-throw collision behaviour is preserved.
 
 | Pi surface | Kind | Status | What it does on DSH |
 |---|---|---|---|
-| [`registerCommand`](#registercommand-pi) | `pi.*` | Mapped, difference stated | Registered in ctx.commands with Pi's never-throw collision semantics: a package re-registering its own name replaces it, and cross-source collisions mount under Pi's numbered scheme (/name-2 — the earlier registration keeps the bare name, where Pi renumbers both). In dsh-TUI, its locally reserved /mcp remains native and the migrated command is reachable as /pi-mcp. |
+| [`registerCommand`](#registercommand-pi) | `pi.*` | Mapped, difference stated | Registered in ctx.commands with Pi's never-throw collision semantics: a package re-registering its own name replaces it, and cross-source collisions mount under Pi's numbered scheme (/name-2 — the earlier registration keeps the bare name, where Pi renumbers both). Active terminal-native commands keep their original names; a colliding Pi package command remains reachable with a pi- source prefix. A bridge fallback such as /login is omitted when the Host already owns the command and consumes the same projected authorization service. |
 | [`registerShortcut`](#registershortcut-pi) | `pi.*` | Mapped, difference stated | Registration is recorded and introspectable; DSH surfaces feed no terminal key input, so handlers never fire — the same as Pi's non-TUI modes. |
 | [`registerFlag`](#registerflag-pi) | `pi.*` | Mapped, difference stated | The declared default is available through getFlag; Pi process flags cannot be added to the DSH launcher. |
 | [`getFlag`](#getflag-pi) | `pi.*` | Mapped, difference stated | Returns the migrated flag default because DSH cannot register the original Pi CLI flag. |
@@ -35,7 +35,7 @@ taken on trust.
 
 `pi.*` · Mapped, difference stated
 
-Registered on ctx.commands with an input descriptor. The descriptor is what makes /name <arguments> parse as a command instead of chat. dsh-TUI currently exposes no reserved-command registry; the one verified local interception needed by the MCP integration is translated before registration.
+Registered on ctx.commands with an input descriptor. Before projection, the selected terminal backend supplies its public native-command ownership set (dsh-pi-tui exports LOCAL_COMMANDS; the legacy dsh-TUI generation remains pinned until its public registry lands). Command policy is capability/surface based, not consumer-package based, and is resolved before registrations so plugin load order cannot create a duplicate.
 
 ### `registerShortcut` <a id="registershortcut-pi"></a>
 

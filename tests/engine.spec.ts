@@ -255,6 +255,61 @@ describe('engine mounting on a real DSH composition', () => {
     expect(typedCtx.commands.list(agent).map(command => command.name)).toContain('login')
   })
 
+  // The /login ownership gate is a CAPABILITY judgement with two halves: the
+  // terminal owning the name is not enough — the composition must also carry
+  // the authorization service the bridge projects Pi OAuth flows into. A
+  // native `login` without that service is a different feature wearing the
+  // same name (dsh-TUI 0.9's credential-status view on a stock composition);
+  // dropping the fallback there deletes the user's only Pi OAuth entry point.
+  const piTuiFixture = () => ({
+    api: () => ({ apiVersion: 1, capabilities: new Set(['unstable.surface.handle']) }),
+    register: () => ({ replace() {}, dispose() {} }),
+    // The real `unstable()` facade demands the host's unstable seam members.
+    _unstableCaptureRaw: () => ({ dispose() {} }),
+    _unstableSurfaceHandle: () => ({
+      mountComponent: () => ({ active: true, focus() {}, invalidate() {}, close() {} }),
+    }),
+  })
+
+  const loginCommandNames = async (withAuthorization: boolean): Promise<string[]> => {
+    const root = await makeProfile({})
+    const ctx = new Context()
+    await ctx.plugin(SessionStore)
+    await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
+    await ctx.plugin(ToolRuntime)
+    await ctx.plugin(CommandRuntime)
+    await ctx.plugin(SkillRegistry)
+    const provider = ctx as unknown as { provide(name: string, value: unknown): void }
+    provider.provide('piTuiExtensions', piTuiFixture())
+    if (withAuthorization) provider.provide('authorization', { begin() {} })
+    ;(ctx as unknown as { baseUrl: string }).baseUrl = `file://${root}/cordis.yml`
+
+    await apply(ctx, {})
+    await settle()
+    const typedCtx = ctx as unknown as {
+      sessions: { create(id: unknown, options: Record<string, unknown>): { id: unknown } }
+      commands: { list(agent: unknown): Array<{ name: string }> }
+    }
+    const session = typedCtx.sessions.create(SessionId(`pi2dsh-login-gate-${withAuthorization}`), {
+      meta: { createdAt: Date.now(), cwd: root },
+    })
+    const agent = { id: session.id, session, steer() {}, inject() {}, followup() {}, whenIdle: () => Promise.resolve() }
+    await mountAgentRuntime(ctx, agent)
+    return typedCtx.commands.list(agent).map(command => command.name)
+  }
+
+  it('keeps a reachable Pi OAuth login (as /pi-login) when the terminal owns /login but no authorization service is composed', async () => {
+    const names = await loginCommandNames(false)
+    expect(names).toContain('pi-login')
+    expect(names).not.toContain('login')
+  })
+
+  it('skips the fallback entirely when the native /login is authorization-backed', async () => {
+    const names = await loginCommandNames(true)
+    expect(names).not.toContain('pi-login')
+    expect(names).not.toContain('login')
+  })
+
   it('host anchor carries host-level halves with zero agents and never doubles agent-facing surfaces', async () => {
     const root = await makeProfile({ 'pi-anchored': '1.0.0' })
     await installFixturePackage(root, 'pi-anchored', { pi: { extensions: ['extension.ts'], skills: ['skills'] } }, {

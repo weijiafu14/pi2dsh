@@ -55,13 +55,15 @@ import { ModelCatalog, llmOf, streamViaDshLlm, type DshAttachmentsLike } from '.
 import { imageAdmissionCompanionAdapter, providerCarriesTransport, registerPiProviderRoute, type PiRouteHandle } from './provider-adapter.js'
 import { oauthCredentialRef } from './oauth-bridge.js'
 import {
-  commandNameForDshTui,
+  commandNameForTerminal,
   mountTuiSurfaceAdapter,
+  shouldRegisterCompatibilityCommand,
   type PiCustomFactory,
   type PiCustomOptions,
-  type TuiSurfaceAdapter,
+  type TerminalSurfaceAdapter,
   type TuiSurfaceContext,
 } from './tui-surfaces.js'
+import { createPiTuiExtensionSurfaceAdapter } from './pi-tui-extension-surface.js'
 
 type UnknownRecord = Record<string, unknown>
 type PiHandler = (event: UnknownRecord, context: UnknownRecord) => unknown | Promise<unknown>
@@ -263,9 +265,10 @@ interface RuntimeState {
   publishedOAuthKeys: Map<string, string>
   // The host-shared slice this package state was built over.
   shared: SharedHostState
-  // Package-scoped terminal surface, present only in a composition that
-  // mounts dsh-TUI's public `tuiScenes` service.
-  tuiSurfaces: TuiSurfaceAdapter | undefined
+  // Package-scoped terminal surface selected by public capabilities. Today
+  // this can be dsh-TUI (`tuiScenes`) or dsh-pi-tui (`piTuiExtensions`);
+  // Pi packages see one unchanged ctx.ui contract either way.
+  tuiSurfaces: TerminalSurfaceAdapter | undefined
 }
 
 type PiAiLlmBridge = (
@@ -3095,6 +3098,21 @@ async function materializeAttachmentImage(ctx: Context, attachment: UnknownRecor
 // while the provider directory they read is host-shared, so register one
 // command per Agent regardless of how many Pi packages that Agent mounts.
 function ensureLoginCommand(ctx: Context, state: RuntimeState): void {
+  // Skip the bridge's fallback ONLY when the native /login is a real
+  // replacement: the terminal owns the name AND the composition carries the
+  // authorization service the bridge projects Pi OAuth flows into — that is
+  // what makes the native flow able to offer them (dsh-pi-tui, verified with
+  // 43 providers). A native `login` WITHOUT that service is a different
+  // feature wearing the same name (dsh-TUI 0.9's credential-status view on a
+  // stock composition), and dropping the fallback there deletes the user's
+  // only Pi OAuth entry point — the fallback then registers and the shared
+  // aliasing gives it the /pi-login seat, exactly the pre-existing reachable
+  // shape. Capability judgement, never a package-name special case.
+  if (!shouldRegisterCompatibilityCommand('login', state.tuiSurfaces?.nativeCommands)
+    && optionalService(ctx, 'authorization') !== undefined) {
+    logger(ctx).debug('[pi2dsh] native terminal owns /login and the authorization service is composed; Pi OAuth flows are available through it')
+    return
+  }
   const scoped = scopeOf(ctx)
   const owner = (typeof scoped === 'object' && scoped !== null ? scoped : ctx) as object
   const registered = (state.shared.loginRegistered ??= new WeakSet())
@@ -4130,11 +4148,10 @@ function normalizedPiCommandName(piName: string): string {
 
 function dshCommandName(ctx: Context, state: RuntimeState, piName: string): string {
   const validName = normalizedPiCommandName(piName)
-  const tuiAvailable = state.tuiSurfaces?.available === true || optionalService(ctx, 'tuiScenes') !== undefined
-  const name = commandNameForDshTui(validName, tuiAvailable)
+  const name = commandNameForTerminal(validName, state.tuiSurfaces?.nativeCommands)
   if (name !== piName) {
     const reason = name === `pi-${validName}`
-      ? `because dsh-TUI reserves /${validName} for its own local command (locals win on name collisions)`
+      ? `because the active terminal reserves /${validName} for its native command (host commands win on collisions)`
       : 'to satisfy DSH command naming'
     logger(ctx).warn(`[pi2dsh] Pi command /${piName} registered as /${name} ${reason}`)
   }
@@ -4886,18 +4903,30 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
     publishedOAuthKeys: shared.publishedOAuthKeys,
     tuiSurfaces: undefined,
   }
-  // dsh-TUI is optional and may be mounted before or after this package.
-  // Cordis keeps the child activation aligned with the service lifecycle;
-  // by the time a terminal command executes, context.mode/hasUI and
-  // ui.custom reflect whether the real terminal surface is available.
-  mountTuiSurfaceAdapter(
+  // Select by PUBLIC surface capability, never by Pi consumer package. The
+  // raw piTuiExtensions seat is the closest contract and wins when present;
+  // dsh-TUI's scene service remains the fallback. A future remote client only
+  // replaces the relay transport — Pi component objects stay Host-owned.
+  const surfaceInstanceKey = typeof ownerAgent?.id === 'string' ? ownerAgent.id : undefined
+  const piTuiSurface = await createPiTuiExtensionSurfaceAdapter(
     ctx as unknown as TuiSurfaceContext,
     state.packageName,
-    adapter => { state.tuiSurfaces = adapter },
-    typeof ownerAgent?.id === 'string'
-      ? ownerAgent.id
-      : undefined,
+    surfaceInstanceKey,
   )
+  if (piTuiSurface !== undefined) {
+    state.tuiSurfaces = piTuiSurface
+    ctx.effect(() => () => {
+      piTuiSurface.dispose()
+      if (state.tuiSurfaces === piTuiSurface) state.tuiSurfaces = undefined
+    })
+  } else {
+    mountTuiSurfaceAdapter(
+      ctx as unknown as TuiSurfaceContext,
+      state.packageName,
+      adapter => { state.tuiSurfaces = adapter },
+      surfaceInstanceKey,
+    )
+  }
   subscribeLifecycle(ctx, state)
   subscribeInterceptors(ctx, state)
   // Pi hosts ship their built-in OAuth providers ready to log in; preload the

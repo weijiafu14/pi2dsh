@@ -57,9 +57,10 @@
     "test:dsh": "pnpm build && vitest run tests/dsh-runtime.spec.ts",
     "test:examples": "pnpm build && node scripts/verify-examples-e2e.mjs",
     "test:live": "pnpm build && node scripts/verify-live-deepseek.mjs community/live-deepseek-results.json",
+    "test:pi-tui": "pnpm build && node scripts/verify-pi-tui-ecosystem-e2e.mjs",
     "test:seams": "pnpm build && node scripts/verify-step-seams-e2e.mjs",
     "verify": "pnpm check && pnpm test:coverage && pnpm check:docs && pnpm check:pack",
-    "verify:release": "pnpm verify && PI2DSH_ENGINE_SPEC=pi2dsh@$(node -p \"require('./package.json').version\") node scripts/verify-examples-e2e.mjs && node scripts/verify-step-seams-e2e.mjs"
+    "verify:release": "pnpm verify && PI2DSH_ENGINE_SPEC=pi2dsh@$(node -p \"require('./package.json').version\") node scripts/verify-examples-e2e.mjs && node scripts/verify-step-seams-e2e.mjs && PI2DSH_ENGINE_SPEC=pi2dsh@$(node -p \"require('./package.json').version\") node scripts/verify-pi-tui-ecosystem-e2e.mjs"
   },
   "keywords": [
     "deepseek-harness",
@@ -111,6 +112,7 @@
     "@deepseek-ai/dsh-system-prompt": "^0.1.0-rc.8 || ^0.1.1-rc.1",
     "@deepseek-ai/dsh-tools": "^0.1.0-rc.8 || ^0.1.1-rc.1",
     "@deepseek-ai/dsh-user-questions": "^0.1.0-rc.8 || ^0.1.1-rc.1",
+    "@xmoon76/dsh-pi-tui": "^0.3.3",
     "typescript": "^5"
   },
   "peerDependenciesMeta": {
@@ -130,6 +132,9 @@
       "optional": true
     },
     "@deepseek-ai/dsh-user-questions": {
+      "optional": true
+    },
+    "@xmoon76/dsh-pi-tui": {
       "optional": true
     },
     "typescript": {

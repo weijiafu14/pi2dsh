@@ -4,6 +4,7 @@ packages:
 allowBuilds:
   '@deepseek-ai/dsh-subprocess-local': true
   '@google/genai': false
+  koffi: true
   node-pty: true
   protobufjs: false
 minimumReleaseAgeExclude:

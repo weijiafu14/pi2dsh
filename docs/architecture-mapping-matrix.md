@@ -142,6 +142,10 @@ client seam；两个数字都不表示“已经完整”。
 - 当前接口叶子：`registerCommand`、`getCommands`。
 - 理论对应：[DSH / 命令与人机交互](#dsh-interaction)。
 - 需要的公开 seam：`ctx.commands`。
+- 当前投影：命令先进入同一个 DSH commands registry；活跃终端公开声明的 native command
+  拥有原名，Pi 插件撞名时使用 `pi-` 来源前缀，两个普通 Pi 来源撞名时使用编号别名。
+  pi2dsh 自带的兼容性兜底命令（例如 `/login`）在宿主已有同名命令且消费相同 DSH
+  authorization 权威时不重复注册。所有权在注册前确定，不依赖插件加载顺序。
 - 理论判断：直接承接。
 
 <a id="pi-commands-controls"></a>
@@ -411,7 +415,7 @@ client seam；两个数字都不表示“已经完整”。
 <a id="pi-ui-questions"></a>
 #### 阻塞式用户提问
 
-- 当前接口叶子：`select`、`confirm`、UI `input`、`editor`、`custom`。
+- 当前接口叶子：`select`、`confirm`、UI `input`、`editor`。
 - 理论对应：[DSH / 命令与人机交互](#dsh-interaction)与
   [DSH / 客户端与 Web](#dsh-client)。
 - 需要的公开 seam：`ctx.userQuestions` 与原生客户端渲染。
@@ -422,6 +426,22 @@ client seam；两个数字都不表示“已经完整”。
   的 `signal`/`timeout` 透传到 DSH 问题撤销语义，所以浏览器自动回调赢得 OAuth
   竞速时，TUI 与 Web 都立即撤掉手工粘贴框。
 - 理论判断：组合承接。
+
+<a id="pi-ui-custom"></a>
+#### 自定义终端组件
+
+- 当前接口叶子：`custom`（Pi component 的 `render(width)`、`handleInput(raw)`、
+  `requestRender`、`dispose`、`done(value)`）。
+- 理论对应：[DSH / 客户端与 Web](#dsh-client)。
+- 当前公开 seam：dsh-TUI `tuiScenes`、dsh-pi-tui `piTuiExtensions` 的
+  `UNSTABLE_API_LEVEL=1` / `unstable.surface.handle.mountComponent`、DSH Web client module
+  与 overlay slot。
+- 当前投影：Pi component 留在 Host。中间 relay 只交换可序列化的
+  `sessionId / width / lines / input / revision / close`；当前 dsh-pi-tui Direct 模式用
+  本地 transport 包装该 relay，未来 Server/Client 分离只需替换 transport，不能把
+  callback 或 component object 跨边界。表面选择按公开 service/capability，不按消费插件名。
+- 理论判断：宿主语义翻译；raw input/focus/surface lifecycle 受 dsh-pi-tui Unstable 层级
+  约束，必须按 capability/API level 探测并在缺失时降级。
 
 <a id="pi-ui-notifications"></a>
 #### 通知与工作状态
@@ -579,12 +599,14 @@ provider 或 waterfall 参与。DSH 官方引用的 Cordis 论文
 - 负责：文本/图片命令入口、阻塞提问和用户反馈。
 
 <a id="dsh-client"></a>
-### 客户端与 Web
+### 客户端、Web 与终端表面
 
 - 当前模块叶子：`client-modules`、`typert`、`web-server`。
-- 当前公开 seam：client module、slot registry、web route、typert remote surface，以及
-  rc.8 动态 client module graph。
-- 负责：浏览器呈现、插件客户端代码和宿主界面扩展。`dsh.client.inject` 声明的是客户
+- 当前公开 seam：client module、slot registry、web route、typert remote surface、
+  dsh-TUI `tuiScenes`/`tuiStatus`，以及 dsh-pi-tui 的版本化 `piTuiExtensions` surface。
+- 负责：浏览器/终端呈现、插件客户端代码和宿主界面扩展。展示层不得另建模型、工具或
+  session 权威；未来 Server/Client 模式以 data/identity/method/event relay 相连，不传 callback。
+  `dsh.client.inject` 声明的是客户
   端**包依赖**，客户端源码导出的 `inject` 才声明 `slots` 等 Cordis 运行时 service；
   `dsh.client.external` 只用于动态模块图中的外部包，不能拿 service 名来填。
 

@@ -74,6 +74,22 @@ export interface TuiSurfaceContext {
   logger?: { warn(message: string): void }
 }
 
+/** One optional terminal front door behind the public Pi UI contract. */
+export interface TerminalSurfaceAdapter {
+  readonly kind: string
+  readonly available: boolean
+  /** Commands the active terminal owns natively; incoming Pi commands alias. */
+  readonly nativeCommands: ReadonlySet<string>
+  setStatus(key: string, text: unknown): void
+  custom<T>(
+    factory: PiCustomFactory<T>,
+    theme: unknown,
+    keybindings: unknown,
+    options?: PiCustomOptions,
+  ): Promise<T | undefined>
+  dispose(): void
+}
+
 interface ActiveCustom<T = unknown> {
   component?: PiCustomComponent
   options: PiCustomOptions | undefined
@@ -134,7 +150,9 @@ function preferredWidth(options: PiCustomOptions | undefined): number | undefine
  * The MCP adapter is a consumer, not a special case: every component using
  * the public Pi component protocol follows the same path.
  */
-export class TuiSurfaceAdapter {
+export class TuiSurfaceAdapter implements TerminalSurfaceAdapter {
+  readonly kind = 'tuiScenes'
+  readonly nativeCommands = dshTuiLocalCommands()
   readonly sceneId: string
 
   private readonly scenes: TuiSceneService
@@ -367,7 +385,7 @@ export function tuiLocalCommandsForVersion(version: string | undefined): Readonl
 }
 
 let cachedTuiLocalCommands: ReadonlySet<string> | undefined
-function dshTuiLocalCommands(): ReadonlySet<string> {
+export function dshTuiLocalCommands(): ReadonlySet<string> {
   if (cachedTuiLocalCommands !== undefined) return cachedTuiLocalCommands
   let version: string | undefined
   try {
@@ -383,6 +401,16 @@ function dshTuiLocalCommands(): ReadonlySet<string> {
 
 export function commandNameForDshTui(name: string, tuiAvailable: boolean): string {
   return tuiAvailable && dshTuiLocalCommands().has(name) ? `pi-${name}` : name
+}
+
+/** Host-native command ownership, independent of the concrete TUI package. */
+export function commandNameForTerminal(name: string, nativeCommands: ReadonlySet<string> | undefined): string {
+  return nativeCommands?.has(name) === true ? `pi-${name}` : name
+}
+
+/** Bridge fallback commands disappear when the active Host already owns one. */
+export function shouldRegisterCompatibilityCommand(name: string, nativeCommands: ReadonlySet<string> | undefined): boolean {
+  return nativeCommands?.has(name) !== true
 }
 
 export const tuiSurfaceInternals = {

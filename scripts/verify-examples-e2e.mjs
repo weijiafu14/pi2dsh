@@ -191,17 +191,43 @@ async function makeHome(scratch, extraEnv = {}) {
         const pnpmStore = directDshBin === undefined
           ? join(dshRoot, 'node_modules', '.pnpm')
           : resolve(directDshBin, '..', '..', '.pnpm')
+        const core = new Set()
         if (existsSync(pnpmStore)) {
-          const core = new Set()
           for (const entry of await readdir(pnpmStore)) {
             if (entry.startsWith('@deepseek-ai+dsh')) {
               core.add(`@deepseek-ai/${entry.slice('@deepseek-ai+'.length).split('@0')[0]}`)
             }
           }
-          if (core.size > 0) {
-            lines.push('overrides:')
-            for (const name of [...core].sort()) lines.push(`  "${name}": 0.1.1-rc.2`)
+        }
+        if (core.size === 0) {
+          // A source checkout links core packages from its workspace, so its
+          // .pnpm has no @deepseek-ai entries at all — enumerate the names
+          // from the workspace's packages/ tree instead. Without this branch
+          // the overrides block comes out empty and every dsh-TUI install
+          // dies on the 2026-08-25 upstream `latest`-tag breakage.
+          const stack = [join(dshRoot, 'packages')]
+          while (stack.length > 0) {
+            const current = stack.pop()
+            let entries = []
+            try { entries = await readdir(current, { withFileTypes: true }) } catch { continue }
+            for (const entry of entries) {
+              if (entry.name === 'node_modules' || entry.name.startsWith('.')) continue
+              const dir = join(current, entry.name)
+              if (!entry.isDirectory()) continue
+              try {
+                const manifest = JSON.parse(await readFile(join(dir, 'package.json'), 'utf8'))
+                if (typeof manifest.name === 'string' && manifest.name.startsWith('@deepseek-ai/dsh')) {
+                  core.add(manifest.name)
+                  continue
+                }
+              } catch { /* not a package dir: descend */ }
+              stack.push(dir)
+            }
           }
+        }
+        if (core.size > 0) {
+          lines.push('overrides:')
+          for (const name of [...core].sort()) lines.push(`  "${name}": 0.1.1-rc.2`)
         }
         await writeFile(workspaceFile, `${lines.join('\n')}\n`)
       }

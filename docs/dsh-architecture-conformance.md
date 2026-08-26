@@ -18,6 +18,10 @@
   宿主打开、恢复和续聊，达到 1 级。
 - **客户端扩展**：pi-btw 面板证明仓外插件可通过 client module 和 slot 扩展 Web，Pi
   终端呈现被可靠翻译为 DSH 浏览器呈现，达到 2 级。
+- **多终端表面**：同一 Pi Host ABI 已在 dsh-TUI、Web 和 dsh-pi-tui 上承载真实
+  `ctx.ui.custom` 消费者。dsh-pi-tui 组合中原 MCP 管理器、MCP 真工具回合、Pi Agents
+  交互和真 child 回合同时成立；表面通过 public capability 选择，业务状态仍在 DSH，
+  达到 2 级可靠翻译。其未来 Server/Client 迁移由可序列化 relay 隔离，不需要第二 runtime。
 - **模型 adapter**：pi-provider-litellm 证明自带 transport 的 Pi provider 可以注册为
   DSH 原生 route；pi-provider-alibaba 的 Token Plan（中国区）E2E 进一步证明标准鉴权、
   协议 factory、动态模型目录、冷启动首次使用与重启后的工具闭环都能沿同一 seam 成立。

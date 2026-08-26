@@ -130,6 +130,19 @@ dsh plugin --profile dsh-tui add pi2dsh
 dsh plugin --profile dsh-tui add pi-mcp-adapter
 ```
 
+Or use the same unmodified Pi packages in dsh-pi-tui:
+
+```sh
+dsh plugin --profile pi-tui add @xmoon76/dsh-pi-tui
+dsh plugin --profile pi-tui add pi2dsh pi-mcp-adapter @tintinweb/pi-subagents
+dsh --profile pi-tui
+```
+
+That composition keeps dsh-pi-tui's native `/login` and projects Pi OAuth
+flows into it, mounts the original MCP manager through the public
+`piTuiExtensions` surface, and exposes the original Pi subagent flow at
+`/agents`. See [`examples/pi-tui-ecosystem`](examples/pi-tui-ecosystem/).
+
 Then restart `dsh` — plugins mount at startup.
 
 ### 2. Configure your MCP servers
@@ -187,8 +200,8 @@ it work. **This is the list to trust.**
 | [`@crazygit/pi-codex-image-gen`](https://www.npmjs.com/package/@crazygit/pi-codex-image-gen) | ChatGPT/Codex OAuth → `gpt-image-2` generation; local reference-image upload through DSH approval; image edit; native attachment storage and inline Web rendering | CLI + web | [`codex-image-gen`](examples/codex-image-gen/) |
 | [`pi-btw`](https://www.npmjs.com/package/pi-btw) | `/btw <question>` as a real child session in DSH's subagent UI; `/btw-inject`; `/btw --save`; main thread stays clean | CLI + web | [`side-conversation`](examples/side-conversation/) |
 | [`pi-powerline-footer`](https://www.npmjs.com/package/pi-powerline-footer) | A terminal status line — model, thinking level, project, context usage — drawn into DSH's widget dock, colour included | web | [`presentation-surfaces`](examples/presentation-surfaces/) |
-| [`pi-mcp-adapter`](https://www.npmjs.com/package/pi-mcp-adapter) | Full-screen manager in dsh-TUI; stdio/Streamable HTTP/SSE; discovery, direct/proxy/scripted calls, resources, prompts, images, structured content, MCP Apps, approval, elicitation, sampling, cancellation and restart through DSH runtimes; native `/mcp` preserved beside `/pi-mcp` | dsh-TUI | [`tui-mcp`](examples/tui-mcp/) · [evidence matrix](docs/mcp-compatibility.md) |
-| [`@tintinweb/pi-subagents`](https://www.npmjs.com/package/@tintinweb/pi-subagents) | The model delegates to autonomous subagents: spawn (with real host-native tools), background + completion notify, mid-run steer, wait-for-result, resume with memory, stop that stays stopped, `/pi-agents` manager, and cross-restart reopen by archive identity — every child a native DSH session | CLI + dsh-TUI | [`subagents`](examples/subagents/) · [acceptance report](community/subagents-acceptance-report.md) |
+| [`pi-mcp-adapter`](https://www.npmjs.com/package/pi-mcp-adapter) | Original full-screen manager; stdio/Streamable HTTP/SSE; discovery, direct/proxy/scripted calls, resources, prompts, images, structured content, MCP Apps, approval, elicitation, sampling, cancellation and restart through DSH runtimes | dsh-TUI + dsh-pi-tui | [`tui-mcp`](examples/tui-mcp/) · [`pi-tui-ecosystem`](examples/pi-tui-ecosystem/) · [evidence matrix](docs/mcp-compatibility.md) |
+| [`@tintinweb/pi-subagents`](https://www.npmjs.com/package/@tintinweb/pi-subagents) | The model delegates to autonomous subagents: spawn (with real host-native tools), background + completion notify, mid-run steer, wait-for-result, resume with memory, stop that stays stopped, interactive manager, and cross-restart reopen by archive identity — every child a native DSH session | CLI + dsh-TUI + dsh-pi-tui | [`subagents`](examples/subagents/) · [`pi-tui-ecosystem`](examples/pi-tui-ecosystem/) · [acceptance report](community/subagents-acceptance-report.md) |
 | [`pi-provider-alibaba`](https://www.npmjs.com/package/pi-provider-alibaba) | Alibaba Token Plan (CN) with its plan-specific key: live catalog, cold-start dynamic model, complete tool loop and restart. The package also declares Coding/API routes, but each requires its own non-interchangeable credential | CLI + web | [`alibaba-token-plan`](examples/alibaba-token-plan/) |
 | [`pi-vision-tool`](https://www.npmjs.com/package/pi-vision-tool) | Tool registration through a JSON-Schema shape DSH had to convert (`anyOf` → `oneOf`) | CLI + web | — |
 | [`pi-approval-guardian`](https://www.npmjs.com/package/pi-approval-guardian) | Every tool call reviewed by a second model before execution; allow and deny both observed | CLI (bare env) | — |
@@ -452,6 +465,7 @@ in one has actually been executed against a real DSH loop before landing.
 | [`custom-gateways`](examples/custom-gateways/) | Add any OpenAI-compatible gateway the official DSH way, and every Pi plugin sees it |
 | [`tui-mcp`](examples/tui-mcp/) | Keep dsh-TUI's native `/mcp`, add the Pi ecosystem manager as `/pi-mcp`, and exercise its complete host-influenced MCP surface through DSH runtimes |
 | [`subagents`](examples/subagents/) | The model runs a small team: delegate, background, steer mid-run, collect, resume with memory, stop for real, manage via `/pi-agents`, reopen across restarts |
+| [`pi-tui-ecosystem`](examples/pi-tui-ecosystem/) | Run the unmodified Pi MCP manager and Pi subagent flow in `@xmoon76/dsh-pi-tui`; native `/login` and Pi OAuth providers coexist without duplicate commands |
 
 ## Other tools
 

@@ -388,6 +388,44 @@ surface 开放 setup 扩展点；DSH 缺"root 插件可达的发布前组合 sea
 OAuth 的真实外部服务边界与包内测试责任拆分见
 [`docs/mcp-compatibility.md`](mcp-compatibility.md#real-external-oauth-acceptance)。
 
+## @xmoon76/dsh-pi-tui + pi-mcp-adapter + @tintinweb/pi-subagents
+
+场景：使用 npm 正式包 `@deepseek-ai/dsh@0.1.1-rc.2`、
+`@xmoon76/dsh-pi-tui@0.3.4`、未修改的 `pi-mcp-adapter@2.27.0` 和
+`@tintinweb/pi-subagents@0.18.0`，由当前 pi2dsh 工作树提供同一 Pi Host ABI。
+
+实际五层：
+
+```text
+Pi 插件注册工具/命令/ctx.ui.custom/ctx.ui.select
+→ pi2dsh 把业务能力投影到 DSH，并把 Pi component 放进 transport-neutral relay
+→ DSH tools/agents/userQuestions + dsh-pi-tui public piTuiExtensions mountComponent
+→ 模型、工具、session、child agent 仍由 DSH 权威服务持有
+→ 原生 /login、原 Pi MCP 管理器、Pi Agents 选择面和两个真实模型工具回合同时成立
+```
+
+2026-08-25 真实结果：
+
+- 启动日志没有 `command registration failed`；dsh-pi-tui 原生 `/login` 展示 43 个
+  Provider，过滤 `openai codex` 得到 `OpenAI Codex — sign in`。pi2dsh 不重复注册
+  fallback `/login`，但四条内建 Pi OAuth 流程仍由 authorization 服务提供。
+- `/pi-mcp` 打开未修改插件的原管理器，everything server 为 **23/23**；真实
+  `everything_echo` 工具结果和最终回答均为 `PI2DSH_PITUI_MCP_OK`。
+- `/agents` 打开未修改 pi-subagents 的交互选择面；真实模型调用 `Agent` 工具创建
+  general-purpose child，工具结果和最终回答均为 `PI2DSH_PITUI_SUBAGENT_OK`。
+- dsh-pi-tui footer 通过公开 `chrome.footer.status` 同时显示 MCP 连接状态；没有复制
+  MCP/Subagent 业务逻辑，也没有第二套模型、工具或 session store。
+
+分级：工具、模型回合与 child session 为 **1 级，原生承接**；Pi raw component →
+`piTuiExtensions` 为 **2 级，可靠翻译**，但消费的是上游明确标记 Unstable 的公共层，
+所以通过 API level/capability 探测和独立 relay 隔离，而不是把它声明成永久稳定 ABI。
+
+证据：[`scripts/verify-pi-tui-ecosystem-e2e.mjs`](../scripts/verify-pi-tui-ecosystem-e2e.mjs)、
+[`community/pi-tui-ecosystem-e2e.json`](../community/pi-tui-ecosystem-e2e.json)、
+[`tests/pi-tui-extension-surface.spec.ts`](../tests/pi-tui-extension-surface.spec.ts)、
+[`examples/pi-tui-ecosystem`](../examples/pi-tui-ecosystem/)，以及
+[`XMoon/dsh-pi-tui#26`](https://github.com/XMoon/dsh-pi-tui/issues/26)。
+
 ## 继续新增记录时
 
 复制一个插件块，补齐“使用的架构分支、理论对应、实际五层、逐项等级、结论、证据”。
