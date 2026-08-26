@@ -310,6 +310,58 @@ describe('engine mounting on a real DSH composition', () => {
     expect(names).not.toContain('login')
   })
 
+  // /login is host-level: however many packages mount (host anchor AND agent
+  // scope, each with an OAuth provider of its own), exactly ONE registration
+  // serves the host. The old scope-keyed idempotency gave every package its
+  // own owner on the real CLI's mount path, and DSH's collision numbering
+  // quietly mounted the extra copies as /login-2/-3/-4 in every real web
+  // profile. NOTE this fixture does NOT reproduce the old bug (its emulated
+  // agent mount resolves every package to one scope owner); the defect's
+  // falsifiable reproduction is the live web profile's boot log — legacy
+  // logic prints three "mounted as /login-N" lines, the fix prints zero
+  // (verified 2026-08-26 on the demo profile, both ways). This test guards
+  // the end state: exactly one bare /login in the palette.
+  it('registers the /login fallback exactly once however many packages mount', async () => {
+    const oauthExtension = (provider: string): string => [
+      'export default function extension(pi) {',
+      `  pi.registerProvider('${provider}', {`,
+      "    baseUrl: 'https://gw.example/v1',",
+      "    api: 'openai-completions',",
+      '    streamSimple: async function* () { yield { type: "done" } },',
+      "    models: [{ id: 'm1', name: 'M1', reasoning: false, input: ['text'], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, contextWindow: 8192, maxTokens: 1024 }],",
+      `    oauth: { name: '${provider} (OAuth)', login: async () => ({ type: 'oauth' }) },`,
+      '  })',
+      '}',
+    ].join('\n')
+    const root = await makeProfile({ 'pi-oauth-a': '1.0.0', 'pi-oauth-b': '1.0.0' })
+    await installFixturePackage(root, 'pi-oauth-a', { type: 'module', pi: { extensions: ['index.mjs'] } }, { 'index.mjs': oauthExtension('provider-a') })
+    await installFixturePackage(root, 'pi-oauth-b', { type: 'module', pi: { extensions: ['index.mjs'] } }, { 'index.mjs': oauthExtension('provider-b') })
+    const ctx = new Context()
+    await ctx.plugin(SessionStore)
+    await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
+    await ctx.plugin(ToolRuntime)
+    await ctx.plugin(CommandRuntime)
+    await ctx.plugin(SkillRegistry)
+    ;(ctx as unknown as { baseUrl: string }).baseUrl = `file://${root}/cordis.yml`
+    await apply(ctx, {})
+    await settle()
+    const typedCtx = ctx as unknown as {
+      sessions: { create(id: unknown, options: Record<string, unknown>): { id: unknown } }
+      commands: { list(agent: unknown): Array<{ name: string }> }
+    }
+    const session = typedCtx.sessions.create(SessionId('pi2dsh-login-singleton'), {
+      meta: { createdAt: Date.now(), cwd: root },
+    })
+    const agent = { id: session.id, session, steer() {}, inject() {}, followup() {}, whenIdle: () => Promise.resolve() }
+    await mountAgentRuntime(ctx, agent)
+    for (let waited = 0; waited < 40; waited++) await settle()
+
+    const loginNames = typedCtx.commands.list(agent)
+      .map(command => command.name)
+      .filter(name => /^(pi-)?login(-\d+)?$/u.test(name))
+    expect(loginNames).toEqual(['login'])
+  })
+
   // The side-chat window's server path: POST /pi2dsh/pi-command runs the
   // package's OWN registered command through the real pipeline, with a
   // HEADLESS ui — the product window presents the result, so the package's

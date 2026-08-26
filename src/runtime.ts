@@ -2688,7 +2688,7 @@ interface SharedHostState {
   authorizationArmedIds?: Set<string>
   modelCatalog?: ModelCatalog
   catalogSubscribed?: boolean
-  loginRegistered?: WeakSet<object>
+  loginCommandRegistered?: boolean
   oauthRefreshHooked?: boolean
   companionSweepSubscribed?: boolean
   oauthStore?: FileCredentialStore
@@ -3100,9 +3100,10 @@ async function materializeAttachmentImage(ctx: Context, attachment: UnknownRecor
   }
 }
 
-// Pi hosts ship /login <provider> as a built-in. Commands are Agent-scoped,
-// while the provider directory they read is host-shared, so register one
-// command per Agent regardless of how many Pi packages that Agent mounts.
+// Pi hosts ship /login <provider> as a built-in. It is host-level end to
+// end: the provider directory it reads is host-shared and a host-registered
+// command reaches every agent's palette, so exactly one registration serves
+// the whole host however many packages and agents mount.
 function ensureLoginCommand(ctx: Context, state: RuntimeState): void {
   // Skip the bridge's fallback ONLY when the native /login is a real
   // replacement: the terminal owns the name AND the composition carries the
@@ -3119,16 +3120,25 @@ function ensureLoginCommand(ctx: Context, state: RuntimeState): void {
     logger(ctx).debug('[pi2dsh] native terminal owns /login and the authorization service is composed; Pi OAuth flows are available through it')
     return
   }
-  const scoped = scopeOf(ctx)
-  const owner = (typeof scoped === 'object' && scoped !== null ? scoped : ctx) as object
-  const registered = (state.shared.loginRegistered ??= new WeakSet())
-  if (registered.has(owner)) return
-  registered.add(owner)
+  // ONE registration per host. /login is host-level through and through: it
+  // reads the SHARED provider directory and a host-registered command is
+  // visible from every agent's palette (verified live — the TUI probe drives
+  // /pi-login registered at the host anchor). The old idempotency key was
+  // the caller's SCOPE, and host-anchor mounts have no agent scope — each
+  // package's own activation became a distinct owner, every package
+  // registered its own copy, and DSH's collision numbering quietly mounted
+  // them as /login-2/-3/-4 instead of throwing.
+  if (state.shared.loginCommandRegistered === true) return
+  state.shared.loginCommandRegistered = true
   try {
     registerLoginCommand(ctx, state)
+    // The registration lives on THIS package's activation; when that package
+    // unmounts (remove, /reload remount) the command goes with it, so the
+    // host flag must clear for the next mount to re-register.
+    ctx.effect(() => () => { state.shared.loginCommandRegistered = false })
   } catch (error) {
-    registered.delete(owner)
-    logger(ctx).warn(`[pi2dsh] /login is already registered by an earlier package in this host; this package's providers use that command (${error instanceof Error ? error.message : String(error)})`)
+    state.shared.loginCommandRegistered = false
+    logger(ctx).warn(`[pi2dsh] /login could not be registered; provider logins remain available on the host's own sign-in surface (${error instanceof Error ? error.message : String(error)})`)
   }
 }
 
