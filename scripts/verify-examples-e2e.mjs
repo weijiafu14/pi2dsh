@@ -45,7 +45,8 @@ import assert from 'node:assert/strict'
 import { existsSync } from 'node:fs'
 import { execFile as execFileCallback, spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { chmod, mkdir, mkdtemp, readFile, readdir, rm, stat, symlink, writeFile } from 'node:fs/promises'
+import { createRequire } from 'node:module'
+import { chmod, mkdir, mkdtemp, readFile, readdir, realpath, rm, stat, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { promisify } from 'node:util'
@@ -86,8 +87,16 @@ const shotDir = process.env.PI2DSH_SHOT_DIR === undefined ? undefined : resolve(
  * @param home - the DSH home the scenario installed into.
  * @param profile - which profile received the engine.
  */
-async function installedEngineVersion(home, profile) {
-  const manifest = join(home, 'profiles', profile, 'node_modules/pi2dsh/package.json')
+async function installedEngineVersion(home, profile, via) {
+  // Direct installs put the engine at the profile root; a suite install (via
+  // dsh-work-x) makes it a TRANSITIVE dependency, which pnpm's isolated
+  // layout keeps out of the root — resolve it from the suite package instead.
+  // The suite entry at the profile root is a pnpm symlink; the engine lives
+  // beside the suite's REAL directory in .pnpm, so anchor at the realpath.
+  const manifest = via === undefined
+    ? join(home, 'profiles', profile, 'node_modules/pi2dsh/package.json')
+    : createRequire(await realpath(join(home, 'profiles', profile, 'node_modules', via, 'package.json')))
+        .resolve('pi2dsh/package.json')
   const { version } = JSON.parse(await readFile(manifest, 'utf8'))
   const wanted = /@(\d[^@]*)$/u.exec(engineSpec)?.[1]
   assert(wanted === undefined || wanted === version,
@@ -1208,6 +1217,10 @@ async function runDshX() {
     await writeFile(join(suiteDir, 'package.json'), JSON.stringify(manifest, null, 2))
     await writeFile(join(suiteDir, 'cordis.patch.yml'), await readFile(join(projectRoot, 'dsh-x/cordis.patch.yml'), 'utf8'))
     await writeFile(join(suiteDir, 'index.mjs'), await readFile(join(projectRoot, 'dsh-x/index.mjs'), 'utf8'))
+    // The suite's browser half — its prepack guard refuses to pack without it
+    // (a user would get a suite whose product UI silently never loads).
+    await writeFile(join(suiteDir, 'client.js'), await readFile(join(projectRoot, 'dsh-x/client.js'), 'utf8'))
+    await writeFile(join(suiteDir, 'README.md'), await readFile(join(projectRoot, 'dsh-x/README.md'), 'utf8'))
 
     const { home, env, runDsh } = await makeHome(scratch)
     // Pack the staged suite: pnpm links path installs back to their source
@@ -1221,7 +1234,10 @@ async function runDshX() {
     const bundles = profileManifest.dsh?.profile?.bundles ?? []
     assert(bundles.includes('dsh-work-x'), `dsh-work-x missing from the profile's bundle layers: ${JSON.stringify(bundles)}`)
 
-    const port = Number(process.env.DSHX_PORT ?? 5189)
+    // 5193: unique among the parallel scenarios (5187 side-conversation,
+    // 5188 vision-web, 5189 presentation-surfaces) — sharing 5189 made the
+    // surfaces capture drive THIS scenario's web and fail both.
+    const port = Number(process.env.DSHX_PORT ?? 5193)
     web = spawnWeb(port, env)
     let webLog = ''
     web.stdout.on('data', chunk => { webLog += String(chunk) })
@@ -1261,7 +1277,7 @@ async function runDshX() {
 
     results.dshX = {
       status: 'passed',
-      engine: await installedEngineVersion(home, 'web'),
+      engine: await installedEngineVersion(home, 'web', 'dsh-work-x'),
       suite: ['pi-mcp-adapter', '@tintinweb/pi-subagents', 'pi-btw', '@crazygit/pi-codex-image-gen'],
       ...(mountedLine === undefined ? {} : { commands: JSON.parse(mountedLine) }),
     }
