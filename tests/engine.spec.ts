@@ -310,6 +310,83 @@ describe('engine mounting on a real DSH composition', () => {
     expect(names).not.toContain('login')
   })
 
+  // The side-chat window's server path: POST /pi2dsh/pi-command runs the
+  // package's OWN registered command through the real pipeline, with a
+  // HEADLESS ui — the product window presents the result, so the package's
+  // full-screen component must resolve undefined (Pi's rpc-mode behavior)
+  // instead of opening a scene over the window.
+  it('routes product-UI command invocations to the package runner with a headless ui', async () => {
+    const root = await makeProfile({ 'pi-cmd-probe': '1.0.0' })
+    await installFixturePackage(root, 'pi-cmd-probe', { type: 'module', pi: { extensions: ['index.mjs'] } }, {
+      'index.mjs': [
+        'export default function (pi) {',
+        "  pi.registerCommand('probe', { description: 'probe', handler: async (args, ctx) => {",
+        "    const custom = await ctx.ui.custom(() => ({ render: () => ['x'] }))",
+        "    ctx.ui.notify(`probe:${args}:${custom === undefined ? 'headless' : 'surface'}`, 'info')",
+        '  } })',
+        '}',
+      ].join('\n'),
+    })
+    const ctx = new Context()
+    await ctx.plugin(SessionStore)
+    await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
+    await ctx.plugin(ToolRuntime)
+    await ctx.plugin(CommandRuntime)
+    await ctx.plugin(SkillRegistry)
+    let routeHandler: ((req: Record<string, unknown>, res: Record<string, unknown>) => Promise<void>) | undefined
+    const provider = ctx as unknown as { provide(name: string, value: unknown): void }
+    provider.provide('webServer', {
+      register(route: { handler: typeof routeHandler }) {
+        routeHandler = route.handler
+        return () => {}
+      },
+    })
+    ;(ctx as unknown as { baseUrl: string }).baseUrl = `file://${root}/cordis.yml`
+    await apply(ctx, {})
+    await settle()
+    const typedCtx = ctx as unknown as {
+      sessions: { create(id: unknown, options: Record<string, unknown>): { id: unknown } }
+    }
+    const session = typedCtx.sessions.create(SessionId('pi2dsh-pi-command-probe'), {
+      meta: { createdAt: Date.now(), cwd: root },
+    })
+    const agent = { id: session.id, session, steer() {}, inject() {}, followup() {}, whenIdle: () => Promise.resolve() }
+    await mountAgentRuntime(ctx, agent)
+    // agent/created listeners mount asynchronously; the runner exists only
+    // once the package's agent-scope mount lands.
+    for (let waited = 0; waited < 40; waited++) await settle()
+    expect(routeHandler).toBeDefined()
+
+    const post = async (payload: Record<string, unknown>): Promise<{ status: number, body: Record<string, unknown> }> => {
+      const raw = JSON.stringify(payload)
+      let status = 0
+      let body = ''
+      await routeHandler!(
+        {
+          method: 'POST',
+          url: '/pi2dsh/pi-command',
+          on(event: string, listen: (chunk?: unknown) => void) {
+            if (event === 'data') listen(Buffer.from(raw))
+            if (event === 'end') listen()
+          },
+        },
+        { writeHead: (code: number) => { status = code }, end: (chunk?: string) => { body = chunk ?? '' } },
+      )
+      return { status, body: body === '' ? {} : JSON.parse(body) as Record<string, unknown> }
+    }
+
+    const run = await post({ session: String(session.id), package: 'pi-cmd-probe', command: 'probe', args: 'hello' })
+    expect(run.status).toBe(200)
+    // The notice carries the handler's own verdict: args made it through and
+    // ui.custom resolved undefined (headless) instead of opening a surface.
+    expect(run.body.notice).toContain('probe:hello:headless')
+
+    const unknownCommand = await post({ session: String(session.id), package: 'pi-cmd-probe', command: 'nope', args: '' })
+    expect(unknownCommand.status).toBe(400)
+    const unknownSession = await post({ session: 'no-such-session', package: 'pi-cmd-probe', command: 'probe', args: '' })
+    expect(unknownSession.status).toBe(404)
+  })
+
   it('host anchor carries host-level halves with zero agents and never doubles agent-facing surfaces', async () => {
     const root = await makeProfile({ 'pi-anchored': '1.0.0' })
     await installFixturePackage(root, 'pi-anchored', { pi: { extensions: ['extension.ts'], skills: ['skills'] } }, {

@@ -278,6 +278,34 @@ describe('Pi createAgentSession bridged onto real DSH agents', () => {
     })
   })
 
+  // Pi's `SessionManager.inMemory()` (no session file) marks an EPHEMERAL
+  // side thread — a user-initiated side chat, not a delegated task. The
+  // ecosystem's 'Side: ' label prefix (better-sidebar's SIDE_LABEL_PREFIX)
+  // keeps such threads out of task/subagent product surfaces, so the bridge
+  // must stamp it on the durable descriptor. A structural judgement: any
+  // package creating an in-memory child gets it, no package names involved.
+  it("labels an in-memory child with the ecosystem's side-thread prefix", async () => {
+    const ctx = new Context()
+    await ctx.plugin(SessionStore)
+    const session = ctx.sessions.create(SessionId(`side-${Date.now()}`), {
+      meta: { createdAt: Date.now(), cwd: process.cwd() },
+    })
+    const realGet = (ctx as unknown as { get(name: string): unknown }).get.bind(ctx)
+    ;(ctx as unknown as { get(name: string): unknown }).get = (name: string) =>
+      name === 'agents'
+        ? { async create() { return { agent: { id: session.id, session }, dispose: async () => {} } } }
+        : realGet(name)
+
+    const deliveries: Array<{ mode: string, message: unknown }> = []
+    const host = { ...makeHost(ctx, deliveries), packageName: 'pi-btw' }
+    await createBridgedAgentSession(host, {
+      sessionManager: { getSessionFile: () => undefined },
+    })
+
+    const descriptor = session.events.find(event => (event.type as string) === 'subagent/descriptor')
+    expect((descriptor as unknown as { data: UnknownRecord }).data.label).toBe('Side: pi-btw side conversation')
+  })
+
   // Pi's abort() contract: the run stops and STAYS stopped until the next
   // explicit prompt(). On DSH, a tool result reaching quiescence after the
   // cancel is waking input that opens a fresh turn — the real-machine stop

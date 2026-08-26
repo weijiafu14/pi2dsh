@@ -833,6 +833,7 @@ function contextFor(
   signal: AbortSignal | undefined,
   command = false,
   sessionOverride?: UnknownRecord,
+  headlessUi = false,
 ): UnknownRecord {
   const notices: string[] = []
   const userQuestions = optionalService(ctx, 'userQuestions')
@@ -943,6 +944,11 @@ function contextFor(
     // behavior and resolves undefined.
     custom: async (factory: unknown, options?: unknown) => {
       if (typeof factory !== 'function') return undefined
+      // A product-UI invocation (the side-chat window running a package
+      // command) presents the results itself; the package's own full-screen
+      // component would DOUBLE that presentation over it. Resolving undefined
+      // is Pi's own rpc-mode behavior — an official degradation, not a lie.
+      if (headlessUi) return undefined
       const surfaces = state.tuiSurfaces
       if (surfaces !== undefined) {
         return surfaces.custom(
@@ -5156,6 +5162,26 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
     }
     return rendered
   }))
+  // Product UI's path into this package's slash commands (side-chat input,
+  // its save/inject buttons): the runner executes the package's OWN handler
+  // through the same contextFor/runInPiRuntime pipeline a composer
+  // invocation takes. Registered per (root session, package) — generic, no
+  // command or package is special-cased here.
+  const runnerSessionId = ownerAgent === undefined ? '' : String(agentSession(ownerAgent)?.id ?? '')
+  if (runnerSessionId.length > 0) {
+    const disposeRunner = browserSurfaces.registerCommandRunner(runnerSessionId, state.packageName, async (name, args) => {
+      const live = state.commands.get(name)
+      if (live === undefined) throw new Error(`${state.packageName} has no command ${JSON.stringify(name)}`)
+      const commandContext = contextFor(ctx, state, ownerAgent as UnknownRecord, undefined, true, undefined, true)
+      await runInPiRuntime(state, ownerAgent, async () => {
+        await ensurePiSessionStarted(ctx, state, ownerAgent, undefined)
+        await live.handler(args, commandContext)
+      })
+      const notices = commandContext.__notices as string[]
+      return notices.length > 0 ? notices.join('\n') : undefined
+    })
+    ctx.effect(() => disposeRunner)
+  }
   state.subagentSessionFactory = async (subagentOptions) => {
     const created = await createBridgedAgentSession(subagentHost(), subagentOptions)
     // Track it against the session the panel floats over — the PARENT, not the

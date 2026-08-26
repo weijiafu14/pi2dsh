@@ -697,6 +697,14 @@ export async function createBridgedAgentSession(
   const providedManager = options.sessionManager as { getSessionFile?(): string | undefined } | undefined
   const archiveFile = typeof providedManager?.getSessionFile === 'function' ? providedManager.getSessionFile() : undefined
   const resumeSessionId = host.resumeSessionIdFor?.(archiveFile)
+  // Pi's `SessionManager.inMemory()` marks an EPHEMERAL side thread: no
+  // session file, scratch by design (pi-btw's side conversations — keeping
+  // is explicit through the package's own save/inject flows). A structural
+  // judgement, never a package name. The host has no ephemeral-session seam
+  // yet, so the durable record still exists; the ecosystem's side-thread
+  // label convention below keeps these threads out of task/subagent product
+  // surfaces (better-sidebar and dsh-sidechain both filter on the prefix).
+  const sideline = providedManager !== undefined && archiveFile === undefined
   subagentSerial += 1
   const sessionId = `pi2dsh-sub-${Date.now().toString(36)}-${subagentSerial}`
   let handle
@@ -961,7 +969,10 @@ export async function createBridgedAgentSession(
         version: 2,
         mode: 'continuable',
         provider: 'pi2dsh',
-        label: childLabel(options.label, host.packageName),
+        // 'Side: ' is the ecosystem's side-thread marker (better-sidebar's
+        // SIDE_LABEL_PREFIX): a user-initiated side chat is not a delegated
+        // task, and task surfaces filter it out by this prefix.
+        label: `${sideline ? 'Side: ' : ''}${childLabel(options.label, host.packageName)}`,
       })
     } catch (error) {
       // A host without the subagent vocabulary rejects the type; the child

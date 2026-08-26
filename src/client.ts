@@ -259,13 +259,16 @@ const styles = {
     whiteSpace: 'pre',
   },
   panel: {
+    // The host's design tokens live on <body> (light/dark both), so a fixed
+    // element inherits the real theme; the fallbacks are a neutral light
+    // card, never a hard-coded dark one.
     position: 'fixed', right: '20px', bottom: '108px', zIndex: 40,
     width: '340px', maxHeight: '48vh', display: 'flex', flexDirection: 'column',
     pointerEvents: 'auto', overflow: 'hidden',
-    borderRadius: '12px', border: '1px solid rgba(120,120,130,0.28)',
-    background: 'var(--dsh-color-bg-elevated, rgba(24,24,27,0.96))',
-    color: 'var(--dsh-color-text, #fafafa)',
-    boxShadow: '0 12px 32px rgba(0,0,0,0.32)',
+    borderRadius: '12px', border: '1px solid var(--dsw-alias-border-l2, rgba(0,0,0,0.1))',
+    background: 'var(--dsw-alias-bg-layer-2, #fff)',
+    color: 'inherit',
+    boxShadow: 'var(--dsw-shadow-lv2, 0 12px 32px rgba(0,0,0,0.16))',
     font: '400 13px/1.55 system-ui, -apple-system, sans-serif',
   },
   header: {
@@ -285,18 +288,19 @@ const styles = {
   },
   pill: {
     pointerEvents: 'auto', padding: '5px 10px', borderRadius: '999px',
-    background: 'var(--dsh-color-bg-elevated, rgba(24,24,27,0.92))',
-    color: 'var(--dsh-color-text, #fafafa)',
-    border: '1px solid rgba(120,120,130,0.28)',
+    background: 'var(--dsw-alias-bg-layer-2, #fff)',
+    color: 'inherit',
+    border: '1px solid var(--dsw-alias-border-l2, rgba(0,0,0,0.1))',
+    boxShadow: 'var(--dsw-shadow-lv1, 0 2px 8px rgba(0,0,0,0.08))',
     font: '500 11px/1.4 system-ui, sans-serif', whiteSpace: 'pre-wrap',
   },
   inline: { font: monospace, whiteSpace: 'pre-wrap', opacity: 0.85 },
   strip: { display: 'flex', flexDirection: 'column', gap: '4px', padding: '4px 2px' },
   imageTool: {
     margin: '4px 0', overflow: 'hidden', borderRadius: '8px',
-    border: '1px solid rgba(120,120,130,0.22)',
-    background: 'var(--dsh-color-bg-subtle, rgba(120,120,130,0.06))',
-    color: 'var(--dsh-color-text, inherit)', font: '400 12px/1.5 system-ui, sans-serif',
+    border: '1px solid var(--dsw-alias-border-l2, rgba(0,0,0,0.1))',
+    background: 'var(--dsw-alias-bg-layer-2, rgba(0,0,0,0.03))',
+    color: 'inherit', font: '400 12px/1.5 system-ui, sans-serif',
   },
   imageToolToggle: {
     width: '100%', display: 'flex', alignItems: 'center', gap: '8px',
@@ -535,12 +539,16 @@ function SceneOverlay({ useSessions }: { useSessions: SessionsHook }) {
   )
 }
 
+/** A product layer (dsh-work-x) that ships its own side-chat window turns
+ *  the engine's plain thread panel off; pills and the rest stay. */
+let renderSideThreads = true
+
 function OverlaySurfaces({ useSessions }: { useSessions: SessionsHook }) {
   const session = useSessions(state => state.current)
   const { threads, surfaces } = useBrowserState(session)
   const [dismissed, setDismissed] = useState<string[]>([])
 
-  const shown = threads.filter(thread => !dismissed.includes(thread.id))
+  const shown = (renderSideThreads ? threads : []).filter(thread => !dismissed.includes(thread.id))
   const pills = [
     ...valuesFor(surfaces, 'title').map(entry => ({ ...entry, key: 'title' })),
     ...statusesFor(surfaces),
@@ -689,7 +697,8 @@ function ComposerBridge(
  * Client plugin body: take the seats this package draws into.
  * @param ctx - client root context.
  */
-export function apply(ctx: ClientContext): void {
+export function apply(ctx: ClientContext, options?: { sideThreads?: boolean }): void {
+  if (options?.sideThreads === false) renderSideThreads = false
   // Pi's autocomplete providers, offered under DSH's own trigger menu. The
   // labels a package returns are the menu rows; picking one inserts the value
   // the provider chose, which is what its own applyCompletion would have done

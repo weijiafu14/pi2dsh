@@ -62,7 +62,7 @@ const ui = {
   root: {
     display: 'flex', flexDirection: 'column', gap: '10px', padding: '12px',
     font: '400 13px/1.5 system-ui, -apple-system, sans-serif',
-    color: 'var(--dsh-color-text, #1b1b1b)',
+    color: 'inherit',
   },
   headline: { font: '600 13px/1.4 system-ui, sans-serif', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' },
   group: { font: '600 11px/1.4 system-ui, sans-serif', opacity: 0.55, textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginTop: '4px' },
@@ -70,7 +70,7 @@ const ui = {
   card: {
     border: '1px solid rgba(120,120,130,0.25)', borderRadius: '10px', padding: '10px 12px',
     display: 'flex', flexDirection: 'column', gap: '6px',
-    background: 'var(--dsh-color-bg-elevated, rgba(127,127,127,0.04))',
+    background: 'var(--dsw-alias-bg-layer-2, rgba(127,127,127,0.04))',
   },
   cardHead: { display: 'flex', alignItems: 'center', gap: '8px' },
   name: { font: '600 13px/1.4 ui-monospace, monospace' },

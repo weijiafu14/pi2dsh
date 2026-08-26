@@ -51,6 +51,9 @@ interface TrackedThread {
   session: PiBridgedAgentSession
 }
 
+/** Executes one Pi command by its Pi-side name; resolves the notices text. */
+export type PiCommandRunner = (command: string, args: string) => Promise<string | undefined>
+
 /** Flatten one Pi message's content to the text a panel row shows. */
 function messageText(message: UnknownRecord): string {
   const content = message.content
@@ -74,6 +77,7 @@ function messageText(message: UnknownRecord): string {
  */
 export class BrowserSurfaces {
   readonly #byParent = new Map<string, Map<string, TrackedThread>>()
+  readonly #commandRunners = new Map<string, Map<string, PiCommandRunner>>()
   // session -> package -> what that package put on screen
   readonly #surfaces = new Map<string, Map<string, SurfaceView>>()
   // package -> its custom-entry renderer, pulled per request
@@ -240,6 +244,34 @@ export class BrowserSurfaces {
       live.delete(thread.id)
       if (live.size === 0) this.#byParent.delete(parentSessionId)
     }
+  }
+
+  /**
+   * Register the executor for one package's Pi commands on one session, so
+   * product UI (a side-chat window's input, its action buttons) can run the
+   * package's OWN command handlers — the same code path the composer takes.
+   * Generic by construction: the runner closure carries the package runtime;
+   * this registry only routes (session, package) to it.
+   * @param sessionId - the root session the package is mounted for.
+   * @param packageName - the Pi package owning the commands.
+   * @param runner - executes one registered Pi command by its Pi name.
+   * @returns a disposer that unregisters the runner.
+   */
+  registerCommandRunner(sessionId: string, packageName: string, runner: PiCommandRunner): () => void {
+    const runners = this.#commandRunners.get(sessionId) ?? new Map<string, PiCommandRunner>()
+    runners.set(packageName, runner)
+    this.#commandRunners.set(sessionId, runners)
+    return () => {
+      const live = this.#commandRunners.get(sessionId)
+      if (live === undefined) return
+      if (live.get(packageName) === runner) live.delete(packageName)
+      if (live.size === 0) this.#commandRunners.delete(sessionId)
+    }
+  }
+
+  /** The registered runner for (session, package), when one is mounted. */
+  commandRunner(sessionId: string, packageName: string): PiCommandRunner | undefined {
+    return this.#commandRunners.get(sessionId)?.get(packageName)
   }
 
   /**
@@ -745,6 +777,38 @@ export function registerBrowserSurfaceRoute(ctx: Context, registry: BrowserSurfa
         }
         response.writeHead(200, { 'content-type': 'application/json; charset=utf-8' })
         response.end(JSON.stringify(outcome ?? { ok: true }))
+        return
+      }
+      // Product UI running a Pi package's own command (a side-chat window's
+      // input is "/btw <text>" by other means): routed to the runner the
+      // package's runtime registered for this session, so the exact handler
+      // the composer would call runs — flags, session reuse, model fallback
+      // and all. No handler is reimplemented here.
+      if (url.pathname === '/pi2dsh/pi-command' && method === 'POST') {
+        const chunks: Buffer[] = []
+        const raw = await new Promise<string>((settle) => {
+          const stream = req as unknown as { on(event: string, handler: (chunk?: unknown) => void): void }
+          stream.on('data', chunk => chunks.push(Buffer.from(chunk as Uint8Array)))
+          stream.on('end', () => settle(Buffer.concat(chunks).toString('utf8')))
+        })
+        try {
+          const payload = JSON.parse(raw || '{}') as { session?: unknown, package?: unknown, command?: unknown, args?: unknown }
+          if (typeof payload.session !== 'string' || typeof payload.package !== 'string' || typeof payload.command !== 'string') {
+            throw new TypeError('pi-command needs { session, package, command }')
+          }
+          const runner = registry.commandRunner(payload.session, payload.package)
+          if (runner === undefined) {
+            response.writeHead(404, { 'content-type': 'application/json; charset=utf-8' })
+            response.end(JSON.stringify({ error: `no ${payload.package} command runner mounted for this session` }))
+            return
+          }
+          const notice = await runner(payload.command, typeof payload.args === 'string' ? payload.args : '')
+          response.writeHead(200, { 'content-type': 'application/json; charset=utf-8' })
+          response.end(JSON.stringify({ ok: true, ...(notice === undefined ? {} : { notice }) }))
+        } catch (error) {
+          response.writeHead(400, { 'content-type': 'application/json; charset=utf-8' })
+          response.end(JSON.stringify({ error: error instanceof Error ? error.message : String(error) }))
+        }
         return
       }
       // The scene overlay's two writes: raw keyboard input into the live Pi

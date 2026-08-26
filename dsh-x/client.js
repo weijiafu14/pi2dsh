@@ -5,6 +5,7 @@ window.__ModuleLoader__.load({
 		var exports = module.exports;
 		Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
 		let react = require("react");
+		let react_dom = require("react-dom");
 		//#region src/ansi.ts
 		/** The 8 base ANSI colours, in SGR order, as CSS. */
 		const BASE = [
@@ -278,10 +279,10 @@ window.__ModuleLoader__.load({
 				pointerEvents: "auto",
 				overflow: "hidden",
 				borderRadius: "12px",
-				border: "1px solid rgba(120,120,130,0.28)",
-				background: "var(--dsh-color-bg-elevated, rgba(24,24,27,0.96))",
-				color: "var(--dsh-color-text, #fafafa)",
-				boxShadow: "0 12px 32px rgba(0,0,0,0.32)",
+				border: "1px solid var(--dsw-alias-border-l2, rgba(0,0,0,0.1))",
+				background: "var(--dsw-alias-bg-layer-2, #fff)",
+				color: "inherit",
+				boxShadow: "var(--dsw-shadow-lv2, 0 12px 32px rgba(0,0,0,0.16))",
 				font: "400 13px/1.55 system-ui, -apple-system, sans-serif"
 			},
 			header: {
@@ -339,9 +340,10 @@ window.__ModuleLoader__.load({
 				pointerEvents: "auto",
 				padding: "5px 10px",
 				borderRadius: "999px",
-				background: "var(--dsh-color-bg-elevated, rgba(24,24,27,0.92))",
-				color: "var(--dsh-color-text, #fafafa)",
-				border: "1px solid rgba(120,120,130,0.28)",
+				background: "var(--dsw-alias-bg-layer-2, #fff)",
+				color: "inherit",
+				border: "1px solid var(--dsw-alias-border-l2, rgba(0,0,0,0.1))",
+				boxShadow: "var(--dsw-shadow-lv1, 0 2px 8px rgba(0,0,0,0.08))",
 				font: "500 11px/1.4 system-ui, sans-serif",
 				whiteSpace: "pre-wrap"
 			},
@@ -360,9 +362,9 @@ window.__ModuleLoader__.load({
 				margin: "4px 0",
 				overflow: "hidden",
 				borderRadius: "8px",
-				border: "1px solid rgba(120,120,130,0.22)",
-				background: "var(--dsh-color-bg-subtle, rgba(120,120,130,0.06))",
-				color: "var(--dsh-color-text, inherit)",
+				border: "1px solid var(--dsw-alias-border-l2, rgba(0,0,0,0.1))",
+				background: "var(--dsw-alias-bg-layer-2, rgba(0,0,0,0.03))",
+				color: "inherit",
 				font: "400 12px/1.5 system-ui, sans-serif"
 			},
 			imageToolToggle: {
@@ -621,10 +623,13 @@ window.__ModuleLoader__.load({
 				}
 			}, "×")), (0, react.createElement)("pre", { style: styles.sceneBody }, ...lines.map((line, index) => (0, react.createElement)("div", { key: index }, ansiText(line))))));
 		}
+		/** A product layer (dsh-work-x) that ships its own side-chat window turns
+		*  the engine's plain thread panel off; pills and the rest stay. */
+		let renderSideThreads = true;
 		function OverlaySurfaces({ useSessions }) {
 			const { threads, surfaces } = useBrowserState(useSessions((state) => state.current));
 			const [dismissed, setDismissed] = (0, react.useState)([]);
-			const shown = threads.filter((thread) => !dismissed.includes(thread.id));
+			const shown = (renderSideThreads ? threads : []).filter((thread) => !dismissed.includes(thread.id));
 			const pills = [...valuesFor(surfaces, "title").map((entry) => ({
 				...entry,
 				key: "title"
@@ -753,7 +758,8 @@ window.__ModuleLoader__.load({
 		* Client plugin body: take the seats this package draws into.
 		* @param ctx - client root context.
 		*/
-		function apply$1(ctx) {
+		function apply$1(ctx, options) {
+			if (options?.sideThreads === false) renderSideThreads = false;
 			ctx.inject(["inputTriggers"], (scope) => {
 				const triggers = scope.inputTriggers;
 				if (triggers === void 0) return;
@@ -823,14 +829,14 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region dsh-x/src/mcp-tab.ts
-		const ui = {
+		const ui$1 = {
 			root: {
 				display: "flex",
 				flexDirection: "column",
 				gap: "10px",
 				padding: "12px",
 				font: "400 13px/1.5 system-ui, -apple-system, sans-serif",
-				color: "var(--dsh-color-text, #1b1b1b)"
+				color: "inherit"
 			},
 			headline: {
 				font: "600 13px/1.4 system-ui, sans-serif",
@@ -856,7 +862,7 @@ window.__ModuleLoader__.load({
 				display: "flex",
 				flexDirection: "column",
 				gap: "6px",
-				background: "var(--dsh-color-bg-elevated, rgba(127,127,127,0.04))"
+				background: "var(--dsw-alias-bg-layer-2, rgba(127,127,127,0.04))"
 			},
 			cardHead: {
 				display: "flex",
@@ -949,24 +955,24 @@ window.__ModuleLoader__.load({
 			return (0, react.createElement)("div", {
 				key: server.name,
 				style: {
-					...ui.card,
+					...ui$1.card,
 					opacity: server.disabled ? .55 : 1
 				},
 				"data-dsh-x": "mcp-server"
-			}, (0, react.createElement)("div", { style: ui.cardHead }, (0, react.createElement)("span", { style: ui.name }, server.name), (0, react.createElement)("span", { style: ui.badge }, server.transport), server.disabled ? (0, react.createElement)("span", { style: ui.badge }, "disabled") : null, (0, react.createElement)("button", {
-				style: ui.toggle,
+			}, (0, react.createElement)("div", { style: ui$1.cardHead }, (0, react.createElement)("span", { style: ui$1.name }, server.name), (0, react.createElement)("span", { style: ui$1.badge }, server.transport), server.disabled ? (0, react.createElement)("span", { style: ui$1.badge }, "disabled") : null, (0, react.createElement)("button", {
+				style: ui$1.toggle,
 				title: toggleTitle,
 				onClick: () => onToggle(server)
-			}, server.disabled ? "Enable" : "Disable")), (0, react.createElement)("div", { style: ui.target }, server.target), (0, react.createElement)("div", { style: ui.meta }, `from ${server.sourcePath.split("/").slice(-2).join("/")}` + (server.envKeys.length > 0 ? ` · env: ${server.envKeys.join(", ")}` : "") + (server.headerKeys.length > 0 ? ` · headers: ${server.headerKeys.join(", ")}` : "")));
+			}, server.disabled ? "Enable" : "Disable")), (0, react.createElement)("div", { style: ui$1.target }, server.target), (0, react.createElement)("div", { style: ui$1.meta }, `from ${server.sourcePath.split("/").slice(-2).join("/")}` + (server.envKeys.length > 0 ? ` · env: ${server.envKeys.join(", ")}` : "") + (server.headerKeys.length > 0 ? ` · headers: ${server.headerKeys.join(", ")}` : "")));
 		}
 		function emptyGuide() {
-			return (0, react.createElement)("div", { style: ui.empty }, "No MCP servers configured yet. Add one to ", (0, react.createElement)("span", { style: ui.code }, ".mcp.json"), " in your workspace, or globally to ", (0, react.createElement)("span", { style: ui.code }, "~/.config/mcp/mcp.json"), " (the same format Claude Code and Cursor read):", (0, react.createElement)("pre", { style: {
-				...ui.code,
+			return (0, react.createElement)("div", { style: ui$1.empty }, "No MCP servers configured yet. Add one to ", (0, react.createElement)("span", { style: ui$1.code }, ".mcp.json"), " in your workspace, or globally to ", (0, react.createElement)("span", { style: ui$1.code }, "~/.config/mcp/mcp.json"), " (the same format Claude Code and Cursor read):", (0, react.createElement)("pre", { style: {
+				...ui$1.code,
 				display: "block",
 				padding: "8px",
 				marginTop: "6px",
 				whiteSpace: "pre"
-			} }, "{\n  \"mcpServers\": {\n    \"everything\": {\n      \"command\": \"npx\",\n      \"args\": [\"-y\", \"@modelcontextprotocol/server-everything\"]\n    }\n  }\n}"), "New sessions pick it up automatically. For discovery, OAuth and per-tool controls, run ", (0, react.createElement)("span", { style: ui.code }, "/mcp"), " in the composer.");
+			} }, "{\n  \"mcpServers\": {\n    \"everything\": {\n      \"command\": \"npx\",\n      \"args\": [\"-y\", \"@modelcontextprotocol/server-everything\"]\n    }\n  }\n}"), "New sessions pick it up automatically. For discovery, OAuth and per-tool controls, run ", (0, react.createElement)("span", { style: ui$1.code }, "/mcp"), " in the composer.");
 		}
 		function useToggle(session, scope, patch) {
 			const [note, setNote] = (0, react.useState)(void 0);
@@ -1012,18 +1018,18 @@ window.__ModuleLoader__.load({
 			const { state, failed, patch } = useMcpState(session, visible);
 			const { note, toggle } = useToggle(session, "project", patch);
 			if (failed && state === void 0) return (0, react.createElement)("div", {
-				style: ui.root,
+				style: ui$1.root,
 				"data-dsh-x": "mcp-tab"
-			}, (0, react.createElement)("div", { style: ui.empty }, "The MCP state route is not answering — is the pi2dsh engine mounted in this profile?"));
+			}, (0, react.createElement)("div", { style: ui$1.empty }, "The MCP state route is not answering — is the pi2dsh engine mounted in this profile?"));
 			if (state === void 0) return (0, react.createElement)("div", {
-				style: ui.root,
+				style: ui$1.root,
 				"data-dsh-x": "mcp-tab"
-			}, (0, react.createElement)("div", { style: ui.sub }, "Loading MCP configuration…"));
+			}, (0, react.createElement)("div", { style: ui$1.sub }, "Loading MCP configuration…"));
 			return (0, react.createElement)("div", {
-				style: ui.root,
+				style: ui$1.root,
 				"data-dsh-x": "mcp-tab"
-			}, (0, react.createElement)("div", { style: ui.headline }, (0, react.createElement)("span", null, "MCP servers · this session"), (0, react.createElement)("span", { style: ui.sub }, `${state.servers.length} configured`)), note === void 0 ? null : (0, react.createElement)("div", {
-				style: ui.note,
+			}, (0, react.createElement)("div", { style: ui$1.headline }, (0, react.createElement)("span", null, "MCP servers · this session"), (0, react.createElement)("span", { style: ui$1.sub }, `${state.servers.length} configured`)), note === void 0 ? null : (0, react.createElement)("div", {
+				style: ui$1.note,
 				"data-dsh-x": "mcp-note"
 			}, note), state.servers.length === 0 ? emptyGuide() : [["project", "This project"], ["global", "Global (all projects)"]].map(([layer, title]) => {
 				const members = state.servers.filter((server) => server.layer === layer);
@@ -1031,29 +1037,29 @@ window.__ModuleLoader__.load({
 				return (0, react.createElement)("div", {
 					key: layer,
 					style: { display: "contents" }
-				}, (0, react.createElement)("div", { style: ui.group }, title), ...members.map((server) => serverCard(server, toggle, server.disabled ? "Enable for this project" : "Disable for this project")));
-			}), (0, react.createElement)("div", { style: ui.meta }, `layers: ${state.sources.length === 0 ? "none found" : state.sources.map((source) => source.split("/").slice(-2).join("/")).join(" → ")}`));
+				}, (0, react.createElement)("div", { style: ui$1.group }, title), ...members.map((server) => serverCard(server, toggle, server.disabled ? "Enable for this project" : "Disable for this project")));
+			}), (0, react.createElement)("div", { style: ui$1.meta }, `layers: ${state.sources.length === 0 ? "none found" : state.sources.map((source) => source.split("/").slice(-2).join("/")).join(" → ")}`));
 		}
 		/** The GLOBAL view (Settings → MCP): cross-project layers only. */
 		function SettingsMcpSection() {
 			const { state, failed, patch } = useMcpState("", true);
 			const { note, toggle } = useToggle("", "global", patch);
 			if (failed && state === void 0) return (0, react.createElement)("div", {
-				style: ui.root,
+				style: ui$1.root,
 				"data-dsh-x": "mcp-settings"
-			}, (0, react.createElement)("div", { style: ui.empty }, "The MCP state route is not answering — is the pi2dsh engine mounted in this profile?"));
+			}, (0, react.createElement)("div", { style: ui$1.empty }, "The MCP state route is not answering — is the pi2dsh engine mounted in this profile?"));
 			if (state === void 0) return (0, react.createElement)("div", {
-				style: ui.root,
+				style: ui$1.root,
 				"data-dsh-x": "mcp-settings"
-			}, (0, react.createElement)("div", { style: ui.sub }, "Loading MCP configuration…"));
+			}, (0, react.createElement)("div", { style: ui$1.sub }, "Loading MCP configuration…"));
 			const globals = state.servers.filter((server) => server.layer === "global");
 			return (0, react.createElement)("div", {
-				style: ui.root,
+				style: ui$1.root,
 				"data-dsh-x": "mcp-settings"
-			}, (0, react.createElement)("div", { style: ui.headline }, (0, react.createElement)("span", null, "MCP servers · global"), (0, react.createElement)("span", { style: ui.sub }, `${globals.length} configured`)), (0, react.createElement)("div", { style: ui.sub }, "Cross-project servers from your machine-level config layers. Project-level servers live in each workspace's .mcp.json and show up in the session sidebar."), note === void 0 ? null : (0, react.createElement)("div", {
-				style: ui.note,
+			}, (0, react.createElement)("div", { style: ui$1.headline }, (0, react.createElement)("span", null, "MCP servers · global"), (0, react.createElement)("span", { style: ui$1.sub }, `${globals.length} configured`)), (0, react.createElement)("div", { style: ui$1.sub }, "Cross-project servers from your machine-level config layers. Project-level servers live in each workspace's .mcp.json and show up in the session sidebar."), note === void 0 ? null : (0, react.createElement)("div", {
+				style: ui$1.note,
 				"data-dsh-x": "mcp-note"
-			}, note), globals.length === 0 ? emptyGuide() : globals.map((server) => serverCard(server, toggle, server.disabled ? "Enable everywhere" : "Disable everywhere")), (0, react.createElement)("div", { style: ui.meta }, `layers: ${state.sources.length === 0 ? "none found" : state.sources.map((source) => source.split("/").slice(-2).join("/")).join(" → ")}`));
+			}, note), globals.length === 0 ? emptyGuide() : globals.map((server) => serverCard(server, toggle, server.disabled ? "Enable everywhere" : "Disable everywhere")), (0, react.createElement)("div", { style: ui$1.meta }, `layers: ${state.sources.length === 0 ? "none found" : state.sources.map((source) => source.split("/").slice(-2).join("/")).join(" → ")}`));
 		}
 		/** Seat both views: the sidebar tab (optional) and the Settings section. */
 		function registerMcpTab(ctx) {
@@ -1076,11 +1082,355 @@ window.__ModuleLoader__.load({
 			});
 		}
 		//#endregion
+		//#region dsh-x/src/side-chat.ts
+		const SIDE_PACKAGE = "pi-btw";
+		const ui = {
+			window: {
+				position: "fixed",
+				right: "20px",
+				bottom: "108px",
+				zIndex: 55,
+				width: "360px",
+				maxHeight: "56vh",
+				display: "flex",
+				flexDirection: "column",
+				pointerEvents: "auto",
+				overflow: "hidden",
+				borderRadius: "14px",
+				border: "1px solid var(--dsw-alias-border-l2, rgba(0,0,0,0.1))",
+				background: "var(--dsw-alias-bg-layer-2, #fff)",
+				color: "inherit",
+				boxShadow: "var(--dsw-shadow-lv3, 0 16px 40px rgba(0,0,0,0.18))",
+				font: "400 13px/1.55 system-ui, -apple-system, sans-serif"
+			},
+			windowMax: {
+				right: "20px",
+				bottom: "20px",
+				top: "64px",
+				width: "min(560px, 90vw)",
+				maxHeight: "none"
+			},
+			header: {
+				display: "flex",
+				alignItems: "center",
+				gap: "8px",
+				padding: "10px 12px",
+				borderBottom: "1px solid var(--dsw-alias-border-l1, rgba(0,0,0,0.06))",
+				font: "600 12.5px/1.4 system-ui, sans-serif"
+			},
+			headerButton: {
+				cursor: "pointer",
+				opacity: .55,
+				background: "none",
+				border: "none",
+				color: "inherit",
+				font: "inherit",
+				padding: "2px 4px"
+			},
+			body: {
+				padding: "12px",
+				overflowY: "auto",
+				display: "flex",
+				flexDirection: "column",
+				gap: "10px",
+				flex: 1,
+				minHeight: "80px"
+			},
+			bubbleUser: {
+				alignSelf: "flex-end",
+				maxWidth: "85%",
+				padding: "7px 11px",
+				borderRadius: "12px 12px 4px 12px",
+				background: "var(--dsw-alias-interactive-bg-active, rgba(0,0,0,0.06))",
+				whiteSpace: "pre-wrap",
+				wordBreak: "break-word"
+			},
+			bubbleAssistant: {
+				alignSelf: "flex-start",
+				maxWidth: "92%",
+				whiteSpace: "pre-wrap",
+				wordBreak: "break-word"
+			},
+			emptyNote: {
+				padding: "14px 6px",
+				opacity: .6,
+				fontSize: "12.5px",
+				lineHeight: 1.7
+			},
+			working: {
+				opacity: .55,
+				fontSize: "12px",
+				fontStyle: "italic"
+			},
+			noteError: {
+				fontSize: "12px",
+				padding: "6px 10px",
+				borderRadius: "8px",
+				background: "rgba(246,50,24,0.1)",
+				color: "#F63218"
+			},
+			noteInfo: {
+				fontSize: "12px",
+				padding: "6px 10px",
+				borderRadius: "8px",
+				background: "rgba(40,159,234,0.12)"
+			},
+			footer: {
+				borderTop: "1px solid var(--dsw-alias-border-l1, rgba(0,0,0,0.06))",
+				padding: "8px 10px",
+				display: "flex",
+				flexDirection: "column",
+				gap: "6px"
+			},
+			inputRow: {
+				display: "flex",
+				gap: "6px",
+				alignItems: "flex-end"
+			},
+			input: {
+				flex: 1,
+				resize: "none",
+				border: "1px solid var(--dsw-alias-border-l2, rgba(0,0,0,0.12))",
+				borderRadius: "10px",
+				padding: "7px 10px",
+				font: "inherit",
+				color: "inherit",
+				background: "transparent",
+				outline: "none",
+				maxHeight: "96px"
+			},
+			send: {
+				cursor: "pointer",
+				border: "none",
+				borderRadius: "10px",
+				padding: "7px 12px",
+				background: "var(--dsw-alias-button-primary-fill, #1869F5)",
+				color: "#fff",
+				font: "500 12.5px/1.3 system-ui, sans-serif"
+			},
+			actionRow: {
+				display: "flex",
+				alignItems: "center",
+				gap: "10px",
+				fontSize: "11.5px",
+				opacity: .75
+			},
+			actionButton: {
+				cursor: "pointer",
+				border: "1px solid var(--dsw-alias-border-l2, rgba(0,0,0,0.12))",
+				borderRadius: "999px",
+				padding: "2px 10px",
+				background: "transparent",
+				color: "inherit",
+				font: "500 11px/1.5 system-ui, sans-serif"
+			},
+			saveLabel: {
+				display: "flex",
+				alignItems: "center",
+				gap: "4px",
+				cursor: "pointer",
+				userSelect: "none"
+			},
+			dot: {
+				position: "fixed",
+				right: "20px",
+				bottom: "64px",
+				zIndex: 55,
+				width: "38px",
+				height: "38px",
+				borderRadius: "999px",
+				pointerEvents: "auto",
+				display: "flex",
+				alignItems: "center",
+				justifyContent: "center",
+				cursor: "pointer",
+				border: "1px solid var(--dsw-alias-border-l2, rgba(0,0,0,0.1))",
+				background: "var(--dsw-alias-bg-layer-2, #fff)",
+				boxShadow: "var(--dsw-shadow-lv2, 0 6px 20px rgba(0,0,0,0.14))",
+				fontSize: "17px"
+			}
+		};
+		async function runSideCommand(session, packageName, command, args) {
+			try {
+				const response = await fetch("/pi2dsh/pi-command", {
+					method: "POST",
+					headers: { "content-type": "application/json" },
+					body: JSON.stringify({
+						session,
+						package: packageName,
+						command,
+						args
+					})
+				});
+				const payload = await response.json();
+				if (!response.ok) return {
+					ok: false,
+					detail: payload.error ?? "the command failed"
+				};
+				return {
+					ok: true,
+					...payload.notice === void 0 ? {} : { detail: payload.notice }
+				};
+			} catch (error) {
+				return {
+					ok: false,
+					detail: String(error)
+				};
+			}
+		}
+		/** The suite's floating side-chat window over the active session. */
+		function SideChatWindow({ useSessions }) {
+			const session = useSessions((state) => state.current) ?? "";
+			const [threads, setThreads] = (0, react.useState)([]);
+			const [mode, setMode] = (0, react.useState)("dot");
+			const [opened, setOpened] = (0, react.useState)(false);
+			const [draft, setDraft] = (0, react.useState)("");
+			const [save, setSave] = (0, react.useState)(false);
+			const [pending, setPending] = (0, react.useState)(false);
+			const [note, setNote] = (0, react.useState)(void 0);
+			const bodyRef = (0, react.useRef)(null);
+			const seenCount = (0, react.useRef)(0);
+			(0, react.useEffect)(() => {
+				if (session === "") return;
+				let live = true;
+				const pull = async () => {
+					try {
+						const response = await fetch(`/pi2dsh/browser-state?session=${encodeURIComponent(session)}`);
+						if (!live || !response.ok) return;
+						const payload = await response.json();
+						setThreads(payload.threads ?? []);
+					} catch {}
+				};
+				pull();
+				const timer = window.setInterval(() => {
+					pull();
+				}, 2e3);
+				return () => {
+					live = false;
+					window.clearInterval(timer);
+				};
+			}, [session]);
+			const thread = threads.length > 0 ? threads[threads.length - 1] : void 0;
+			const messages = thread?.messages ?? [];
+			(0, react.useEffect)(() => {
+				if (messages.length > seenCount.current) {
+					seenCount.current = messages.length;
+					setPending(false);
+					if (!opened) {
+						setMode("panel");
+						setOpened(true);
+					}
+				}
+			}, [messages.length, opened]);
+			(0, react.useEffect)(() => {
+				bodyRef.current?.scrollTo({ top: bodyRef.current.scrollHeight });
+			}, [messages.length, pending]);
+			if (session === "") return null;
+			if (mode === "dot") return (0, react_dom.createPortal)((0, react.createElement)("button", {
+				style: ui.dot,
+				title: "Side chat — ask without touching the main thread",
+				"data-dsh-x": "side-chat-dot",
+				onClick: () => {
+					setMode("panel");
+					setOpened(true);
+				}
+			}, "💬"), document.body);
+			const submit = () => {
+				const text = draft.trim();
+				if (text.length === 0 || pending) return;
+				setDraft("");
+				setNote(void 0);
+				setPending(true);
+				runSideCommand(session, thread?.package ?? SIDE_PACKAGE, "btw", save ? `${text} --save` : text).then((result) => {
+					if (!result.ok) {
+						setPending(false);
+						setNote({
+							text: result.detail ?? "the command failed",
+							tone: "error"
+						});
+					}
+				});
+			};
+			return (0, react_dom.createPortal)((0, react.createElement)("div", {
+				style: {
+					...ui.window,
+					...mode === "max" ? ui.windowMax : {}
+				},
+				"data-dsh-x": "side-chat"
+			}, (0, react.createElement)("div", { style: ui.header }, (0, react.createElement)("span", { style: {
+				flex: 1,
+				overflow: "hidden",
+				textOverflow: "ellipsis",
+				whiteSpace: "nowrap"
+			} }, "Side chat"), thread === void 0 ? null : (0, react.createElement)("button", {
+				style: ui.headerButton,
+				title: "Summarize this side thread and inject the summary into the main agent",
+				"data-dsh-x": "side-chat-inject",
+				onClick: () => {
+					setNote(void 0);
+					runSideCommand(session, thread.package ?? SIDE_PACKAGE, "btw:inject", "").then((result) => setNote(result.ok ? {
+						text: "summary injected into the main conversation",
+						tone: "info"
+					} : {
+						text: result.detail ?? "inject failed",
+						tone: "error"
+					}));
+				}
+			}, "⤴ Inject"), (0, react.createElement)("button", {
+				style: ui.headerButton,
+				title: mode === "max" ? "Shrink" : "Expand",
+				onClick: () => setMode(mode === "max" ? "panel" : "max")
+			}, mode === "max" ? "⤡" : "⤢"), (0, react.createElement)("button", {
+				style: ui.headerButton,
+				title: "Close",
+				onClick: () => setMode("dot")
+			}, "×")), (0, react.createElement)("div", {
+				style: ui.body,
+				ref: bodyRef
+			}, messages.length === 0 && !pending ? (0, react.createElement)("div", { style: ui.emptyNote }, "Ask a quick question without touching the main thread. The side chat sees the main conversation's context; answers stay here unless you save or inject them.") : null, ...messages.map((message, index) => (0, react.createElement)("div", {
+				key: index,
+				style: message.role === "user" ? ui.bubbleUser : ui.bubbleAssistant
+			}, message.text)), pending || thread?.running === true ? (0, react.createElement)("div", { style: ui.working }, "Answering…") : null, note === void 0 ? null : (0, react.createElement)("div", {
+				style: note.tone === "error" ? ui.noteError : ui.noteInfo,
+				"data-dsh-x": "side-chat-note"
+			}, note.text)), (0, react.createElement)("div", { style: ui.footer }, (0, react.createElement)("div", { style: ui.inputRow }, (0, react.createElement)("textarea", {
+				style: ui.input,
+				rows: 1,
+				placeholder: "Ask a quick question…",
+				value: draft,
+				"data-dsh-x": "side-chat-input",
+				onChange: (event) => setDraft(event.target.value),
+				onKeyDown: (event) => {
+					if (event.key === "Enter" && !event.shiftKey) {
+						event.preventDefault();
+						submit();
+					}
+				}
+			}), (0, react.createElement)("button", {
+				style: ui.send,
+				onClick: submit,
+				"data-dsh-x": "side-chat-send"
+			}, "Send")), (0, react.createElement)("div", { style: ui.actionRow }, (0, react.createElement)("label", { style: ui.saveLabel }, (0, react.createElement)("input", {
+				type: "checkbox",
+				checked: save,
+				onChange: (event) => setSave(event.target.checked)
+			}), "also save into the main conversation")))), document.body);
+		}
+		//#endregion
 		//#region dsh-x/src/client.ts
 		const inject = inject$1;
 		function apply(ctx) {
-			apply$1(ctx);
+			apply$1(ctx, { sideThreads: false });
 			registerMcpTab(ctx);
+			ctx.inject(["slots"], (scope) => {
+				const slots = scope.slots;
+				if (slots === void 0) return;
+				slots.inject("shell.overlay", () => slots.register({
+					name: "shell.overlay",
+					id: "dsh-work-x-side-chat",
+					order: 3
+				}, SideChatWindow));
+			});
 		}
 		//#endregion
 		exports.apply = apply;

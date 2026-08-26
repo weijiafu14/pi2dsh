@@ -5,10 +5,27 @@
 // repository) into the single bundle the loader receives under id "dsh-x".
 import { apply as engineApply, inject as engineInject } from '../../src/client.js'
 import { registerMcpTab } from './mcp-tab.js'
+import { SideChatWindow } from './side-chat.js'
 
 export const inject = engineInject
 
 export function apply(ctx: Parameters<typeof engineApply>[0]): void {
-  engineApply(ctx)
+  // The suite ships its own side-chat window (a real chat card over pi-btw's
+  // commands), so the engine's plain read-only thread panel steps aside.
+  engineApply(ctx, { sideThreads: false })
   registerMcpTab(ctx as never)
+  ;(ctx as unknown as {
+    inject(services: string[], apply: (scope: {
+      slots?: {
+        inject(name: string, apply: () => unknown): void
+        register(registration: Record<string, unknown>, component: unknown): () => void
+      }
+    }) => void): void
+  }).inject(['slots'], (scope) => {
+    const slots = scope.slots
+    if (slots === undefined) return
+    slots.inject('shell.overlay', () => slots.register({
+      name: 'shell.overlay', id: 'dsh-work-x-side-chat', order: 3,
+    }, SideChatWindow))
+  })
 }
