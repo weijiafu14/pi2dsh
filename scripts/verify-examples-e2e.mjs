@@ -1230,6 +1230,9 @@ async function runDshX() {
     const tarball = join(scratch, JSON.parse(packOut.stdout)[0].filename)
     // The ONLY install a dsh-x user runs.
     await runDsh(['plugin', '--profile', 'web', 'add', tarball])
+    // Side-chat's durable assertions read the session log; the host renders
+    // plugin-sourced messages collapsed, so the page is the wrong layer.
+    await useJsonlSessions(home, 'web')
     const profileManifest = JSON.parse(await readFile(join(home, 'profiles/web/package.json'), 'utf8'))
     const bundles = profileManifest.dsh?.profile?.bundles ?? []
     assert(bundles.includes('dsh-work-x'), `dsh-work-x missing from the profile's bundle layers: ${JSON.stringify(bundles)}`)
@@ -1268,17 +1271,50 @@ async function runDshX() {
     const probe = await execFile('node', [join(projectRoot, 'scripts/dsh-x-web-probe.mjs'), join(scratch, 'shots'), '--url', url], {
       cwd: projectRoot,
       env: { ...env, PLAYWRIGHT_FROM: playwrightFrom },
-      timeout: 180_000,
+      timeout: 600_000,
       maxBuffer: 16 * 1024 * 1024,
     }).catch(error => { console.log(String(error.stdout ?? ''), String(error.stderr ?? '')); throw error })
     // Which spelling each surface mounted IS part of the evidence: original
     // names on the web (no reserved-name list there) vs pi- fallbacks.
     const mountedLine = /popover: (\{.*\})/u.exec(String(probe.stdout))?.[1]
 
+    // The side-chat window's DURABLE halves, from the MAIN session's log —
+    // the layer the standards demand for content assertions. The probe
+    // already held the in-window halves (answers arrive, nothing leaks).
+    let sideChat = 'skipped: no model credential'
+    if (!String(probe.stdout).includes('side-chat: SKIPPED')) {
+      const sessionFiles = []
+      const walk = async (dir) => {
+        for (const entry of await readdir(dir, { withFileTypes: true }).catch(() => [])) {
+          const path = join(dir, entry.name)
+          if (entry.isDirectory()) await walk(path)
+          else if (entry.name.endsWith('.jsonl')) sessionFiles.push(path)
+        }
+      }
+      await walk(join(home, 'sessions'))
+      let mainLog
+      for (const file of sessionFiles) {
+        const text = await readFile(file, 'utf8')
+        if (text.includes('Reply with exactly one word: ok') && text.includes('"piCustomType":"btw-note"')) {
+          mainLog = text
+          break
+        }
+      }
+      assert(mainLog !== undefined, `no main-session log carries the saved btw note (searched ${sessionFiles.length} logs)`)
+      // --save: the note is a durable main-session message with the answer.
+      assert(/btw-note/u.test(mainLog) && /Arrakis/u.test(mainLog),
+        'the --save note (Q/A with Arrakis) is missing from the main session log')
+      // Inject: pi-btw's summary hand-off reached the main session.
+      assert(/side conversation I had for additional context/u.test(mainLog),
+        "the injected side-thread summary is missing from the main session log")
+      sideChat = 'answers in-window; inject + --save verified in the main session log'
+    }
+
     results.dshX = {
       status: 'passed',
       engine: await installedEngineVersion(home, 'web', 'dsh-work-x'),
       suite: ['pi-mcp-adapter', '@tintinweb/pi-subagents', 'pi-btw', '@crazygit/pi-codex-image-gen'],
+      sideChat,
       ...(mountedLine === undefined ? {} : { commands: JSON.parse(mountedLine) }),
     }
   } finally {

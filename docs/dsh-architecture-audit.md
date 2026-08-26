@@ -123,6 +123,33 @@ goal/plan/job 也不等于验证 DSH 的同名 subsystem。这些结论应作为
   bundle 自身目录"锚点（等价于把 in-box 的安装树特权泛化给第三方）。
 - **证据**：`dsh-x/`（套件旁路全套）、本仓库 2026-08-25 真机解析探针记录。
 
+### DSH-ARCH-007：宿主没有"侧线会话"语义（ephemeral / 非任务型子会话）
+
+- **消费面**：用户侧问类 Pi 包（真实消费者 `pi-btw`：`SessionManager.inMemory()`
+  的临时侧线，阅后即焚，留存只经 `--save`/`btw:inject` 显式写回主线）。生态
+  同类物：CC/dsh-TUI 的 /btw 压根不建会话；better-sidebar Side Chat 建真子
+  会话后靠自定义 `Side: ` label 前缀把它从自家任务列表滤掉。
+- **卡点（五层证据，2026-08-26 真机实测）**：① Pi 调用 `createAgentSession({
+  sessionManager: SessionManager.inMemory() })` 声明临时性；② 桥必须经官方
+  `agents.create` 才能给 child 跑真轮次，而 create 无 ephemeral 选项——
+  `CreateAgentOptions.meta` 只有 `cwd/parentSession/seedLength/origin:
+  'subagent'/delegationDepth/agentPreset`（dsh-agent 类型通读），`origin` 是
+  单值枚举，无"侧线"一档；③ SessionStore 本身内存态，但持久化插件订阅
+  `session/event` 无条件落盘，无按会话退订约定；`prepare/enter` 不 announce
+  的路径被 agents.create 的创建事务封死，绕开即自建平行运行时（本仓库铁律
+  禁止）；④ 权威状态：child 进宿主 sessions 存储与树；⑤ 用户结果：一次
+  侧问在顶栏"1 个子代理"chip 计数、会话树留下持久条目——用户没有派任务，
+  却得到任务型痕迹。产品面能自救的一半已用生态约定关掉（`Side: ` 前缀，
+  better-sidebar 任务列表实测过滤生效）；**宿主自带的 chip/树没有任何公开
+  过滤契约**，label 前缀对它们无效。
+- **最小上游能力**：`CreateAgentOptions.meta.origin` 增加 `'side'` 一档（或
+  独立 `ephemeral: true`），宿主自己的子代理呈现面（chip/树）与持久化插件
+  按它分流；退一步，仅在子代理呈现面承认 `Side: ` label 前缀这一既有生态
+  约定也能关掉用户可见的那半。
+- **证据**：`src/subagent-bridge.ts` 的 sideline 判据与 label 约定、
+  `tests/subagent-bridge.spec.ts` 契约、2026-08-26 demo web 真机（Tasks 页
+  过滤生效 vs 顶栏 chip 仍计数）。
+
 ### DSH-ARCH-005：资源加载前没有 trust policy
 
 - **Pi 消费面**：`project_trust`、`isProjectTrusted`。

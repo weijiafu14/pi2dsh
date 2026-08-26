@@ -22,7 +22,7 @@ const COMMANDS = [
   { variants: [{ prefix: '/bt', full: 'btw' }], owner: 'pi-btw' },
 ]
 
-const { page, browser, shot, UI } = await openApp()
+const { page, browser, shot, send, UI } = await openApp()
 await page.getByRole('button', { name: UI.newSession }).first().click({ timeout: 60_000 })
 
 const composer = page.getByRole('textbox').last()
@@ -59,4 +59,63 @@ for (const command of COMMANDS) {
 }
 await shot('dsh-x-command-popover')
 console.log(`[dsh-x-probe] suite commands offered by the composer popover: ${JSON.stringify(mounted)}`)
+
+// ---- The side-chat window: the suite's product face of pi-btw. ----
+// Three separately-falsifiable signals, each carried by a DIFFERENT marker so
+// no earlier step can satisfy a later assertion:
+//   1. an un-saved side answer lands INSIDE the window and NOT in the main
+//      conversation (Herbert);
+//   2. Inject summarizes the side thread into the main agent;
+//   3. a --save question is answered in-window (Arrakis).
+// The DURABLE halves of 2 and 3 — the injected context and the saved note in
+// the MAIN session — are asserted by the caller from the session log: the
+// host renders plugin-sourced messages as a COLLAPSED context-injection row,
+// so their text never reaches the DOM and a page assertion would be reading
+// the wrong layer. All three need a real model turn, so without a credential
+// the section is SKIPPED loudly, never quietly passed.
+if (process.env.DEEPSEEK_API_KEY === undefined && process.env.OPENROUTER_API_KEY === undefined) {
+  console.log('[dsh-x-probe] side-chat: SKIPPED — no model credential; the side thread needs real turns')
+  mounted['side-chat'] = 'skipped: no model credential'
+} else {
+  await send('Reply with exactly one word: ok')
+  await page.locator('[data-dsh-x="side-chat-dot"]').click()
+  const win = page.locator('[data-dsh-x="side-chat"]')
+  await win.waitFor({ state: 'visible', timeout: 10_000 })
+
+  // 1. Plain side question: answer in-window, main thread untouched.
+  await page.locator('[data-dsh-x="side-chat-input"]').fill('Who wrote the novel Dune? Reply with the surname only.')
+  await page.locator('[data-dsh-x="side-chat-send"]').click()
+  await page.waitForFunction(() => {
+    const w = document.querySelector('[data-dsh-x="side-chat"]')
+    return w !== null && /Herbert/iu.test(w.textContent ?? '')
+  }, undefined, { timeout: 180_000 })
+  const leaked = await page.evaluate(() => {
+    const clone = document.body.cloneNode(true)
+    for (const w of clone.querySelectorAll('[data-dsh-x="side-chat"]')) w.remove()
+    return /Herbert/iu.test(clone.textContent ?? '')
+  })
+  if (leaked) throw new Error('dsh-x probe: the side answer leaked into the main conversation before any save/inject')
+  await shot('dsh-x-side-answer')
+
+  // 2. Inject: the window's own confirmation; the durable main-session
+  // half is the caller's log assertion.
+  await page.locator('[data-dsh-x="side-chat-inject"]').click()
+  await page.waitForFunction(() => {
+    const w = document.querySelector('[data-dsh-x="side-chat"]')
+    return w !== null && /summary injected/iu.test(w.textContent ?? '')
+  }, undefined, { timeout: 180_000 })
+  await shot('dsh-x-side-injected')
+
+  // 3. --save through the window's toggle: the note lands in the main view.
+  await page.locator('[data-dsh-x="side-chat"] input[type="checkbox"]').check()
+  await page.locator('[data-dsh-x="side-chat-input"]').fill('What planet is the novel Dune set on? Reply with the planet name only.')
+  await page.locator('[data-dsh-x="side-chat-send"]').click()
+  await page.waitForFunction(() => {
+    const w = document.querySelector('[data-dsh-x="side-chat"]')
+    return w !== null && /Arrakis/iu.test(w.textContent ?? '')
+  }, undefined, { timeout: 180_000 })
+  await shot('dsh-x-side-saved')
+  mounted['side-chat'] = 'answer-in-window; inject and save confirmed in-window (durable halves asserted from the session log)'
+  console.log('[dsh-x-probe] side-chat: side answers stayed in-window; inject and --save acknowledged')
+}
 await browser.close()
