@@ -32,3 +32,33 @@ bindExtensions no-op（src/subagent-bridge.ts:601）；正解=bindExtensions 真
 ③ 复用 ChildExtensionCatalog.mount（per-child 实例+dispose unwind+逐扩展隔离白拿）
 ④ 命名 serveNativeSubagents + 验收清单（默认关零变化/双挂载测试/unwind 测试/
 真机 E2E/上游 feature 文档）。等作者按此 rework。
+
+---
+
+## 第三轮回复（合并通告 + 我方跟进）
+
+**Merged** — `99175a7`, rebased onto `main` with your authorship intact. Full suite stays green (314). Thanks for three rounds of rework and for doing the live verification yourself; the two things you found on real machines (the runtime-root partition and the first-turn race) were both real, and neither would have come out of code review.
+
+Three follow-ups landed on `main` afterwards (`5b11534`), all on top of your design — no behavior of yours was changed:
+
+**1. The double-serve test could not fail.** I re-checked it by mutation: deleted the `isRootAgent(agent)` skip from the native path and ran your test — still green. Cause: a second `applyPreparedPiHost` onto the same scope hits DSH's duplicate prompt-section rejection (`pi2dsh:tool-guidance:<pkg>` is already registered in that scope), so the second mount unwinds itself and the survivor is indistinguishable from a single mount. Every registry-side oracle is blind to this — name counts, and also the per-mount numbered names I first tried. What a double serve does leave behind is a second *factory invocation* and the loser's warning, so the probe extension now appends a line to an on-disk ledger on every invocation and the test asserts exactly +1 per package around the child's creation, plus no mount-failure warning in that window. Mutation now goes red, restore goes green. Your partition itself was correct; only its proof was.
+
+**2. Docs.** `docs/STANDARDS.md` §3.6 now records all three v3 mechanisms (the runtime-root partition with its fail-open/fail-closed mirroring, the scope-keyed mount memo, the first-turn gates) and the self-unwind pathology above, so the next person doesn't re-derive it. README (en + zh) gained the two user-visible promises: served exactly once whichever path DSH created the child through, and the mount is guaranteed for the child's first turn.
+
+**3. Our own reproducible real-machine E2E** — `scripts/verify-native-subagents-e2e.mjs`. Stock `@deepseek-ai/dsh@0.1.1-rc.2`, the engine, and a probe Pi package, with **no Pi subagent package installed at all**: the model delegates through DSH's own native `subagent` tool, real DeepSeek on both parent and child turns. Flag-on asserts a callId-linked non-error `probe_touch` result in the *child's* durable log, with the child's session header showing `origin: subagent`, no `pi2dsh-sub-` prefix, and `parentSession` pointing back at the delegating parent; the parent is asserted clean of both `probe_touch` and `bash`. Flag-off asserts delegation still happened but no child produced a successful `probe_touch`. Both pass; evidence in `community/native-subagents-e2e.json`.
+
+One note from that E2E worth passing on: my first flag-off assertion was "the probe file must not exist", and it failed — the unserved child simply improvised the file with its native `write` tool. File existence tests the model's obedience, not our mount; only the callId-linked tool result in the durable log decides it.
+
+If you want to keep going: the natural next pieces are Web-surface presentation for these children, and depth-2 coverage in the automated script (your live run had it, ours does not yet).
+
+---
+第三轮回复存档：2026-08-26 发于 https://github.com/weijiafu14/pi2dsh/pull/2#issuecomment-5419869254
+背景：作者 v3（按出身分流 + runtime-root 分区 + scope 键 memo + 首轮 gate）已合并
+（99175a7，rebase 保留署名）。本帖通告合并并交代我方三项跟进（5b11534）：
+① 双伺候测试换可证伪判据（工厂调用落盘台账 + 挂载失败 warn 捕获）——原判据被变异
+证伪：第二次挂载撞重复 prompt-section 名自我 unwind，注册表侧信号全盲；
+② STANDARDS §3.6 + README 双语补 v3 三机制与自 unwind 病理；
+③ 我方可复现真机 E2E（stock CLI + 引擎 + probe 包、不装任何 Pi 子代理包、走 DSH
+原生 subagent 委派、真模型，旗开旗关双绿）。并回传一条判据教训：旗关场景不能用
+"探针文件不存在"当断言（未被伺候的孩子会用原生 write 自己造文件），只有会话日志里
+callId 关联的工具结果算数。后续可做：Web 呈现、脚本补 depth-2。
