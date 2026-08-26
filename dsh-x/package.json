@@ -51,7 +51,7 @@
     "@tintinweb/pi-subagents": "0.18.0",
     "pi-btw": "0.4.1",
     "pi-mcp-adapter": "2.27.0",
-    "pi2dsh": "^0.19.0"
+    "pi2dsh": "^0.20.0"
   },
   "scripts": {
     "prepack": "node -e \"require('fs').accessSync('client.js')\" || (echo 'dsh-x/client.js missing — run pnpm build at the repo root first' && exit 1)"
