@@ -1,6 +1,6 @@
 {
   "name": "pi2dsh",
-  "version": "0.21.0",
+  "version": "0.22.0",
   "description": "Bridge the Pi and DeepSeek Harness ecosystems: a general Pi Host ABI that runs unmodified Pi extensions as native DSH plugins, with compatibility inspection and Pi-to-DSH MCP config translation.",
   "type": "module",
   "bin": {
@@ -30,9 +30,6 @@
     "./credentials-oauth": {
       "types": "./dist/credentials-oauth.d.mts",
       "default": "./dist/credentials-oauth.mjs"
-    },
-    "./client": {
-      "default": "./dist/client.js"
     },
     "./package.json": "./package.json"
   },
@@ -180,10 +177,6 @@
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
-    },
-    "client": {
-      "inject": [],
-      "platform": "web"
     }
   }
 }
