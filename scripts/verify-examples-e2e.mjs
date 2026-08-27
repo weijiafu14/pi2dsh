@@ -663,15 +663,16 @@ async function runSideConversation() {
     results.sideConversation = { status: 'skipped', reason: 'DEEPSEEK_API_KEY not set' }
     return
   }
-  // The capture script needs a browser; this package deliberately does not
-  // depend on one, so it borrows the DSH checkout's playwright.
+  // The web presentation is the dsh-work-x suite's (2026-08-27): the engine
+  // alone no longer projects a side panel, and the suite bundles pi-btw plus
+  // its own real side-chat window. The example's install line IS the suite.
   const playwrightFrom = process.env.PLAYWRIGHT_FROM ?? join(dshRoot, 'apps/web')
   const scratch = await mkdtemp(join(tmpdir(), 'pi2dsh-ex-side-'))
   let web
   try {
     const { home, env, runDsh } = await makeHome(scratch)
-    await runDsh(['plugin', '--profile', 'web', 'add', engineSpec])
-    await runDsh(['plugin', '--profile', 'web', 'add', 'pi-btw'])
+    const tarball = await stageSuiteTarball(scratch, env)
+    await runDsh(['plugin', '--profile', 'web', 'add', tarball])
     await useJsonlSessions(home, 'web')
 
     const port = Number(process.env.SIDE_PORT ?? 5187)
@@ -689,18 +690,49 @@ async function runSideConversation() {
       await new Promise(done => setTimeout(done, 500))
     }
 
-    // The capture script IS the assertion: it drives a main-thread question
-    // and then `/btw`, and fails if the side answer reaches the main thread.
+    // Drive one `/btw` line the way a user types it; the durable assertions
+    // below read the session logs, never the page (the page legitimately
+    // shows the answer — in the side surfaces — so page text proves nothing).
     const shots = shotDir ?? join(scratch, 'shots')
-    await execFile('node', [join(projectRoot, 'docs/posting-kit/capture-screenshots.mjs'), shots, '--url', url], {
+    await execFile('node', [join(projectRoot, 'docs/posting-kit/capture-side-chat.mjs'), shots, '--url', url], {
       cwd: projectRoot,
       env: { ...env, PLAYWRIGHT_FROM: playwrightFrom },
       timeout: 300_000,
       maxBuffer: 16 * 1024 * 1024,
     }).catch(error => { console.log(String(error.stdout ?? '')); throw error })
     const captured = await readdir(shots)
-    assert(captured.length > 0, 'the capture run produced no screenshots')
-    results.sideConversation = { status: 'passed', engine: await installedEngineVersion(home, 'web'), screenshots: captured.sort() }
+    assert(captured.length > 0, 'the side-conversation run produced no screenshot')
+
+    // The example's core claim, asserted structurally: bridge-minted side
+    // sessions carry the pi2dsh-sub- id prefix. The ANSWER (Herbert) must
+    // appear in a side session's log and in NO main-session log — the
+    // question line itself (`/btw who wrote…`) lives in the main log, which
+    // is exactly why the answer word, not the question, is the discriminator.
+    const logs = []
+    const walk = async dir => {
+      for (const entry of await readdir(dir, { withFileTypes: true }).catch(() => [])) {
+        const path = join(dir, entry.name)
+        if (entry.isDirectory()) await walk(path)
+        else if (entry.name.endsWith('.jsonl')) logs.push({ path, text: await readFile(path, 'utf8') })
+      }
+    }
+    await walk(join(home, 'sessions'))
+    assert(logs.length > 0, 'no session logs were written at all')
+    const side = logs.filter(log => log.path.includes('pi2dsh-sub-'))
+    const main = logs.filter(log => !log.path.includes('pi2dsh-sub-'))
+    assert(side.some(log => /herbert/iu.test(log.text)),
+      `no side session log contains the answer (side logs: ${side.length})`)
+    const leaked = main.filter(log => /herbert/iu.test(log.text))
+    assert(leaked.length === 0,
+      `the side answer leaked into a main session log: ${leaked.map(log => log.path).join(', ')}`)
+
+    results.sideConversation = {
+      status: 'passed',
+      engine: await installedEngineVersion(home, 'web', 'dsh-work-x'),
+      install: 'dsh-work-x suite (bundles pi-btw)',
+      sideAnswerIsolated: true,
+      screenshots: captured.sort(),
+    }
   } finally {
     web?.kill('SIGTERM')
     await rm(scratch, { recursive: true, force: true })
@@ -906,7 +938,11 @@ async function runPresentationSurfaces() {
   let web
   try {
     const { home, env, runDsh } = await makeHome(scratch)
-    await runDsh(['plugin', '--profile', 'web', 'add', engineSpec])
+    // Web presentation is the dsh-work-x suite's (2026-08-27): the engine
+    // alone projects nothing into the browser, so the example installs the
+    // suite and adds the status-line package on top.
+    const tarball = await stageSuiteTarball(scratch, env)
+    await runDsh(['plugin', '--profile', 'web', 'add', tarball])
     await runDsh(['plugin', '--profile', 'web', 'add', 'pi-powerline-footer'])
     await useJsonlSessions(home, 'web')
 
@@ -936,7 +972,7 @@ async function runPresentationSurfaces() {
     }).catch(error => { console.log(String(error.stdout ?? '')); throw error })
     const captured = await readdir(shots)
     assert(captured.length > 0, 'the surfaces run produced no screenshots')
-    results.presentationSurfaces = { status: 'passed', engine: await installedEngineVersion(home, 'web'), screenshots: captured.sort() }
+    results.presentationSurfaces = { status: 'passed', engine: await installedEngineVersion(home, 'web', 'dsh-work-x'), install: 'dsh-work-x suite + pi-powerline-footer', screenshots: captured.sort() }
   } finally {
     web?.kill('SIGTERM')
     await rm(scratch, { recursive: true, force: true })
@@ -1200,34 +1236,41 @@ async function runSubagents() {
 // dsh-x — the capability suite: ONE `dsh plugin add` carries the engine and
 // its pinned Pi packages, and the web composer really offers their commands.
 // ---------------------------------------------------------------------------
+
+/**
+ * Stage the dsh-work-x suite as a real tarball with its engine dependency
+ * pointed at THIS run's engine (local tree or release spec). A tarball
+ * install is the shape an npm user gets — pnpm links path installs back to
+ * their source directory, where the suite's dependencies are unresolvable.
+ * @param scratch - scenario scratch directory.
+ * @param env - environment for npm pack.
+ * @returns absolute tarball path, installable with `dsh plugin add`.
+ */
+async function stageSuiteTarball(scratch, env) {
+  const suiteDir = join(scratch, 'dsh-x')
+  await mkdir(suiteDir, { recursive: true })
+  const manifest = JSON.parse(await readFile(join(projectRoot, 'dsh-x/package.json'), 'utf8'))
+  // A dependency value is a version/range/file: URL — never "name@version"
+  // (that spelling is only valid on an install command line).
+  manifest.dependencies.pi2dsh = engineSpec.startsWith('pi2dsh@') ? engineSpec.slice('pi2dsh@'.length) : engineSpec
+  await writeFile(join(suiteDir, 'package.json'), JSON.stringify(manifest, null, 2))
+  await writeFile(join(suiteDir, 'cordis.patch.yml'), await readFile(join(projectRoot, 'dsh-x/cordis.patch.yml'), 'utf8'))
+  await writeFile(join(suiteDir, 'index.mjs'), await readFile(join(projectRoot, 'dsh-x/index.mjs'), 'utf8'))
+  // The suite's browser half — its prepack guard refuses to pack without it
+  // (a user would get a suite whose product UI silently never loads).
+  await writeFile(join(suiteDir, 'client.js'), await readFile(join(projectRoot, 'dsh-x/client.js'), 'utf8'))
+  await writeFile(join(suiteDir, 'README.md'), await readFile(join(projectRoot, 'dsh-x/README.md'), 'utf8'))
+  const packOut = await execFile('npm', ['pack', '--json', '--pack-destination', scratch], { cwd: suiteDir, env, timeout: 120_000 })
+  return join(scratch, JSON.parse(packOut.stdout)[0].filename)
+}
+
 async function runDshX() {
   const playwrightFrom = process.env.PLAYWRIGHT_FROM ?? join(dshRoot, 'apps/web')
   const scratch = await mkdtemp(join(tmpdir(), 'pi2dsh-ex-dshx-'))
   let web
   try {
-    // Stage the suite with its engine dependency pointed at THIS run's engine
-    // (the local tree, or the release spec under test); everything else stays
-    // the suite's published pinned set.
-    const suiteDir = join(scratch, 'dsh-x')
-    await mkdir(suiteDir, { recursive: true })
-    const manifest = JSON.parse(await readFile(join(projectRoot, 'dsh-x/package.json'), 'utf8'))
-    // A dependency value is a version/range/file: URL — never "name@version"
-    // (that spelling is only valid on an install command line).
-    manifest.dependencies.pi2dsh = engineSpec.startsWith('pi2dsh@') ? engineSpec.slice('pi2dsh@'.length) : engineSpec
-    await writeFile(join(suiteDir, 'package.json'), JSON.stringify(manifest, null, 2))
-    await writeFile(join(suiteDir, 'cordis.patch.yml'), await readFile(join(projectRoot, 'dsh-x/cordis.patch.yml'), 'utf8'))
-    await writeFile(join(suiteDir, 'index.mjs'), await readFile(join(projectRoot, 'dsh-x/index.mjs'), 'utf8'))
-    // The suite's browser half — its prepack guard refuses to pack without it
-    // (a user would get a suite whose product UI silently never loads).
-    await writeFile(join(suiteDir, 'client.js'), await readFile(join(projectRoot, 'dsh-x/client.js'), 'utf8'))
-    await writeFile(join(suiteDir, 'README.md'), await readFile(join(projectRoot, 'dsh-x/README.md'), 'utf8'))
-
     const { home, env, runDsh } = await makeHome(scratch)
-    // Pack the staged suite: pnpm links path installs back to their source
-    // directory (where the suite's own dependencies are unresolvable), while
-    // a tarball install is a real install — the shape an npm user gets.
-    const packOut = await execFile('npm', ['pack', '--json', '--pack-destination', scratch], { cwd: suiteDir, env, timeout: 120_000 })
-    const tarball = join(scratch, JSON.parse(packOut.stdout)[0].filename)
+    const tarball = await stageSuiteTarball(scratch, env)
     // The ONLY install a dsh-x user runs.
     await runDsh(['plugin', '--profile', 'web', 'add', tarball])
     // Side-chat's durable assertions read the session log; the host renders
@@ -1323,6 +1366,257 @@ async function runDshX() {
   }
 }
 
+// ---------------------------------------------------------------------------
+// examples/code-navigation — @ff-labs/pi-fff + pi-lens on a real project
+// ---------------------------------------------------------------------------
+// Two planted ground truths make the assertions falsifiable: the marker string
+// exists ONLY in notes/spec.md (a search result naming it proves a real
+// content search ran — the model cannot guess it from file names), and
+// src/ledger.ts carries exactly one type error whose TS2322 wording only a
+// real language server produces. Both are asserted from the TOOL RESULTS in
+// the session log, never from the model's prose — a broken tool with a model
+// that routes around it (bash grep, reading the file) must FAIL here.
+
+/**
+ * Remove a scenario scratch tree, tolerating stragglers: pi-lens keeps
+ * language-server children writing into its home for a beat after the dsh
+ * process is killed, and a concurrent write turns rm into ENOTEMPTY. Cleanup
+ * failure is logged, never thrown — a passed scenario must not regress on
+ * scratch removal.
+ * @param scratch - the scenario directory to remove.
+ * @param label - scenario name for the diagnostic.
+ */
+async function removeScratch(scratch, label) {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      await rm(scratch, { recursive: true, force: true })
+      return
+    } catch {
+      await new Promise(done => setTimeout(done, 700))
+    }
+  }
+  try {
+    await rm(scratch, { recursive: true, force: true })
+  } catch (error) {
+    console.error(`[examples-e2e] ${label}: scratch cleanup left ${scratch}: ${String(error)}`)
+  }
+}
+
+// The README's own prompt, shared by both lanes verbatim.
+const CODE_NAV_PROMPT = 'Two tasks in this project: '
+  + '1) Use the ffgrep tool to find which file mentions FROSTBITE-7741 and report the file path. '
+  + '2) Use the lsp_diagnostics tool on src/ledger.ts and report every error it returns. '
+  + 'Do not use bash or any other tool for these two tasks.'
+
+/**
+ * Shared rig for both code-navigation lanes: isolated HOME, engine + the two
+ * packages installed into `profile` the way the README says, native halves
+ * probed, jsonl sessions on, and the sample project staged with its local
+ * typescript. Returns everything a lane needs to drive a turn and assert.
+ */
+async function prepareCodeNavigation(scratch, profile) {
+  // pi-lens keeps a managed toolchain under ~/.pi-lens and pi-fff keeps its
+  // index caches under the user home; an isolated HOME keeps a regression
+  // run from writing into the operator's real home directory.
+  const userHome = join(scratch, 'user-home')
+  await mkdir(userHome, { recursive: true })
+  // PI_LENS_DISABLE_LSP_INSTALL is pi-lens's own switch for its toolchain
+  // AUTO-INSTALL only — servers already present still spawn. The primary
+  // TypeScript server comes from the sample project's local install (step 2),
+  // so diagnostics stay real; without this, every run re-downloads the
+  // auxiliary scanners (typos-lsp, opengrep) from GitHub into the fresh
+  // isolated HOME and a slow network stalls the web lane's settle window.
+  // A user run without the switch just downloads them once on first use.
+  const { home, env, runDsh } = await makeHome(scratch, { HOME: userHome, PI_LENS_DISABLE_LSP_INSTALL: '1' })
+  const installedEngine = await runDsh(['plugin', '--profile', profile, 'add', engineSpec])
+  // pi-lens depends on @ast-grep/cli, whose install script pnpm blocks — the
+  // add fails with ERR_PNPM_IGNORED_BUILDS and leaves a partial tree
+  // (verified on a stock rc.2 CLI). The README walks the user through
+  // `pnpm approve-builds`; this fixture writes the same approval into the
+  // profile's pnpm-workspace.yaml, which is what approve-builds does.
+  const workspaceFile = join(home, `profiles/${profile}/pnpm-workspace.yaml`)
+  await writeFile(workspaceFile, (await readFile(workspaceFile, 'utf8'))
+    .replace('allowBuilds:\n', 'allowBuilds:\n  "@ast-grep/cli": true\n'))
+  // The README's own install line: both packages in one add.
+  const installedNav = await runDsh(['plugin', '--profile', profile, 'add', '@ff-labs/pi-fff', 'pi-lens'])
+  // Mount preconditions: the native halves both packages load at runtime.
+  // A partial install (the failure mode above) leaves these unresolvable.
+  // realpath first — pnpm's isolated layout links node_modules/<pkg> into
+  // .pnpm, and a literal-path require walks up past the real dependency dir.
+  for (const [pkg, dep] of [['pi-lens', '@ast-grep/napi'], ['@ff-labs/pi-fff', '@ff-labs/fff-node']]) {
+    const real = await realpath(join(home, `profiles/${profile}/node_modules`, pkg))
+    createRequire(join(real, 'noop.js'))(dep)
+  }
+  await useJsonlSessions(home, profile)
+
+  // The README's step 2: stage the sample project and install its local
+  // typescript, which is what pi-lens's language-server discovery finds.
+  const sampleDir = join(scratch, 'sample-project')
+  await execFile('cp', ['-R', join(projectRoot, 'examples/code-navigation/sample-project'), sampleDir])
+  await execFile('npm', ['install', '--no-fund', '--no-audit'], { cwd: sampleDir, env, timeout: 300_000 })
+  return { home, env, sampleDir, installLog: `${installedEngine.stdout}${installedEngine.stderr}${installedNav.stdout}${installedNav.stderr}` }
+}
+
+/**
+ * The falsifiable core, shared by both lanes and asserted from the session
+ * log only: the marker file exists nowhere but notes/spec.md (a search result
+ * naming it proves a real content search), and ledger.ts carries exactly one
+ * TS2322 whose wording only a real language server produces. A broken tool
+ * with a model that routes around it (bash grep, reading the file) fails here.
+ * @param records - parsed session.jsonl records.
+ * @param transcript - lane output for failure context.
+ */
+function assertCodeNavigation(records, transcript) {
+  // Every {call, result-block} pair for one tool name. Kept as pairs: a
+  // per-file tool's RESULT text has no file name in it — the file lives in
+  // the call's arguments — so file-scoped assertions must join both sides.
+  const resultsFor = name => records
+    .filter(record => record.type === 'tool/call' && record.data?.name === name)
+    .map(call => {
+      const result = records.find(record => record.type === 'tool/result'
+        && (record.data?.message?.content ?? []).some(block => block.toolCallId === call.data.callId))
+      return { call, block: (result?.data?.message?.content ?? []).find(block => block.toolCallId === call.data.callId) }
+    })
+    .filter(pair => pair.block !== undefined)
+
+  // 1. The search: a real ffgrep result that NAMES the only file carrying
+  //    the marker. fffind cannot substitute (the marker is content, not a
+  //    file name), and a bash detour leaves no ffgrep result at all.
+  const searches = resultsFor('ffgrep')
+  assert(searches.length > 0, `no ffgrep tool result in the session log; the model answered some other way:\n${transcript.slice(0, 600)}`)
+  const searchHit = searches.find(({ block }) => block.isError !== true && /spec\.md/u.test(JSON.stringify(block.content)))
+  assert(searchHit !== undefined, `ffgrep ran but never returned notes/spec.md:\n${JSON.stringify(searches.map(pair => pair.block)).slice(0, 800)}`)
+
+  // 2. The diagnostics: a real language-server result reporting the planted
+  //    TS2322. The file association lives in the CALL's arguments (the
+  //    result text is per-file and names no path); degraded syntax-only
+  //    checking (no local typescript) reports zero type errors and fails.
+  const diagnostics = resultsFor('lsp_diagnostics')
+  assert(diagnostics.length > 0, `no lsp_diagnostics tool result in the session log:\n${transcript.slice(0, 600)}`)
+  const diagnosticHit = diagnostics.find(({ call, block }) => block.isError !== true
+    && /ledger\.ts/u.test(JSON.stringify(call.data?.arguments ?? ''))
+    && /2322|not assignable/iu.test(JSON.stringify(block.content)))
+  assert(diagnosticHit !== undefined, `lsp_diagnostics ran but never reported the planted type error for ledger.ts:\n${
+    JSON.stringify(diagnostics.map(({ call, block }) => ({ arguments: call.data?.arguments, result: block.content }))).slice(0, 900)}`)
+}
+
+async function runCodeNavigation() {
+  if (apiKey === undefined || apiKey.length === 0) {
+    results.codeNavigation = { status: 'skipped', reason: 'DEEPSEEK_API_KEY not set' }
+    return
+  }
+  const scratch = await mkdtemp(join(tmpdir(), 'pi2dsh-ex-codenav-'))
+  try {
+    const { home, env, sampleDir, installLog } = await prepareCodeNavigation(scratch, 'headless')
+
+    // The turn must run with the sample project as its working directory —
+    // fffind/ffgrep and pi-lens search the session cwd, exactly as the README
+    // tells the user to `cd sample-project` first. runDsh pins cwd to the CLI
+    // directory, so this scenario carries its own runner. (tsx resolves the
+    // CLI's imports relative to the script file, not cwd, so the checkout
+    // fallback works from here too.)
+    const runDshIn = (cwd, args) => execFile(
+      directDshBin === undefined ? 'node' : directDshBin,
+      directDshBin === undefined ? ['--import', 'tsx/esm', dshBin, ...args] : args,
+      { cwd, env, timeout: 420_000, maxBuffer: 16 * 1024 * 1024 },
+    )
+    const run = await runDshIn(sampleDir, ['--profile', 'headless', CODE_NAV_PROMPT])
+
+    const records = await sessionRecords(home)
+    const sessionFiles = (await filesBelow(join(home, 'sessions'))).filter(path => path.endsWith('/session.jsonl'))
+    const rawLog = await readFile(sessionFiles[0], 'utf8')
+    assert(!`${installLog}${run.stdout}${run.stderr}${rawLog}`.includes(apiKey), 'credential appeared in captured test artifacts')
+
+    assertCodeNavigation(records, run.stdout)
+    results.codeNavigation = {
+      status: 'passed',
+      engine: await installedEngineVersion(home, 'headless'),
+      packages: ['@ff-labs/pi-fff', 'pi-lens'],
+      search: 'ffgrep -> notes/spec.md',
+      diagnostics: 'lsp_diagnostics -> TS2322 on src/ledger.ts',
+    }
+  } finally {
+    if (process.env.PI2DSH_KEEP_SCRATCH === '1') {
+      console.error(`[examples-e2e] kept code-navigation scratch for diagnosis: ${scratch}`)
+    } else {
+      await removeScratch(scratch, 'code-navigation')
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// examples/code-navigation, on the WEB surface
+// ---------------------------------------------------------------------------
+// The headless pass proves the tools; this proves the surface. The browser
+// lane adopts the staged sample project as the session's workspace through
+// the host's own workspace.create RPC (what the in-app picker calls), sends
+// the same README prompt, and asserts the same two tool results from the
+// session log — the screen text is only a smoke check inside the capture.
+async function runCodeNavigationWeb() {
+  if (apiKey === undefined || apiKey.length === 0) {
+    results.codeNavigationWeb = { status: 'skipped', reason: 'DEEPSEEK_API_KEY not set' }
+    return
+  }
+  const playwrightFrom = process.env.PLAYWRIGHT_FROM ?? join(dshRoot, 'apps/web')
+  const scratch = await mkdtemp(join(tmpdir(), 'pi2dsh-ex-codenav-web-'))
+  let web
+  try {
+    const { home, env, sampleDir, installLog } = await prepareCodeNavigation(scratch, 'web')
+
+    const port = Number(process.env.CODENAV_PORT ?? 5190)
+    web = spawnWeb(port, env)
+    let webLog = ''
+    web.stdout.on('data', chunk => { webLog += String(chunk) })
+    web.stderr.on('data', chunk => { webLog += String(chunk) })
+    const url = `http://127.0.0.1:${port}`
+    const deadline = Date.now() + 60_000
+    for (;;) {
+      if (web.exitCode !== null) throw new Error(`dsh web exited on startup:\n${webLog}`)
+      const up = await fetch(url).then(() => true).catch(() => false)
+      if (up) break
+      if (Date.now() > deadline) throw new Error(`dsh web never came up:\n${webLog}`)
+      await new Promise(done => setTimeout(done, 500))
+    }
+
+    const shots = shotDir ?? join(scratch, 'shots')
+    await execFile('node', [
+      join(projectRoot, 'docs/posting-kit/capture-codenav.mjs'), shots, '--url', url,
+    ], {
+      cwd: projectRoot,
+      // The isolated HOME belongs to the dsh server process (pi-lens caches);
+      // the capture process needs the operator's real HOME back, or
+      // playwright looks for its browsers in the empty scratch cache.
+      env: { ...env, ...(process.env.HOME === undefined ? {} : { HOME: process.env.HOME }), PLAYWRIGHT_FROM: playwrightFrom, CAPTURE_WORKSPACE: sampleDir },
+      timeout: 420_000,
+      maxBuffer: 16 * 1024 * 1024,
+    }).catch(error => { console.log(String(error.stdout ?? '')); throw error })
+    const captured = await readdir(shots)
+    assert(captured.length > 0, 'the code-navigation web run produced no screenshot')
+
+    const records = await sessionRecords(home)
+    const sessionFiles = (await filesBelow(join(home, 'sessions'))).filter(path => path.endsWith('/session.jsonl'))
+    const rawLog = await readFile(sessionFiles[0], 'utf8')
+    assert(!`${installLog}${webLog}${rawLog}`.includes(apiKey), 'credential appeared in captured test artifacts')
+
+    assertCodeNavigation(records, webLog)
+    results.codeNavigationWeb = {
+      status: 'passed',
+      engine: await installedEngineVersion(home, 'web'),
+      packages: ['@ff-labs/pi-fff', 'pi-lens'],
+      screenshots: captured.sort(),
+      search: 'ffgrep -> notes/spec.md',
+      diagnostics: 'lsp_diagnostics -> TS2322 on src/ledger.ts',
+    }
+  } finally {
+    web?.kill('SIGTERM')
+    if (process.env.PI2DSH_KEEP_SCRATCH === '1') {
+      console.error(`[examples-e2e] kept code-navigation-web scratch for diagnosis: ${scratch}`)
+    } else {
+      await removeScratch(scratch, 'code-navigation-web')
+    }
+  }
+}
+
 const SCENARIOS = [
   ['gateway-compat', runGatewayCompat, 'gatewayCompat'],
   ['alibaba-token-plan', runAlibabaTokenPlan, 'alibabaTokenPlan'],
@@ -1336,6 +1630,8 @@ const SCENARIOS = [
   ['tui-mcp', runTuiMcp, 'tuiMcp'],
   ['subagents', runSubagents, 'subagents'],
   ['dsh-x', runDshX, 'dshX'],
+  ['code-navigation', runCodeNavigation, 'codeNavigation'],
+  ['code-navigation-web', runCodeNavigationWeb, 'codeNavigationWeb'],
 ]
 const selected = SCENARIOS.filter(([name]) => only === undefined || only === name)
 if (selected.length === 0) {

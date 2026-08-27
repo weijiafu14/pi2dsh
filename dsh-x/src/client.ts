@@ -4,6 +4,7 @@
 // so this entry composes both at build time (a source-level import, same
 // repository) into the single bundle the loader receives under id "dsh-x".
 import { apply as engineApply, inject as engineInject } from '../../src/client.js'
+import { registerDiagnosticsTab } from './diagnostics-tab.js'
 import { registerMcpTab } from './mcp-tab.js'
 import { SideChatWindow } from './side-chat.js'
 
@@ -14,6 +15,7 @@ export function apply(ctx: Parameters<typeof engineApply>[0]): void {
   // commands), so the engine's plain read-only thread panel steps aside.
   engineApply(ctx, { sideThreads: false })
   registerMcpTab(ctx as never)
+  registerDiagnosticsTab(ctx as never)
   ;(ctx as unknown as {
     inject(services: string[], apply: (scope: {
       slots?: {

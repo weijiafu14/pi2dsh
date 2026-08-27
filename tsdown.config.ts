@@ -33,34 +33,18 @@ export default defineConfig([
     copy: [{ from: 'src/compat/vendor/PI-LICENSE', to: 'dist/compat/vendor' }],
     banner: ({ fileName }) => fileName.includes('cli') ? '#!/usr/bin/env node' : undefined,
   },
-  // The browser half, in the format DSH's client loader consumes. The host does
-  // not publish its own preset, so the contract is reproduced from
-  // packages/client/tsdown.client.ts: a CJS body wrapped in a closure factory
-  // that registers itself with the loader.
-  {
-    entry: ['src/client.ts'],
-    outDir: 'dist',
-    format: 'cjs',
-    platform: 'browser',
-    dts: false,
-    sourcemap: false,
-    // Runs after the entry above, whose `clean` owns the directory.
-    clean: false,
-    external: [...PLATFORM_MODULES, /^@deepseek-ai\//],
-    outputOptions: {
-      entryFileNames: 'client.js',
-      banner: 'window.__ModuleLoader__.load({ id: "pi2dsh", factory: (require) => {',
-      footer: 'return module.exports; } });',
-      // The loader hands the factory one argument — `require`. The CJS body's
-      // other two free variables have to be declared inside the closure, or it
-      // throws "exports is not defined" the moment the shell imports it.
-      intro: 'var module = { exports: {} }; var exports = module.exports;',
-    },
-  },
-  // The dsh-x suite's browser half: the engine's client (source-level import)
-  // plus the suite's own product UI (the MCP tab), registered under the
-  // suite's OWN loader id — the host serves one bundle per client-declaring
-  // package, and in a suite install only dsh-x is visible at the profile root.
+  // The dsh-x suite's browser half — THE web renderer for the Pi surfaces.
+  // The engine deliberately ships no client bundle of its own (2026-08-27):
+  // an engine-only web composition stays in Pi's rpc mode (headless
+  // semantics), and presentation is a product concern the suite owns. The
+  // suite's bundle composes the engine's renderer SOURCE (src/client.ts, a
+  // source-level import in the same repository) plus the suite's own product
+  // UI, registered under the suite's loader id — the host serves one bundle
+  // per client-declaring package, and in a suite install only dsh-x is
+  // visible at the profile root. The CJS closure-factory format is
+  // reproduced from the host's packages/client/tsdown.client.ts (the host
+  // does not publish its preset); the intro declares `module`/`exports`
+  // inside the factory, or the shell throws "exports is not defined".
   {
     entry: ['dsh-x/src/client.ts'],
     outDir: 'dsh-x',

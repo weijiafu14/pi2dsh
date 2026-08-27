@@ -100,7 +100,7 @@ beforeAll(async () => {
     name: 'pi2dsh:mcp-tab-fixture',
     inject: ['tools', 'systemPrompt', 'commands'],
     async apply(inner) {
-      await applyPiPackage(inner, { rootUrl: pathToFileURL(`${pkgDir}/`), manifest })
+      await applyPiPackage(inner, { rootUrl: pathToFileURL(`${pkgDir}/`), manifest, config: { browserPresentation: true } })
     },
   }
   await ctx.plugin(mount)

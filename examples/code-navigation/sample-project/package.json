@@ -1,0 +1,10 @@
+{
+  "name": "frostbite-ledger",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "typescript-language-server": "^4.4.0"
+  }
+}

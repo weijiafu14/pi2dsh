@@ -45,31 +45,40 @@ window.__ModuleLoader__.load({
 			const grey = (index - 232) * 10 + 8;
 			return `rgb(${grey}, ${grey}, ${grey})`;
 		}
-		const SGR = String.raw`\[([0-9;]*)m`;
+		const ESC = String.fromCharCode(27);
+		const ESCAPES = `(?:${ESC + String.raw`\[([0-9;]*)m`}|${ESC + String.raw`\]8;[^;\u0007\u001b]*;([^\u0007\u001b]*)(?:\u0007|\u001b\\)`}|${ESC + String.raw`\][^\u0007\u001b]*(?:\u0007|\u001b\\)`}|${ESC + String.raw`\[[0-9;?]*[A-Za-z]`}|${ESC + String.raw`[()*+][0-9A-Za-z]`}|${ESC + String.raw`[^\[\]]`})`;
 		/**
 		* Split text into styled runs.
 		*
 		* Unrecognised escapes are dropped rather than printed — a code this does not
-		* model is still not something a reader should see as text. Text with no
+		* model is still not something a reader should see as text. OSC 8 hyperlinks
+		* attach their URI to the runs inside the link scope as `href`. Text with no
 		* escapes comes back as a single unstyled run, so callers need no special case.
-		* @param text - possibly carrying SGR escapes.
+		* @param text - possibly carrying ANSI escapes.
 		* @returns the runs, in order; empty only for empty input.
 		*/
 		function parseAnsi(text) {
-			const pattern = new RegExp(SGR, "gu");
+			const pattern = new RegExp(ESCAPES, "gu");
 			const runs = [];
 			let style = {};
+			let href;
 			let at = 0;
 			const push = (piece) => {
 				if (piece.length > 0) runs.push({
 					text: piece,
-					style: { ...style }
+					style: { ...style },
+					...href === void 0 ? {} : { href }
 				});
 			};
 			for (let match = pattern.exec(text); match !== null; match = pattern.exec(text)) {
 				push(text.slice(at, match.index));
 				at = match.index + match[0].length;
-				const codes = (match[1] ?? "").split(";").filter((part) => part !== "").map(Number);
+				if (match[2] !== void 0) {
+					href = match[2].length > 0 ? match[2] : void 0;
+					continue;
+				}
+				if (match[1] === void 0) continue;
+				const codes = match[1].split(";").filter((part) => part !== "").map(Number);
 				if (codes.length === 0) style = {};
 				for (let index = 0; index < codes.length; index += 1) {
 					const code = codes[index];
@@ -101,12 +110,93 @@ window.__ModuleLoader__.load({
 			return runs;
 		}
 		/**
-		* Whether text carries any SGR escape.
+		* Whether text carries any escape this module would interpret or strip.
 		* @param text - the text to check.
 		* @returns true when at least one escape is present.
 		*/
 		function hasAnsi(text) {
-			return new RegExp(SGR, "u").test(text);
+			return text.includes(ESC);
+		}
+		//#endregion
+		//#region src/diagnostics-model.ts
+		const LINE_ANCHOR = /#L(\d+)(?::(\d+))?$/u;
+		const RULE_TOKEN = /^[\w.-]+:[\w.-]+$/u;
+		/** Non-link text of a line's runs, joined. */
+		function plainText(runs) {
+			return runs.filter((run) => run.href === void 0).map((run) => run.text).join("");
+		}
+		/** First marker colour (a styled bullet) on the line, if any. */
+		function markerColor(runs) {
+			return runs.find((run) => run.href === void 0 && run.style.color !== void 0 && /[●○•▲■]/u.test(run.text))?.style.color;
+		}
+		/**
+		* Recognize a diagnostics-shaped widget.
+		*
+		* @param text - the widget's rendered text, escapes included.
+		* @returns the structured view, or undefined when the shape does not match —
+		*   the caller falls back to the plain text projection, so a mis-recognition
+		*   can only ever upgrade presentation, never lose content.
+		*/
+		function parseDiagnosticsWidget(text) {
+			const lines = text.split("\n");
+			const view = { files: [] };
+			let sawAnchor = false;
+			let current;
+			for (const line of lines) {
+				const runs = parseAnsi(line);
+				const linked = runs.filter((run) => run.href !== void 0);
+				if (linked.length === 0) {
+					if (view.files.length > 0) {
+						if (line.trim().length === 0) continue;
+						return;
+					}
+					const flat = plainText(runs).trim();
+					if (flat.length === 0) continue;
+					if (view.title !== void 0) return void 0;
+					const badge = /(\d+[EWIH](?:\s+\d+[EWIH])*)\s*$/u.exec(flat)?.[1];
+					view.title = (badge === void 0 ? flat : flat.slice(0, flat.lastIndexOf(badge))).replace(/[●○•]/gu, "").trim();
+					if (badge !== void 0) view.badge = badge;
+					continue;
+				}
+				const link = linked[0];
+				const anchor = LINE_ANCHOR.exec(link.href);
+				if (anchor === null) {
+					const flat = plainText(runs).replace(/[●○•]/gu, "").trim();
+					current = {
+						label: link.text.trim(),
+						target: link.href,
+						...flat.length > 0 ? { badge: flat } : {},
+						rows: []
+					};
+					view.files.push(current);
+					continue;
+				}
+				sawAnchor = true;
+				const restText = plainText(runs.slice(runs.indexOf(link) + 1)).trim();
+				const ruleId = restText.split(/\s+/u).find((token) => RULE_TOKEN.test(token));
+				const message = (ruleId === void 0 ? restText : restText.replace(ruleId, "")).trim();
+				const marker = markerColor(runs);
+				const row = {
+					label: link.text.trim(),
+					target: link.href,
+					line: Number(anchor[1]),
+					...anchor[2] === void 0 ? {} : { column: Number(anchor[2]) },
+					...ruleId === void 0 ? {} : { ruleId },
+					message,
+					...marker === void 0 ? {} : { markerColor: marker }
+				};
+				if (current === void 0) {
+					current = {
+						label: link.text.trim(),
+						target: link.href,
+						rows: []
+					};
+					view.files.push(current);
+				}
+				current.rows.push(row);
+			}
+			if (!sawAnchor || view.files.length === 0) return void 0;
+			return view;
 		}
 		//#endregion
 		//#region src/client.ts
@@ -228,6 +318,7 @@ window.__ModuleLoader__.load({
 			});
 			return out;
 		}
+		const monospace = "400 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace";
 		const styles = {
 			sceneBackdrop: {
 				position: "fixed",
@@ -328,13 +419,14 @@ window.__ModuleLoader__.load({
 			pillStack: {
 				position: "fixed",
 				right: "20px",
-				bottom: "20px",
+				bottom: "112px",
 				zIndex: 39,
 				display: "flex",
 				flexDirection: "column",
 				alignItems: "flex-end",
 				gap: "6px",
-				pointerEvents: "none"
+				pointerEvents: "none",
+				maxWidth: "calc(100vw - 40px)"
 			},
 			pill: {
 				pointerEvents: "auto",
@@ -345,18 +437,111 @@ window.__ModuleLoader__.load({
 				border: "1px solid var(--dsw-alias-border-l2, rgba(0,0,0,0.1))",
 				boxShadow: "var(--dsw-shadow-lv1, 0 2px 8px rgba(0,0,0,0.08))",
 				font: "500 11px/1.4 system-ui, sans-serif",
-				whiteSpace: "pre-wrap"
+				whiteSpace: "pre-wrap",
+				maxWidth: "calc(100vw - 48px)",
+				overflowWrap: "anywhere"
+			},
+			widgetPill: {
+				cursor: "pointer",
+				display: "inline-flex",
+				alignItems: "center",
+				gap: "7px",
+				textAlign: "left"
+			},
+			widgetCard: {
+				pointerEvents: "auto",
+				display: "flex",
+				flexDirection: "column",
+				width: "min(380px, calc(100vw - 40px))",
+				maxHeight: "44vh",
+				overflow: "hidden",
+				borderRadius: "12px",
+				border: "1px solid var(--dsw-alias-border-l2, rgba(0,0,0,0.1))",
+				background: "var(--dsw-alias-bg-layer-2, #fff)",
+				color: "inherit",
+				boxShadow: "var(--dsw-shadow-lv2, 0 12px 32px rgba(0,0,0,0.16))",
+				font: "400 12.5px/1.5 system-ui, -apple-system, sans-serif",
+				textAlign: "left"
+			},
+			widgetCardHeader: {
+				display: "flex",
+				alignItems: "center",
+				gap: "8px",
+				padding: "9px 12px",
+				borderBottom: "1px solid var(--dsw-alias-border-l1, rgba(0,0,0,0.06))",
+				font: "600 12.5px/1.4 system-ui, sans-serif"
+			},
+			widgetCardBody: {
+				padding: "10px 12px",
+				overflowY: "auto",
+				overflowX: "auto",
+				display: "flex",
+				flexDirection: "column",
+				gap: "6px"
+			},
+			cardMono: {
+				font: monospace,
+				whiteSpace: "pre",
+				minWidth: 0
 			},
 			inline: {
-				font: "400 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace",
+				font: monospace,
 				whiteSpace: "pre-wrap",
 				opacity: .85
+			},
+			diagBadge: {
+				padding: "1px 7px",
+				borderRadius: "999px",
+				background: "var(--dsw-alias-bg-layer-3, rgba(0,0,0,0.06))",
+				font: "600 10.5px/1.6 system-ui, sans-serif",
+				opacity: .85
+			},
+			diagFile: {
+				display: "inline-flex",
+				alignItems: "center",
+				gap: "6px",
+				font: "500 11.5px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace",
+				padding: "1px 8px",
+				borderRadius: "6px",
+				background: "var(--dsw-alias-bg-layer-3, rgba(0,0,0,0.06))"
+			},
+			diagRow: {
+				display: "flex",
+				alignItems: "baseline",
+				gap: "8px",
+				font: "400 12.5px/1.5 system-ui, -apple-system, sans-serif"
+			},
+			diagDot: {
+				width: "7px",
+				height: "7px",
+				borderRadius: "999px",
+				flex: "none",
+				alignSelf: "center"
+			},
+			diagLoc: {
+				font: "500 11px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace",
+				opacity: .6,
+				flex: "none"
+			},
+			diagRule: {
+				font: "400 11px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace",
+				opacity: .55,
+				flex: "none"
+			},
+			diagMessage: {
+				minWidth: 0,
+				overflowWrap: "anywhere"
 			},
 			strip: {
 				display: "flex",
 				flexDirection: "column",
-				gap: "4px",
-				padding: "4px 2px"
+				gap: "6px",
+				margin: "4px 0",
+				padding: "8px 12px",
+				overflowX: "auto",
+				borderRadius: "8px",
+				border: "1px solid var(--dsw-alias-border-l2, rgba(0,0,0,0.1))",
+				background: "var(--dsw-alias-bg-layer-2, rgba(0,0,0,0.03))"
 			},
 			imageTool: {
 				margin: "4px 0",
@@ -634,11 +819,16 @@ window.__ModuleLoader__.load({
 				...entry,
 				key: "title"
 			})), ...statusesFor(surfaces)];
-			if (shown.length === 0 && pills.length === 0) return null;
-			return (0, react.createElement)("div", null, pills.length === 0 ? null : (0, react.createElement)("div", {
+			const widgets = widgetsFor(surfaces);
+			if (shown.length === 0 && pills.length === 0 && widgets.length === 0) return null;
+			return (0, react.createElement)("div", null, pills.length === 0 && widgets.length === 0 ? null : (0, react.createElement)("div", {
 				style: styles.pillStack,
 				"data-pi2dsh": "pills"
-			}, ...pills.map((pill, index) => (0, react.createElement)("div", {
+			}, ...widgets.map((entry) => (0, react.createElement)(WidgetUnit, {
+				key: `w-${entry.owner}-${entry.key}`,
+				owner: entry.owner,
+				text: entry.text
+			})), ...pills.map((pill, index) => (0, react.createElement)("div", {
 				key: `${pill.owner}-${pill.key}-${index}`,
 				style: styles.pill,
 				title: pill.owner
@@ -672,21 +862,129 @@ window.__ModuleLoader__.load({
 		*/
 		function ansiText(text) {
 			if (!hasAnsi(text)) return text;
-			return parseAnsi(text).map((run, index) => Object.keys(run.style).length === 0 ? run.text : (0, react.createElement)("span", {
-				key: `ansi-${index}`,
-				style: run.style
-			}, run.text));
+			return parseAnsi(text).map((run, index) => {
+				if (run.href !== void 0) return /^https?:\/\//u.test(run.href) ? (0, react.createElement)("a", {
+					key: `ansi-${index}`,
+					href: run.href,
+					target: "_blank",
+					rel: "noreferrer",
+					style: {
+						...run.style,
+						color: run.style.color ?? "inherit"
+					}
+				}, run.text) : (0, react.createElement)("span", {
+					key: `ansi-${index}`,
+					title: run.href,
+					style: {
+						textDecoration: "underline dotted",
+						textUnderlineOffset: "2px",
+						...run.style
+					}
+				}, run.text);
+				return Object.keys(run.style).length === 0 ? run.text : (0, react.createElement)("span", {
+					key: `ansi-${index}`,
+					style: run.style
+				}, run.text);
+			});
 		}
-		function textSeat(marker, valueKeys, opts = {}) {
+		/**
+		* A recognized diagnostics widget's rows — file chips, severity dots,
+		* locations, messages. The recognizer is structural (see diagnostics-model.ts);
+		* anything it declines stays on the mono projection, so recognition can only
+		* upgrade presentation. The title/badge live in the widget card's own header.
+		* Exported: the suite's Problems sidebar tab renders the same rows at full
+		* width (same composed bundle, same source of truth for the row shape).
+		*/
+		function DiagnosticsRows({ view }) {
+			return (0, react.createElement)("div", {
+				"data-pi2dsh": "diagnostics",
+				style: {
+					display: "flex",
+					flexDirection: "column",
+					gap: "6px"
+				}
+			}, ...view.files.flatMap((file, fileIndex) => [(0, react.createElement)("div", { key: `f-${fileIndex}` }, (0, react.createElement)("span", {
+				style: styles.diagFile,
+				title: file.target
+			}, file.label, file.badge === void 0 ? null : (0, react.createElement)("span", { style: { opacity: .55 } }, file.badge))), ...file.rows.map((row, rowIndex) => (0, react.createElement)("div", {
+				key: `r-${fileIndex}-${rowIndex}`,
+				style: styles.diagRow
+			}, (0, react.createElement)("span", { style: {
+				...styles.diagDot,
+				background: row.markerColor ?? "#d4373f"
+			} }), (0, react.createElement)("span", {
+				style: styles.diagLoc,
+				title: row.target
+			}, `L${row.line}${row.column === void 0 ? "" : `:${row.column}`}`), row.ruleId === void 0 ? null : (0, react.createElement)("span", { style: styles.diagRule }, row.ruleId), (0, react.createElement)("span", { style: styles.diagMessage }, row.message)))]));
+		}
+		/**
+		* One widget, in the suite's floating form.
+		*
+		* A single line is ambient status (a powerline, an LSP readout) and renders
+		* as a pill outright. Anything taller is content and starts as a labelled,
+		* badged pill too — collapsed on purpose: a tool's results are already
+		* narrated in the conversation, so the widget is the ambient copy, and an
+		* ambient surface earns attention with a badge, not by popping a window
+		* (the side-chat window auto-opens because its content arrives nowhere
+		* else). Clicking the pill opens the floating card — side-chat chrome —
+		* and × collapses it back. All of it lives in the overlay pill stack,
+		* never in the conversation column.
+		*/
+		function WidgetUnit({ owner, text: raw }) {
+			const text = raw.replace(/\s+$/u, "");
+			const diagnostics = parseDiagnosticsWidget(text);
+			const multiline = diagnostics !== void 0 || text.includes("\n");
+			const [open, setOpen] = (0, react.useState)(false);
+			if (text === "") return null;
+			if (!multiline) return (0, react.createElement)("div", {
+				style: styles.pill,
+				title: owner,
+				"data-pi2dsh": "widget"
+			}, ansiText(text));
+			const title = diagnostics?.title ?? owner;
+			const badge = diagnostics?.badge;
+			if (!open) return (0, react.createElement)("button", {
+				type: "button",
+				style: {
+					...styles.pill,
+					...styles.widgetPill
+				},
+				title: "Show details",
+				"data-pi2dsh": "widget",
+				"data-state": "collapsed",
+				onClick: () => setOpen(true)
+			}, (0, react.createElement)("span", void 0, title), badge === void 0 ? null : (0, react.createElement)("span", { style: styles.diagBadge }, badge));
+			return (0, react.createElement)("div", {
+				style: styles.widgetCard,
+				"data-pi2dsh": "widget",
+				"data-state": "open"
+			}, (0, react.createElement)("div", { style: styles.widgetCardHeader }, (0, react.createElement)("span", { style: {
+				flex: 1,
+				overflow: "hidden",
+				textOverflow: "ellipsis",
+				whiteSpace: "nowrap"
+			} }, title), badge === void 0 ? null : (0, react.createElement)("span", { style: styles.diagBadge }, badge), (0, react.createElement)("button", {
+				style: styles.close,
+				title: "Collapse",
+				onClick: () => setOpen(false)
+			}, "×")), (0, react.createElement)("div", { style: styles.widgetCardBody }, ...diagnostics !== void 0 ? [(0, react.createElement)(DiagnosticsRows, {
+				key: "rows",
+				view: diagnostics
+			})] : text.split("\n").map((line, index) => (0, react.createElement)("div", {
+				key: index,
+				style: styles.cardMono
+			}, ansiText(line)))));
+		}
+		function textSeat(marker, valueKeys) {
 			return function TextSeat({ sessionId }) {
 				const { surfaces } = useBrowserState(sessionId);
-				const entries = [...valueKeys.flatMap((key) => valuesFor(surfaces, key)), ...opts.widgets === true ? widgetsFor(surfaces) : []];
-				if (entries.length === 0) return null;
+				const values = valueKeys.flatMap((key) => valuesFor(surfaces, key));
+				if (values.length === 0) return null;
 				return (0, react.createElement)("div", {
 					"data-pi2dsh": marker,
 					style: styles.strip
-				}, ...entries.map((entry, index) => (0, react.createElement)("div", {
-					key: `${entry.owner}-${index}`,
+				}, ...values.map((entry, index) => (0, react.createElement)("div", {
+					key: `v-${entry.owner}-${index}`,
 					style: styles.inline,
 					title: entry.owner
 				}, ansiText(entry.text))));
@@ -799,11 +1097,6 @@ window.__ModuleLoader__.load({
 					id: "pi2dsh-header",
 					order: 1
 				}, textSeat("header", ["header"])));
-				scope.slots.inject("conversation.input.dock", () => scope.slots.register({
-					name: "conversation.input.dock",
-					id: "pi2dsh-dock",
-					order: 1
-				}, textSeat("dock", [], { widgets: true })));
 				scope.slots.inject("conversation.chat.turnTail", () => scope.slots.register({
 					name: "conversation.chat.turnTail",
 					id: "pi2dsh-entries",
@@ -825,6 +1118,114 @@ window.__ModuleLoader__.load({
 					"workingIndicator",
 					"hiddenThinkingLabel"
 				])));
+			});
+		}
+		//#endregion
+		//#region dsh-x/src/diagnostics-tab.ts
+		const ui$2 = {
+			root: {
+				display: "flex",
+				flexDirection: "column",
+				gap: "10px",
+				padding: "12px",
+				font: "400 13px/1.5 system-ui, -apple-system, sans-serif",
+				color: "inherit"
+			},
+			headline: {
+				font: "600 13px/1.4 system-ui, sans-serif",
+				display: "flex",
+				justifyContent: "space-between",
+				alignItems: "baseline"
+			},
+			sub: {
+				opacity: .65,
+				fontSize: "12px"
+			},
+			ownerRow: {
+				display: "flex",
+				alignItems: "center",
+				gap: "8px",
+				marginTop: "4px",
+				font: "600 11px/1.4 system-ui, sans-serif",
+				opacity: .7,
+				textTransform: "uppercase",
+				letterSpacing: "0.06em"
+			},
+			ownerBadge: {
+				fontSize: "10.5px",
+				padding: "1px 7px",
+				borderRadius: "999px",
+				border: "1px solid rgba(120,120,130,0.35)",
+				opacity: .85,
+				letterSpacing: "normal"
+			},
+			empty: {
+				padding: "14px",
+				borderRadius: "10px",
+				border: "1px dashed rgba(120,120,130,0.4)",
+				fontSize: "12.5px",
+				lineHeight: 1.7
+			}
+		};
+		/** Poll this session's diagnostics-shaped widgets, only while the tab shows. */
+		function useDiagnostics(session, active) {
+			const [views, setViews] = (0, react.useState)(void 0);
+			(0, react.useEffect)(() => {
+				if (!active || session === "") return;
+				let live = true;
+				const pull = async () => {
+					try {
+						const response = await fetch(`/pi2dsh/browser-state?session=${encodeURIComponent(session)}`);
+						if (!live || !response.ok) return;
+						const payload = await response.json();
+						const found = [];
+						for (const surface of payload.surfaces ?? []) for (const [key, text] of Object.entries(surface.widgets ?? {})) {
+							if (typeof text !== "string") continue;
+							const view = parseDiagnosticsWidget(text.replace(/\s+$/u, ""));
+							if (view !== void 0) found.push({
+								owner: surface.package ?? "pi",
+								key,
+								view
+							});
+						}
+						setViews(found);
+					} catch {}
+				};
+				pull();
+				const timer = window.setInterval(() => {
+					pull();
+				}, 2e3);
+				return () => {
+					live = false;
+					window.clearInterval(timer);
+				};
+			}, [session, active]);
+			return views;
+		}
+		/** The session's diagnostics, grouped by the package that reported them. */
+		function ProblemsTab({ scope, visible }) {
+			const views = useDiagnostics(scope.sessionId ?? "", visible);
+			if (views === void 0) return (0, react.createElement)("div", {
+				style: ui$2.root,
+				"data-dsh-x": "problems-tab"
+			}, (0, react.createElement)("div", { style: ui$2.sub }, "Loading diagnostics…"));
+			const files = views.reduce((sum, entry) => sum + entry.view.files.length, 0);
+			return (0, react.createElement)("div", {
+				style: ui$2.root,
+				"data-dsh-x": "problems-tab"
+			}, (0, react.createElement)("div", { style: ui$2.headline }, (0, react.createElement)("span", null, "Problems · this session"), (0, react.createElement)("span", { style: ui$2.sub }, files === 0 ? "none reported" : `${files} file${files === 1 ? "" : "s"}`)), views.length === 0 ? (0, react.createElement)("div", { style: ui$2.empty }, "No diagnostics reported yet. When a plugin runs its code checks (for example an LSP diagnostics tool), its findings appear here for this session.") : views.map((entry) => (0, react.createElement)("div", {
+				key: `${entry.owner}-${entry.key}`,
+				style: { display: "contents" }
+			}, (0, react.createElement)("div", { style: ui$2.ownerRow }, (0, react.createElement)("span", null, entry.view.title ?? entry.owner), entry.view.badge === void 0 ? null : (0, react.createElement)("span", { style: ui$2.ownerBadge }, entry.view.badge)), (0, react.createElement)(DiagnosticsRows, { view: entry.view }))));
+		}
+		/** Seat the Problems tab beside the MCP tab, when a sidebar is composed. */
+		function registerDiagnosticsTab(ctx) {
+			ctx.inject(["betterSidebar"], (scope) => {
+				scope.betterSidebar?.registerTab({
+					id: "dsh-work-x:problems",
+					title: "Problems",
+					component: ProblemsTab
+				});
 			});
 		}
 		//#endregion
@@ -1422,6 +1823,7 @@ window.__ModuleLoader__.load({
 		function apply(ctx) {
 			apply$1(ctx, { sideThreads: false });
 			registerMcpTab(ctx);
+			registerDiagnosticsTab(ctx);
 			ctx.inject(["slots"], (scope) => {
 				const slots = scope.slots;
 				if (slots === void 0) return;

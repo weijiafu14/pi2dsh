@@ -18,15 +18,20 @@ DSH loop — CLI and web. The screenshots in
 [`../../docs/posting-kit/assets/`](../../docs/posting-kit/assets/) come from
 this exact flow.
 
-## 1. Install the engine, then the plugin
+## 1. Install dsh-work-x
 
 ```sh
-dsh plugin --profile web add pi2dsh
-dsh plugin --profile web add pi-btw
+dsh plugin --profile web add dsh-work-x
 ```
 
-That's the whole install: the pi2dsh engine mounts every Pi package you add to
-the profile — no conversion step, no generated bundles.
+One install: the suite carries the pi2dsh engine, pi-btw, and the web
+presentation — including its own side-chat window (a real chat card, not a
+text projection). The engine alone deliberately projects nothing into the
+browser, so on the web surface the suite IS the install line.
+
+CLI-only usage still works with just the engine (`dsh plugin --profile
+headless add pi2dsh pi-btw`): `/btw` runs the side thread and the answer
+stays out of the main session either way.
 
 If an add stops with `ERR_PNPM_IGNORED_BUILDS` (pnpm blocks dependency build
 scripts by default): run `pnpm approve-builds` inside

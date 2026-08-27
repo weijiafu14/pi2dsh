@@ -163,10 +163,11 @@ DSH 模型运行时的 sampling、取消与会话重启。完整证据矩阵：
 | [`@kassing/pi-vision`](https://www.npmjs.com/package/@kassing/pi-vision) | 图片委托给视觉模型；贴图伴生路由；分析结果注入纯文本模型的这一轮 | CLI + Web | [`vision-bridge`](examples/vision-bridge/) |
 | [`@crazygit/pi-codex-image-gen`](https://www.npmjs.com/package/@crazygit/pi-codex-image-gen) | ChatGPT/Codex OAuth 调 `gpt-image-2` 生图；本地参考图走 DSH 审批后上传；编辑图片；原生附件存储并在 Web 内直接显示 | CLI + Web | [`codex-image-gen`](examples/codex-image-gen/) |
 | [`pi-btw`](https://www.npmjs.com/package/pi-btw) | `/btw <问题>` 跑成 DSH 子代理界面里的真子会话；`/btw-inject`；`/btw --save`；主会话保持干净 | CLI + Web | [`side-conversation`](examples/side-conversation/) |
-| [`pi-powerline-footer`](https://www.npmjs.com/package/pi-powerline-footer) | 终端状态条（模型、思考档位、项目、上下文用量）画进 DSH 的 widget dock，带颜色 | Web | [`presentation-surfaces`](examples/presentation-surfaces/) |
+| [`pi-powerline-footer`](https://www.npmjs.com/package/pi-powerline-footer) | 终端状态条（模型、思考档位、项目、上下文用量）以浮动状态胶囊画进 DSH web，带颜色 | Web | [`presentation-surfaces`](examples/presentation-surfaces/) |
 | [`pi-mcp-adapter`](https://www.npmjs.com/package/pi-mcp-adapter) | 完整管理界面画进 dsh-TUI；stdio/Streamable HTTP/SSE；发现、直连/代理/脚本调用、resources、prompts、图片、结构化内容、MCP Apps、审批、elicitation、sampling、取消与重启全部穿过 DSH 运行时；原生 `/mcp` 与 `/pi-mcp` 共存 | dsh-TUI | [`tui-mcp`](examples/tui-mcp/) · [证据矩阵](docs/mcp-compatibility.md) |
 | [`@tintinweb/pi-subagents`](https://www.npmjs.com/package/@tintinweb/pi-subagents) | 模型自己带团队：派子代理（真宿主原生工具）、后台跑+完成通知、运行中转向、等结果、带记忆续命、真停得住的打断、`/pi-agents` 管理面、跨重启按归档身份重开——每个子代理都是原生 DSH 会话 | CLI + dsh-TUI | [`subagents`](examples/subagents/) · [验收报告](community/subagents-acceptance-report.md) |
 | [`pi-provider-alibaba`](https://www.npmjs.com/package/pi-provider-alibaba) | 阿里云 Token Plan（中国区）专属 key：实时目录、冷启动动态模型、完整工具闭环与重启均已实测；包也声明 Coding/API 路由，但必须分别使用不可混用的专属凭证 | CLI + Web | [`alibaba-token-plan`](examples/alibaba-token-plan/) |
+| [`@ff-labs/pi-fff`](https://www.npmjs.com/package/@ff-labs/pi-fff) + [`pi-lens`](https://www.npmjs.com/package/pi-lens) | 给模型真正的代码导航工具：`ffgrep` 内容搜索找到只存在于一个文件里的标记串，`lsp_diagnostics` 经真实的本地 `typescript-language-server` 报出植入的 TS2322 —— 两条都从会话日志里工具自己的结果断言 | CLI + Web | [`code-navigation`](examples/code-navigation/) |
 | [`pi-vision-tool`](https://www.npmjs.com/package/pi-vision-tool) | 工具注册，且带一个 DSH 需要转换的 JSON Schema 形状（`anyOf` → `oneOf`） | CLI + Web | — |
 | [`pi-approval-guardian`](https://www.npmjs.com/package/pi-approval-guardian) | 每次工具调用先由第二个模型审批；放行与拒绝两条路都看到了 | CLI（裸环境） | — |
 | [`pi-hermes-memory`](https://www.npmjs.com/package/pi-hermes-memory) | 跨会话记忆：一个进程写入，另一个全新进程读回 | CLI | — |
@@ -250,7 +251,7 @@ DSH 有两半，桥也有两半。上面那根柱子是服务端；浏览器壳�
 │                                             │  │ slot 注册表（ui-slots）           │
 │ pi2dsh 引擎                                 │  │   shell.overlay  ← 浮层与 pill    │
 │   工具 · 命令 · 模型 · 会话                  │  │   header.utilities ← 头部文本     │
-│   子代理桥 ───────────────────┐             │  │   input.dock ← widget             │
+│   子代理桥 ───────────────────┐             │  │   overlay ← widget 胶囊/卡片      │
 │   browser-state 注册表        │             │  │   composer.dock ← working/底部    │
 │     GET /pi2dsh/browser-state┼── 自有通路 ─┼──┼─▶ 四个座位，共用一个轮询           │
 └───────────────────────────────┴─────────────┘  └───────────────────────────────────┘
@@ -337,8 +338,8 @@ Pi 包能碰到的每一个面，以及它落到 DSH 的什么位置。下面这
 | [会话与侧边对话](docs/capabilities/sessions.md) | 24 | 7 语义一致 · 17 已映射并写明差异 |
 | [模型、provider、凭证](docs/capabilities/models.md) | 15 | 1 语义一致 · 12 已映射并写明差异 · 2 不提供 |
 | [向用户提问与渲染](docs/capabilities/interaction.md) | 24 | 5 语义一致 · 19 已映射并写明差异 |
-| [项目环境与资源](docs/capabilities/environment.md) | 4 | 1 语义一致 · 1 已映射并写明差异 · 2 不提供 |
-| **合计** | **111** | **25 语义一致 · 82 已映射并写明差异 · 4 不提供** |
+| [项目环境与资源](docs/capabilities/environment.md) | 4 | 2 语义一致 · 2 不提供 |
+| **合计** | **111** | **26 语义一致 · 81 已映射并写明差异 · 4 不提供** |
 <!-- capability-table:end -->
 
 另外还有 Pi 三个运行时包（`pi-coding-agent`、`pi-tui`、`pi-ai`）的 **203 个
@@ -384,6 +385,7 @@ loop 上实际跑过才会进来。
 | [`gateway-compat`](examples/gateway-compat/) | 私有 / 国内 / 代理网关拒收 `developer` 角色：rc.8 官方 profile 如何把 Pi compat 声明送到真实请求（附透传录制代理） |
 | [`alibaba-token-plan`](examples/alibaba-token-plan/) | 通过原版 Pi provider 使用阿里云百炼 Plan；包含动态 DeepSeek 模型、工具闭环与重启验证 |
 | [`custom-gateways`](examples/custom-gateways/) | 按 DSH 官方方式接任何 OpenAI 兼容网关，每个 Pi 插件都能看到它 |
+| [`code-navigation`](examples/code-navigation/) | 给模型真正的代码导航工具——在自带样例工程上跑模糊内容搜索与语言服务器诊断，CLI 与 Web 双端 |
 | [`tui-mcp`](examples/tui-mcp/) | 保留 dsh-TUI 原生 `/mcp`，把 Pi 生态管理面作为 `/pi-mcp` 加进来，并让完整的宿主相关 MCP 功能面穿过 DSH 运行时 |
 | [`subagents`](examples/subagents/) | 模型自己带小团队：派单、后台、中途转向、收结果、带记忆续命、真停得住、`/pi-agents` 管理、跨重启重开 |
 

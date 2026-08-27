@@ -1263,7 +1263,20 @@ function contextFor(
     scopedModels: [],
     thinkingLevel: thinkingLevelOf(state, agent),
     isIdle: () => command,
-    isProjectTrusted: () => false,
+    // Pi's isProjectTrusted() reports the HOST's trust decision for the
+    // directory the session runs in. On DSH that decision is observable, not
+    // absent: the user chose the session's working directory (launched dsh in
+    // it, or added it as a workspace), and the host already runs its own
+    // bash/edit/write there without any further trust prompt — DSH's model is
+    // "opening a workspace is the trust act". The old hardcoded `false`
+    // claimed the host ACTIVELY distrusts every project, a stronger statement
+    // than DSH ever makes, and Pi packages honor it literally: pi-lens gates
+    // toolchain spawns on `trustState !== "untrusted"`, so a host with no
+    // accessor (unknown) keeps LSP alive while our `false` shut every
+    // language server off (2026-08-27, caught by the code-navigation E2E).
+    // No agent — the host anchor and detached contexts — stays fail-closed:
+    // there is no user-chosen directory to point at.
+    isProjectTrusted: () => agent !== undefined && contextCwd.length > 0,
     signal,
     abort: () => {
       const target = agent as { cancel?(cause: unknown): void } | undefined
@@ -5025,8 +5038,16 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
   // createAgentSession builds a real DSH child agent through ctx.agents; the
   // factory lives for exactly the runtime's lifetime.
   // The panel's registry and its read route: host-level, mounted once.
+  //
+  // Gated on the engine's browserPresentation config (default OFF): the
+  // engine alone ships no web renderer, so serving the route — and with it
+  // claiming `mode: 'tui'` on the web composition — would promise packages a
+  // presentation surface nobody draws. Without the gate a web session is
+  // exactly the headless composition (Pi's rpc mode, packages degrade on
+  // their own). The dsh-work-x suite sets the flag and carries the renderer.
   const browserSurfaces = state.shared.browserSurfaces ??= new BrowserSurfaces()
-  if (state.shared.browserSurfacesRouted !== true) {
+  const wantsBrowserPresentation = (options.config as { browserPresentation?: boolean } | undefined)?.browserPresentation === true
+  if (wantsBrowserPresentation && state.shared.browserSurfacesRouted !== true) {
     // Structured MCP faces for the product-layer tab. The state face reads
     // the MCP ecosystem's own layered config files (the exact layers the
     // adapter reads); the action face persists ONLY the `disabled` flag into

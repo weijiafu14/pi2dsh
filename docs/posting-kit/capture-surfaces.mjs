@@ -51,23 +51,28 @@ const sendButton = page.getByRole('button', { name: UI.send })
 if (await sendButton.isEnabled().catch(() => false)) await sendButton.click({ timeout: 30_000 })
 else await page.keyboard.press('Enter')
 
-const dock = page.locator('[data-pi2dsh="dock"]')
+// Widgets float in the overlay stack (pill for a status line, card for
+// content) — the in-column dock strip is gone. Read every widget presence.
+const widgets = page.locator('[data-pi2dsh="widget"]')
 const deadline = Date.now() + 90_000
 for (;;) {
-  const text = (await dock.count()) === 0 ? undefined : await dock.first().innerText()
+  const count = await widgets.count()
+  const pieces = []
+  for (let index = 0; index < count; index += 1) pieces.push(await widgets.nth(index).innerText())
+  const text = pieces.length === 0 ? undefined : pieces.join('\n')
   if (text !== undefined && OWN_MARKS.every(mark => mark.test(text))) {
     // The ANSI check, and the reason it is here rather than in a unit test: the
     // package emits real SGR codes, and a seat that shows them prints visible
     // garbage. The unit tests cover the parser; this covers the seat.
     if (text.includes(ESC) || /\[\d+(?:;\d+)*m/u.test(text)) {
-      throw new Error(`capture: the dock is showing raw ANSI escapes rather than colour:\n  ${JSON.stringify(text)}`)
+      throw new Error(`capture: the widget seat is showing raw ANSI escapes rather than colour:\n  ${JSON.stringify(text)}`)
     }
     break
   }
   if (Date.now() > deadline) {
     throw new Error(
-      'capture: the Pi package\'s status line never reached the widget dock.'
-      + `\n  dock held: ${JSON.stringify(text ?? null)}`,
+      'capture: the Pi package\'s status line never reached the floating widget seat.'
+      + `\n  widgets held: ${JSON.stringify(text ?? null)}`,
     )
   }
   await page.waitForTimeout(1000)

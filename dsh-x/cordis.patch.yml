@@ -15,3 +15,7 @@
       name: "dsh-work-x"
       config:
         visionCompanions: false
+        # The suite carries the web renderer in its client bundle, so it turns
+        # the engine's browser presentation surfaces on (default: off — the
+        # engine alone leaves the web composition in Pi's rpc mode).
+        browserPresentation: true

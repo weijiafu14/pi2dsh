@@ -9,14 +9,14 @@ in Pi config are translated into official `dsh-mcp-client` entries by
 different case: its own transport, cache, OAuth and resource/prompt behavior
 continues to run, while pi2dsh maps only its public host surfaces into DSH.
 
-**4 upstream-shaped Pi rule rows** — 1 same semantics · 1 mapped, difference stated · 2 not available.
+**4 upstream-shaped Pi rule rows** — 2 same semantics · 2 not available.
 
 | Pi surface | Kind | Status | What it does on DSH |
 |---|---|---|---|
 | [`events`](#events-pi) | `pi.*` | Same semantics | Pi's cross-extension event bus: one shared bus per agent, so every Pi package mounted for the same agent hears every other package's emits — matching Pi's one-bus-per-session loader contract. Different agents have different buses. |
 | [`project_trust`](#project_trust-event) | `event` | Not available | Project trust must remain owned by the DSH host; the handler is accepted but never consulted. |
 | [`resources_discover`](#resources_discover-event) | `event` | Not available | Dynamic resource discovery must be converted into DSH providers; the handler is accepted but never fires. |
-| [`isProjectTrusted`](#isprojecttrusted-ctx) | `ctx.*` | Mapped, difference stated | Fails closed as untrusted because DSH does not expose Pi project-trust state. |
+| [`isProjectTrusted`](#isprojecttrusted-ctx) | `ctx.*` | Same semantics | Reports the DSH host's own trust decision: true for an agent session's working directory, false for the host anchor and detached contexts. |
 
 ## How each one is built
 
@@ -44,9 +44,9 @@ Accepted and never fired. Dynamic resource discovery in DSH is a provider regist
 
 ### `isProjectTrusted` <a id="isprojecttrusted-ctx"></a>
 
-`ctx.*` · Mapped, difference stated
+`ctx.*` · Same semantics
 
-No DSH seam carries Pi's project-trust state, so the bridge returns the safe constant instead of inventing one. Pi's own ProjectTrustStore is vendored and available to packages that manage their own.
+Host-semantic translation, not a constant. On DSH the trust act is opening a workspace — the host already runs its own bash/edit/write in the session's directory without a further prompt — so an agent-scoped context answers true for exactly that directory. Contexts with no agent (the host anchor, detached projections) stay fail-closed. The earlier hardcoded false claimed the host actively distrusts every project — a stronger statement than DSH makes anywhere — and packages honor it literally: pi-lens disables every language-server spawn on an explicit false while treating a missing accessor as unknown-and-allowed. Pi's own ProjectTrustStore stays vendored for packages that manage their own per-path trust.
 
 ---
 

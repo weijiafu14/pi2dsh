@@ -80,6 +80,14 @@ export class BrowserSurfaces {
   readonly #commandRunners = new Map<string, Map<string, PiCommandRunner>>()
   // session -> package -> what that package put on screen
   readonly #surfaces = new Map<string, Map<string, SurfaceView>>()
+  /**
+   * Retained components from `(tui, theme) => Component` factories, keyed by
+   * their slot (session + package + widget key). Retained because the driver
+   * handed to the factory must stay LIVE: requestRender re-renders this
+   * component into its slot for as long as the package holds the handle.
+   * Replacing or clearing the slot disposes the previous component.
+   */
+  readonly #factoryComponents = new Map<string, { render?: (width: number) => unknown, dispose?: () => void }>()
   // package -> its custom-entry renderer, pulled per request
   readonly #entrySources = new Map<string, EntrySource>()
   // session -> the composer text a package asked for, and the live text the
@@ -341,9 +349,62 @@ export class BrowserSurfaces {
     // rpc mode HERE and exceeding it THERE was the inconsistency. Worse, the
     // old rule deleted on any non-array: a package that set lines and later
     // updated with a factory had its widget silently disappear.
+    const slot = `${sessionId} ${packageName ?? 'pi'} ${key}`
+    this.#factoryComponents.get(slot)?.dispose?.()
+    this.#factoryComponents.delete(slot)
+    if (typeof content === 'function') {
+      // The factory receives a REAL tui handle whose requestRender re-renders
+      // the retained component into this widget slot — Pi's own contract.
+      // Passing undefined and relying on the call-site try/catch was NOT a
+      // safe degradation: a factory retains the handle in a closure and calls
+      // it later, far outside any catch, taking that turn's tool call down
+      // with it (pi-lens's lsp_diagnostics on the web surface, 2026-08-27).
+      this.#mountFactory(slot, content as (tui: unknown, theme: unknown) => unknown, theme, text => {
+        const live = this.#view(sessionId, packageName)
+        if (text === undefined) delete live.widgets[key]
+        else live.widgets[key] = text
+      })
+      return
+    }
     const text = surfaceText(content, theme)
     if (text === undefined) delete view.widgets[key]
     else view.widgets[key] = text
+  }
+
+  /**
+   * Mount one `(tui, theme) => Component` factory: run it with a live driver,
+   * render the retained component now, and re-render it into the same slot on
+   * every requestRender. A factory or render that throws leaves the slot
+   * empty — the package's own bug stays its own — but a RETAINED handle keeps
+   * working for the component's lifetime.
+   * @param slot - identity for the retained component (dispose-on-replace).
+   * @param factory - the package's factory, exactly as passed to setWidget.
+   * @param theme - the bridge's headless theme.
+   * @param store - writes rendered text (or undefined to clear) into the slot.
+   */
+  #mountFactory(slot: string, factory: (tui: unknown, theme: unknown) => unknown, theme: unknown, store: (text: string | undefined) => void): void {
+    let component: { render?: (width: number) => unknown, dispose?: () => void } | undefined
+    const render = (): void => {
+      if (component === undefined) return
+      // A handle outlives its component: a package can keep calling
+      // requestRender after its widget was replaced or cleared. A stale
+      // handle must be inert, not resurrect the disposed component's output.
+      if (this.#factoryComponents.get(slot) !== component) return
+      store(surfaceText(component, theme))
+    }
+    const driver = { requestRender: () => { render() } }
+    try {
+      component = factory(driver, theme) as typeof component
+    } catch {
+      store(undefined)
+      return
+    }
+    if (component === null || typeof component?.render !== 'function') {
+      store(undefined)
+      return
+    }
+    this.#factoryComponents.set(slot, component)
+    render()
   }
 
   /**

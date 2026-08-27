@@ -31,6 +31,8 @@ export interface AnsiStyle {
 export interface AnsiRun {
   text: string
   style: AnsiStyle
+  /** OSC 8 hyperlink target in force for this run, when inside one. */
+  href?: string
 }
 
 /**
@@ -51,31 +53,55 @@ export function ansi256(index: number): string {
   return `rgb(${grey}, ${grey}, ${grey})`
 }
 
-// Written as an escape rather than a literal ESC byte: an invisible control
-// character in source is the kind of thing an editor silently eats.
-const SGR = String.raw`\[([0-9;]*)m`
+// The ESC byte is built here once so no pattern repeats a raw control
+// character through the file (an invisible byte in source is the kind of
+// thing an editor silently eats).
+const ESC = String.fromCharCode(27)
+const SGR = ESC + String.raw`\[([0-9;]*)m`
+// OSC 8 hyperlink: ESC ] 8 ; params ; URI (BEL | ESC \). An empty URI closes
+// the link scope. pi-lens wraps every file/line reference in one — rendered
+// raw, a short link label turns into a full `]8;;file:///…` path dump on
+// screen, which is exactly how the web dock looked before this branch.
+const OSC8 = ESC + String.raw`\]8;[^;\u0007\u001b]*;([^\u0007\u001b]*)(?:\u0007|\u001b\\)`
+// Everything else this module does not model is STRIPPED, never printed:
+// other OSC sequences (window title, clipboard), non-SGR CSI (cursor moves),
+// and two-byte simple escapes. Same rule the header states for SGR — an
+// escape a reader was never meant to see must not become text.
+const OSC_OTHER = ESC + String.raw`\][^\u0007\u001b]*(?:\u0007|\u001b\\)`
+const CSI_OTHER = ESC + String.raw`\[[0-9;?]*[A-Za-z]`
+const CHARSET = ESC + String.raw`[()*+][0-9A-Za-z]`
+const SIMPLE = ESC + String.raw`[^\[\]]`
+const ESCAPES = `(?:${SGR}|${OSC8}|${OSC_OTHER}|${CSI_OTHER}|${CHARSET}|${SIMPLE})`
 
 /**
  * Split text into styled runs.
  *
  * Unrecognised escapes are dropped rather than printed — a code this does not
- * model is still not something a reader should see as text. Text with no
+ * model is still not something a reader should see as text. OSC 8 hyperlinks
+ * attach their URI to the runs inside the link scope as `href`. Text with no
  * escapes comes back as a single unstyled run, so callers need no special case.
- * @param text - possibly carrying SGR escapes.
+ * @param text - possibly carrying ANSI escapes.
  * @returns the runs, in order; empty only for empty input.
  */
 export function parseAnsi(text: string): AnsiRun[] {
-  const pattern = new RegExp(SGR, 'gu')
+  const pattern = new RegExp(ESCAPES, 'gu')
   const runs: AnsiRun[] = []
   let style: AnsiStyle = {}
+  let href: string | undefined
   let at = 0
   const push = (piece: string) => {
-    if (piece.length > 0) runs.push({ text: piece, style: { ...style } })
+    if (piece.length > 0) runs.push({ text: piece, style: { ...style }, ...(href === undefined ? {} : { href }) })
   }
   for (let match = pattern.exec(text); match !== null; match = pattern.exec(text)) {
     push(text.slice(at, match.index))
     at = match.index + match[0].length
-    const codes = (match[1] ?? '').split(';').filter(part => part !== '').map(Number)
+    if (match[2] !== undefined) {
+      // OSC 8: a non-empty URI opens a link scope, an empty one closes it.
+      href = match[2].length > 0 ? match[2] : undefined
+      continue
+    }
+    if (match[1] === undefined) continue // an escape we strip, not a style
+    const codes = match[1].split(';').filter(part => part !== '').map(Number)
     // A bare `ESC[m` is a reset, same as `ESC[0m`.
     if (codes.length === 0) style = {}
     for (let index = 0; index < codes.length; index += 1) {
@@ -110,10 +136,10 @@ export function parseAnsi(text: string): AnsiRun[] {
 }
 
 /**
- * Whether text carries any SGR escape.
+ * Whether text carries any escape this module would interpret or strip.
  * @param text - the text to check.
  * @returns true when at least one escape is present.
  */
 export function hasAnsi(text: string): boolean {
-  return new RegExp(SGR, 'u').test(text)
+  return text.includes(ESC)
 }

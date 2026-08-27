@@ -248,7 +248,11 @@ beforeAll(async () => {
     name: 'pi2dsh:surfaces-fixture',
     inject: ['tools', 'systemPrompt', 'commands'],
     async apply(inner) {
-      await applyPiPackage(inner, { rootUrl: pathToFileURL(`${pkgDir}/`), manifest })
+      // This suite tests the browser presentation data plane — the shape the
+      // dsh-work-x renderer consumes — so it mounts with the suite's flag on.
+      // The engine's own default is OFF (engine-only web is Pi's rpc mode);
+      // that contract has its own test below.
+      await applyPiPackage(inner, { rootUrl: pathToFileURL(`${pkgDir}/`), manifest, config: { browserPresentation: true } })
     },
   }
   await ctx.plugin(mount)
@@ -397,8 +401,13 @@ describe('what a package can read about the session it is in', () => {
     expect(await reported('state')).toEqual({
       // A command runs outside a turn, so Pi's "is the agent idle" is true.
       isIdle: true,
-      // DSH has no project-trust prompt; claiming trust would be a lie.
-      isProjectTrusted: false,
+      // The host's own trust decision, translated: on DSH, opening a
+      // workspace IS the trust act (the host runs its own tools in the
+      // session's directory without a further prompt), so an agent-scoped
+      // context answers true. Hardcoding false told packages the host
+      // ACTIVELY distrusts the project — pi-lens took it literally and shut
+      // every language server off. Anchor/detached contexts stay false.
+      isProjectTrusted: true,
       // The agent's durable inbox is empty in this fixture. This one used to be
       // hardcoded false, which told every package the queue never fills.
       hasPendingMessages: false,
@@ -532,5 +541,55 @@ describe('autocomplete', () => {
   it('the query narrows the menu, so the package filters rather than the shell', async () => {
     const menu = await get('/pi2dsh/completions?trigger=%40&query=al')
     expect((menu.items as Json[]).map(item => item.value)).toEqual(['alpha'])
+  })
+})
+
+describe('engine default: no browser presentation (2026-08-27 product decision)', () => {
+  // Without browserPresentation the engine alone must leave the web
+  // composition in Pi's rpc mode: no /pi2dsh route on the host web server,
+  // and packages told mode 'rpc' so they degrade exactly as they do headless.
+  // The renderer is a product concern the dsh-work-x suite carries; the
+  // engine promising a surface nobody draws was the bug.
+  it('registers no route and reports rpc mode when the flag is off', async () => {
+    const scratch2 = await mkdtemp(join(tmpdir(), 'pi2dsh-surfaces-pure-'))
+    const pkgDir = join(scratch2, 'pi-pure-fixture')
+    await mkdir(pkgDir, { recursive: true })
+    await writeFile(join(pkgDir, 'package.json'), JSON.stringify({
+      name: 'pi-pure-fixture', version: '0.0.0', type: 'module', pi: { extensions: ['index.mjs'] },
+    }))
+    await writeFile(join(pkgDir, 'index.mjs'), [
+      'export default function activate(pi) {',
+      "  pi.registerCommand('pure-mode', { handler: async (args, ctx) => { ctx.ui.setStatus('pure-mode', ctx.ui?.constructor ? String(pi.getMode?.() ?? '') : '' ) } })",
+      '}',
+    ].join('\n'))
+    const pkg = await resolvePiPackage(pkgDir)
+    let pureManifest
+    try {
+      pureManifest = await manifestForInstalled(pkg)
+    } finally {
+      await pkg.dispose()
+    }
+    const pure = new Context()
+    let routeRegistered = false
+    ;(pure as unknown as { provide(name: string, value: unknown): void }).provide('webServer', {
+      register() {
+        routeRegistered = true
+        return () => {}
+      },
+    })
+    await pure.plugin(SessionStore)
+    await pure.plugin(SystemPrompt, { includeHarnessIdentity: false })
+    await pure.plugin(ToolRuntime)
+    await pure.plugin(CommandRuntime)
+    await pure.plugin({
+      name: 'pi2dsh:pure-fixture',
+      inject: ['tools', 'systemPrompt', 'commands'],
+      async apply(inner) {
+        // No config at all: the engine's own default.
+        await applyPiPackage(inner, { rootUrl: pathToFileURL(`${pkgDir}/`), manifest: pureManifest })
+      },
+    } as Plugin.Object)
+    expect(routeRegistered, 'the engine registered /pi2dsh without a renderer to serve').toBe(false)
+    await rm(scratch2, { recursive: true, force: true })
   })
 })

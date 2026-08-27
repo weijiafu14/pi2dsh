@@ -42,6 +42,16 @@ export interface EngineConfig {
    */
   visionCompanions?: false | Record<string, readonly string[]>
   /**
+   * Serve the browser presentation surfaces (the `/pi2dsh` state route the
+   * web renderer polls, and with it the `mode: 'tui'` claim on the web
+   * composition). Default: OFF — the engine alone projects nothing into the
+   * browser, so a web session behaves exactly like the headless CLI (Pi's
+   * own rpc mode; packages degrade gracefully on their own). The dsh-work-x
+   * suite turns this on and carries the actual renderer in its client
+   * bundle; any other product layer that ships a renderer can do the same.
+   */
+  browserPresentation?: boolean
+  /**
    * Serve DSH-native subagents with the profile's Pi packages (default: OFF —
    * such children run as plain DSH agents, today's behavior). Children the Pi
    * subagent bridge mints are NEVER covered: they already receive the creator's
@@ -598,8 +608,16 @@ export async function apply(ctx: Context, config: EngineConfig = {}): Promise<vo
     // first Agent's model resolution finds its routes, and routes survive
     // Agent churn. Anchors serve no Agent; sessions belong to the per-Agent
     // instances the gates mount.
-    await applyPreparedPiHost(ctx, prepared, undefined, { hostAnchor: true })
-    resolvePrepared(prepared)
+    // The engine-level browserPresentation flag rides into every package
+    // mount's config: the /pi2dsh route (and the web `mode: 'tui'` claim)
+    // exists only when a product layer configured a renderer. Stamped here
+    // rather than defaulted in the runtime so per-Agent remounts and the
+    // host anchor agree on one answer.
+    const presented = config.browserPresentation === true
+      ? prepared.map(pkg => ({ ...pkg, config: { ...(pkg.config ?? {}), browserPresentation: true } }))
+      : prepared
+    await applyPreparedPiHost(ctx, presented, undefined, { hostAnchor: true })
+    resolvePrepared(presented)
   } catch (error) {
     // The gates must never hang on a failed preparation; agents keep running
     // as plain DSH agents while the engine failure propagates loudly.

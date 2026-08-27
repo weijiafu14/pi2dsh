@@ -6,6 +6,7 @@
 import { describe, expect, it } from 'vitest'
 import { SEED_CARRIER_TAG } from '../src/subagent-bridge.js'
 import { BrowserSurfaces, publishAuthorization, registerBrowserSurfaceRoute, revokeAuthorization, surfaceText } from '../src/browser-surfaces.js'
+import { hasAnsi, parseAnsi } from '../src/ansi.js'
 import { runtimeInternals } from '../src/runtime.js'
 
 /**
@@ -388,5 +389,82 @@ describe('a login link outlives nothing', () => {
       route.get(kept).then(answer => expect(answer.status).toBe(302)),
       route.get(dropped).then(answer => expect(answer.status).toBe(404)),
     ])
+  })
+})
+
+describe('widget factories get a live tui handle', () => {
+  // The Pi contract: `setWidget(key, (tui, theme) => Component)` hands the
+  // factory a REAL handle whose requestRender re-renders the retained
+  // component. Packages retain it in closures and call it from later tool
+  // executions — pi-lens's lsp_diagnostics crashed on exactly this when the
+  // handle was undefined (web surface, 2026-08-27).
+  it('requestRender re-renders the retained component into the same slot', () => {
+    const surfaces = new BrowserSurfaces()
+    let lines = ['ready=0/4']
+    let handle: { requestRender: () => void } | undefined
+    surfaces.setWidget('s1', 'pi-lens', 'lsp', (tui: unknown) => {
+      handle = tui as { requestRender: () => void }
+      return { render: () => lines }
+    })
+    expect(surfaces.surfaces('s1')[0]?.widgets.lsp).toBe('ready=0/4')
+    expect(typeof handle?.requestRender).toBe('function')
+    // The retained handle keeps working AFTER the factory returned — the
+    // closure-call-later shape that used to crash.
+    lines = ['ready=4/4']
+    handle!.requestRender()
+    expect(surfaces.surfaces('s1')[0]?.widgets.lsp).toBe('ready=4/4')
+  })
+
+  it('replacing the widget disposes the previous component and detaches its handle', () => {
+    const surfaces = new BrowserSurfaces()
+    let disposed = 0
+    let handle: { requestRender: () => void } | undefined
+    surfaces.setWidget('s1', 'pi-lens', 'lsp', (tui: unknown) => {
+      handle = tui as { requestRender: () => void }
+      return { render: () => ['first'], dispose: () => { disposed += 1 } }
+    })
+    surfaces.setWidget('s1', 'pi-lens', 'lsp', ['plain lines now'])
+    expect(disposed).toBe(1)
+    expect(surfaces.surfaces('s1')[0]?.widgets.lsp).toBe('plain lines now')
+    // A stale handle must not resurrect the disposed component's output.
+    handle!.requestRender()
+    expect(surfaces.surfaces('s1')[0]?.widgets.lsp).toBe('plain lines now')
+  })
+
+  it('a factory that throws, or returns no component, leaves the slot empty', () => {
+    const surfaces = new BrowserSurfaces()
+    surfaces.setWidget('s1', 'pi-lens', 'boom', () => { throw new Error('factory bug') })
+    surfaces.setWidget('s1', 'pi-lens', 'null', () => null)
+    expect(surfaces.surfaces('s1')[0]?.widgets ?? {}).toEqual({})
+  })
+})
+
+
+describe('parseAnsi: OSC 8 hyperlinks and unknown-escape stripping', () => {
+  const ESC = String.fromCharCode(27)
+  const BEL = String.fromCharCode(7)
+  // The exact shape pi-lens emits for a file reference: rendered raw, the
+  // short label became a full ]8;;file:///… path dump in the web dock.
+  it('collapses a link to its label and carries the target as href', () => {
+    const text = ESC + ']8;;file:///tmp/p/src/ledger.ts' + ESC + '\\ledger.ts' + ESC + ']8;;' + ESC + '\\ 1E'
+    expect(parseAnsi(text)).toEqual([
+      { text: 'ledger.ts', style: {}, href: 'file:///tmp/p/src/ledger.ts' },
+      { text: ' 1E', style: {} },
+    ])
+  })
+  it('accepts the BEL terminator and keeps SGR styling inside the link', () => {
+    const text = ESC + ']8;;https://example.test/doc' + BEL + ESC + '[31mdocs' + ESC + '[0m' + ESC + ']8;;' + BEL + ' after'
+    expect(parseAnsi(text)).toEqual([
+      { text: 'docs', style: { color: '#cd3131' }, href: 'https://example.test/doc' },
+      { text: ' after', style: {} },
+    ])
+  })
+  it('strips escapes it does not model instead of printing them', () => {
+    const text = ESC + ']0;window title' + BEL + 'visible ' + ESC + '[2Kalso visible' + ESC + '(B!'
+    expect(parseAnsi(text).map(run => run.text).join('')).toBe('visible also visible!')
+  })
+  it('hasAnsi sees any escape, not only colours', () => {
+    expect(hasAnsi(ESC + ']8;;x' + BEL + 'y' + ESC + ']8;;' + BEL)).toBe(true)
+    expect(hasAnsi('plain')).toBe(false)
   })
 })

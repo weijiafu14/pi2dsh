@@ -199,10 +199,11 @@ it work. **This is the list to trust.**
 | [`@kassing/pi-vision`](https://www.npmjs.com/package/@kassing/pi-vision) | Image analysis delegated to a vision model; image-admission companion route; analysis injected into a text-only model's turn | CLI + web | [`vision-bridge`](examples/vision-bridge/) |
 | [`@crazygit/pi-codex-image-gen`](https://www.npmjs.com/package/@crazygit/pi-codex-image-gen) | ChatGPT/Codex OAuth → `gpt-image-2` generation; local reference-image upload through DSH approval; image edit; native attachment storage and inline Web rendering | CLI + web | [`codex-image-gen`](examples/codex-image-gen/) |
 | [`pi-btw`](https://www.npmjs.com/package/pi-btw) | `/btw <question>` as a real child session in DSH's subagent UI; `/btw-inject`; `/btw --save`; main thread stays clean | CLI + web | [`side-conversation`](examples/side-conversation/) |
-| [`pi-powerline-footer`](https://www.npmjs.com/package/pi-powerline-footer) | A terminal status line — model, thinking level, project, context usage — drawn into DSH's widget dock, colour included | web | [`presentation-surfaces`](examples/presentation-surfaces/) |
+| [`pi-powerline-footer`](https://www.npmjs.com/package/pi-powerline-footer) | A terminal status line — model, thinking level, project, context usage — drawn as a floating status pill in DSH web, colour included | web | [`presentation-surfaces`](examples/presentation-surfaces/) |
 | [`pi-mcp-adapter`](https://www.npmjs.com/package/pi-mcp-adapter) | Original full-screen manager; stdio/Streamable HTTP/SSE; discovery, direct/proxy/scripted calls, resources, prompts, images, structured content, MCP Apps, approval, elicitation, sampling, cancellation and restart through DSH runtimes | dsh-TUI + dsh-pi-tui | [`tui-mcp`](examples/tui-mcp/) · [`pi-tui-ecosystem`](examples/pi-tui-ecosystem/) · [evidence matrix](docs/mcp-compatibility.md) |
 | [`@tintinweb/pi-subagents`](https://www.npmjs.com/package/@tintinweb/pi-subagents) | The model delegates to autonomous subagents: spawn (with real host-native tools), background + completion notify, mid-run steer, wait-for-result, resume with memory, stop that stays stopped, interactive manager, and cross-restart reopen by archive identity — every child a native DSH session | CLI + dsh-TUI + dsh-pi-tui | [`subagents`](examples/subagents/) · [`pi-tui-ecosystem`](examples/pi-tui-ecosystem/) · [acceptance report](community/subagents-acceptance-report.md) |
 | [`pi-provider-alibaba`](https://www.npmjs.com/package/pi-provider-alibaba) | Alibaba Token Plan (CN) with its plan-specific key: live catalog, cold-start dynamic model, complete tool loop and restart. The package also declares Coding/API routes, but each requires its own non-interchangeable credential | CLI + web | [`alibaba-token-plan`](examples/alibaba-token-plan/) |
+| [`@ff-labs/pi-fff`](https://www.npmjs.com/package/@ff-labs/pi-fff) + [`pi-lens`](https://www.npmjs.com/package/pi-lens) | Code navigation for the model: `ffgrep` content search finds a marker that exists in exactly one file, and `lsp_diagnostics` reports a planted TS2322 through a real local `typescript-language-server` — both asserted from the tools’ own results in the session log | CLI + web | [`code-navigation`](examples/code-navigation/) |
 | [`pi-vision-tool`](https://www.npmjs.com/package/pi-vision-tool) | Tool registration through a JSON-Schema shape DSH had to convert (`anyOf` → `oneOf`) | CLI + web | — |
 | [`pi-approval-guardian`](https://www.npmjs.com/package/pi-approval-guardian) | Every tool call reviewed by a second model before execution; allow and deny both observed | CLI (bare env) | — |
 | [`pi-hermes-memory`](https://www.npmjs.com/package/pi-hermes-memory) | Cross-session memory: written in one process, read back in a second, fresh one | CLI | — |
@@ -300,7 +301,7 @@ rather than a behaviour lands there:
 │                                             │  │ slot registry (ui-slots)          │
 │ pi2dsh engine                               │  │   shell.overlay  ← panel, pills   │
 │   tools · commands · models · sessions      │  │   session.header.utilities ← hdr  │
-│   subagent bridge ─────────────┐            │  │   input.dock ← widgets            │
+│   subagent bridge ─────────────┐            │  │   overlay ← widget pills/cards    │
 │   browser-state registry       │            │  │   composer.dock ← working/footer  │
 │     GET /pi2dsh/browser-state ─┼── own route┼──┼─▶ all four seats, one poller      │
 └────────────────────────────────┴────────────┘  └───────────────────────────────────┘
@@ -406,8 +407,8 @@ audit states this boundary explicitly.
 | [Sessions & side conversations](docs/capabilities/sessions.md) | 24 | 7 same semantics · 17 mapped, difference stated |
 | [Models, providers, credentials](docs/capabilities/models.md) | 15 | 1 same semantics · 12 mapped, difference stated · 2 not available |
 | [Asking the user, rendering](docs/capabilities/interaction.md) | 24 | 5 same semantics · 19 mapped, difference stated |
-| [Project environment & resources](docs/capabilities/environment.md) | 4 | 1 same semantics · 1 mapped, difference stated · 2 not available |
-| **Total** | **111** | **25 same semantics · 82 mapped, difference stated · 4 not available** |
+| [Project environment & resources](docs/capabilities/environment.md) | 4 | 2 same semantics · 2 not available |
+| **Total** | **111** | **26 same semantics · 81 mapped, difference stated · 4 not available** |
 <!-- capability-table:end -->
 
 Plus **203 imported symbols** from Pi's three runtime packages
@@ -445,7 +446,7 @@ project trust is a host decision. See
 renderers; today those registrations are accepted but not invoked, so such a
 note appears as a native context-injection row — the content reaches you and
 the model, without the plugin's styling. The client half exists and takes four
-seats (side-conversation panel, header, widget dock, working chrome) — the card
+seats (side-conversation panel, header, floating widgets, working chrome) — the card
 renderers are what it does not draw yet.
 
 ## Examples
@@ -463,6 +464,7 @@ in one has actually been executed against a real DSH loop before landing.
 | [`gateway-compat`](examples/gateway-compat/) | Private / domestic / proxy gateways that reject the `developer` role: how rc.8's official profile carries Pi compat declarations to the wire (passthrough recorder included) |
 | [`alibaba-token-plan`](examples/alibaba-token-plan/) | Use Alibaba Cloud Model Studio Plan routes through the original Pi provider; dynamic DeepSeek model, tool loop and restart included |
 | [`custom-gateways`](examples/custom-gateways/) | Add any OpenAI-compatible gateway the official DSH way, and every Pi plugin sees it |
+| [`code-navigation`](examples/code-navigation/) | Give the model real code-navigation tools — fuzzy content search and language-server diagnostics on a bundled sample project, CLI and web |
 | [`tui-mcp`](examples/tui-mcp/) | Keep dsh-TUI's native `/mcp`, add the Pi ecosystem manager as `/pi-mcp`, and exercise its complete host-influenced MCP surface through DSH runtimes |
 | [`subagents`](examples/subagents/) | The model runs a small team: delegate, background, steer mid-run, collect, resume with memory, stop for real, manage via `/pi-agents`, reopen across restarts |
 | [`pi-tui-ecosystem`](examples/pi-tui-ecosystem/) | Run the unmodified Pi MCP manager and Pi subagent flow in `@xmoon76/dsh-pi-tui`; native `/login` and Pi OAuth providers coexist without duplicate commands |

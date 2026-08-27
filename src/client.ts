@@ -13,11 +13,21 @@
 // What it draws, and where:
 //
 //   shell.overlay                         side-conversation panel, status
-//                                         pills and the transient title pill
+//                                         pills, the transient title pill and
+//                                         package widgets (pill ⇄ floating
+//                                         card, the work-x window form)
 //   conversation.session.header.utilities a package's header text
-//   conversation.input.dock               a package's widgets (string arrays)
+//   conversation.input.dock               the invisible composer bridge only
 //   conversation.composer.dock            working chrome (message, indicator,
 //                                         hidden-thinking label) and footer
+//
+// Widgets deliberately do NOT take an in-column seat. The first form — a strip
+// glued above the composer — was the projection form all over again: it could
+// not be dismissed, the host clipped it, and the composer's slot kit hands the
+// LAST session's id to the new-session screen, so a fresh "describe what you
+// want to build" view wore the previous session's diagnostics. The overlay
+// path reads the framework's current-session selector, which is empty on that
+// screen, so the leak is structural gone, not styled over.
 //
 // Those are the host's own seats (verified against the DSH web shell's slot
 // declarations). Pi packages drive them through Pi's UI methods; the server
@@ -35,6 +45,7 @@
 // module table at runtime and are not dependencies of this package.
 import { createElement, useEffect, useState, type ReactNode } from 'react'
 import { hasAnsi, parseAnsi } from './ansi.js'
+import { parseDiagnosticsWidget, type DiagnosticsView } from './diagnostics-model.js'
 
 interface SlotRegistration { name: string, id?: string, key?: string, order?: number, select?: (...args: unknown[]) => unknown }
 interface SlotScope {
@@ -282,9 +293,17 @@ const styles = {
   text: { whiteSpace: 'pre-wrap', wordBreak: 'break-word' },
   close: { cursor: 'pointer', opacity: 0.55, background: 'none', border: 'none', color: 'inherit', font: 'inherit' },
   pillStack: {
-    position: 'fixed', right: '20px', bottom: '20px', zIndex: 39,
+    // 112px clears both the host's bottom stats row AND the suite's side-chat
+    // dot (right:20, bottom:64, 38px tall) — at bottom:56 the pills sat under
+    // the dot, and on a phone the two collided visibly (2026-08-28 mobile
+    // screenshot). This bundle only ships through dsh-work-x, so the dot is
+    // always there to clear. Deliberately NOT portaled to <body>: the slot's
+    // stacking context sits below the host's right workbench, so an open
+    // sidebar covers these chips — correct, because the sidebar (Problems
+    // tab) IS the expanded surface the chips abbreviate.
+    position: 'fixed', right: '20px', bottom: '112px', zIndex: 39,
     display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px',
-    pointerEvents: 'none',
+    pointerEvents: 'none', maxWidth: 'calc(100vw - 40px)',
   },
   pill: {
     pointerEvents: 'auto', padding: '5px 10px', borderRadius: '999px',
@@ -293,9 +312,75 @@ const styles = {
     border: '1px solid var(--dsw-alias-border-l2, rgba(0,0,0,0.1))',
     boxShadow: 'var(--dsw-shadow-lv1, 0 2px 8px rgba(0,0,0,0.08))',
     font: '500 11px/1.4 system-ui, sans-serif', whiteSpace: 'pre-wrap',
+    // The stack hugs the right edge; without a cap a long status line walks
+    // off the left of a phone screen (the "LSP Active: …" pill did).
+    maxWidth: 'calc(100vw - 48px)', overflowWrap: 'anywhere',
   },
+  // A widget's collapsed presence: the same pill, but interactive.
+  widgetPill: {
+    cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '7px',
+    textAlign: 'left',
+  },
+  // A widget's expanded presence: the suite's floating-window chrome (the
+  // side-chat card's tokens and radii), living inside the pill stack so it
+  // grows upward away from the dot instead of fighting it for the corner.
+  widgetCard: {
+    pointerEvents: 'auto', display: 'flex', flexDirection: 'column',
+    width: 'min(380px, calc(100vw - 40px))', maxHeight: '44vh', overflow: 'hidden',
+    borderRadius: '12px', border: '1px solid var(--dsw-alias-border-l2, rgba(0,0,0,0.1))',
+    background: 'var(--dsw-alias-bg-layer-2, #fff)', color: 'inherit',
+    boxShadow: 'var(--dsw-shadow-lv2, 0 12px 32px rgba(0,0,0,0.16))',
+    font: '400 12.5px/1.5 system-ui, -apple-system, sans-serif', textAlign: 'left',
+  },
+  widgetCardHeader: {
+    display: 'flex', alignItems: 'center', gap: '8px', padding: '9px 12px',
+    borderBottom: '1px solid var(--dsw-alias-border-l1, rgba(0,0,0,0.06))',
+    font: '600 12.5px/1.4 system-ui, sans-serif',
+  },
+  widgetCardBody: {
+    padding: '10px 12px', overflowY: 'auto', overflowX: 'auto',
+    display: 'flex', flexDirection: 'column', gap: '6px',
+  },
+  // Terminal-drawn widget bodies keep their alignment: pre, scroll sideways.
+  cardMono: { font: monospace, whiteSpace: 'pre', minWidth: 0 },
   inline: { font: monospace, whiteSpace: 'pre-wrap', opacity: 0.85 },
-  strip: { display: 'flex', flexDirection: 'column', gap: '4px', padding: '4px 2px' },
+  // The diagnostics card interior: a recognized diagnostics widget renders as
+  // product rows (system font, chips, severity dots) instead of projected
+  // terminal text — the side-chat bar, applied to the dock.
+  diagBadge: {
+    padding: '1px 7px', borderRadius: '999px',
+    background: 'var(--dsw-alias-bg-layer-3, rgba(0,0,0,0.06))',
+    font: '600 10.5px/1.6 system-ui, sans-serif', opacity: 0.85,
+  },
+  diagFile: {
+    display: 'inline-flex', alignItems: 'center', gap: '6px',
+    font: '500 11.5px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace',
+    padding: '1px 8px', borderRadius: '6px',
+    background: 'var(--dsw-alias-bg-layer-3, rgba(0,0,0,0.06))',
+  },
+  diagRow: {
+    display: 'flex', alignItems: 'baseline', gap: '8px',
+    font: '400 12.5px/1.5 system-ui, -apple-system, sans-serif',
+  },
+  diagDot: {
+    width: '7px', height: '7px', borderRadius: '999px', flex: 'none',
+    alignSelf: 'center',
+  },
+  diagLoc: {
+    font: '500 11px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace',
+    opacity: 0.6, flex: 'none',
+  },
+  diagRule: { font: '400 11px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace', opacity: 0.55, flex: 'none' },
+  diagMessage: { minWidth: 0, overflowWrap: 'anywhere' },
+  // In-column text seats (header utilities, working chrome, custom entries)
+  // sit in a card of the host's own visual language, never bare monospace
+  // floated over the page. Wide readouts scroll inside the card.
+  strip: {
+    display: 'flex', flexDirection: 'column', gap: '6px',
+    margin: '4px 0', padding: '8px 12px', overflowX: 'auto',
+    borderRadius: '8px', border: '1px solid var(--dsw-alias-border-l2, rgba(0,0,0,0.1))',
+    background: 'var(--dsw-alias-bg-layer-2, rgba(0,0,0,0.03))',
+  },
   imageTool: {
     margin: '4px 0', overflow: 'hidden', borderRadius: '8px',
     border: '1px solid var(--dsw-alias-border-l2, rgba(0,0,0,0.1))',
@@ -553,9 +638,14 @@ function OverlaySurfaces({ useSessions }: { useSessions: SessionsHook }) {
     ...valuesFor(surfaces, 'title').map(entry => ({ ...entry, key: 'title' })),
     ...statusesFor(surfaces),
   ]
-  if (shown.length === 0 && pills.length === 0) return null
+  const widgets = widgetsFor(surfaces)
+  if (shown.length === 0 && pills.length === 0 && widgets.length === 0) return null
   return createElement('div', null,
-    pills.length === 0 ? null : createElement('div', { style: styles.pillStack, 'data-pi2dsh': 'pills' },
+    pills.length === 0 && widgets.length === 0 ? null : createElement('div', { style: styles.pillStack, 'data-pi2dsh': 'pills' },
+      // Widgets first in DOM = top of the bottom-anchored stack, so an open
+      // card grows upward, away from the dot and the host's stats row.
+      ...widgets.map(entry => createElement(WidgetUnit,
+        { key: `w-${entry.owner}-${entry.key}`, owner: entry.owner, text: entry.text })),
       ...pills.map((pill, index) => createElement('div',
         { key: `${pill.owner}-${pill.key}-${index}`, style: styles.pill, title: pill.owner },
         ansiText(pill.text))),
@@ -600,26 +690,113 @@ function OverlaySurfaces({ useSessions }: { useSessions: SessionsHook }) {
  */
 function ansiText(text: string): ReactNode {
   if (!hasAnsi(text)) return text
-  return parseAnsi(text).map((run, index) => (Object.keys(run.style).length === 0
-    ? run.text
-    : createElement('span', { key: `ansi-${index}`, style: run.style }, run.text)))
+  return parseAnsi(text).map((run, index) => {
+    if (run.href !== undefined) {
+      // OSC 8 hyperlink: the label is the content, the target is metadata.
+      // http(s) targets become real links; anything else (file:// above all —
+      // browsers refuse those anchors anyway) shows the label with the full
+      // target in the tooltip, which is what a terminal link degrades to.
+      return /^https?:\/\//u.test(run.href)
+        ? createElement('a', {
+          key: `ansi-${index}`, href: run.href, target: '_blank', rel: 'noreferrer',
+          style: { ...run.style, color: run.style.color ?? 'inherit' },
+        }, run.text)
+        : createElement('span', {
+          key: `ansi-${index}`, title: run.href,
+          style: { textDecoration: 'underline dotted', textUnderlineOffset: '2px', ...run.style },
+        }, run.text)
+    }
+    return Object.keys(run.style).length === 0
+      ? run.text
+      : createElement('span', { key: `ansi-${index}`, style: run.style }, run.text)
+  })
 }
 
-function textSeat(
-  marker: string,
-  valueKeys: readonly SurfaceKey[],
-  opts: { widgets?: boolean } = {},
-) {
+/**
+ * A recognized diagnostics widget's rows — file chips, severity dots,
+ * locations, messages. The recognizer is structural (see diagnostics-model.ts);
+ * anything it declines stays on the mono projection, so recognition can only
+ * upgrade presentation. The title/badge live in the widget card's own header.
+ * Exported: the suite's Problems sidebar tab renders the same rows at full
+ * width (same composed bundle, same source of truth for the row shape).
+ */
+export function DiagnosticsRows({ view }: { view: DiagnosticsView }): ReactNode {
+  return createElement('div', { 'data-pi2dsh': 'diagnostics', style: { display: 'flex', flexDirection: 'column', gap: '6px' } },
+    ...view.files.flatMap((file, fileIndex) => [
+      createElement('div', { key: `f-${fileIndex}` },
+        createElement('span', { style: styles.diagFile, title: file.target },
+          file.label,
+          file.badge === undefined ? null : createElement('span', { style: { opacity: 0.55 } }, file.badge))),
+      ...file.rows.map((row, rowIndex) => createElement('div', { key: `r-${fileIndex}-${rowIndex}`, style: styles.diagRow },
+        createElement('span', { style: { ...styles.diagDot, background: row.markerColor ?? '#d4373f' } }),
+        createElement('span', { style: styles.diagLoc, title: row.target },
+          `L${row.line}${row.column === undefined ? '' : `:${row.column}`}`),
+        row.ruleId === undefined ? null : createElement('span', { style: styles.diagRule }, row.ruleId),
+        createElement('span', { style: styles.diagMessage }, row.message))),
+    ]),
+  )
+}
+
+/**
+ * One widget, in the suite's floating form.
+ *
+ * A single line is ambient status (a powerline, an LSP readout) and renders
+ * as a pill outright. Anything taller is content and starts as a labelled,
+ * badged pill too — collapsed on purpose: a tool's results are already
+ * narrated in the conversation, so the widget is the ambient copy, and an
+ * ambient surface earns attention with a badge, not by popping a window
+ * (the side-chat window auto-opens because its content arrives nowhere
+ * else). Clicking the pill opens the floating card — side-chat chrome —
+ * and × collapses it back. All of it lives in the overlay pill stack,
+ * never in the conversation column.
+ */
+function WidgetUnit({ owner, text: raw }: { owner: string, text: string }): ReactNode {
+  // A status line often arrives with a trailing newline; that must not
+  // promote it from ambient pill to content card.
+  const text = raw.replace(/\s+$/u, '')
+  const diagnostics = parseDiagnosticsWidget(text)
+  const multiline = diagnostics !== undefined || text.includes('\n')
+  const [open, setOpen] = useState(false)
+  if (text === '') return null
+  if (!multiline) {
+    return createElement('div', { style: styles.pill, title: owner, 'data-pi2dsh': 'widget' },
+      ansiText(text))
+  }
+  const title = diagnostics?.title ?? owner
+  const badge = diagnostics?.badge
+  if (!open) {
+    return createElement('button', {
+      type: 'button', style: { ...styles.pill, ...styles.widgetPill }, title: 'Show details',
+      'data-pi2dsh': 'widget', 'data-state': 'collapsed',
+      onClick: () => setOpen(true),
+    },
+    createElement('span', undefined, title),
+    badge === undefined ? null : createElement('span', { style: styles.diagBadge }, badge))
+  }
+  return createElement('div', { style: styles.widgetCard, 'data-pi2dsh': 'widget', 'data-state': 'open' },
+    createElement('div', { style: styles.widgetCardHeader },
+      createElement('span', { style: { flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, title),
+      badge === undefined ? null : createElement('span', { style: styles.diagBadge }, badge),
+      createElement('button', {
+        style: styles.close, title: 'Collapse',
+        onClick: () => setOpen(false),
+      }, '×')),
+    createElement('div', { style: styles.widgetCardBody },
+      ...(diagnostics !== undefined
+        ? [createElement(DiagnosticsRows, { key: 'rows', view: diagnostics })]
+        : text.split('\n').map((line, index) =>
+          createElement('div', { key: index, style: styles.cardMono }, ansiText(line))))),
+  )
+}
+
+function textSeat(marker: string, valueKeys: readonly SurfaceKey[]) {
   return function TextSeat({ sessionId }: { sessionId?: string }) {
     const { surfaces } = useBrowserState(sessionId)
-    const entries: Array<{ owner: string, text: string }> = [
-      ...valueKeys.flatMap(key => valuesFor(surfaces, key)),
-      ...(opts.widgets === true ? widgetsFor(surfaces) : []),
-    ]
-    if (entries.length === 0) return null
+    const values = valueKeys.flatMap(key => valuesFor(surfaces, key))
+    if (values.length === 0) return null
     return createElement('div', { 'data-pi2dsh': marker, style: styles.strip },
-      ...entries.map((entry, index) => createElement('div',
-        { key: `${entry.owner}-${index}`, style: styles.inline, title: entry.owner }, ansiText(entry.text))),
+      ...values.map((entry, index) => createElement('div',
+        { key: `v-${entry.owner}-${index}`, style: styles.inline, title: entry.owner }, ansiText(entry.text))),
     )
   }
 }
@@ -744,11 +921,9 @@ export function apply(ctx: ClientContext, options?: { sideThreads?: boolean }): 
     scope.slots.inject('conversation.session.header.utilities', () => scope.slots.register({
       name: 'conversation.session.header.utilities', id: 'pi2dsh-header', order: 1,
     }, textSeat('header', ['header'])))
-    // A widget is a strip of lines of its own; the dock above the composer is
-    // the seat DSH reserves for exactly that shape.
-    scope.slots.inject('conversation.input.dock', () => scope.slots.register({
-      name: 'conversation.input.dock', id: 'pi2dsh-dock', order: 1,
-    }, textSeat('dock', [], { widgets: true })))
+    // Widgets have NO in-column seat: they float in the overlay pill stack
+    // (see WidgetUnit). The dock strip form died 2026-08-28 — see the header
+    // comment for the three ways it failed.
     // Working chrome is a live ambient readout — the band under the composer
     // card, where DSH's own stats line sits. Footer lands here too: it is the
     // bottom band of the conversation, the same seat the terminal's bottom

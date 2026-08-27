@@ -394,7 +394,9 @@ describe('engine mounting on a real DSH composition', () => {
       },
     })
     ;(ctx as unknown as { baseUrl: string }).baseUrl = `file://${root}/cordis.yml`
-    await apply(ctx, {})
+    // The panel command runner is a browser-presentation consumer (the
+    // dsh-work-x shape), so this fixture opts in; the engine default is off.
+    await apply(ctx, { browserPresentation: true })
     await settle()
     const typedCtx = ctx as unknown as {
       sessions: { create(id: unknown, options: Record<string, unknown>): { id: unknown } }

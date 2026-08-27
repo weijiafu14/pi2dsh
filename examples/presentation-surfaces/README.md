@@ -19,12 +19,14 @@ thinking level, project and context usage. It is what this example installs,
 and what the automated regression drives.
 
 ```sh
-dsh plugin --profile web add pi2dsh
+dsh plugin --profile web add dsh-work-x
 dsh plugin --profile web add pi-powerline-footer
 ```
 
-That is the whole install — the pi2dsh engine mounts every Pi package in the
-profile. Restart dsh afterwards: packages mount at startup.
+That is the whole install — the dsh-work-x suite carries the pi2dsh engine
+AND the web presentation (the engine alone deliberately projects nothing
+into the browser), and the engine mounts every Pi package in the profile.
+Restart dsh afterwards: packages mount at startup.
 
 If an add stops with `ERR_PNPM_IGNORED_BUILDS` (pnpm blocks dependency build
 scripts by default): run `pnpm approve-builds` inside `$DSH_HOME/profiles/web`
@@ -38,7 +40,9 @@ Open the web app, start a session, and run the plugin's own command:
    `/powerline-perf`, so until one is picked the send button stays disabled;
 3. send.
 
-The status line appears above the composer, in DSH's widget dock:
+The status line appears as a floating status pill in the lower-right
+(widget content taller than one line opens as a floating card there instead,
+collapsible to a labelled pill):
 
 ```text
  DeepSeek-V4-Flash | think:off | pi2dsh | 0/1.0M (0.0%)
@@ -79,7 +83,7 @@ the same thing:
 Pi call                        pi2dsh (server half)         DSH web seat
 ui.setStatus / setTitle    ->  per-session surface store ->  shell.overlay
 ui.setHeader               ->                            ->  session.header.utilities
-ui.setWidget               ->                            ->  conversation.input.dock
+ui.setWidget               ->                            ->  floating pill/card (overlay)
 ui.setFooter / working*    ->                            ->  conversation.composer.dock
 appendEntry / sendMessage  ->  sidecar + custom types    ->  conversation.chat.turnTail
 ui.setEditorText / paste   ->  draft request             ->  inputActions.setDraft

@@ -18,7 +18,7 @@ remain headless or become an explicit Web-native projection.
 | [`registerMarkdownTransformer`](#registermarkdowntransformer-pi) | `pi.*` | Mapped, difference stated | Registration is accepted; DSH owns presentation, so the transformer is never invoked — matching Pi's non-TUI surfaces. |
 | [`notify`](#notify-ctxui) | `ctx.ui.*` | Same semantics | Captured as a command result when applicable and emitted through DSH logging at the severity the caller passed (warning and error log as warnings). |
 | [`setStatus`](#setstatus-ctxui) | `ctx.ui.*` | Same semantics | Pi's keyed status entries render in the active DSH front door: dsh-TUI's native status line, dsh-pi-tui's public footer-status slot, or package-keyed pills in the bridge's browser half. setStatus(key, undefined) removes exactly one entry. |
-| [`setWidget`](#setwidget-ctxui) | `ctx.ui.*` | Mapped, difference stated | String-array widgets render as a strip in DSH's conversation.input.dock seat (a full-width row of its own above the composer card). setWidget(key, undefined) removes one widget. Component factories are ignored, exactly like Pi's own rpc mode, where widgets travel to a host as lines. |
+| [`setWidget`](#setwidget-ctxui) | `ctx.ui.*` | Mapped, difference stated | Widgets float in DSH web's lower-right overlay stack, session-scoped: a single-line widget renders as an ambient status pill, taller content opens as a floating card on arrival and collapses to a labelled pill (diagnostics-shaped content gets product rows — file chips, severity dots, locations). setWidget(key, undefined) removes one widget. A component factory runs with a LIVE tui handle: requestRender re-renders the retained component into the same slot, and replacing or clearing the widget disposes it. |
 | [`select`](#select-ctxui) | `ctx.ui.*` | Same semantics | Mapped to one native DSH userQuestions single-select request. A terminal-oriented multi-line title becomes DSH's plain heading plus native detail; links render as Markdown on Web and OSC 8 in dsh-TUI without visible escape bytes. |
 | [`confirm`](#confirm-ctxui) | `ctx.ui.*` | Same semantics | Mapped to one native DSH userQuestions Yes/No request. A terminal-oriented multi-line title becomes DSH's plain heading plus native detail; links render as Markdown on Web and OSC 8 in dsh-TUI without visible escape bytes. |
 | [`input`](#input-ctxui) | `ctx.ui.*` | Same semantics | Mapped to one native DSH userQuestions free-text request. A terminal-oriented multi-line title becomes DSH's plain heading plus native detail; links render as Markdown on Web and OSC 8 in dsh-TUI without visible escape bytes. |
@@ -78,7 +78,7 @@ The selected terminal backend owns a package/key-scoped handle: tuiStatus on dsh
 
 `ctx.ui.*` · Mapped, difference stated
 
-BrowserSurfaces.setWidget keeps the lines per widget key; the client half draws them in the conversation.input.dock slot. The factory branch is dropped at the ui seam, mirroring rpc-mode.ts's "Only support string arrays in RPC mode".
+BrowserSurfaces.setWidget keeps the rendered text per widget key; the client half presents it from the shell overlay (pill or floating card by shape), never as an in-column strip — the strip form could not be dismissed and wore the previous session's content on the new-session screen. Factories get a real driver because packages RETAIN the handle: pi-lens closes over tui and calls requestRender from later tool executions — with an undefined handle that call crashed the tool, far outside any factory-time catch.
 
 ### `select` <a id="select-ctxui"></a>
 

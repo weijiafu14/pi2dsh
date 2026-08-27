@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "pi2dshCommit": "44f5103276d7a24ddd4fa1fa5d14c2d1540ca45a",
-  "dshCommit": "npm:@deepseek-ai/dsh@0.1.1-rc.2",
+  "pi2dshCommit": "00a1e5cf3c5569e2824e9f2250a2b22e9028534c",
+  "dshCommit": "69fff74f6f3e1f37939784885ef823477f06ace3",
   "results": {
     "alibabaTokenPlan": {
       "status": "skipped",
@@ -115,8 +115,10 @@
       "status": "passed",
       "engine": {
         "version": "0.21.0",
-        "from": "registry",
-        "spec": "pi2dsh@0.21.0"
+        "from": "local",
+        "spec": "file:<working-tree>",
+        "commit": "00a1e5cf3c5569e2824e9f2250a2b22e9028534c",
+        "dirty": true
       },
       "suite": [
         "pi-mcp-adapter",
@@ -135,25 +137,27 @@
       "status": "passed",
       "engine": {
         "version": "0.21.0",
-        "from": "registry",
-        "spec": "pi2dsh@0.21.0"
+        "from": "local",
+        "spec": "file:<working-tree>",
+        "commit": "00a1e5cf3c5569e2824e9f2250a2b22e9028534c",
+        "dirty": true
       },
+      "install": "dsh-work-x suite (bundles pi-btw)",
+      "sideAnswerIsolated": true,
       "screenshots": [
-        "00-side-conversation-btw-scene.png",
-        "01-side-conversation-main-thread-clean.png",
-        "02-side-conversation-panel.png",
-        "03-side-conversation-host-catalog.png",
-        "04-side-conversation-injected-on-request.png",
-        "05-side-conversation-child-view.png"
+        "00-side-conversation-work-x.png"
       ]
     },
     "presentationSurfaces": {
       "status": "passed",
       "engine": {
         "version": "0.21.0",
-        "from": "registry",
-        "spec": "pi2dsh@0.21.0"
+        "from": "local",
+        "spec": "file:<working-tree>",
+        "commit": "00a1e5cf3c5569e2824e9f2250a2b22e9028534c",
+        "dirty": true
       },
+      "install": "dsh-work-x suite + pi-powerline-footer",
       "screenshots": [
         "06-presentation-surfaces.png"
       ]
@@ -171,6 +175,41 @@
         "explicitModelThinking": "passed",
         "childExtensions": "passed"
       }
+    },
+    "codeNavigation": {
+      "status": "passed",
+      "engine": {
+        "version": "0.21.0",
+        "from": "local",
+        "spec": "file:<working-tree>",
+        "commit": "00a1e5cf3c5569e2824e9f2250a2b22e9028534c",
+        "dirty": true
+      },
+      "packages": [
+        "@ff-labs/pi-fff",
+        "pi-lens"
+      ],
+      "search": "ffgrep -> notes/spec.md",
+      "diagnostics": "lsp_diagnostics -> TS2322 on src/ledger.ts"
+    },
+    "codeNavigationWeb": {
+      "status": "passed",
+      "engine": {
+        "version": "0.21.0",
+        "from": "local",
+        "spec": "file:<working-tree>",
+        "commit": "00a1e5cf3c5569e2824e9f2250a2b22e9028534c",
+        "dirty": true
+      },
+      "packages": [
+        "@ff-labs/pi-fff",
+        "pi-lens"
+      ],
+      "screenshots": [
+        "06-code-navigation-web.png"
+      ],
+      "search": "ffgrep -> notes/spec.md",
+      "diagnostics": "lsp_diagnostics -> TS2322 on src/ledger.ts"
     }
   }
 }
