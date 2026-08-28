@@ -544,3 +544,19 @@
 | 4254 | 首回 | 社区同类项目互为佐证（explicitModelThinking），零抢地盘 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/4254#discussioncomment-18186938) |
 
 待发批次：pi-lens/code-nav 9 帖——依赖 pi2dsh@0.22.0 上 npm（信任修复）+ verify:release 绿，勿提前。
+
+## 批次 13（2026-08-28，0.22.0 发版后：alpha 修复回传 + code-nav 首批）
+
+发版回归全绿后发出（npm pi2dsh@0.22.0：12 passed / 4 缺凭证 skipped / subscription-login 按设计 partial；step-seams 过；pi-tui 23/23）。
+
+| # | 性质 | 依据 | 评论链接 |
+|---|---|---|---|
+| 4311 | alpha 回传 | v0.1.2-alpha.1 原生修快照继承（child-agent.ts 引文）；rc 线规避仍适用 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/4311#discussioncomment-18190512) |
+| 2006 | alpha 回传 | 同上，短版 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/2006#discussioncomment-18190513) |
+| 3741 | alpha 回传 | 静默降级路径在 alpha 已不存在 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/3741#discussioncomment-18190514) |
+| 1472 | alpha 回传 | request-time selection 正对他的计费场景 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/1472#discussioncomment-18190516) |
+| 1851 | 首回（code-nav） | 同行 LSP 项目：送两课实战数据（信任判据常量 false 事故、lsp_diagnostics 撞名不可共装），明写能力面互补非竞品 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/1851#discussioncomment-18190547) |
+| 1690 | 首回（code-nav） | pi-fff 频度索引正对"重复搜索别重扫全树"；明写不修原生超时、无进度反馈、原生索引方案仍是正解 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/1690#discussioncomment-18190549) |
+
+毙掉：#2476（与 #1851 同作者同项目，避免重复打扰）；#3634（作者已自答原生根因与解法，再荐插件是推销味）。
+盘点更正：此前口径"code-nav 9 帖"经逐条重扫不成立（queue 里并无 9 条 pi-fff/pi-lens 行），实际站得住的就上述 2 条——按宁可少发原则收敛。

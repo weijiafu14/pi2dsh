@@ -1,10 +1,10 @@
 {
-  "generatedAt": "2026-08-26T14:28:45.622Z",
+  "generatedAt": "2026-08-28T15:25:22.548Z",
   "scenario": "dsh-pi-tui + pi2dsh + Pi MCP + Pi Subagents",
   "specs": {
     "dsh": "@deepseek-ai/dsh@0.1.1-rc.2",
     "tui": "@xmoon76/dsh-pi-tui@0.3.4",
-    "engine": "pi2dsh@0.21.0",
+    "engine": "pi2dsh@0.22.0",
     "mcp": "pi-mcp-adapter@2.27.0",
     "subagents": "@tintinweb/pi-subagents@0.18.0"
   },
@@ -12,7 +12,7 @@
   "versions": {
     "dsh": "0.1.1-rc.2",
     "tui": "0.3.4",
-    "engine": "0.21.0",
+    "engine": "0.22.0",
     "mcp": "2.27.0",
     "subagents": "0.18.0"
   },
@@ -20,8 +20,8 @@
     "nativeLogin": true,
     "mcpManager": true,
     "agentsSurface": true,
-    "subagentToolResult": "sessions/--private-tmp-pi2dsh-pi-tui-e2e.DAgie1--/session-1bd78104-a277-4656-938d-93c3043968c4/session.jsonl",
-    "mcpToolResult": "sessions/--private-tmp-pi2dsh-pi-tui-e2e.DAgie1--/session-1bd78104-a277-4656-938d-93c3043968c4/session.jsonl",
+    "subagentToolResult": "sessions/--private-tmp-pi2dsh-pi-tui-e2e.iwrZV4--/session-560a5919-9d69-496e-a397-24a32aa48d49/session.jsonl",
+    "mcpToolResult": "sessions/--private-tmp-pi2dsh-pi-tui-e2e.iwrZV4--/session-560a5919-9d69-496e-a397-24a32aa48d49/session.jsonl",
     "duplicateCommandErrors": 0
   }
 }
