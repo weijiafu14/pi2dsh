@@ -1,0 +1,132 @@
+{
+  "generatedAt": "2026-08-28T00:22:14.442Z",
+  "startedAt": "2026-08-28T00:16:55.357Z",
+  "scenario": "pi-subagents-lifecycle (steer / resume / stop / model-follow / explicit-model-thinking)",
+  "cliSpec": "@deepseek-ai/dsh@0.1.1-rc.2",
+  "engineSpec": "/Users/developer/projj/workspace/pi2dsh",
+  "subagentsSpec": "@tintinweb/pi-subagents@0.18.0",
+  "status": "passed",
+  "scenarios": {
+    "steer": {
+      "status": "passed",
+      "problems": [],
+      "steeredLanded": true,
+      "alphaAlsoLanded": false,
+      "spawnTaskVerbatim": true,
+      "parentToolCalls": [
+        "Agent",
+        "steer_subagent",
+        "get_subagent_result"
+      ],
+      "childFile": "/tmp/pi2dsh-subagents-lifecycle.Cr4qTc/dsh-home/sessions/--private-tmp-pi2dsh-subagents-lifecycle.Cr4qTc-workspace--/pi2dsh-sub-mtc7d3mo-1/session.jsonl"
+    },
+    "failureReport": {
+      "status": "passed",
+      "problems": [],
+      "reportCarried": true,
+      "childFile": "/tmp/pi2dsh-subagents-lifecycle.Cr4qTc/dsh-home/sessions/--private-tmp-pi2dsh-subagents-lifecycle.Cr4qTc-workspace--/pi2dsh-sub-mtc7dwhn-1/session.jsonl"
+    },
+    "resume": {
+      "status": "passed",
+      "problems": [],
+      "attempt": 1,
+      "recalled": true,
+      "childSessionFile": "/tmp/pi2dsh-subagents-lifecycle.Cr4qTc/dsh-home/sessions/--private-tmp-pi2dsh-subagents-lifecycle.Cr4qTc-workspace--/pi2dsh-sub-mtc7e24b-1/session.jsonl",
+      "childTurns": 2,
+      "matchedChildLogs": 1
+    },
+    "resumeArchive": {
+      "status": "passed",
+      "problems": [],
+      "recalled": true,
+      "archive": "/tmp/pi2dsh-subagents-lifecycle.Cr4qTc/dsh-home/pi2dsh/agent/session-entries/pi2dsh-sub-mtc7eawl-1.jsonl",
+      "childSessionFile": "/tmp/pi2dsh-subagents-lifecycle.Cr4qTc/dsh-home/sessions/--private-tmp-pi2dsh-subagents-lifecycle.Cr4qTc-workspace--/pi2dsh-sub-mtc7eawl-1/session.jsonl",
+      "childTurns": 2
+    },
+    "stopChildTurnEnds": [
+      "{\"kind\":\"aborted\",\"reason\":{\"kind\":\"hook\",\"reason\":\"pi2dsh subagent abort()\"}}"
+    ],
+    "stopPaneTail": "▀▀▀   ▀▀▀▄  ▀▀▀▄\n   ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀             █   █ █   █ █ █   █  ██ █         █     █\n    ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀              █   █ █   █ █   █ █   █ █▄▄▄▄ █▄▄▄▀ █▄▄▄▀\n      ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▄             deepseek-chat · Max effort\n         ▀▀▀▀▀▀▀▀▀▀▀  ▀▀▀▀▀▀▀             /private/tmp/pi2dsh-subagents-lifecycle.Cr4qTc/workspace\n                                          Tip: /update updates the TUI and restarts, resuming the session · /tips more tips\n\n        Explore the uncharted!\n\n❯ Call the Agent tool exactly once: subagent_type general-purpose, name \"sleeper\", run_in_background false, prompt: \"Run the bash command `sleep 90` in the FOREGROUND and wait\n  for it to finish — do not set run_in_background, do not append &. When it finishes, write the file\n  /tmp/pi2dsh-subagents-lifecycle.Cr4qTc/workspace/stopped-agent-output-MTC7C4SD.txt containing SHOULD_NOT_EXIST_MTC7C4SD using bash, then reply done.\" Do not run bash yourself.\n\n⏺ I'll delegate this task to a general-purpose subagent as instructed, running it in the foreground.\n\n  ⏵ Invoking the sleeper subagent to run sleep 90 in the foreground\n\n✗ Agent({\"description\":\"Foreground sleeper subagent\",\"subagent_type\":\"general-purpose\",\"name\":\"sleeper\",\"run_in_background\":false,\"prompt\":\"Run the bash command `sleep …) · 3s\n ⎿ AbortError: ABORTED — Error: tool call aborted\n   ⌘t for the full trajectory\n\nInterrupted · What should DeepSeek do instead?\n\n╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮\n❯\n╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯\n deepseek-chat · max · cache 0.0% · workspace                                                                                                                   ctx 8.0% (10k/131k)\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
+    "stopManagerScreen": "gent_type general-purpose, name \"sleeper\", run_in_background false, prompt: \"Run the bash command `sleep 90` in the FOREGROUND and wait\n  for it to finish — do not set run_in_background, do not append &. When it finishes, write the file\n  /tmp/pi2dsh-subagents-lifecycle.Cr4qTc/workspace/stopped-agent-output-MTC7C4SD.txt containing SHOULD_NOT_EXIST_MTC7C4SD using bash, then reply done.\" Do not run bash yourself.\n\n⏺ I'll delegate this task to a general-purpose subagent as instructed, running it in the foreground.\n\n  ⏵ Invoking the sleeper subagent to run sleep 90 in the foreground\n\n✗ Agent({\"description\":\"Foreground sleeper subagent\",\"subagent_type\":\"general-purpose\",\"name\":\"sleeper\",\"run_in_background\":false,\"prompt\":\"Run the bash command `sleep …) · 3s\n ⎿ AbortError: ABORTED — Error: tool call aborted\n   ⌘t for the full trajectory\n\nInterrupted · What should DeepSeek do instead?\n\n  ──────────────────────────────────────────────────────────────────────────────  📋 Question 1/1   ──────────────────────────────────────────────────────────────────────────────\n\n  Agents\n\n\n  ❯● Running agents (1) — 0 running, 0 done\n   ○ Agent types (3)\n   ○ Scheduled jobs (0)\n   ○ Create new agent\n   ○ Settings\n   ✎ Custom answer：Type directly…\n\n  ↑/↓ select · Type text to attach an answer · Enter submit · Esc cancel\n deepseek-chat · max · cache 0.0% · workspace                                                                                                                   ctx 8.0% (10k/131k)\n\n\n\n\n",
+    "stop": {
+      "status": "passed",
+      "problems": [],
+      "tuiVersion": "0.9.0",
+      "interrupted": true,
+      "outputFileAbsentAfterWindow": true
+    },
+    "modelFollowPickerScreen": "Thinking (ctrl+o to expand)\n\n⏺ warmup-FOLLOW_MTC7C4SD\n                                                                                                                                               Model switched to Work Gateway Model\n╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮\n❯\n╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯\n deepseek-chat · max · cache 0.0% · workspace                                                                                                                   ctx 1.0% (10k/1.0m)\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
+    "modelFollow": {
+      "status": "passed",
+      "problems": [],
+      "defaultProvider": "deepseek-official",
+      "parentRoutes": [
+        {
+          "provider": "deepseek-official",
+          "model": "deepseek-v4-flash"
+        },
+        {
+          "provider": "work-gw",
+          "model": "deepseek-chat"
+        }
+      ],
+      "childRoutes": [
+        {
+          "provider": "work-gw",
+          "model": "deepseek-chat"
+        }
+      ],
+      "markerLanded": true
+    },
+    "explicitModelThinking": {
+      "status": "passed",
+      "problems": [],
+      "parentConfigs": [
+        {
+          "provider": "deepseek-official",
+          "model": "deepseek-v4-flash",
+          "reasoningEffort": "max",
+          "maxTokens": 256000
+        },
+        {
+          "provider": "work-gw",
+          "model": "deepseek-chat"
+        }
+      ],
+      "agentArguments": {
+        "description": "explicit route and effort probe",
+        "subagent_type": "general-purpose",
+        "name": "explicit-probe",
+        "model": "deepseek-official/deepseek-v4-flash",
+        "thinking": "max",
+        "run_in_background": false,
+        "prompt": "Run one bash command that writes the single word EXPLICIT_MTC7C4SD into /tmp/pi2dsh-subagents-lifecycle.Cr4qTc/workspace/explicit-model-thinking-MTC7C4SD.txt, then reply done."
+      },
+      "childConfigs": [
+        {
+          "provider": "deepseek-official",
+          "model": "deepseek-v4-flash",
+          "maxTokens": 256000,
+          "reasoningEffort": "max"
+        }
+      ],
+      "childToolCalls": [
+        "bash",
+        "bash"
+      ],
+      "markerLanded": true
+    },
+    "childExtensions": {
+      "status": "passed",
+      "problems": [],
+      "touched": true,
+      "positiveChild": "/tmp/pi2dsh-subagents-lifecycle.Cr4qTc/dsh-home/sessions/--private-tmp-pi2dsh-subagents-lifecycle.Cr4qTc-workspace--/pi2dsh-sub-mtc7ioj8-1/session.jsonl",
+      "negativeChild": "/tmp/pi2dsh-subagents-lifecycle.Cr4qTc/dsh-home/sessions/--private-tmp-pi2dsh-subagents-lifecycle.Cr4qTc-workspace--/pi2dsh-sub-mtc7iw2e-1/session.jsonl"
+    },
+    "stack": {
+      "cliVersion": "0.1.1-rc.2",
+      "engineVersion": "0.22.0",
+      "scratch": "/tmp/pi2dsh-subagents-lifecycle.Cr4qTc"
+    }
+  }
+}

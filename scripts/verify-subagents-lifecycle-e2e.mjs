@@ -347,6 +347,62 @@ try {
   }
 
   // ======================================================================
+  // Scenario 1b — failure-report: the child's closing words reach the
+  // parent. deepseek-harness #4334/#4639 report the native background
+  // notice arriving empty ("Its closing message:" and nothing after);
+  // through pi-subagents the parent's get_subagent_result result block must
+  // carry the reason the child stated. Anti-forgery shape borrowed from
+  // resume's codeword: the reason string lives ONLY in a file the child
+  // reads — the parent's prompt names the path, never the word — so the tag
+  // can arrive in the parent's log through the child's report alone.
+  // ======================================================================
+  {
+    const REASON = `FAILCAUSE_${randomBytes(6).toString('hex').toUpperCase()}`
+    const reasonPath = join(workDir, `reason-${RUN_TAG}.txt`)
+    await writeFile(reasonPath, `${REASON}\n`)
+    const prompt = [
+      `Do these steps in order. You yourself must NEVER call the read or bash tools — only the subagent may;`,
+      `if you call them yourself the task is failed.`,
+      `Step 1: call the Agent tool once: subagent_type general-purpose, name "doomed", run_in_background true,`,
+      `prompt: "Use the read tool to read the file ${reasonPath}. This task cannot be completed and you must abort it.`,
+      `Your final reply must be exactly: TASK FAILED: <the single word you read from that file>. Nothing else."`,
+      `Step 2: call get_subagent_result with agent "doomed" and wait true.`,
+      `Step 3: reply with the agent's report only.`,
+    ].join(' ')
+    log('scenario failure-report: running the headless turn …')
+    const output = await runHeadlessTurn(prompt, undefined, 420_000)
+
+    const sessions = await loadSessions(reasonPath)
+    const parent = sessions.find(s => !s.isChild && s.toolCalls.some(c => c.data?.name === 'Agent'))
+    const child = sessions.find(s => s.isChild && s.raw.includes(REASON))
+    const problems = []
+    if (parent === undefined) problems.push('no parent session with an Agent tool/call')
+    if (child === undefined) problems.push('no child session carrying the reason word')
+    let reportCarried = false
+    if (parent !== undefined) {
+      if (parent.toolCalls.some(c => c.data?.name === 'read')) problems.push('parent read the reason file itself — the report proves nothing')
+      if (parent.toolCalls.some(c => c.data?.name === 'bash')) problems.push('parent ran bash itself')
+      // The claim is about the REPORT CHANNEL: the reason must sit inside a
+      // get_subagent_result tool RESULT block, not merely in parent prose.
+      const reportCallIds = new Set(parent.toolCalls
+        .filter(c => c.data?.name === 'get_subagent_result')
+        .map(c => c.data?.callId))
+      reportCarried = parent.events.some(e => e.type === 'tool/result'
+        && (e.data?.message?.content ?? []).some(b => reportCallIds.has(b.toolCallId) && JSON.stringify(b).includes(REASON)))
+      if (reportCallIds.size === 0) problems.push('parent never called get_subagent_result')
+      if (!reportCarried) problems.push('the failure reason never appeared inside a get_subagent_result result block')
+    }
+    scenarios.failureReport = {
+      status: problems.length === 0 ? 'passed' : 'failed',
+      problems,
+      reportCarried,
+      childFile: child?.file ?? null,
+      outputTail: problems.length > 0 ? output.slice(-1200) : undefined,
+    }
+    log(`scenario failure-report: ${scenarios.failureReport.status}${problems.length > 0 ? ` — ${problems.join('; ')}` : ''}`)
+  }
+
+  // ======================================================================
   // Scenario 2 — resume: a resumed child keeps its session and its memory.
   // Model-compliance failures (the parent grabbing bash/read itself) get ONE
   // retry — they falsify the evidence, not the feature.
