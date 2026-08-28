@@ -1,0 +1,10 @@
+{
+  "name": "many-tools-mcp-server",
+  "private": true,
+  "type": "module",
+  "description": "Real stdio MCP server with 50 tools + a slow task, for the mcp-at-scale example.",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "zod": "^3.24.0"
+  }
+}

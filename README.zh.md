@@ -164,7 +164,7 @@ DSH 模型运行时的 sampling、取消与会话重启。完整证据矩阵：
 | [`@crazygit/pi-codex-image-gen`](https://www.npmjs.com/package/@crazygit/pi-codex-image-gen) | ChatGPT/Codex OAuth 调 `gpt-image-2` 生图；本地参考图走 DSH 审批后上传；编辑图片；原生附件存储并在 Web 内直接显示 | CLI + Web | [`codex-image-gen`](examples/codex-image-gen/) |
 | [`pi-btw`](https://www.npmjs.com/package/pi-btw) | `/btw <问题>` 跑成 DSH 子代理界面里的真子会话；`/btw-inject`；`/btw --save`；主会话保持干净 | CLI + Web | [`side-conversation`](examples/side-conversation/) |
 | [`pi-powerline-footer`](https://www.npmjs.com/package/pi-powerline-footer) | 终端状态条（模型、思考档位、项目、上下文用量）以浮动状态胶囊画进 DSH web，带颜色 | Web | [`presentation-surfaces`](examples/presentation-surfaces/) |
-| [`pi-mcp-adapter`](https://www.npmjs.com/package/pi-mcp-adapter) | 完整管理界面画进 dsh-TUI；stdio/Streamable HTTP/SSE；发现、直连/代理/脚本调用、resources、prompts、图片、结构化内容、MCP Apps、审批、elicitation、sampling、取消与重启全部穿过 DSH 运行时；原生 `/mcp` 与 `/pi-mcp` 共存 | dsh-TUI | [`tui-mcp`](examples/tui-mcp/) · [证据矩阵](docs/mcp-compatibility.md) |
+| [`pi-mcp-adapter`](https://www.npmjs.com/package/pi-mcp-adapter) | 完整管理界面画进 dsh-TUI；stdio/Streamable HTTP/SSE；发现、直连/代理/脚本调用、resources、prompts、图片、结构化内容、MCP Apps、审批、elicitation、sampling、取消与重启全部穿过 DSH 运行时；原生 `/mcp` 与 `/pi-mcp` 共存 | CLI + Web + dsh-TUI | [`tui-mcp`](examples/tui-mcp/) · [`mcp-at-scale`](examples/mcp-at-scale/) · [证据矩阵](docs/mcp-compatibility.md) |
 | [`@tintinweb/pi-subagents`](https://www.npmjs.com/package/@tintinweb/pi-subagents) | 模型自己带团队：派子代理（真宿主原生工具）、后台跑+完成通知、运行中转向、等结果、带记忆续命、真停得住的打断、`/pi-agents` 管理面、跨重启按归档身份重开——每个子代理都是原生 DSH 会话 | CLI + dsh-TUI | [`subagents`](examples/subagents/) · [验收报告](community/subagents-acceptance-report.md) |
 | [`pi-provider-alibaba`](https://www.npmjs.com/package/pi-provider-alibaba) | 阿里云 Token Plan（中国区）专属 key：实时目录、冷启动动态模型、完整工具闭环与重启均已实测；包也声明 Coding/API 路由，但必须分别使用不可混用的专属凭证 | CLI + Web | [`alibaba-token-plan`](examples/alibaba-token-plan/) |
 | [`@ff-labs/pi-fff`](https://www.npmjs.com/package/@ff-labs/pi-fff) + [`pi-lens`](https://www.npmjs.com/package/pi-lens) | 给模型真正的代码导航工具：`ffgrep` 内容搜索找到只存在于一个文件里的标记串，`lsp_diagnostics` 经真实的本地 `typescript-language-server` 报出植入的 TS2322 —— 两条都从会话日志里工具自己的结果断言 | CLI + Web | [`code-navigation`](examples/code-navigation/) |
@@ -387,6 +387,7 @@ loop 上实际跑过才会进来。
 | [`custom-gateways`](examples/custom-gateways/) | 按 DSH 官方方式接任何 OpenAI 兼容网关，每个 Pi 插件都能看到它 |
 | [`code-navigation`](examples/code-navigation/) | 给模型真正的代码导航工具——在自带样例工程上跑模糊内容搜索与语言服务器诊断，CLI 与 Web 双端 |
 | [`tui-mcp`](examples/tui-mcp/) | 保留 dsh-TUI 原生 `/mcp`，把 Pi 生态管理面作为 `/pi-mcp` 加进来，并让完整的宿主相关 MCP 功能面穿过 DSH 运行时 |
+| [`mcp-at-scale`](examples/mcp-at-scale/) | 真实 51 工具 MCP 服务器藏在 adapter 两个元工具后面：工具面有界、规模化懒发现、超时预算把 ~120 秒工具砍到秒级——CLI 与 Web 双端 |
 | [`subagents`](examples/subagents/) | 模型自己带小团队：派单、后台、中途转向、收结果、带记忆续命、真停得住、`/pi-agents` 管理、跨重启重开 |
 
 ## 其它工具

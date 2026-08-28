@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "many-tools": {
+      "command": "node",
+      "args": ["server/many-tools.mjs"]
+    }
+  }
+}

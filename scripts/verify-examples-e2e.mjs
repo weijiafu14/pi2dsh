@@ -376,10 +376,18 @@ async function seedCodexLogin(home, authFile) {
 }
 
 /** Session records from the one session log a scenario's home produced. */
-async function sessionRecords(home) {
-  const files = (await filesBelow(join(home, 'sessions'))).filter(path => path.endsWith('/session.jsonl'))
-  assert.equal(files.length, 1, `expected one session log, found ${files.length}`)
-  return (await readFile(files[0], 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line))
+async function sessionRecords(home, { expect = 1 } = {}) {
+  // Most scenarios drive exactly one turn; a count mismatch there means the
+  // lane ran something it did not intend to. A multi-turn scenario passes
+  // its own expectation (mcp-at-scale runs two prompts = two sessions) and
+  // gets every session's records back, in file order.
+  const files = (await filesBelow(join(home, 'sessions'))).filter(path => path.endsWith('/session.jsonl')).sort()
+  assert.equal(files.length, expect, `expected ${expect} session log(s), found ${files.length}:\n  ${files.join('\n  ')}`)
+  const all = []
+  for (const file of files) {
+    all.push(...(await readFile(file, 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line)))
+  }
+  return all
 }
 
 /**
@@ -1512,9 +1520,10 @@ async function runCodeNavigation() {
     // The turn must run with the sample project as its working directory —
     // fffind/ffgrep and pi-lens search the session cwd, exactly as the README
     // tells the user to `cd sample-project` first. runDsh pins cwd to the CLI
-    // directory, so this scenario carries its own runner. (tsx resolves the
-    // CLI's imports relative to the script file, not cwd, so the checkout
-    // fallback works from here too.)
+    // directory, so this scenario carries its own runner. cwd-changing lanes
+    // REQUIRE the stock npm CLI (PI2DSH_DSH_BIN): the checkout fallback's
+    // `--import tsx/esm` resolves tsx from the cwd, and a scratch project
+    // directory has no tsx (mcp-at-scale proved this 2026-08-28).
     const runDshIn = (cwd, args) => execFile(
       directDshBin === undefined ? 'node' : directDshBin,
       directDshBin === undefined ? ['--import', 'tsx/esm', dshBin, ...args] : args,
@@ -1617,6 +1626,211 @@ async function runCodeNavigationWeb() {
   }
 }
 
+// ---------------------------------------------------------------------------
+// examples/mcp-at-scale — many tools behind one proxy, plus a real timeout
+// ---------------------------------------------------------------------------
+// The server is REAL (official @modelcontextprotocol/sdk over stdio, 51
+// tools); the client is the unmodified npm pi-mcp-adapter. Three claims, all
+// falsifiable from the session log:
+//   bounded surface — the engine mounts the adapter's 2 meta-tools and the
+//     log proves no tool_NNN ever became a DSH tool call;
+//   discovery at scale — an `mcp` TOOL RESULT carries the launch marker,
+//     which exists only in tool_037's live response (never in any file);
+//   timeout budget — an `mcpScript` call on the ~120 s slow_task with
+//     timeoutMs 5000 fails structurally, the follow-up tool_001 call still
+//     answers, and the whole turn ends far below the tool's real duration.
+
+const MCP_SCALE_PROMPT_DISCOVERY = 'Use the mcp tool to list the tools of the many-tools server, '
+  + 'find the one that returns the launch marker, call it, and report the marker verbatim. '
+  + 'Use only the mcp tool.'
+const MCP_SCALE_PROMPT_TIMEOUT = 'Use the mcpScript tool with timeoutMs 5000 to call the slow_task tool '
+  + 'of the many-tools server and tell me exactly what happened. Then use the mcp tool to call tool_001 '
+  + 'and report its reply. Use only the mcp and mcpScript tools.'
+const MCP_SCALE_MARKER = 'LAUNCH-MARKER-7741-ZEBRA'
+
+async function prepareMcpAtScale(scratch, profile) {
+  const { home, env, runDsh } = await makeHome(scratch)
+  const installedEngine = await runDsh(['plugin', '--profile', profile, 'add', engineSpec])
+  const installedAdapter = await runDsh(['plugin', '--profile', profile, 'add', 'pi-mcp-adapter'])
+  await useJsonlSessions(home, profile)
+
+  // The README's workspace: the example directory itself, whose .mcp.json
+  // declares the stdio server; its dependencies install like the README says.
+  const missionDir = join(scratch, 'mission')
+  await execFile('cp', ['-R', join(projectRoot, 'examples/mcp-at-scale'), missionDir])
+  await execFile('npm', ['install', '--no-fund', '--no-audit'], { cwd: join(missionDir, 'server'), env, timeout: 300_000 })
+  return { home, env, missionDir, installLog: `${installedEngine.stdout}${installedEngine.stderr}${installedAdapter.stdout}${installedAdapter.stderr}` }
+}
+
+/** {call, result-block} pairs for one tool name (same join as code-nav). */
+function toolPairs(records, name) {
+  return records
+    .filter(record => record.type === 'tool/call' && record.data?.name === name)
+    .map(call => {
+      const result = records.find(record => record.type === 'tool/result'
+        && (record.data?.message?.content ?? []).some(block => block.toolCallId === call.data.callId))
+      return { call, block: (result?.data?.message?.content ?? []).find(block => block.toolCallId === call.data.callId) }
+    })
+    .filter(pair => pair.block !== undefined)
+}
+
+function assertMcpScaleDiscovery(records, transcript) {
+  // Bounded surface, from the session log itself: every tool call in the
+  // run is one of the adapter's two meta-tools. This is one assertion doing
+  // both halves — the positive results below can only have flowed through
+  // the proxy, and none of the 50 server tools ever became a first-class
+  // DSH call. (The engine's "loaded pi-mcp-adapter: 2 tools" mount line is
+  // asserted in the web lane's server log; the one-shot headless CLI does
+  // not surface engine mount summaries in captured output.)
+  const names = [...new Set(records.filter(record => record.type === 'tool/call').map(record => record.data?.name).filter(Boolean))]
+  assert(names.length > 0, `no tool calls at all in the session log:\n${transcript.slice(0, 600)}`)
+  // The boundary is about the SERVER's tools, not the model's use of DSH
+  // natives (it read the adapter's shipped skill via DSH's own `skill` tool
+  // in a real run — legitimate, and no part of the flood the claim is
+  // about). None of the 51 server tools may appear as a first-class call.
+  const leaked = names.filter(name => /^tool_\d{3}$/u.test(name) || name === 'slow_task')
+  assert(leaked.length === 0, `server tools leaked into DSH's registry as first-class calls: ${leaked.join(', ')}`)
+
+  // Discovery: the marker must appear in an mcp TOOL RESULT — it exists only
+  // in tool_037's live response, so a model detour (bash, guessing) cannot
+  // produce it there.
+  const proxied = toolPairs(records, 'mcp')
+  assert(proxied.length > 0, `no mcp tool result in the session log; the model answered some other way:\n${transcript.slice(0, 600)}`)
+  const markerHit = proxied.find(({ block }) => block.isError !== true && JSON.stringify(block.content).includes(MCP_SCALE_MARKER))
+  assert(markerHit !== undefined, `the mcp proxy never returned the launch marker:\n${JSON.stringify(proxied.map(pair => pair.block)).slice(0, 800)}`)
+}
+
+function assertMcpScaleTimeout(records, elapsedMs, transcript) {
+  const scripted = toolPairs(records, 'mcpScript')
+  assert(scripted.length > 0, `no mcpScript tool result in the session log:\n${transcript.slice(0, 600)}`)
+  const slowHit = scripted.find(({ call }) => {
+    const args = JSON.stringify(call.data?.arguments ?? '')
+    return /slow_task/u.test(args) && /timeoutMs/u.test(args)
+  })
+  assert(slowHit !== undefined, `mcpScript never targeted slow_task with a timeoutMs budget:\n${
+    JSON.stringify(scripted.map(({ call }) => call.data?.arguments)).slice(0, 800)}`)
+  const slowText = JSON.stringify(slowHit.block.content ?? '') + JSON.stringify(slowHit.block.isError ?? '')
+  assert(/timeout|timed out|abort/iu.test(slowText) || slowHit.block.isError === true,
+    `the slow_task call did not fail structurally on the budget:\n${slowText.slice(0, 600)}`)
+
+  // Life after the timeout: the follow-up proxied call must really answer.
+  const proxied = toolPairs(records, 'mcp')
+  const followUp = proxied.find(({ block }) => block.isError !== true && /tool_001 reporting in/u.test(JSON.stringify(block.content)))
+  assert(followUp !== undefined, `after the timeout, tool_001 never answered — session or server wedged:\n${
+    JSON.stringify(proxied.map(pair => pair.block)).slice(0, 800)}`)
+
+  // The budget must actually cut the wait: the tool takes ~120 s for real,
+  // so a turn that honored the 5 s budget ends far below that.
+  assert(elapsedMs < 110_000, `the timeout turn took ${Math.round(elapsedMs / 1000)}s — the ~120s tool was awaited, not budgeted`)
+}
+
+async function runMcpAtScale() {
+  if (apiKey === undefined || apiKey.length === 0) {
+    results.mcpAtScale = { status: 'skipped', reason: 'DEEPSEEK_API_KEY not set' }
+    return
+  }
+  const scratch = await mkdtemp(join(tmpdir(), 'pi2dsh-ex-mcpscale-'))
+  try {
+    const { home, env, missionDir, installLog } = await prepareMcpAtScale(scratch, 'headless')
+    const runDshIn = (cwd, args) => execFile(
+      directDshBin === undefined ? 'node' : directDshBin,
+      directDshBin === undefined ? ['--import', 'tsx/esm', dshBin, ...args] : args,
+      { cwd, env, timeout: 420_000, maxBuffer: 16 * 1024 * 1024 },
+    )
+    const discovery = await runDshIn(missionDir, ['--profile', 'headless', MCP_SCALE_PROMPT_DISCOVERY])
+    const timeoutStart = Date.now()
+    const budget = await runDshIn(missionDir, ['--profile', 'headless', MCP_SCALE_PROMPT_TIMEOUT])
+    const elapsedMs = Date.now() - timeoutStart
+
+    const records = await sessionRecords(home, { expect: 2 })
+    const sessionFiles = (await filesBelow(join(home, 'sessions'))).filter(path => path.endsWith('/session.jsonl'))
+    const rawLog = (await Promise.all(sessionFiles.map(path => readFile(path, 'utf8')))).join('\n')
+    assert(!`${installLog}${discovery.stdout}${discovery.stderr}${budget.stdout}${budget.stderr}${rawLog}`.includes(apiKey),
+      'credential appeared in captured test artifacts')
+
+    assertMcpScaleDiscovery(records, discovery.stdout)
+    assertMcpScaleTimeout(records, elapsedMs, budget.stdout)
+    results.mcpAtScale = {
+      status: 'passed',
+      engine: await installedEngineVersion(home, 'headless'),
+      packages: ['pi-mcp-adapter'],
+      server: 'many-tools (official MCP SDK, 51 tools, stdio)',
+      discovery: `mcp proxy -> tool_037 -> ${MCP_SCALE_MARKER}`,
+      timeout: `mcpScript timeoutMs 5000 on ~120s slow_task; turn ended in ${Math.round(elapsedMs / 1000)}s; tool_001 answered after`,
+    }
+  } finally {
+    if (process.env.PI2DSH_KEEP_SCRATCH === '1') {
+      console.error(`[examples-e2e] kept mcp-at-scale scratch for diagnosis: ${scratch}`)
+    } else {
+      await removeScratch(scratch, 'mcp-at-scale')
+    }
+  }
+}
+
+async function runMcpAtScaleWeb() {
+  if (apiKey === undefined || apiKey.length === 0) {
+    results.mcpAtScaleWeb = { status: 'skipped', reason: 'DEEPSEEK_API_KEY not set' }
+    return
+  }
+  const playwrightFrom = process.env.PLAYWRIGHT_FROM ?? join(dshRoot, 'apps/web')
+  const scratch = await mkdtemp(join(tmpdir(), 'pi2dsh-ex-mcpscale-web-'))
+  let web
+  try {
+    const { home, env, missionDir, installLog } = await prepareMcpAtScale(scratch, 'web')
+    const port = Number(process.env.MCPSCALE_PORT ?? 5191)
+    web = spawnWeb(port, env)
+    let webLog = ''
+    web.stdout.on('data', chunk => { webLog += String(chunk) })
+    web.stderr.on('data', chunk => { webLog += String(chunk) })
+    const url = `http://127.0.0.1:${port}`
+    const deadline = Date.now() + 60_000
+    for (;;) {
+      if (web.exitCode !== null) throw new Error(`dsh web exited on startup:\n${webLog}`)
+      const up = await fetch(url).then(() => true).catch(() => false)
+      if (up) break
+      if (Date.now() > deadline) throw new Error(`dsh web never came up:\n${webLog}`)
+      await new Promise(done => setTimeout(done, 500))
+    }
+
+    const shots = shotDir ?? join(scratch, 'shots')
+    await execFile('node', [
+      join(projectRoot, 'docs/posting-kit/capture-mcp-scale.mjs'), shots, '--url', url,
+    ], {
+      cwd: projectRoot,
+      env: { ...env, ...(process.env.HOME === undefined ? {} : { HOME: process.env.HOME }), PLAYWRIGHT_FROM: playwrightFrom, CAPTURE_WORKSPACE: missionDir },
+      timeout: 420_000,
+      maxBuffer: 16 * 1024 * 1024,
+    }).catch(error => { console.log(String(error.stdout ?? '')); throw error })
+    const captured = await readdir(shots)
+    assert(captured.length > 0, 'the mcp-at-scale web run produced no screenshot')
+
+    const records = await sessionRecords(home)
+    const sessionFiles = (await filesBelow(join(home, 'sessions'))).filter(path => path.endsWith('/session.jsonl'))
+    const rawLog = (await Promise.all(sessionFiles.map(path => readFile(path, 'utf8')))).join('\n')
+    assert(!`${installLog}${webLog}${rawLog}`.includes(apiKey), 'credential appeared in captured test artifacts')
+
+    assertMcpScaleDiscovery(records, webLog)
+    // The registry half of the bounded-surface claim: the web server's log
+    // carries the engine's mount summary.
+    assert(/loaded pi-mcp-adapter: 2 tools/u.test(webLog),
+      `the adapter did not mount exactly its 2 meta-tools:\n${webLog.slice(-600)}`)
+    results.mcpAtScaleWeb = {
+      status: 'passed',
+      engine: await installedEngineVersion(home, 'web'),
+      packages: ['pi-mcp-adapter'],
+      screenshots: captured.sort(),
+      discovery: `mcp proxy -> tool_037 -> ${MCP_SCALE_MARKER}`,
+    }
+  } finally {
+    web?.kill('SIGTERM')
+    if (process.env.PI2DSH_KEEP_SCRATCH === '1') {
+      console.error(`[examples-e2e] kept mcp-at-scale-web scratch for diagnosis: ${scratch}`)
+    } else {
+      await removeScratch(scratch, 'mcp-at-scale-web')
+    }
+  }
+}
+
 const SCENARIOS = [
   ['gateway-compat', runGatewayCompat, 'gatewayCompat'],
   ['alibaba-token-plan', runAlibabaTokenPlan, 'alibabaTokenPlan'],
@@ -1632,6 +1846,8 @@ const SCENARIOS = [
   ['dsh-x', runDshX, 'dshX'],
   ['code-navigation', runCodeNavigation, 'codeNavigation'],
   ['code-navigation-web', runCodeNavigationWeb, 'codeNavigationWeb'],
+  ['mcp-at-scale', runMcpAtScale, 'mcpAtScale'],
+  ['mcp-at-scale-web', runMcpAtScaleWeb, 'mcpAtScaleWeb'],
 ]
 const selected = SCENARIOS.filter(([name]) => only === undefined || only === name)
 if (selected.length === 0) {
