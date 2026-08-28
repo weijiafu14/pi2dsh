@@ -510,6 +510,12 @@ pnpm verify:release   # verify + 全部 examples（装 npm 上刚发的那版）
   `pnpm-workspace.yaml: minimumReleaseAge: 0`（.npmrc 的
   minimum-release-age 不生效）；build 脚本要 allowBuilds
   node-pty/koffi/@deepseek-ai/dsh-subprocess-local。
+- **install/npm 类失败先 `df -h` 再定性**（2026-08-28 事故：code-navigation-web 的
+  `npm install` 连挂两轮，我当网络抖动重跑，真因是磁盘 99%——ENOSPC 藏在
+  "Invalid response body" 后面）。E2E 装置会留大量残骸：/tmp/pi2dsh-*（lifecycle
+  一份 677MB，当天积到 32 份）+ pnpm 全局 store（一次性 profile 安装把它喂到
+  55GB）。处置：`rm -rf /tmp/pi2dsh-*` + `npx pnpm@11 store prune`（只清无引用
+  项，安全）；长跑日之前先清。
 - 真机 TUI 驱动用 tmux（send-keys -l + capture-pane）；断言读
   `$DSH_HOME/sessions/*.jsonl` 里的工具结果（session-persistence-jsonl
   patch 落盘），永不拿屏幕文字当断言。
