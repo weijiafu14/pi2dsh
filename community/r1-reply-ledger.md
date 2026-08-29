@@ -51,3 +51,21 @@ provider 族 84 条里 **43 条已在此前 outreach 波次回过**（全部为�
 
 ### adapter 17 条（R1 段 2）与 product 5 条（段 3）清单见上一版对应节，编号不变，
 已回 5+5 条已从其中剔除：adapter fresh = 931,1058,1073,1077,1078,1099,1113,1198,1866,2668,2893,3090,3112,3128,3157,3825,4190；product fresh = 196,2441,2602,3169,3283。
+
+## R1 段 1 首个实验判决（2026-08-29，真跑 pi-ai 0.84.1 累加器，故障注入真 wire）
+
+装置：`full-audit-work/accumulator-experiment.mjs`（options.fetch 注入手造 SSE，
+openai client/SSE 解析/累加器全真）；结果 `accumulator-experiment-results.json`。
+
+| case | 报文形状 | 判决 |
+|---|---|---|
+| baseline | 规范流 | ✅ |
+| emptyContinuation | 续块带空串 id/name | ✅ 正确合并（首个非空胜出） |
+| lateIdentity | 首块空 id/name、真身后到 | ✅ |
+| parallelNoIds | 双并行调用全程无 id、纯 index 交错 | ✅ 两调用各自组装正确 |
+| noIndex | 无 index、按 id 续块 | ✅ |
+| fencedArgs | markdown 围栏包 arguments | ❌ **args 丢成 {}** —— 确认真缺口（#3047 家族），R1 包工作项 |
+
+结论：pi-ai 累加器**扛得住空 id/name/纯 index 畸形族**（源码判据 + 实跑双证：
+块按 index 优先键控、首个非空 id/name 胜出）。#3090 一族的回帖证据方向就是
+本装置抬到"经 pi2dsh 路由"的 E2E 形态；围栏剥离进 R1 包需求清单。
