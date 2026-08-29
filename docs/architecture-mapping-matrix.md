@@ -364,6 +364,22 @@ client seam；两个数字都不表示“已经完整”。
   同 id 不同 scope 与官方目录 flow 并存（scope 即命名空间；官方 flow 的凭证只有
   llm-pi-ai 路由能消费，我们的 flow 授权的才是中间层实际服务的路由）。
   真机证据：`community/authorization-seam-e2e.json`（stock rc2 CLI 双 surface）。
+- **0.1.2-alpha.1 分支（2026-08-29）**：官方笔记明写 pi-ai catalog 登录因 ToS
+  移交 out-of-tree 插件（主动腾位），并为此开出两个新公开 client seam——
+  `settings.models.provider-card`（keyed slot，entryKey = 行的 settingsNs）与
+  `settings.models.footer`（list slot）。中间层的登录卡落座于此：引擎侧
+  `/pi2dsh/login-state` + `/pi2dsh/login-action` 两路由把 `/login` 同一条 spine
+  暴露为 poll/answer 表面（begin/answer/cancel/dismiss/signout），client 侧
+  footer 挂全量签入目录、provider-card 键 `llm-pi-ai` 做已登录行原位扩展。
+  两个真机实证的约束：① **Models 页只渲染 configured 行**（未声明 configurable
+  的 bridge transport 路由没有行，per-row 卡挂不上——签出态入口必须走 footer）；
+  ② `OAuthUiSurface.deviceCode` 的契约是 **resolve 即视为用户取消**
+  （oauthInteraction 在其 then 里 cancel 整个 flow），任何适配器实现必须挂到
+  flow signal 的 abort 才 resolve——立即 resolve 的写法会把设备码流当场掐死
+  （契约测试 tests/login-card-routes.spec.ts 抓获，authorization-seam 适配器
+  存量同款已一并修）。真机证据：`community/seam-evidence/54-logincard-directory.png`、
+  `55-logincard-device-flow.png`（alpha web + 真 pi-provider-kimi-code 包 +
+  真 Kimi 设备码端点）。
 
 <a id="pi-model-registry"></a>
 #### 模型目录视图
@@ -603,7 +619,12 @@ provider 或 waterfall 参与。DSH 官方引用的 Cordis 论文
 
 - 当前模块叶子：`client-modules`、`typert`、`web-server`。
 - 当前公开 seam：client module、slot registry、web route、typert remote surface、
-  dsh-TUI `tuiScenes`/`tuiStatus`，以及 dsh-pi-tui 的版本化 `piTuiExtensions` surface。
+  dsh-TUI `tuiScenes`/`tuiStatus`，以及 dsh-pi-tui 的版本化 `piTuiExtensions` surface；
+  0.1.2 线新增 `settings.models.provider-card`（keyed）与 `settings.models.footer`
+  （list）两个 Models 页扩展座位（见「Provider OAuth 登录面」的 alpha 分支）。
+- 跨代注册姿势：`slots.inject('<座位名>', () => slots.register(...))` 是官方推荐
+  形状，座位名在该代宿主上从未被声明时回调永不触发——旧代优雅缺席天然成立，
+  不需要版本探针（直接裸 `register` 未声明座位会 throw，别用）。
 - 负责：浏览器/终端呈现、插件客户端代码和宿主界面扩展。展示层不得另建模型、工具或
   session 权威；未来 Server/Client 模式以 data/identity/method/event relay 相连，不传 callback。
   `dsh.client.inject` 声明的是客户

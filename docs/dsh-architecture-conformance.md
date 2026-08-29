@@ -59,6 +59,38 @@
 才允许新增 `DSH-ARCH-*`。sidecar 能用或另一条 adapter 能绕通，不等于原来的 DSH seam
 已经完整。
 
+## 0.1.2-alpha.1 冲击审计（2026-08-29，npm 未发布）
+
+上游 0.1.2-alpha.1（GitHub tag，npm `latest` 仍为 0.1.1-rc.2）经三源交叉核验
+（官方笔记 diff、社区分析、我方源码自查 + 真机预检）。机制级代际差异清单的权威在
+CLAUDE.md 的预检段，本节只记架构层结论，按三类分：
+
+**上游原生化、我们让位或降级为兜底的**：
+
+- 原生子代理修复了 request-time model selection 的 stale-model 与派遣参数
+  （`aefc083b`）——我们此前对该缺陷的规避文案降为 rc 线专用，相关社区回帖已更正。
+- 宿主 dispatch 自己处理文本模型收图（显式 `[image omitted …]` 占位）与附件重编码
+  （WebP + 像素预算缩放）——桥的拒绝 guard 从主路径降为兜底，断言改按容器与预算分支。
+- pi-ai catalog 登录：官方明写因 ToS **主动腾位** out-of-tree 插件，并配套开出
+  `settings.models.provider-card`/`footer` 座位——这不是被抢走，是给位。
+
+**上游开出新座位、我们更有机会接插件能力进来的**：
+
+- Models 页两座位已落中间层登录卡（签入目录 + 已登录行扩展；见 matrix
+  「Provider OAuth 登录面」alpha 分支与 `tests/login-card-routes.spec.ts`）。
+- user-questions 从 provider 槽改为 agent-scoped `user-questions/request`
+  waterfall——应答者面更干净，hasUI 探针已双代分支。
+- session 事件词汇 fail-closed 化并明写"等一个真实仓外事件消费者"——`DSH-ARCH-001`
+  的上游注册机制之门首次打开，跟进提案已发（audit 文档 ARCH-001 段有复现与链接）。
+- llm-pi-ai compat 新增三个 completions 字段——catalog-only provider 的配置翻译面
+  变宽（已入字段级翻译与双代漂移闸）。
+
+**未变的**：四个 `DSH-ARCH-*` 缺口在 alpha 一个都没解锁（001 反而更硬）；上游
+#4334（closing-message）仍未修；桥的全部承重 seam（agent/created、assemble、
+tools 管线、prepareCall、sessions、webServer、client slots 等）实证存活。适配
+等级：契约级双代全绿 + alpha 真机 smoke 与登录卡场景已过；**全量 examples 回归
+在 alpha 线尚不可做**（alpha 未上 npm，用户装不到的路不测），上游发 npm 后立即补。
+
 ## 已由上游修复的历史缺口
 
 | ID | 原问题 | 当前结论 |
