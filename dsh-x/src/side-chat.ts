@@ -9,6 +9,7 @@
 // nothing is reimplemented, no message is forged. The thread view reads the
 // engine's /pi2dsh/browser-state, the same data its plain panel drew.
 import { createElement, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useOnStage } from '../../src/client.js'
 import { createPortal } from 'react-dom'
 
 interface ThreadMessage { role: string, text: string }
@@ -130,7 +131,10 @@ async function runSideCommand(
 
 /** The suite's floating side-chat window over the active session. */
 export function SideChatWindow({ useSessions }: { useSessions: SessionsHook }): ReactNode {
-  const session = useSessions(state => state.current) ?? ''
+  // On stage, not merely selected: the 0.1.2 draft view keeps `current` on
+  // the previous session, and this window showing that session's thread over
+  // the empty New Session screen was the reported leak (2026-08-29).
+  const session = useOnStage(useSessions as never)
   const [threads, setThreads] = useState<ThreadView[]>([])
   const [mode, setMode] = useState<'dot' | 'panel' | 'max'>('dot')
   const [opened, setOpened] = useState(false)

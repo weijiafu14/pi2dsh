@@ -629,6 +629,13 @@ provider 或 waterfall 参与。DSH 官方引用的 Cordis 论文
 - 跨代注册姿势：`slots.inject('<座位名>', () => slots.register(...))` 是官方推荐
   形状，座位名在该代宿主上从未被声明时回调永不触发——旧代优雅缺席天然成立，
   不需要版本探针（直接裸 `register` 未声明座位会 throw，别用）。
+- **"台上是谁"不能只信 `current`（2026-08-29）**：0.1.2 线的 New Session 草稿
+  视图把主栏换成空态但不改 `current`（rc 线会清），按 `current` 键显示的
+  frame 级浮动件会跨会话残留。诚实信号=会话作用域 conversation 座位的挂载
+  寿命：中间层在 `conversation.session.header.utilities` 放一枚不可见 stage
+  beacon，浮动件只在"current 且其对话真挂在主栏"时显示（`useOnStage`）。
+  该草稿行为与宿主 session store 自己的注释（"the window opens ⟺ the session
+  is on stage"）矛盾，列上游候选报告。
 - 负责：浏览器/终端呈现、插件客户端代码和宿主界面扩展。展示层不得另建模型、工具或
   session 权威；未来 Server/Client 模式以 data/identity/method/event relay 相连，不传 callback。
   `dsh.client.inject` 声明的是客户

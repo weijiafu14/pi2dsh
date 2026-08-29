@@ -746,8 +746,51 @@ window.__ModuleLoader__.load({
 		/** A product layer (dsh-work-x) that ships its own side-chat window turns
 		*  the engine's plain thread panel off; pills and the rest stay. */
 		let renderSideThreads = true;
+		const stagedConversations = /* @__PURE__ */ new Map();
+		const stageListeners = /* @__PURE__ */ new Set();
+		function markStaged(sessionId) {
+			stagedConversations.set(sessionId, (stagedConversations.get(sessionId) ?? 0) + 1);
+			for (const listener of stageListeners) listener();
+			return () => {
+				const count = stagedConversations.get(sessionId) ?? 0;
+				if (count <= 1) stagedConversations.delete(sessionId);
+				else stagedConversations.set(sessionId, count - 1);
+				for (const listener of stageListeners) listener();
+			};
+		}
+		/** The session whose conversation is on screen right now, or '' when none
+		*  (the New Session draft, a full-page view). Exported for the product layer
+		*  (dsh-work-x's side-chat window rides the same rule). */
+		function useOnStage(useSessions) {
+			const current = useSessions((state) => state.current) ?? "";
+			const [, bump] = (0, react.useState)(0);
+			(0, react.useEffect)(() => {
+				const listener = () => bump((value) => value + 1);
+				stageListeners.add(listener);
+				return () => {
+					stageListeners.delete(listener);
+				};
+			}, []);
+			return current !== "" && stagedConversations.has(current) ? current : "";
+		}
+		/** Invisible occupant of a conversation-scoped seat; its mounted lifetime is
+		*  the evidence. The hidden marker exists so E2E can assert staging from the
+		*  DOM instead of trusting page text. */
+		function StageBeacon({ sessionId }) {
+			(0, react.useEffect)(() => {
+				if (typeof sessionId !== "string" || sessionId === "") return void 0;
+				return markStaged(sessionId);
+			}, [sessionId]);
+			if (typeof sessionId !== "string" || sessionId === "") return null;
+			return (0, react.createElement)("span", {
+				"data-pi2dsh": "stage",
+				"data-session": sessionId,
+				style: { display: "none" }
+			});
+		}
 		function OverlaySurfaces({ useSessions }) {
-			const { threads, surfaces } = useBrowserState(useSessions((state) => state.current));
+			const session = useOnStage(useSessions);
+			const { threads, surfaces } = useBrowserState(session === "" ? void 0 : session);
 			const [dismissed, setDismissed] = (0, react.useState)([]);
 			const shown = (renderSideThreads ? threads : []).filter((thread) => !dismissed.includes(thread.id));
 			const pills = [...valuesFor(surfaces, "title").map((entry) => ({
@@ -1181,6 +1224,11 @@ window.__ModuleLoader__.load({
 					id: "pi2dsh-header",
 					order: 1
 				}, textSeat("header", ["header"])));
+				scope.slots.inject("conversation.session.header.utilities", () => scope.slots.register({
+					name: "conversation.session.header.utilities",
+					id: "pi2dsh-stage-beacon",
+					order: 0
+				}, StageBeacon));
 				scope.slots.inject("conversation.chat.turnTail", () => scope.slots.register({
 					name: "conversation.chat.turnTail",
 					id: "pi2dsh-entries",
@@ -1775,7 +1823,7 @@ window.__ModuleLoader__.load({
 		}
 		/** The suite's floating side-chat window over the active session. */
 		function SideChatWindow({ useSessions }) {
-			const session = useSessions((state) => state.current) ?? "";
+			const session = useOnStage(useSessions);
 			const [threads, setThreads] = (0, react.useState)([]);
 			const [mode, setMode] = (0, react.useState)("dot");
 			const [opened, setOpened] = (0, react.useState)(false);

@@ -548,9 +548,63 @@ function installImageToolViews(scope: SlotScope): void {
  *  the engine's plain thread panel off; pills and the rest stay. */
 let renderSideThreads = true
 
+// ---- the stage beacon: "which conversation is actually on screen" ---------
+// The shell's current-session selector is NOT that fact on every generation:
+// the 0.1.2 line's New Session draft view swaps the main column to an empty
+// state WITHOUT moving `current`, so anything keyed on `current` alone kept
+// showing the previous session's floating pieces on the draft screen
+// (reproduced live 2026-08-29: the side-chat window with the old session's
+// btw thread over "Into the Unknown"). The honest signal is derived, not
+// guessed: a session-scoped conversation seat only mounts while that
+// session's conversation is really in the main column, so an invisible
+// beacon there IS the on-screen fact. Floating pieces show session S only
+// when S is both selected AND staged — one rule, both generations, no
+// version probe.
+const stagedConversations = new Map<string, number>()
+const stageListeners = new Set<() => void>()
+
+function markStaged(sessionId: string): () => void {
+  stagedConversations.set(sessionId, (stagedConversations.get(sessionId) ?? 0) + 1)
+  for (const listener of stageListeners) listener()
+  return () => {
+    const count = stagedConversations.get(sessionId) ?? 0
+    if (count <= 1) stagedConversations.delete(sessionId)
+    else stagedConversations.set(sessionId, count - 1)
+    for (const listener of stageListeners) listener()
+  }
+}
+
+/** The session whose conversation is on screen right now, or '' when none
+ *  (the New Session draft, a full-page view). Exported for the product layer
+ *  (dsh-work-x's side-chat window rides the same rule). */
+export function useOnStage(useSessions: SessionsHook): string {
+  const current = useSessions(state => state.current) ?? ''
+  const [, bump] = useState(0)
+  useEffect(() => {
+    const listener = () => bump(value => value + 1)
+    stageListeners.add(listener)
+    return () => { stageListeners.delete(listener) }
+  }, [])
+  return current !== '' && stagedConversations.has(current) ? current : ''
+}
+
+/** Invisible occupant of a conversation-scoped seat; its mounted lifetime is
+ *  the evidence. The hidden marker exists so E2E can assert staging from the
+ *  DOM instead of trusting page text. */
+function StageBeacon({ sessionId }: { sessionId?: string }): ReactNode {
+  useEffect(() => {
+    if (typeof sessionId !== 'string' || sessionId === '') return undefined
+    return markStaged(sessionId)
+  }, [sessionId])
+  if (typeof sessionId !== 'string' || sessionId === '') return null
+  return createElement('span', {
+    'data-pi2dsh': 'stage', 'data-session': sessionId, style: { display: 'none' },
+  })
+}
+
 function OverlaySurfaces({ useSessions }: { useSessions: SessionsHook }) {
-  const session = useSessions(state => state.current)
-  const { threads, surfaces } = useBrowserState(session)
+  const session = useOnStage(useSessions)
+  const { threads, surfaces } = useBrowserState(session === '' ? undefined : session)
   const [dismissed, setDismissed] = useState<string[]>([])
 
   const shown = (renderSideThreads ? threads : []).filter(thread => !dismissed.includes(thread.id))
@@ -1002,6 +1056,11 @@ export function apply(ctx: ClientContext, options?: { sideThreads?: boolean }): 
     scope.slots.inject('conversation.session.header.utilities', () => scope.slots.register({
       name: 'conversation.session.header.utilities', id: 'pi2dsh-header', order: 1,
     }, textSeat('header', ['header'])))
+    // The stage beacon (see useOnStage): a conversation-scoped seat whose
+    // mounted lifetime says which session's conversation is really on screen.
+    scope.slots.inject('conversation.session.header.utilities', () => scope.slots.register({
+      name: 'conversation.session.header.utilities', id: 'pi2dsh-stage-beacon', order: 0,
+    }, StageBeacon))
     // Widgets have NO in-column seat: they float in the overlay pill stack
     // (see WidgetUnit). The dock strip form died 2026-08-28 — see the header
     // comment for the three ways it failed.

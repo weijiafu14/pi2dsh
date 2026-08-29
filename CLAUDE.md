@@ -515,7 +515,15 @@ pnpm verify:release   # verify + 全部 examples（装 npm 上刚发的那版）
   budgeted 两分支）；④ llm-pi-ai compat 新增 supportsFinishReason /
   chatTemplateArgs / supportsThinkingTokenBudget（皆 completions，Pi 源码
   为据；漂移闸改双代交叉类型）；⑤ web 全站一次性 launch-token（装置
-  authedUrl + 401 就绪）与 lexical composer（web-drive innerText 双路径）。
+  authedUrl + 401 就绪）与 lexical composer（web-drive innerText 双路径）；
+  ⑥ **New Session 草稿视图不换台（2026-08-29 真机实锤）**：进入草稿屏后壳的
+  `current`（stage）仍指旧会话，第一条消息发出才切——rc 线会清。任何按
+  `current` 键显示的浮动件在 alpha 草稿屏整族跨会话残留（side-chat 浮窗带着
+  旧会话 btw 线程压在空态上，用户当场抓到）。修法=**stage beacon**：会话
+  作用域 conversation 座位放一枚不可见探针（挂载寿命=该会话对话真在主栏），
+  浮动件只在"current ∈ 已挂载探针"时显示（src/client.ts `useOnStage`，dsh-x
+  SideChatWindow 同门）；两代同一逻辑、零版本探针。宿主 store 注释明写
+  "窗口开 ⟺ 会话在台上"，草稿视图与之矛盾——上游候选报告。
   alpha 未上 npm：预检装置=源码 worktree 构建 + devDeps 全家 `link:`
   到 worktree 包目录（tarball+overrides 会 404 在未发布的内部包上）。
   真机半边已补（同日）：worktree 构建的 alpha CLI + 本地 0.22.0 tarball

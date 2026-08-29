@@ -566,3 +566,10 @@
 | # | 性质 | 依据 | 链接 |
 |---|---|---|---|
 | 5011 | 上游提案（Ideas） | ARCH-001 跟进：alpha fail-closed 笔记明写"等一个真实仓外事件消费者"，我们带 alpha 真机复现（`pi2dsh/probe` seq 45 → `SessionFormatUnsupportedError` 用户可见拒载）+ 三条注册形状应门 | [d](https://github.com/deepseek-ai/deepseek-harness/discussions/5011) |
+
+## 上游候选报告队列（发帖前等拍板）
+
+- alpha `dsh plugin add` 裸转发 pnpm 撞自写 `packages: [.]`（需 `add -w` 才能装）。
+- alpha New Session 草稿视图不换台：主栏换空态但 session store 的 `current` 不动，
+  与 store 注释"the window opens ⟺ the session is on stage"矛盾；带真机复现
+  （seam-evidence/64-newsession-residue.png，旧会话浮动件压在空态上）。
