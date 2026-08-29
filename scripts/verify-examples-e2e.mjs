@@ -393,19 +393,52 @@ async function sessionRecords(home, { expect = 1 } = {}) {
 /**
  * Assert the image was read through the vision path, not reconstructed.
  *
- * The discriminator is the image-reading tool's own result: a bridge that
- * worked returns content, a bridge that did not returns an error the model
- * then routes around. Only the first proves anything about this example.
+ * @kassing/pi-vision ships TWO paths, and the example exercises whichever the
+ * configuration selects (README "the vision plugin"):
+ *   - COMPANION: when a vision route is configured, the image-admission
+ *     companion analyzes the image itself and INJECTS the analysis as a
+ *     `[图片视觉分析结果（外部视觉模型）] …` message, replacing the image
+ *     reference in the original turn. No tool runs; the model just reads the
+ *     injection.
+ *   - TOOL: when unconfigured, the companion drops a path placeholder and the
+ *     model reaches the image through an image-reading tool.
+ * Both are the bridge genuinely working. The discriminator against a FALSE
+ * green (the main model decoding the PNG itself, which happened for months) is
+ * per path: the tool path needs a non-error tool result; the companion path
+ * needs the injected analysis AND proof the model could not have read the
+ * image on its own — the image reference was stripped from the turn and the
+ * model made zero tool calls, so pixels never reached it.
  */
+const VISION_COMPANION_PREFIX = '[图片视觉分析结果（外部视觉模型）]'
+const VISION_PATH_STRIPPED = '图片文件已由外部视觉模型分析'
+
 function assertVisionReallyRead(records, transcript) {
-  const bridgeFailure = records
+  const userBlocks = records
     .filter(record => record.type === 'user/message')
     .flatMap(record => Array.isArray(record.data?.content) ? record.data.content : [])
-    .find(block => block.type === 'text' && /Vision understanding failed:/u.test(String(block.text ?? '')))
+    .filter(block => block.type === 'text')
+    .map(block => String(block.text ?? ''))
+  const bridgeFailure = userBlocks.find(text => /Vision understanding failed:|视觉理解失败/u.test(text))
   assert(bridgeFailure === undefined,
-    `the vision plugin reported its own failure: ${String(bridgeFailure?.text ?? '').slice(0, 1000)}`)
+    `the vision plugin reported its own failure: ${String(bridgeFailure).slice(0, 1000)}`)
+
   const reads = records.filter(record => record.type === 'tool/call' && /image/iu.test(String(record.data?.name ?? '')))
-  assert(reads.length > 0, `no image-reading tool ran at all:\n${transcript.slice(-1500)}`)
+  // Companion path: the analysis was injected and the image was stripped from
+  // the turn, so the model had no path to decode it itself.
+  const injected = userBlocks.some(text => text.includes(VISION_COMPANION_PREFIX))
+  const stripped = userBlocks.some(text => text.includes(VISION_PATH_STRIPPED))
+  if (injected && reads.length === 0) {
+    assert(stripped,
+      `the vision analysis was injected but the image reference was not stripped — the model may have read the file directly:\n${transcript.slice(-1500)}`)
+    const anyTool = records.some(record => record.type === 'tool/call')
+    assert(!anyTool,
+      `a tool ran on the companion path, so the answer's provenance is not the vision injection alone:\n${transcript.slice(-1500)}`)
+    return
+  }
+
+  // Tool path: an image tool ran; require its result was not an error.
+  assert(reads.length > 0,
+    `neither the vision companion injected an analysis nor an image tool ran:\n${transcript.slice(-1500)}`)
   const failed = []
   for (const call of reads) {
     const result = records.find(record => record.type === 'tool/result'
