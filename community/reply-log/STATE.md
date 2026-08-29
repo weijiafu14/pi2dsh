@@ -574,3 +574,12 @@
   [DSH Discussion #5035](https://github.com/deepseek-ai/deepseek-harness/discussions/5035)
   （General 类目；底稿 community/upstream-report-draft-view-stage.md；复现
   seam-evidence/64-newsession-residue.png）。
+
+## 批次 14（2026-08-29，R1 验证矩阵开跑：每绿一条发一帖）
+
+| # | 性质 | 依据 | 评论链接 |
+|---|---|---|---|
+| 3338 | 首回（R1 验证） | 429/Retry-After 故障注入真 transport 恢复实测（retry-experiment 判决 2.0s 恢复；429 不看错误体一律可重试）；明写 transport 层口径 + 官方分类缺陷仍待上游修 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/3338#discussioncomment-18200080) |
+| 3407 | 首回（R1 验证） | 500 server_error 故障注入恢复实测（0.4s）；同上口径纪律 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/3407#discussioncomment-18200082) |
+
+矩阵进度：e2e_only fresh 18 条 → 已发 2；累加器实验另判 #3090 方向证据 + #3047 围栏缺口坐实（进 R1 包需求）。
