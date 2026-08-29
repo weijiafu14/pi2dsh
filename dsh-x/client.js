@@ -239,8 +239,7 @@ window.__ModuleLoader__.load({
 							threads: Array.isArray(payload.threads) ? payload.threads : [],
 							surfaces: Array.isArray(payload.surfaces) ? payload.surfaces : [],
 							entries: Array.isArray(payload.entries) ? payload.entries : [],
-							...payload.draft === void 0 ? {} : { draft: payload.draft },
-							...payload.scene === void 0 ? {} : { scene: payload.scene }
+							...payload.draft === void 0 ? {} : { draft: payload.draft }
 						};
 						latest.set(session, state);
 						for (const reader of subscribers.get(session) ?? []) reader(state);
@@ -320,44 +319,6 @@ window.__ModuleLoader__.load({
 		}
 		const monospace = "400 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace";
 		const styles = {
-			sceneBackdrop: {
-				position: "fixed",
-				inset: 0,
-				zIndex: 60,
-				display: "flex",
-				alignItems: "center",
-				justifyContent: "center",
-				background: "rgba(0,0,0,0.45)",
-				pointerEvents: "auto"
-			},
-			sceneFrame: {
-				maxWidth: "92vw",
-				maxHeight: "86vh",
-				display: "flex",
-				flexDirection: "column",
-				borderRadius: "12px",
-				border: "1px solid rgba(120,120,130,0.35)",
-				background: "var(--dsh-color-bg-elevated, rgba(18,18,21,0.98))",
-				color: "var(--dsh-color-text, #fafafa)",
-				boxShadow: "0 18px 48px rgba(0,0,0,0.45)",
-				overflow: "hidden"
-			},
-			sceneHeader: {
-				display: "flex",
-				alignItems: "center",
-				justifyContent: "space-between",
-				padding: "8px 12px",
-				borderBottom: "1px solid rgba(120,120,130,0.25)",
-				font: "500 12px/1.4 system-ui, -apple-system, sans-serif",
-				opacity: .9
-			},
-			sceneBody: {
-				margin: 0,
-				padding: "12px 14px",
-				overflow: "auto",
-				font: "400 12.5px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace",
-				whiteSpace: "pre"
-			},
 			panel: {
 				position: "fixed",
 				right: "20px",
@@ -782,79 +743,6 @@ window.__ModuleLoader__.load({
 		* pinned frame-wide — transient title and Pi's status entries, as pills.
 		* @param props - the global standard kit every root slot component receives.
 		*/
-		/** Browser KeyboardEvent -> the raw terminal sequence a Pi component expects. */
-		function terminalSequence(event) {
-			if (event.metaKey) return void 0;
-			switch (event.key) {
-				case "Enter": return "\r";
-				case "Escape": return "\x1B";
-				case "Tab": return "	";
-				case "Backspace": return "";
-				case "Delete": return "\x1B[3~";
-				case "ArrowUp": return "\x1B[A";
-				case "ArrowDown": return "\x1B[B";
-				case "ArrowRight": return "\x1B[C";
-				case "ArrowLeft": return "\x1B[D";
-				case "Home": return "\x1B[H";
-				case "End": return "\x1B[F";
-				case "PageUp": return "\x1B[5~";
-				case "PageDown": return "\x1B[6~";
-			}
-			if (event.key.length !== 1) return void 0;
-			if (event.ctrlKey) {
-				const code = event.key.toLowerCase().charCodeAt(0);
-				return code >= 97 && code <= 122 ? String.fromCharCode(code - 96) : void 0;
-			}
-			return event.key;
-		}
-		/**
-		* Pi's full-screen custom UI (`ui.custom`) on the web: the same ANSI frames a
-		* terminal scene would show, painted in a modal, with the keyboard forwarded
-		* verbatim to the live component on the server. The component owns its own
-		* lifecycle — most panels close themselves (their `done`) — and the × button
-		* is the browser's equivalent of closing the terminal scene.
-		*/
-		function SceneOverlay({ useSessions }) {
-			const { scene } = useBrowserState(useSessions((state) => state.current));
-			const open = scene?.open === true;
-			(0, react.useEffect)(() => {
-				if (!open) return;
-				const columns = Math.max(40, Math.min(240, Math.floor(window.innerWidth * .86 / 8.4)));
-				fetch("/pi2dsh/scene-input", {
-					method: "POST",
-					headers: { "content-type": "application/json" },
-					body: JSON.stringify({
-						sequence: "",
-						width: columns
-					})
-				});
-				const onKey = (event) => {
-					const sequence = terminalSequence(event);
-					if (sequence === void 0) return;
-					event.preventDefault();
-					event.stopPropagation();
-					fetch("/pi2dsh/scene-input", {
-						method: "POST",
-						headers: { "content-type": "application/json" },
-						body: JSON.stringify({ sequence })
-					});
-				};
-				window.addEventListener("keydown", onKey, true);
-				return () => window.removeEventListener("keydown", onKey, true);
-			}, [open]);
-			if (!open) return null;
-			const lines = scene?.lines ?? [];
-			return (0, react.createElement)("div", {
-				style: styles.sceneBackdrop,
-				"data-pi2dsh": "scene"
-			}, (0, react.createElement)("div", { style: styles.sceneFrame }, (0, react.createElement)("div", { style: styles.sceneHeader }, (0, react.createElement)("span", null, scene?.package ?? ""), (0, react.createElement)("button", {
-				style: styles.close,
-				title: "Close",
-				onClick: () => {
-					fetch("/pi2dsh/scene-close", { method: "POST" });
-				}
-			}, "×")), (0, react.createElement)("pre", { style: styles.sceneBody }, ...lines.map((line, index) => (0, react.createElement)("div", { key: index }, ansiText(line))))));
-		}
 		/** A product layer (dsh-work-x) that ships its own side-chat window turns
 		*  the engine's plain thread panel off; pills and the rest stay. */
 		let renderSideThreads = true;
@@ -1288,11 +1176,6 @@ window.__ModuleLoader__.load({
 					id: "pi2dsh-overlay",
 					order: 1
 				}, OverlaySurfaces));
-				scope.slots.inject("shell.overlay", () => scope.slots.register({
-					name: "shell.overlay",
-					id: "pi2dsh-scene",
-					order: 2
-				}, SceneOverlay));
 				scope.slots.inject("conversation.session.header.utilities", () => scope.slots.register({
 					name: "conversation.session.header.utilities",
 					id: "pi2dsh-header",

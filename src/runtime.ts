@@ -937,11 +937,13 @@ function contextFor(
     // session list, and quietly rewriting it would outlive the turn that asked.
     setTitle: (title: unknown) => putSurface(ctx, state, agent, 'title', title),
     // A terminal composition gets the package's real Pi component through
-    // dsh-TUI's public full-screen scene seam. A browser composition gets the
-    // SAME component on the web overlay: the contract is ANSI frames plus raw
-    // key input either way, and the browser half already speaks both. Only a
-    // composition with neither seat (headless CLI) keeps Pi's own rpc-mode
-    // behavior and resolves undefined.
+    // dsh-TUI's public full-screen scene seam. Everything else — web included
+    // — resolves undefined, Pi's own rpc-mode behavior. The web used to
+    // project the component's terminal frames into a modal; that standard was
+    // killed (2026-08-29, user decision): a browser surface renders product
+    // UI (side-chat window, MCP tab, pills), never a projected TUI, and every
+    // scene consumer verified on web already had a product face carrying the
+    // same content (pi-btw → side-chat window, /pi-mcp → the MCP tab).
     custom: async (factory: unknown, options?: unknown) => {
       if (typeof factory !== 'function') return undefined
       // A product-UI invocation (the side-chat window running a package
@@ -952,16 +954,6 @@ function contextFor(
       const surfaces = state.tuiSurfaces
       if (surfaces !== undefined) {
         return surfaces.custom(
-          factory as PiCustomFactory<unknown>,
-          state.theme,
-          getKeybindings(),
-          options as PiCustomOptions | undefined,
-        )
-      }
-      const browser = state.shared.browserSurfaces
-      if (browser !== undefined && state.shared.browserSurfacesRouted === true) {
-        return browser.openScene(
-          state.packageName,
           factory as PiCustomFactory<unknown>,
           state.theme,
           getKeybindings(),
@@ -1231,12 +1223,12 @@ function contextFor(
     ui,
     // Pi's mode answers ONE question for packages: "can I show interactive
     // full-screen UI here?" (pi-mcp-adapter opens its manager only in tui
-    // mode). The browser composition can — ui.custom runs the real component
-    // on the web scene seat — so it reports tui exactly like the terminal;
-    // only a composition with neither seat (headless CLI) is rpc.
+    // mode). Only a real terminal seat answers yes. The web deliberately
+    // reports rpc (2026-08-29): it renders product UI, never a projected
+    // TUI, so claiming tui would send packages' full-screen components into
+    // a seat that no longer exists.
     get mode(): 'tui' | 'rpc' {
-      if (state.tuiSurfaces?.available === true) return 'tui'
-      return state.shared.browserSurfaces !== undefined && state.shared.browserSurfacesRouted === true ? 'tui' : 'rpc'
+      return state.tuiSurfaces?.available === true ? 'tui' : 'rpc'
     },
     // A getter, not a value: this context is rebuilt for every dispatched
     // event, and the probe below costs a register/dispose. Packages read

@@ -450,10 +450,14 @@ client seam；两个数字都不表示“已经完整”。
   `requestRender`、`dispose`、`done(value)`）。
 - 理论对应：[DSH / 客户端与 Web](#dsh-client)。
 - 当前公开 seam：dsh-TUI `tuiScenes`、dsh-pi-tui `piTuiExtensions` 的
-  `UNSTABLE_API_LEVEL=1` / `unstable.surface.handle.mountComponent`、DSH Web client module
-  与 overlay slot。
-- 当前投影：Pi component 留在 Host。中间 relay 只交换可序列化的
-  `sessionId / width / lines / input / revision / close`；当前 dsh-pi-tui Direct 模式用
+  `UNSTABLE_API_LEVEL=1` / `unstable.surface.handle.mountComponent`。
+- **web 一律不承接（2026-08-29 用户拍板，"web 零 TUI 投影"）**：浏览器只渲染
+  产品 UI，`ui.custom` 在 web 与 headless 同走 Pi 官方 rpc 降级（resolve
+  undefined），`mode` 在 web 报 'rpc'。旧的 web scene 座位（终端帧投 modal）
+  已整体删除；scene 会承载的内容由产品面接（side conversation→侧聊浮窗、
+  MCP 管理→MCP 标签页），逐个核对无缺席消费者。
+- 当前投影（终端席）：Pi component 留在 Host。中间 relay 只交换可序列化的
+  `width / lines / input / close`；当前 dsh-pi-tui Direct 模式用
   本地 transport 包装该 relay，未来 Server/Client 分离只需替换 transport，不能把
   callback 或 component object 跨边界。表面选择按公开 service/capability，不按消费插件名。
 - 理论判断：宿主语义翻译；raw input/focus/surface lifecycle 受 dsh-pi-tui Unstable 层级

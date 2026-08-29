@@ -27,7 +27,6 @@
 // called a Pi UI method — whatever the package.
 import type { Context } from '@deepseek-ai/cordis'
 import { SEED_CARRIER_TAG, type PiBridgedAgentSession } from './subagent-bridge.js'
-import type { PiCustomComponent, PiCustomFactory, PiCustomOptions, PiTuiDriver } from './tui-surfaces.js'
 
 type UnknownRecord = Record<string, unknown>
 
@@ -113,130 +112,6 @@ export class BrowserSurfaces {
   /** Exact wire names needing the generic Pi image-result browser view. */
   imageToolNames(): string[] {
     return [...this.#imageToolNames]
-  }
-
-  // ---- Pi's full-screen custom UI, on the browser overlay -----------------
-  // The terminal composition seats `ui.custom` in dsh-TUI's scene service; a
-  // browser composition has no scenes, but the component contract is the same
-  // small terminal protocol (`render(width)` -> ANSI lines, `handleInput(raw)`),
-  // and the client half already paints ANSI. One scene at a time, exactly like
-  // a terminal: opening a new one finishes the previous run.
-  #scene: {
-    package: string
-    component: PiCustomComponent | undefined
-    options: PiCustomOptions | undefined
-    resolve(value: unknown): void
-    reject(error: unknown): void
-  } | undefined
-
-  #sceneRevision = 0
-  #sceneWidth = 100
-
-  openScene<T>(
-    packageName: string,
-    factory: PiCustomFactory<T>,
-    theme: unknown,
-    keybindings: unknown,
-    options?: PiCustomOptions,
-  ): Promise<T | undefined> {
-    this.#finishScene(undefined)
-    return new Promise<T | undefined>((resolve, reject) => {
-      const run = {
-        package: packageName,
-        component: undefined as PiCustomComponent | undefined,
-        options,
-        resolve: resolve as (value: unknown) => void,
-        reject,
-      }
-      this.#scene = run
-      const driver: PiTuiDriver = { requestRender: () => this.#invalidateScene() }
-      const done = (value: T): void => {
-        if (this.#scene !== run) return
-        this.#finishScene(value)
-      }
-      void Promise.resolve()
-        .then(() => factory(driver, theme, keybindings, done))
-        .then(component => {
-          if (this.#scene !== run) {
-            component.dispose?.()
-            return
-          }
-          if (typeof component?.render !== 'function') {
-            this.#scene = undefined
-            this.#invalidateScene()
-            // Console AND the caller: a package may swallow the rejection, and
-            // a scene that silently never opens is undiagnosable from the UI.
-            console.warn(`[pi2dsh] web scene for ${packageName}: component lacks render(width)`)
-            reject(new TypeError('Pi custom component must implement render(width)'))
-            return
-          }
-          run.component = component
-          this.#invalidateScene()
-        }, error => {
-          if (this.#scene !== run) return
-          this.#scene = undefined
-          this.#invalidateScene()
-          console.warn(`[pi2dsh] web scene for ${packageName}: component factory failed: ${error instanceof Error ? error.stack ?? error.message : String(error)}`)
-          reject(error)
-        })
-    })
-  }
-
-  /** What the browser paints: the live component's frame, or a closed marker. */
-  sceneSnapshot(): { open: boolean, package?: string, revision: number, lines?: string[] } {
-    const scene = this.#scene
-    if (scene?.component === undefined) return { open: false, revision: this.#sceneRevision }
-    const raw = typeof scene.options?.overlayOptions === 'function'
-      ? scene.options.overlayOptions()
-      : scene.options?.overlayOptions
-    const requested = (raw as UnknownRecord | undefined)?.width
-    const width = typeof requested === 'number' && Number.isFinite(requested) && requested > 0
-      ? Math.min(this.#sceneWidth, Math.floor(requested))
-      : this.#sceneWidth
-    let lines: string[]
-    try {
-      lines = scene.component.render(width)
-    } catch (error) {
-      // A component that cannot draw cannot be interacted with either: fail
-      // the run loudly to its Pi caller rather than freezing an empty overlay.
-      const failed = this.#scene
-      this.#scene = undefined
-      this.#invalidateScene()
-      console.warn(`[pi2dsh] web scene for ${scene.package}: render(width) failed: ${error instanceof Error ? error.stack ?? error.message : String(error)}`)
-      failed?.reject(error)
-      return { open: false, revision: this.#sceneRevision }
-    }
-    return { open: true, package: scene.package, revision: this.#sceneRevision, lines }
-  }
-
-  /** Raw terminal input from the browser keyboard, verbatim into the component. */
-  sceneInput(sequence: string, width?: number): void {
-    if (typeof width === 'number' && Number.isFinite(width)) {
-      this.#sceneWidth = Math.max(20, Math.min(400, Math.floor(width)))
-    }
-    const component = this.#scene?.component
-    if (component === undefined || sequence.length === 0) return
-    component.handleInput?.(sequence)
-    component.invalidate?.()
-    this.#invalidateScene()
-  }
-
-  /** The browser dismissed the overlay: resolve the Pi caller with undefined. */
-  closeScene(): void {
-    this.#finishScene(undefined)
-  }
-
-  #finishScene(value: unknown): void {
-    const scene = this.#scene
-    if (scene === undefined) return
-    this.#scene = undefined
-    scene.component?.dispose?.()
-    this.#invalidateScene()
-    scene.resolve(value)
-  }
-
-  #invalidateScene(): void {
-    this.#sceneRevision += 1
   }
 
   /**
@@ -928,32 +803,6 @@ export function registerBrowserSurfaceRoute(ctx: Context, registry: BrowserSurfa
         }
         return
       }
-      // The scene overlay's two writes: raw keyboard input into the live Pi
-      // component, and the user dismissing the overlay (resolves the Pi
-      // caller with undefined, exactly like closing a terminal scene).
-      if (method === 'POST' && (url.pathname === '/pi2dsh/scene-input' || url.pathname === '/pi2dsh/scene-close')) {
-        const chunks: Buffer[] = []
-        const body = await new Promise<string>((settle) => {
-          const stream = req as unknown as { on(event: string, handler: (chunk?: unknown) => void): void }
-          stream.on('data', chunk => chunks.push(Buffer.from(chunk as Uint8Array)))
-          stream.on('end', () => settle(Buffer.concat(chunks).toString('utf8')))
-        })
-        if (url.pathname === '/pi2dsh/scene-close') {
-          registry.closeScene()
-        } else {
-          try {
-            const payload = JSON.parse(body || '{}') as { sequence?: unknown, width?: unknown }
-            if (typeof payload.sequence === 'string') {
-              registry.sceneInput(payload.sequence, typeof payload.width === 'number' ? payload.width : undefined)
-            }
-          } catch {
-            // A malformed key event changes nothing; the next one supersedes it.
-          }
-        }
-        response.writeHead(204)
-        response.end()
-        return
-      }
       if (method !== 'GET' && method !== 'HEAD') {
         response.writeHead(405)
         response.end()
@@ -991,12 +840,11 @@ export function registerBrowserSurfaceRoute(ctx: Context, registry: BrowserSurfa
       }
       const session = url.searchParams.get('session') ?? ''
       const body = JSON.stringify(session === ''
-        ? { threads: [], surfaces: [], entries: [], scene: registry.sceneSnapshot() }
+        ? { threads: [], surfaces: [], entries: [] }
         : {
           threads: registry.snapshot(session),
           surfaces: registry.surfaces(session),
           entries: registry.entries(session),
-          scene: registry.sceneSnapshot(),
           ...(registry.draftRequest(session) === undefined ? {} : { draft: registry.draftRequest(session) }),
         })
       response.writeHead(200, {

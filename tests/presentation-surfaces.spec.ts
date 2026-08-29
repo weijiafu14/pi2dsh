@@ -281,7 +281,7 @@ afterAll(async () => {
 describe('the route exists at all', () => {
   it('registers on the host web server and answers an unknown session with empty state', async () => {
     expect(handler, 'the bridge registered no route on the host web server').toBeTypeOf('function')
-    expect(await get('/pi2dsh/browser-state?session=nobody')).toEqual({ threads: [], surfaces: [], entries: [], scene: { open: false, revision: 0 } })
+    expect(await get('/pi2dsh/browser-state?session=nobody')).toEqual({ threads: [], surfaces: [], entries: [] })
   })
 
   it('publishes the verified image tool at mount without touching another tool from the package', async () => {
@@ -476,9 +476,10 @@ describe('surfaces this bridge deliberately does not connect', () => {
   })
 })
 
-describe('full-screen custom UI on the web overlay', () => {
-  const post = async (path: string, payload?: Json): Promise<void> => {
+describe('full-screen custom UI on a browser composition', () => {
+  const post = async (path: string, payload?: Json): Promise<{ status: number }> => {
     const body = payload === undefined ? '' : JSON.stringify(payload)
+    let status = 0
     await handler(
       {
         method: 'POST',
@@ -488,46 +489,24 @@ describe('full-screen custom UI on the web overlay', () => {
           if (event === 'end') listen()
         },
       },
-      { writeHead: () => {}, end: () => {} } as unknown as Json,
+      { writeHead: (code: number) => { status = code }, end: () => {} } as unknown as Json,
     )
+    return { status }
   }
-  const scene = async (): Promise<Json> =>
-    (await get(`/pi2dsh/browser-state?session=${SESSION}`)).scene as Json
-
-  it('ui.custom opens the component on the browser scene, ANSI frame readable through the route', async () => {
+  // The web projects no TUI (2026-08-29 product decision): a scene's content
+  // is served by product surfaces (side-chat window, MCP tab), so ui.custom on
+  // a browser composition takes Pi's own rpc degradation instead of painting
+  // terminal frames into a modal.
+  it('ui.custom on a browser composition resolves undefined — the web projects no TUI', async () => {
     await run('s-scene-open')
-    const view = await scene()
-    expect(view.open).toBe(true)
-    expect(view.package).toBe('@crazygit/pi-codex-image-gen')
-    expect((view.lines as string[])[0]).toContain('SCENE-MARKER')
-  })
-
-  it('the browser width reaches render(width)', async () => {
-    await post('/pi2dsh/scene-input', { sequence: '', width: 57 })
-    expect((await scene()).lines as string[]).toContain('SCENE-MARKER width=57')
-  })
-
-  it('keyboard sequences reach handleInput verbatim', async () => {
-    await post('/pi2dsh/scene-input', { sequence: 'x' })
-    expect((await scene()).lines as string[]).toContain('last=x')
-  })
-
-  it("the component's own done() closes the scene and resolves the Pi caller with its value", async () => {
-    await post('/pi2dsh/scene-input', { sequence: '\r' })
-    expect((await scene()).open).toBe(false)
-    const view = await get(`/pi2dsh/browser-state?session=${SESSION}`)
-    const statuses = (view.surfaces as Json[])[0]?.statuses as Json
-    expect(statuses.scene).toBe('resolved:"picked:x"')
-  })
-
-  it('the browser dismissing the overlay resolves the Pi caller with undefined, like closing a terminal scene', async () => {
-    await run('s-scene-open')
-    expect((await scene()).open).toBe(true)
-    await post('/pi2dsh/scene-close')
-    expect((await scene()).open).toBe(false)
     const view = await get(`/pi2dsh/browser-state?session=${SESSION}`)
     const statuses = (view.surfaces as Json[])[0]?.statuses as Json
     expect(statuses.scene).toBe('resolved:null')
+    // No scene rides the payload; the retired write routes answer 405 like any
+    // other unknown POST on the prefix, never a silent 204.
+    expect(view.scene).toBeUndefined()
+    const input = await post('/pi2dsh/scene-input', { sequence: 'x' })
+    expect(input.status).toBe(405)
   })
 })
 

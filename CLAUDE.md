@@ -357,6 +357,17 @@ Model 是一个对象且 getAll 同步，插件读 `model.contextWindow` 拿到 
 DSH 有两半，桥也必须有两半。凡是"形态"类的 Pi 能力（浮层、卡片、渲染器、编辑器
 组件、状态条），落点在**浏览器壳的 slot 座位**，不是服务端。
 
+- **web 零 TUI 投影（2026-08-29 用户拍板，旧标准作废）**：浏览器只渲染产品 UI
+  （侧聊浮窗、MCP 标签页、胶囊、登录卡），**永不**把 Pi 终端组件的文本帧投成
+  弹窗/modal。曾有"web scene 座位"把 `ui.custom` 的 ANSI 帧画进全屏 modal——
+  真机实拍是 btw 的美浮窗旁边杵一个黑终端截屏，被用户当场毙掉；且逐个核对后
+  **web 上没有任何一个 scene 消费者缺产品面**（pi-btw→侧聊窗、/pi-mcp→MCP
+  标签页）。落地：`mode` 只在真终端席（dsh-TUI/dsh-pi-tui）报 'tui'，web 一律
+  'rpc'；`ui.custom` 在 web 走 Pi 官方 rpc 降级 resolve undefined；scene 管线
+  （openScene/路由/SceneOverlay）已整体删除。TUI 宿主的原生 tuiScenes 桥接
+  不受影响。判据：web 截图里出现等宽字体的终端画框 = 违标；capture 装置已带
+  "scene 出现即 fail"的负断言。
+
 - 契约：包声明 `dsh.client: { platform: 'web', inject: [...] }` + 导出
   `./client`（闭包工厂产物）+ **必须同时导出 `./package.json`**——宿主
   `client-modules` 用 `require.resolve('<pkg>/package.json')` 找清单，没导出就抛
