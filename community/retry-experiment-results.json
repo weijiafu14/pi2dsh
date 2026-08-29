@@ -1,0 +1,36 @@
+{
+ "rate_limit_retry_after": {
+  "trace": [
+   "attempt0:429",
+   "attempt1:200"
+  ],
+  "elapsedMs": 2020,
+  "stopReason": "stop",
+  "text": "recovered"
+ },
+ "server_error": {
+  "trace": [
+   "attempt0:500",
+   "attempt1:200"
+  ],
+  "elapsedMs": 389,
+  "stopReason": "stop",
+  "text": "recovered"
+ },
+ "rate_limit_over_cap": {
+  "trace": [
+   "attempt0:429"
+  ],
+  "elapsedMs": 2,
+  "text": ""
+ },
+ "rate_limit_long_window_cap_raised": {
+  "trace": [
+   "attempt0:429",
+   "attempt1:200"
+  ],
+  "elapsedMs": 3005,
+  "stopReason": "stop",
+  "text": "recovered"
+ }
+}
