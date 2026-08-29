@@ -1,0 +1,260 @@
+{
+  "schemaVersion": 1,
+  "pi2dshCommit": "1f96bc731c1bc9dd6d5cfa1b0aad79e422e6ad18",
+  "dshCommit": "69fff74f6f3e1f37939784885ef823477f06ace3",
+  "results": {
+    "alibabaTokenPlan": {
+      "status": "skipped",
+      "reason": "ALIBABA_TOKEN_PLAN_API_KEY not set"
+    },
+    "visionBridge": {
+      "status": "skipped",
+      "reason": "no complete OpenAI-compatible or Pi-registry vision model configured"
+    },
+    "visionBridgeWeb": {
+      "status": "skipped",
+      "reason": "no complete OpenAI-compatible or Pi-registry vision model configured"
+    },
+    "codexImageGen": {
+      "status": "skipped",
+      "reason": "CODEX_AUTH_FILE not set"
+    },
+    "gatewayCompat": {
+      "engine": {
+        "version": "0.23.0",
+        "from": "local",
+        "spec": "file:<working-tree>",
+        "commit": "1f96bc731c1bc9dd6d5cfa1b0aad79e422e6ad18",
+        "dirty": true
+      },
+      "status": "passed",
+      "requests": 2,
+      "roles": [
+        "system",
+        "user",
+        "user"
+      ],
+      "maxTokensField": "max_tokens",
+      "store": null,
+      "reasoningEffort": "high",
+      "bodyKeys": [
+        "max_tokens",
+        "messages",
+        "model",
+        "reasoning_effort",
+        "stream",
+        "stream_options",
+        "tools"
+      ],
+      "previews": [
+        "system: You are an AI agent powered by DeepSeek Harness. You are a ",
+        "user: Reply with exactly: gateway-compat-ok",
+        "user: Current runtime context. This snapshot supersedes earlier ru"
+      ],
+      "note": "rerun on stock npm CLI 0.1.1-rc.2 (first run fell back to the local checkout on an experimental fork branch; fixture-side failure, see log)"
+    },
+    "customGateways": {
+      "status": "passed",
+      "engine": {
+        "version": "0.23.0",
+        "from": "local",
+        "spec": "file:<working-tree>",
+        "commit": "1f96bc731c1bc9dd6d5cfa1b0aad79e422e6ad18",
+        "dirty": true
+      },
+      "seenByPackage": {
+        "provider": "my-gateway",
+        "id": "deepseek-chat",
+        "api": "faux",
+        "contextWindow": 131072
+      },
+      "requestedThroughGateway": true
+    },
+    "subscriptionLogin": {
+      "status": "partial",
+      "engine": {
+        "version": "0.23.0",
+        "from": "local",
+        "spec": "file:<working-tree>",
+        "commit": "1f96bc731c1bc9dd6d5cfa1b0aad79e422e6ad18",
+        "dirty": true
+      },
+      "note": "pre-login discovery and native route passed; set CODEX_AUTH_FILE to verify the post-login model picker"
+    },
+    "mcpAtScale": {
+      "status": "passed",
+      "engine": {
+        "version": "0.23.0",
+        "from": "local",
+        "spec": "file:<working-tree>",
+        "commit": "1f96bc731c1bc9dd6d5cfa1b0aad79e422e6ad18",
+        "dirty": true
+      },
+      "packages": [
+        "pi-mcp-adapter"
+      ],
+      "server": "many-tools (official MCP SDK, 51 tools, stdio)",
+      "discovery": "mcp proxy -> tool_037 -> LAUNCH-MARKER-7741-ZEBRA",
+      "timeout": "mcpScript timeoutMs 5000 on ~120s slow_task; turn ended in 28s; tool_001 answered after",
+      "note": "rerun on stock npm CLI 0.1.1-rc.2 (first run fell back to the local checkout on an experimental fork branch; fixture-side failure, see log)"
+    },
+    "tuiMcp": {
+      "status": "passed",
+      "engine": {
+        "version": "0.23.0",
+        "from": "local",
+        "spec": "file:<working-tree>",
+        "commit": "1f96bc731c1bc9dd6d5cfa1b0aad79e422e6ad18",
+        "dirty": true
+      },
+      "profile": "dsh-tui",
+      "piPackage": "pi-mcp-adapter",
+      "piPackageVersion": "2.31.0",
+      "command": "/pi-mcp",
+      "nativeCommandPreserved": "/mcp",
+      "mcpServer": "@modelcontextprotocol/server-everything",
+      "transports": [
+        "stdio",
+        "streamable-http",
+        "sse"
+      ],
+      "capabilities": [
+        "manager",
+        "discovery",
+        "proxy",
+        "direct-tools",
+        "mcpScript",
+        "resources",
+        "prompts",
+        "images",
+        "structured-content",
+        "mcp-app-ui",
+        "approval",
+        "elicitation",
+        "sampling",
+        "cancellation",
+        "reconnect",
+        "session-restart"
+      ]
+    },
+    "codeNavigation": {
+      "status": "passed",
+      "engine": {
+        "version": "0.23.0",
+        "from": "local",
+        "spec": "file:<working-tree>",
+        "commit": "1f96bc731c1bc9dd6d5cfa1b0aad79e422e6ad18",
+        "dirty": true
+      },
+      "packages": [
+        "@ff-labs/pi-fff",
+        "pi-lens"
+      ],
+      "search": "ffgrep -> notes/spec.md",
+      "diagnostics": "lsp_diagnostics -> TS2322 on src/ledger.ts",
+      "note": "rerun on stock npm CLI 0.1.1-rc.2 (first run fell back to the local checkout on an experimental fork branch; fixture-side failure, see log)"
+    },
+    "dshX": {
+      "status": "passed",
+      "engine": {
+        "version": "0.23.0",
+        "from": "local",
+        "spec": "file:<working-tree>",
+        "commit": "1f96bc731c1bc9dd6d5cfa1b0aad79e422e6ad18",
+        "dirty": true
+      },
+      "suite": [
+        "pi-mcp-adapter",
+        "@tintinweb/pi-subagents",
+        "pi-btw",
+        "@crazygit/pi-codex-image-gen"
+      ],
+      "sideChat": "answers in-window; inject + --save verified in the main session log",
+      "commands": {
+        "pi-mcp-adapter": "mcp",
+        "@tintinweb/pi-subagents": "agents",
+        "pi-btw": "btw"
+      }
+    },
+    "mcpAtScaleWeb": {
+      "status": "passed",
+      "engine": {
+        "version": "0.23.0",
+        "from": "local",
+        "spec": "file:<working-tree>",
+        "commit": "1f96bc731c1bc9dd6d5cfa1b0aad79e422e6ad18",
+        "dirty": true
+      },
+      "packages": [
+        "pi-mcp-adapter"
+      ],
+      "screenshots": [
+        "12-mcp-at-scale-web.png"
+      ],
+      "discovery": "mcp proxy -> tool_037 -> LAUNCH-MARKER-7741-ZEBRA"
+    },
+    "presentationSurfaces": {
+      "status": "passed",
+      "engine": {
+        "version": "0.23.0",
+        "from": "local",
+        "spec": "file:<working-tree>",
+        "commit": "1f96bc731c1bc9dd6d5cfa1b0aad79e422e6ad18",
+        "dirty": true
+      },
+      "install": "dsh-work-x suite + pi-powerline-footer",
+      "screenshots": [
+        "06-presentation-surfaces.png"
+      ]
+    },
+    "codeNavigationWeb": {
+      "status": "passed",
+      "engine": {
+        "version": "0.23.0",
+        "from": "local",
+        "spec": "file:<working-tree>",
+        "commit": "1f96bc731c1bc9dd6d5cfa1b0aad79e422e6ad18",
+        "dirty": true
+      },
+      "packages": [
+        "@ff-labs/pi-fff",
+        "pi-lens"
+      ],
+      "screenshots": [
+        "06-code-navigation-web.png"
+      ],
+      "search": "ffgrep -> notes/spec.md",
+      "diagnostics": "lsp_diagnostics -> TS2322 on src/ledger.ts"
+    },
+    "sideConversation": {
+      "status": "passed",
+      "engine": {
+        "version": "0.23.0",
+        "from": "local",
+        "spec": "file:<working-tree>",
+        "commit": "1f96bc731c1bc9dd6d5cfa1b0aad79e422e6ad18",
+        "dirty": true
+      },
+      "install": "dsh-work-x suite (bundles pi-btw)",
+      "sideAnswerIsolated": true,
+      "screenshots": [
+        "00-side-conversation-work-x.png"
+      ]
+    },
+    "subagents": {
+      "status": "passed",
+      "engine": "0.23.0",
+      "cli": "0.1.1-rc.2",
+      "scenarios": {
+        "steer": "passed",
+        "failureReport": "passed",
+        "resume": "passed",
+        "resumeArchive": "passed",
+        "stop": "passed",
+        "modelFollow": "passed",
+        "explicitModelThinking": "passed",
+        "childExtensions": "passed"
+      }
+    }
+  }
+}
