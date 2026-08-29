@@ -583,3 +583,15 @@
 | 3407 | 首回（R1 验证） | 500 server_error 故障注入恢复实测（0.4s）；同上口径纪律 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/3407#discussioncomment-18200082) |
 
 矩阵进度：e2e_only fresh 18 条 → 已发 2；累加器实验另判 #3090 方向证据 + #3047 围栏缺口坐实（进 R1 包需求）。
+
+## 批次 15（2026-08-30，vision 卡点闭环后）
+
+vision 端点凭证从 codex session 挖到并验证（真 deepseek-v4-flash-vision-exp）；
+vision-bridge example 真机 E2E passed（伴生路径，可证伪断言）。vision 族 36 条
+可回帖 live 复核：绝大多数此前已回，fresh 仅 2 条。
+
+| # | 性质 | 依据 | 评论链接 |
+|---|---|---|---|
+| 3930 | 首回（vision） | 承认 modalities 配置根因（多人已答）；补 pi2dsh 伴生自动补位这条不改配置的路径，带 example 实测证据；口径明写不改官方目录模态声明 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/3930#discussioncomment-18200281) |
+
+毙 #1765（shinjiyu 已把 modalities 根因答透，重复无增量）。
