@@ -6,7 +6,8 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { Context, type Plugin } from '@deepseek-ai/cordis'
 import AgentRegistry from '@deepseek-ai/dsh-agent'
 import LocalAttachmentStore from '@deepseek-ai/dsh-attachment-local'
-import LlmRuntime, { createUserMessage, CallId } from '@deepseek-ai/dsh-llm'
+import LlmRuntime, { createUserMessage } from '@deepseek-ai/dsh-llm'
+import { CallId, registerFixtureAnswerer } from './lib/dsh-compat.js'
 import { createScope, type Scope } from '@deepseek-ai/dsh-scope'
 import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
 import LocalSubprocessRuntime from '@deepseek-ai/dsh-subprocess-local'
@@ -30,6 +31,21 @@ afterEach(async () => {
 
 async function settle(): Promise<void> {
   await new Promise(resolve => setTimeout(resolve, 10))
+}
+
+
+/** The stored bytes must be the container the service declared. */
+function expectImageContainer(bytes: Buffer, mediaType: string): void {
+  if (mediaType === 'image/png') {
+    expect([...bytes.subarray(0, 8)]).toEqual([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
+  } else if (mediaType === 'image/webp') {
+    expect(bytes.subarray(0, 4).toString('ascii')).toBe('RIFF')
+    expect(bytes.subarray(8, 12).toString('ascii')).toBe('WEBP')
+  } else if (mediaType === 'image/jpeg') {
+    expect([...bytes.subarray(0, 2)]).toEqual([0xff, 0xd8])
+  } else {
+    throw new Error(`unexpected stored image mediaType ${mediaType}`)
+  }
 }
 
 describe('an installed Pi package in the real DSH runtime', () => {
@@ -69,15 +85,11 @@ describe('an installed Pi package in the real DSH runtime', () => {
     await ctx.plugin(LocalAttachmentStore, { dshHome: join(scratch, 'dsh-home') })
     await ctx.plugin(LocalSubprocessRuntime)
     await ctx.plugin(UserQuestionService)
-    ctx.userQuestions.registerProvider({
-      async ask(request) {
-        return {
-          answers: request.questions.map(question => question.id === 'pi2dsh-input'
-            ? { id: question.id, selected: [], custom: 'typed' }
-            : { id: question.id, selected: [question.id === 'pi2dsh-select' ? 'beta' : 'Yes'] }),
-        }
-      },
-    })
+    registerFixtureAnswerer(ctx, request => ({
+      answers: request.questions.map(question => question.id === 'pi2dsh-input'
+        ? { id: question.id, selected: [], custom: 'typed' }
+        : { id: question.id, selected: [question.id === 'pi2dsh-select' ? 'beta' : 'Yes'] }),
+    }))
     ctx.systemPrompt.section({ name: 'fixture:base', order: 0, text: 'Base DSH prompt.' })
     const fiber = await ctx.plugin(generated)
 
@@ -245,9 +257,13 @@ describe('an installed Pi package in the real DSH runtime', () => {
     })
     expect(imageProbe.isError).toBe(false)
     expect(imageProbe.meta).toEqual({ nativeAttachment: true })
+    // rc lines store the PNG verbatim; the 0.1.2 line re-encodes through its
+    // quality ladder (WebP for images without transparency use). The contract
+    // is a raster image with the right dimensions whose bytes match whatever
+    // container the service DECLARED — not one blessed codec.
     expect(imageProbe.content[0]).toMatchObject({
       type: 'image',
-      attachment: { mediaType: 'image/png', width: 1, height: 1 },
+      attachment: { mediaType: expect.stringMatching(/^image\//u), width: 1, height: 1 },
     })
     if (imageProbe.content[0]?.type !== 'image') throw new Error('expected a native DSH image block')
     const storedImage = await ctx.attachments.readImage(imageProbe.content[0].attachment)
@@ -256,7 +272,7 @@ describe('an installed Pi package in the real DSH runtime', () => {
     // stored images, so the durable proof is the PNG signature plus the 1x1
     // dimensions already asserted on the attachment metadata above.
     const storedBytes = Buffer.from(storedImage.data)
-    expect([...storedBytes.subarray(0, 8)]).toEqual([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
+    expectImageContainer(storedBytes, (imageProbe.content[0].attachment as { mediaType: string }).mediaType)
     expect(storedBytes.length).toBeGreaterThan(8)
 
     // Over-budget image: a REAL 3000x1500 PNG built by hand (all-black RGBA,
@@ -307,7 +323,7 @@ describe('an installed Pi package in the real DSH runtime', () => {
         && Math.abs(w / h - bigW / bigH) < 0.05
       expect(verbatim || budgeted).toBe(true)
       const storedBig = Buffer.from((await ctx.attachments.readImage(savedBig)).data)
-      expect([...storedBig.subarray(0, 8)]).toEqual([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
+      expectImageContainer(storedBig, (savedBig as { mediaType?: string }).mediaType ?? 'image/png')
     }
 
     const messageProbe = await ctx.tools.execute({
@@ -495,8 +511,18 @@ describe('hasUI reports whether a human can actually answer', () => {
       '}',
     ].join('\n'), 'utf8')
 
-    const build = async (withProvider: boolean): Promise<boolean> => {
+    type QuestionMode = 'none' | 'provider' | 'browser-poll'
+    const build = async (mode: QuestionMode): Promise<boolean> => {
       const ctx = new Context()
+      let routeHandler: ((req: unknown, res: unknown) => Promise<void>) | undefined
+      if (mode === 'browser-poll') {
+        ;(ctx as unknown as { provide(name: string, value: unknown): void }).provide('webServer', {
+          register(route: { handler: (req: unknown, res: unknown) => Promise<void> }) {
+            routeHandler = route.handler
+            return () => {}
+          },
+        })
+      }
       await ctx.plugin(SessionStore)
       await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
       await ctx.plugin(ToolRuntime)
@@ -504,8 +530,8 @@ describe('hasUI reports whether a human can actually answer', () => {
       await ctx.plugin(SkillRegistry)
       await ctx.plugin(AgentRegistry)
       await ctx.plugin(UserQuestionService)
-      if (withProvider) {
-        ctx.userQuestions.registerProvider({
+      if (mode === 'provider') {
+        ;(ctx.userQuestions as unknown as { registerProvider(p: unknown): void }).registerProvider({
           async ask(request: { questions: Array<{ id: string }> }) {
             return { answers: request.questions.map(() => ({ questionId: 'q', optionId: 'a' })) } as never
           },
@@ -524,9 +550,18 @@ describe('hasUI reports whether a human can actually answer', () => {
               skillDirs: [],
               prompts: [],
             } as never,
+            ...(mode === 'browser-poll' ? { config: { browserPresentation: true } } : {}),
           })
         },
       } as Plugin.Object)
+      if (mode === 'browser-poll') {
+        // The REAL chain: a browser request through the presentation route
+        // stamps client contact, which is the 0.1.2 line's positive signal.
+        if (routeHandler === undefined) throw new Error('presentation route never registered')
+        await routeHandler({ method: 'GET', url: '/pi2dsh/browser-state?session=s' }, {
+          writeHead() {}, end() {},
+        })
+      }
       const result = await ctx.tools.execute({
         signal: new AbortController().signal,
         callId: CallId('hasui'),
@@ -537,10 +572,20 @@ describe('hasUI reports whether a human can actually answer', () => {
       return (JSON.parse((result.content[0] as { text: string }).text) as { hasUI: boolean }).hasUI
     }
 
-    expect(await build(false)).toBe(false)
-    // …and the probe must not have consumed the slot: a real provider still
-    // reports true, and is still the one that would be asked.
-    expect(await build(true)).toBe(true)
+    expect(await build('none')).toBe(false)
+    // Generation split: rc lines expose registerProvider (probe + real
+    // provider must coexist); the 0.1.2 line replaced the slot with
+    // per-client waterfall answerers, where our positive signal is a live
+    // browser on the presentation route — exercised through the real route
+    // handler, not a synthetic stamp.
+    const rcSlot = typeof (UserQuestionService.prototype as unknown as { registerProvider?: unknown }).registerProvider === 'function'
+    if (rcSlot) {
+      // …and the probe must not have consumed the slot: a real provider
+      // still reports true, and is still the one that would be asked.
+      expect(await build('provider')).toBe(true)
+    } else {
+      expect(await build('browser-poll')).toBe(true)
+    }
   })
 })
 

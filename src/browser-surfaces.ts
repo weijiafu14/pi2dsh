@@ -76,6 +76,9 @@ function messageText(message: UnknownRecord): string {
  * is one surface, however many Pi packages contribute threads to it.
  */
 export class BrowserSurfaces {
+  /** Last time a browser client touched the /pi2dsh route (ms epoch). */
+  lastClientContactMs?: number
+
   readonly #byParent = new Map<string, Map<string, TrackedThread>>()
   readonly #commandRunners = new Map<string, Map<string, PiCommandRunner>>()
   // session -> package -> what that package put on screen
@@ -775,6 +778,11 @@ export function registerBrowserSurfaceRoute(ctx: Context, registry: BrowserSurfa
       }
       const method = String(req.method ?? 'GET')
       const url = new URL(String(req.url ?? '/'), 'http://pi2dsh.invalid')
+      // Any request through this prefix is a live browser client talking to
+      // the presentation layer. hasUI's 0.1.2-line answer reads this stamp:
+      // question answerers there are per-connected-client waterfall relays,
+      // so "a browser is polling us" is the signal we actually own.
+      registry.lastClientContactMs = Date.now()
       // The one write the browser half performs: reporting what the user has
       // actually typed, so a package's getEditorText reads the composer rather
       // than only its own last write.

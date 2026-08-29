@@ -9,7 +9,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import { CallId, LlmAdapter, type StreamChunk } from '@deepseek-ai/dsh-llm'
+import { LlmAdapter, type StreamChunk } from '@deepseek-ai/dsh-llm'
+import { CallId, registerFixtureAnswerer } from './lib/dsh-compat.js'
 import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
@@ -818,14 +819,12 @@ describe('engine mounting on a real DSH composition', () => {
     // exactly what a human-facing surface does when the dialog is dismissed.
     let sawSignal = false
     let seenQuestion: { question: string; detail?: string } | undefined
-    ;(ctx as unknown as { userQuestions: { registerProvider(provider: unknown): unknown } }).userQuestions.registerProvider({
-      async ask(request: { questions: Array<{ id: string; question: string; detail?: string }>; signal?: AbortSignal }) {
-        sawSignal = request.signal instanceof AbortSignal
-        seenQuestion = request.questions[0]
-        return new Promise((_resolve, reject) => {
-          request.signal?.addEventListener('abort', () => { reject(new Error('question withdrawn')) }, { once: true })
-        })
-      },
+    registerFixtureAnswerer(ctx, async (request) => {
+      sawSignal = request.signal instanceof AbortSignal
+      seenQuestion = request.questions[0]
+      return new Promise((_resolve, reject) => {
+        request.signal?.addEventListener('abort', () => { reject(new Error('question withdrawn')) }, { once: true })
+      })
     })
     ;(ctx as unknown as { baseUrl: string }).baseUrl = `file://${root}/cordis.yml`
     await apply(ctx, {})

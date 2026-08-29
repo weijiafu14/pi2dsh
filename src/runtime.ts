@@ -1243,7 +1243,7 @@ function contextFor(
     // `hasUI` rarely, and reading it lazily also makes the answer current at
     // the moment it is asked rather than at the moment the context was built.
     get hasUI(): boolean {
-      return state.tuiSurfaces?.available === true || humanAnswererAvailable(userQuestions, agent)
+      return state.tuiSurfaces?.available === true || humanAnswererAvailable(userQuestions, agent, state.shared)
     },
     cwd: contextCwd,
     sessionManager: session === undefined
@@ -4329,13 +4329,37 @@ function sessionNameOf(ctx: Context, state: RuntimeState, session: { id: string 
  * @param userQuestions - the mounted question service, if any.
  * @param agent - the agent whose turn this context belongs to.
  */
-function humanAnswererAvailable(userQuestions: unknown, agent: UnknownRecord | undefined): boolean {
+function humanAnswererAvailable(
+  userQuestions: unknown,
+  agent: UnknownRecord | undefined,
+  shared?: { browserSurfaces?: { lastClientContactMs?: number } },
+): boolean {
   if (userQuestions === undefined) return false
   // A child agent is owned by another agent; DSH refuses its questions with
   // DELEGATED_CALLER however the composition is wired.
   if (isSubagentOrigin(agent)) return false
   const service = userQuestions as { registerProvider?(provider: unknown): () => void }
-  if (typeof service.registerProvider !== 'function') return false
+  if (typeof service.registerProvider !== 'function') {
+    // 0.1.2 line: the provider slot became agent-scoped `user-questions/request`
+    // waterfall answerers (relayed per connected client, or registered by an
+    // ACP/TUI surface). Presence is publicly observable: Lifecycle.dispatch
+    // (a typed cordis member) lists the listeners an emit would reach —
+    // non-empty means someone would answer. The browser-poll stamp stays as
+    // the OR for a client whose relay registers lazily; engine-only web has
+    // neither and stays false, matching the headless ruling.
+    const events = (service as { ctx?: { events?: { dispatch?(type: string, args: unknown[]): unknown[] } } }).ctx?.events
+    if (typeof events?.dispatch === 'function') {
+      try {
+        // dispatch's second argument BEGINS with the event name (an optional
+        // thisArg may precede it); the first argument is only a debug label.
+        if (events.dispatch('pi2dsh:hasui-probe', ['user-questions/request']).length > 0) return true
+      } catch {
+        // An introspection failure must not turn into a hasUI answer.
+      }
+    }
+    const last = shared?.browserSurfaces?.lastClientContactMs
+    return typeof last === 'number' && Date.now() - last < 15_000
+  }
   let dispose: (() => void) | undefined
   try {
     dispose = service.registerProvider({ ask: async () => { throw new Error('pi2dsh probe provider') } })

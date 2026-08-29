@@ -470,6 +470,11 @@ const DSH_COMPAT_FIELD_PROTOCOLS = {
   supportsDeveloperRole: COMPLETIONS_AND_RESPONSES,
   supportsReasoningEffort: COMPLETIONS,
   supportsUsageInStreaming: COMPLETIONS,
+  // 0.1.2 line additions — all three live in Pi's openai-completions API
+  // (pi-ai types.ts + api/openai-completions.ts), so completions-only here.
+  supportsFinishReason: COMPLETIONS,
+  chatTemplateArgs: COMPLETIONS,
+  supportsThinkingTokenBudget: COMPLETIONS,
   maxTokensField: COMPLETIONS,
   requiresToolResultName: COMPLETIONS,
   requiresAssistantAfterToolResult: COMPLETIONS,
@@ -486,7 +491,11 @@ const DSH_COMPAT_FIELD_PROTOCOLS = {
   forceAdaptiveThinking: ANTHROPIC,
   allowEmptySignature: ANTHROPIC,
   supportsStrictTools: ANTHROPIC,
-} satisfies Record<keyof PiAiCompatProfile, ReadonlySet<string>>
+} satisfies Record<keyof PiAiCompatProfile, ReadonlySet<string>> & Record<string, ReadonlySet<string>>
+// The intersection keeps the drift gate DUAL-GENERATION: the first member
+// still fails the build when the installed line ADDS a profile field we have
+// not deliberately assigned, while the index-signature member admits keys a
+// NEWER line defines that the installed (older) line's keyof does not.
 
 function recordOf(value: unknown): UnknownRecord | undefined {
   return value !== null && typeof value === 'object' && !Array.isArray(value)

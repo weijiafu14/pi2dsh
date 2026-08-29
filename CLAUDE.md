@@ -493,6 +493,21 @@ pnpm verify:release   # verify + 全部 examples（装 npm 上刚发的那版）
   所以对该 seam 的挂钩一律用官方 `ctx.inject(['authorization',...],cb)`
   模式（llm-pi-ai 同款，服务何时组合都能挂上；rc2-only 的
   credentialKey 等符号必须动态 import，rc.8 chunk 不得引用）。
+  **0.1.2-alpha.1 预检已过（2026-08-29，契约阶段）**：peers 已扩
+  `|| ^0.1.2-alpha.1`；实证代际差异——① `CallId` 改名 `ToolCallId`
+  （tests/lib/dsh-compat.ts 双代 shim）；② user-questions 的 provider 槽
+  改为 agent-scoped `user-questions/request` waterfall 应答者（hasUI 探针
+  两代分支：rc 探 provider 槽、alpha 用公开 `Lifecycle.dispatch` 列监听
+  ∥ 呈现路由近期触点；测试应答者统一走 registerFixtureAnswerer）；
+  ③ 附件服务重编码到 WebP（质量梯按透明通道路由）+ 超预算大图按
+  2048×2048 总像素等比缩（断言=容器匹配声明的 mediaType + verbatim∥
+  budgeted 两分支）；④ llm-pi-ai compat 新增 supportsFinishReason /
+  chatTemplateArgs / supportsThinkingTokenBudget（皆 completions，Pi 源码
+  为据；漂移闸改双代交叉类型）；⑤ web 全站一次性 launch-token（装置
+  authedUrl + 401 就绪）与 lexical composer（web-drive innerText 双路径）。
+  alpha 未上 npm：预检装置=源码 worktree 构建 + devDeps 全家 `link:`
+  到 worktree 包目录（tarball+overrides 会 404 在未发布的内部包上）。
+  真机半边（alpha CLI web 实跑）在发 0.23.0 前必须补。
   singlepath E2E 默认跑 `latest` 线，rc.8 用
   `PI2DSH_DSH_CLI_SPEC` 回测；升级预检的标准姿势=git worktree 切
   devDeps 重装跑全套契约（注意 peer range 与 lockfile 都要动，否则
