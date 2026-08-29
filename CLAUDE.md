@@ -507,7 +507,15 @@ pnpm verify:release   # verify + 全部 examples（装 npm 上刚发的那版）
   authedUrl + 401 就绪）与 lexical composer（web-drive innerText 双路径）。
   alpha 未上 npm：预检装置=源码 worktree 构建 + devDeps 全家 `link:`
   到 worktree 包目录（tarball+overrides 会 404 在未发布的内部包上）。
-  真机半边（alpha CLI web 实跑）在发 0.23.0 前必须补。
+  真机半边已补（同日）：worktree 构建的 alpha CLI + 本地 0.22.0 tarball
+  引擎，headless（挂载+模型轮）与 web（401 门→token URL 换 cookie→
+  lexical 双路径打字→真模型轮）双绿。真机新知：① alpha 的
+  `dsh plugin add` 原样转发 pnpm 而 initProfile 写了 `packages: [.]`，
+  裸 add 撞 ERR_PNPM_ADDING_TO_ROOT——装置传 `add -w`（疑似上游 bug，
+  候选上报）；② `web` 子命令拒收 `--profile`，直接 `web --port` 跑；
+  ③ `/api/workspace.create` 404——Remote 迁移后 workspace 方法族在
+  `api/workspace` 命名空间（create/delete/list/pick/rename），web-drive
+  的工作区采纳在 alpha 入装置时要切双路径。
   singlepath E2E 默认跑 `latest` 线，rc.8 用
   `PI2DSH_DSH_CLI_SPEC` 回测；升级预检的标准姿势=git worktree 切
   devDeps 重装跑全套契约（注意 peer range 与 lockfile 都要动，否则
