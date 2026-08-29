@@ -570,6 +570,7 @@
 ## 上游候选报告队列（发帖前等拍板）
 
 - alpha `dsh plugin add` 裸转发 pnpm 撞自写 `packages: [.]`（需 `add -w` 才能装）。
-- alpha New Session 草稿视图不换台：主栏换空态但 session store 的 `current` 不动，
-  与 store 注释"the window opens ⟺ the session is on stage"矛盾；带真机复现
-  （seam-evidence/64-newsession-residue.png，旧会话浮动件压在空态上）。
+- ~~alpha New Session 草稿视图不换台~~ **已发**（2026-08-29，用户放行）：
+  [DSH Discussion #5035](https://github.com/deepseek-ai/deepseek-harness/discussions/5035)
+  （General 类目；底稿 community/upstream-report-draft-view-stage.md；复现
+  seam-evidence/64-newsession-residue.png）。
