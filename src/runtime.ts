@@ -2724,6 +2724,10 @@ interface SharedHostState {
   // a second flow cannot be started. On DSH /login is an ordinary command a
   // user can run again, so the bridge has to enforce what Pi's shape enforced.
   activeLogin?: ActiveLogin | undefined
+  // The Models-page login card's view of the one in-flight flow (alpha
+  // `settings.models.provider-card` seat). Host-level like activeLogin: one
+  // flow, one card driving it, whichever browser tab asked first.
+  browserLogin?: BrowserLoginFlow | undefined
   // The engine's installed-package extension catalog for CHILD sessions —
   // what "default-discovered extensions" means when a Pi creator spawns a
   // child (real Pi loads them into every child unless the creator narrows).
@@ -2741,6 +2745,22 @@ interface ActiveLogin {
   finished: Promise<void>
   /** Short links this flow published, retired when it ends. */
   published: string[]
+}
+
+/**
+ * What the login card polls: the flow's running transcript, one pending
+ * question at most, and the outcome once the spine settles. Notices carry the
+ * exact strings the /login command would print — URLs inside them are the
+ * short links the spine already publishes on this same web server.
+ */
+interface BrowserLoginFlow {
+  provider: string
+  providerName: string
+  notices: Array<{ message: string, code?: string }>
+  question?: { id: number, kind: 'input' | 'select', title: string, placeholder?: string, options?: string[] }
+  /** Resolves the ui call the question belongs to; cleared with the question. */
+  answer?: ((value: string | undefined) => void) | undefined
+  done?: { ok: boolean, summary: string }
 }
 
 const SHARED_HOST_STATE = new WeakMap<object, SharedHostState>()
@@ -3637,8 +3657,18 @@ async function projectAuthorizationFlow(scope: Context, state: RuntimeState, pro
             }
           },
           // A device code is exactly what AuthorizationNotice.code is for.
-          deviceCode: async (title, detail) => {
+          // Resolving this call means "the user dismissed the dialog"
+          // (oauthInteraction cancels the flow on it — the login-card contract
+          // test caught the instant-resolve variant cancelling a device-code
+          // flow the moment it started), so it settles only when the flow's
+          // own signal closes it.
+          deviceCode: (title, detail, signal) => {
             session.notify({ message: String(title), code: String(detail) })
+            return new Promise<void>((resolve) => {
+              if (!(signal instanceof AbortSignal)) return
+              if (signal.aborted) resolve()
+              else signal.addEventListener('abort', () => resolve(), { once: true })
+            })
           },
         }
         const canonical = canonicalOf()
@@ -5141,6 +5171,142 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
         await mkdir(dirname(overridePath), { recursive: true })
         await writeFile(overridePath, `${JSON.stringify(current, null, 2)}\n`)
         return { ok: true, note: 'run /reload (or restart the session) to apply' }
+      },
+      // The Models-page login card's faces. Same spine as /login and the
+      // authorization-seam flow (runProviderLogin); the card is only another
+      // ui surface for it — one whose dialog is a poll/answer pair over the
+      // package's own route instead of a live prompt channel.
+      async loginState() {
+        const flow = state.shared.browserLogin
+        const providers = await Promise.all(
+          [...state.providers.entries()]
+            .filter(([, config]) => providerSupportsOAuth(config))
+            .map(async ([id, config]) => ({
+              id,
+              name: ((config.oauth as UnknownRecord | undefined)?.name as string | undefined) ?? id,
+              signedIn: await storedOAuthCredential(oauthStoreOf(state), id).then(c => c !== undefined, () => false),
+            })),
+        )
+        return {
+          providers,
+          ...(flow === undefined ? {} : {
+            flow: {
+              provider: flow.provider,
+              providerName: flow.providerName,
+              notices: flow.notices,
+              ...(flow.question === undefined ? {} : {
+                question: {
+                  id: flow.question.id, kind: flow.question.kind, title: flow.question.title,
+                  ...(flow.question.placeholder === undefined ? {} : { placeholder: flow.question.placeholder }),
+                  ...(flow.question.options === undefined ? {} : { options: flow.question.options }),
+                },
+              }),
+              ...(flow.done === undefined ? {} : { done: flow.done }),
+            },
+          }),
+        }
+      },
+      async loginAction(action, provider, value) {
+        const shared = state.shared
+        if (action === 'dismiss') {
+          shared.browserLogin = undefined
+          return { ok: true }
+        }
+        if (action === 'answer') {
+          const flow = shared.browserLogin
+          if (flow?.answer === undefined) throw new TypeError('no login question is waiting for an answer')
+          const settle = flow.answer
+          flow.answer = undefined
+          delete flow.question
+          settle(value)
+          return { ok: true }
+        }
+        if (action === 'cancel') {
+          const cancelled = await supersedeActiveLogin(state)
+          const flow = shared.browserLogin
+          if (flow !== undefined && flow.done === undefined) {
+            flow.done = { ok: false, summary: 'Login cancelled' }
+          }
+          return { ok: true, ...(cancelled === undefined ? {} : { cancelled }) }
+        }
+        const config = state.providers.get(provider)
+        if (config === undefined || !providerSupportsOAuth(config)) {
+          throw new TypeError(`unknown OAuth provider ${JSON.stringify(provider)}`)
+        }
+        const providerName = ((config.oauth as UnknownRecord | undefined)?.name as string | undefined) ?? provider
+        if (action === 'signout') {
+          // The direct half of the sign-out mirror: drop the stored login and
+          // retire the placeholder route it justified. A package-owned
+          // transport route stays — its per-request credential resolution
+          // reports the missing login itself. (The DSH credential record the
+          // authorization seam writes is mirrored the other way, by the
+          // record-deleted watcher; stock compositions do not compose that
+          // service, so there is no record to clear here.)
+          await oauthStoreOf(state).delete(provider)
+          if (!providerCarriesTransport(config)) retireSharedProviderRoute(shared, provider)
+          return { ok: true, signedOut: provider }
+        }
+        if (action !== 'begin') throw new TypeError(`unknown login action ${JSON.stringify(action)}`)
+        let questionSeq = 0
+        const flow: BrowserLoginFlow = { provider, providerName, notices: [] }
+        // A pending question from a superseded flow must not wait forever:
+        // starting a new flow replaces the record wholesale, and the spine
+        // aborts the old flow's signal, which resolves its question below.
+        shared.browserLogin = flow
+        const ask = (
+          kind: 'input' | 'select',
+          title: string,
+          extras: { placeholder?: string, options?: string[] },
+          signal?: AbortSignal,
+        ): Promise<string | undefined> => new Promise((resolve) => {
+          const id = ++questionSeq
+          flow.question = { id, kind, title, ...extras }
+          flow.answer = (answered) => { resolve(answered) }
+          const withdraw = () => {
+            if (flow.question?.id !== id) return
+            delete flow.question
+            flow.answer = undefined
+            resolve(undefined)
+          }
+          if (signal !== undefined) {
+            if (signal.aborted) withdraw()
+            else signal.addEventListener('abort', withdraw, { once: true })
+          }
+        })
+        const ui: ProviderLoginUi = {
+          notify: (message) => { flow.notices.push({ message: String(message) }) },
+          input: (title, placeholder, signal) => ask('input', String(title),
+            typeof placeholder === 'string' && placeholder.length > 0 ? { placeholder } : {}, signal),
+          select: (title, options, signal) => ask('select', String(title),
+            { options: options.map(option => String(option)) }, signal),
+          // The device code stays on screen as a notice; the card keeps
+          // polling, so "visible while the package polls" is the default.
+          // The OAuthUiSurface contract makes RESOLVING this call mean "the
+          // user dismissed the dialog" (oauthInteraction cancels the flow on
+          // it) — so this settles only when the flow's own signal closes it,
+          // never on its own.
+          deviceCode: (title, detail, signal) => {
+            // The detail is the dialog-flavored markdown line; the URL in it
+            // already arrived as its own notice, so the card keeps only the
+            // code itself (the one thing the user must copy).
+            const code = /`([^`]+)`/u.exec(String(detail))?.[1]
+            flow.notices.push({ message: String(title), ...(code === undefined ? {} : { code }) })
+            return new Promise<void>((resolve) => {
+              if (!(signal instanceof AbortSignal)) return
+              if (signal.aborted) resolve()
+              else signal.addEventListener('abort', () => resolve(), { once: true })
+            })
+          },
+        }
+        void runProviderLogin(ctx, state, provider, config, ui).then(
+          (summary) => { if (shared.browserLogin === flow) flow.done = { ok: true, summary } },
+          (error: unknown) => {
+            if (shared.browserLogin === flow) {
+              flow.done = { ok: false, summary: error instanceof Error ? error.message : String(error) }
+            }
+          },
+        )
+        return { ok: true, started: provider }
       },
     })
   }

@@ -763,6 +763,10 @@ export function revokeAuthorization(path: string): void {
 export interface BrowserSurfaceHooks {
   mcpState?(session: string): Promise<unknown>
   mcpAction?(session: string, server: string, disabled: boolean, scope: 'project' | 'global'): Promise<unknown>
+  /** The Models-page login card's read face: OAuth providers + the one in-flight flow. */
+  loginState?(): Promise<unknown>
+  /** The card's writes: begin/answer/cancel/dismiss/signout, all host-level. */
+  loginAction?(action: string, provider: string, value: string): Promise<unknown>
 }
 
 export function registerBrowserSurfaceRoute(ctx: Context, registry: BrowserSurfaces, hooks?: BrowserSurfaceHooks): boolean {
@@ -839,6 +843,50 @@ export function registerBrowserSurfaceRoute(ctx: Context, registry: BrowserSurfa
           }
           const scope = payload.scope === 'global' ? 'global' : 'project'
           outcome = await hooks.mcpAction(payload.session, payload.server, payload.disabled, scope)
+        } catch (error) {
+          response.writeHead(400, { 'content-type': 'application/json; charset=utf-8' })
+          response.end(JSON.stringify({ error: error instanceof Error ? error.message : String(error) }))
+          return
+        }
+        response.writeHead(200, { 'content-type': 'application/json; charset=utf-8' })
+        response.end(JSON.stringify(outcome ?? { ok: true }))
+        return
+      }
+      // The Models-page login card's faces (alpha `settings.models.provider-card`
+      // seat): same hook pattern as the MCP tab — the runtime owns login
+      // semantics (the /login spine), this layer only carries bytes.
+      if (url.pathname === '/pi2dsh/login-state' && (method === 'GET' || method === 'HEAD')) {
+        if (hooks?.loginState === undefined) {
+          response.writeHead(404)
+          response.end()
+          return
+        }
+        const body = JSON.stringify(await hooks.loginState())
+        response.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' })
+        response.end(method === 'HEAD' ? undefined : body)
+        return
+      }
+      if (url.pathname === '/pi2dsh/login-action' && method === 'POST') {
+        if (hooks?.loginAction === undefined) {
+          response.writeHead(404)
+          response.end()
+          return
+        }
+        const chunks: Buffer[] = []
+        const raw = await new Promise<string>((settle) => {
+          const stream = req as unknown as { on(event: string, handler: (chunk?: unknown) => void): void }
+          stream.on('data', chunk => chunks.push(Buffer.from(chunk as Uint8Array)))
+          stream.on('end', () => settle(Buffer.concat(chunks).toString('utf8')))
+        })
+        let outcome: unknown
+        try {
+          const payload = JSON.parse(raw || '{}') as { action?: unknown, provider?: unknown, value?: unknown }
+          if (typeof payload.action !== 'string') throw new TypeError('login-action needs { action }')
+          outcome = await hooks.loginAction(
+            payload.action,
+            typeof payload.provider === 'string' ? payload.provider : '',
+            typeof payload.value === 'string' ? payload.value : '',
+          )
         } catch (error) {
           response.writeHead(400, { 'content-type': 'application/json; charset=utf-8' })
           response.end(JSON.stringify({ error: error instanceof Error ? error.message : String(error) }))

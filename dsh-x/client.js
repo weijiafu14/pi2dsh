@@ -604,6 +604,53 @@ window.__ModuleLoader__.load({
 			imageError: {
 				padding: "12px",
 				color: "#F63218"
+			},
+			loginArea: {
+				display: "flex",
+				flexDirection: "column",
+				gap: "6px",
+				margin: "8px 0 0",
+				padding: "8px 10px",
+				borderRadius: "8px",
+				border: "1px solid var(--dsw-alias-border-l2, rgba(0,0,0,0.1))",
+				background: "var(--dsw-alias-bg-layer-2, rgba(0,0,0,0.02))",
+				font: "400 12px/1.5 system-ui, sans-serif"
+			},
+			loginRow: {
+				display: "flex",
+				alignItems: "center",
+				gap: "8px",
+				justifyContent: "space-between"
+			},
+			loginButton: {
+				cursor: "pointer",
+				padding: "3px 10px",
+				borderRadius: "6px",
+				border: "1px solid var(--dsw-alias-border-l2, rgba(0,0,0,0.15))",
+				background: "transparent",
+				color: "inherit",
+				font: "500 12px/1.5 system-ui, sans-serif"
+			},
+			loginStatus: { opacity: .75 },
+			loginNotice: {
+				whiteSpace: "pre-wrap",
+				wordBreak: "break-word",
+				opacity: .85
+			},
+			loginCode: {
+				font: "600 14px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace",
+				letterSpacing: "0.08em",
+				userSelect: "all"
+			},
+			loginInput: {
+				flex: 1,
+				minWidth: "120px",
+				padding: "4px 8px",
+				borderRadius: "6px",
+				border: "1px solid var(--dsw-alias-border-l2, rgba(0,0,0,0.15))",
+				background: "transparent",
+				color: "inherit",
+				font: "inherit"
 			}
 		};
 		/** Pull one image through DSH's own session-authorized attachment RPC. */
@@ -975,6 +1022,160 @@ window.__ModuleLoader__.load({
 				style: styles.cardMono
 			}, ansiText(line)))));
 		}
+		const loginReaders = /* @__PURE__ */ new Set();
+		let loginLatest;
+		let loginTimer;
+		function watchLogin(notify) {
+			loginReaders.add(notify);
+			if (loginLatest !== void 0) notify(loginLatest);
+			if (loginTimer === void 0) {
+				const poll = async () => {
+					try {
+						const response = await fetch("/pi2dsh/login-state");
+						if (!response.ok) return;
+						loginLatest = await response.json();
+						for (const reader of loginReaders) reader(loginLatest);
+					} catch {}
+				};
+				poll();
+				loginTimer = window.setInterval(() => {
+					poll();
+				}, 2e3);
+			}
+			return () => {
+				loginReaders.delete(notify);
+				if (loginReaders.size > 0 || loginTimer === void 0) return;
+				window.clearInterval(loginTimer);
+				loginTimer = void 0;
+				loginLatest = void 0;
+			};
+		}
+		function useLoginState() {
+			const [payload, setPayload] = (0, react.useState)(loginLatest);
+			(0, react.useEffect)(() => watchLogin(setPayload), []);
+			return payload;
+		}
+		function postLoginAction(action, provider, value = "") {
+			fetch("/pi2dsh/login-action", {
+				method: "POST",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify({
+					action,
+					provider,
+					value
+				})
+			}).catch(() => {});
+		}
+		/** Render a notice string with its URLs clickable (the spine's short links). */
+		function linkified(text) {
+			return text.split(/(https?:\/\/\S+)/u).map((part, index) => /^https?:\/\//u.test(part) ? (0, react.createElement)("a", {
+				key: index,
+				href: part,
+				target: "_blank",
+				rel: "noreferrer"
+			}, part) : part);
+		}
+		/**
+		* One provider's sign-in controls: status, the sign-in/out button, and the
+		* live flow (notices, device code, questions, outcome). Shared by the per-row
+		* card and the footer directory.
+		*/
+		function LoginControls({ id, state }) {
+			const [draft, setDraft] = (0, react.useState)("");
+			const me = (state.providers ?? []).find((entry) => entry.id === id);
+			if (me === void 0) return null;
+			const signedIn = me.signedIn === true;
+			const name = typeof me.name === "string" ? me.name : id;
+			const flow = state.flow !== void 0 && state.flow.provider === id ? state.flow : void 0;
+			const question = flow?.question;
+			const done = flow?.done;
+			const running = flow !== void 0 && done === void 0;
+			return (0, react.createElement)("div", {
+				"data-pi2dsh": "login-card",
+				style: styles.loginArea
+			}, (0, react.createElement)("div", { style: styles.loginRow }, (0, react.createElement)("span", { style: styles.loginStatus }, signedIn ? `Signed in to ${name} (pi2dsh)` : `Sign in to ${name} with its own login (pi2dsh)`), running ? (0, react.createElement)("button", {
+				type: "button",
+				style: styles.loginButton,
+				onClick: () => postLoginAction("cancel", id)
+			}, "Cancel") : (0, react.createElement)("button", {
+				type: "button",
+				style: styles.loginButton,
+				onClick: () => postLoginAction(signedIn ? "signout" : "begin", id)
+			}, signedIn ? "Sign out" : "Sign in")), ...flow === void 0 ? [] : (flow.notices ?? []).map((notice, index) => (0, react.createElement)("div", {
+				key: `n-${index}`,
+				style: styles.loginNotice
+			}, ...linkified(String(notice.message ?? "")), notice.code === void 0 ? null : (0, react.createElement)("div", { style: styles.loginCode }, String(notice.code)))), question === void 0 ? null : (0, react.createElement)("div", { style: styles.loginRow }, question.kind === "select" ? (0, react.createElement)("span", void 0, (0, react.createElement)("div", { style: styles.loginNotice }, String(question.title ?? "")), ...(Array.isArray(question.options) ? question.options : []).map((option, index) => (0, react.createElement)("button", {
+				key: `o-${index}`,
+				type: "button",
+				style: {
+					...styles.loginButton,
+					margin: "2px 4px 0 0"
+				},
+				onClick: () => postLoginAction("answer", id, String(option))
+			}, String(option)))) : (0, react.createElement)("span", { style: {
+				display: "flex",
+				gap: "6px",
+				flex: 1,
+				alignItems: "center"
+			} }, (0, react.createElement)("span", { style: styles.loginNotice }, String(question.title ?? "")), (0, react.createElement)("input", {
+				style: styles.loginInput,
+				value: draft,
+				placeholder: typeof question.placeholder === "string" ? question.placeholder : "",
+				onChange: (event) => setDraft(event.target.value)
+			}), (0, react.createElement)("button", {
+				type: "button",
+				style: styles.loginButton,
+				onClick: () => {
+					postLoginAction("answer", id, draft);
+					setDraft("");
+				}
+			}, "OK"))), done === void 0 ? null : (0, react.createElement)("div", { style: styles.loginRow }, (0, react.createElement)("span", { style: {
+				...styles.loginNotice,
+				...done.ok === true ? {} : { color: "#F63218" }
+			} }, String(done.summary ?? "")), (0, react.createElement)("button", {
+				type: "button",
+				style: styles.loginButton,
+				onClick: () => postLoginAction("dismiss", id)
+			}, "Dismiss")));
+		}
+		/**
+		* Per-row extras on the Models page's provider cards, keyed 'llm-pi-ai': a
+		* logged-in Pi provider whose credential yields an api key rides an official
+		* llm-pi-ai profile, so its ROW carries the family namespace, and this entry
+		* puts the bridge's sign-in state on that row. Rows outside the bridge's
+		* OAuth ledger render nothing. (Bridge-TRANSPORT routes never get a row at
+		* all — the page lists only configured declarations, verified live on
+		* 0.1.2-alpha.1 — which is why the sign-in DIRECTORY lives in the footer
+		* below, not here.)
+		*/
+		function ProviderCardLogin(props) {
+			const state = useLoginState();
+			const id = props.provider?.provider;
+			if (typeof id !== "string" || state === void 0) return null;
+			return (0, react.createElement)(LoginControls, {
+				id,
+				state
+			});
+		}
+		/**
+		* The bridge's sign-in directory on the Models page footer: every OAuth
+		* provider the engine knows (builtins and package-registered alike), each
+		* with the same controls the per-row card shows. This is the seat that works
+		* BEFORE any login exists — the moment a user actually needs it.
+		*/
+		function LoginFooter() {
+			const state = useLoginState();
+			if (state === void 0 || (state.providers ?? []).length === 0) return null;
+			return (0, react.createElement)("div", { "data-pi2dsh": "login-footer" }, (0, react.createElement)("div", { style: {
+				...styles.loginStatus,
+				margin: "12px 0 0",
+				font: "500 12px/1.5 system-ui, sans-serif"
+			} }, "Pi provider sign-in (pi2dsh)"), ...(state.providers ?? []).map((provider) => typeof provider.id === "string" ? (0, react.createElement)(LoginControls, {
+				key: provider.id,
+				id: provider.id,
+				state
+			}) : null));
+		}
 		function textSeat(marker, valueKeys) {
 			return function TextSeat({ sessionId }) {
 				const { surfaces } = useBrowserState(sessionId);
@@ -1118,6 +1319,16 @@ window.__ModuleLoader__.load({
 					"workingIndicator",
 					"hiddenThinkingLabel"
 				])));
+				scope.slots.inject("settings.models.provider-card", () => scope.slots.register({
+					name: "settings.models.provider-card",
+					key: "llm-pi-ai"
+				}, ProviderCardLogin));
+				scope.slots.inject("settings.models.footer", () => scope.slots.register({
+					name: "settings.models.footer",
+					id: "pi2dsh-login",
+					order: 100,
+					label: "Pi provider sign-in"
+				}, LoginFooter));
 			});
 		}
 		//#endregion

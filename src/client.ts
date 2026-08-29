@@ -47,7 +47,7 @@ import { createElement, useEffect, useState, type ReactNode } from 'react'
 import { hasAnsi, parseAnsi } from './ansi.js'
 import { parseDiagnosticsWidget, type DiagnosticsView } from './diagnostics-model.js'
 
-interface SlotRegistration { name: string, id?: string, key?: string, order?: number, select?: (...args: unknown[]) => unknown }
+interface SlotRegistration { name: string, id?: string, key?: string, order?: number, label?: string, select?: (...args: unknown[]) => unknown }
 interface SlotScope {
   slots: {
     inject(name: string, apply: () => unknown): void
@@ -405,6 +405,30 @@ const styles = {
     borderRadius: '8px', objectFit: 'contain', background: 'rgba(0,0,0,0.08)',
   },
   imageError: { padding: '12px', color: '#F63218' },
+  // The Models-page login card (alpha provider-card seat).
+  loginArea: {
+    display: 'flex', flexDirection: 'column', gap: '6px', margin: '8px 0 0', padding: '8px 10px',
+    borderRadius: '8px', border: '1px solid var(--dsw-alias-border-l2, rgba(0,0,0,0.1))',
+    background: 'var(--dsw-alias-bg-layer-2, rgba(0,0,0,0.02))',
+    font: '400 12px/1.5 system-ui, sans-serif',
+  },
+  loginRow: { display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'space-between' },
+  loginButton: {
+    cursor: 'pointer', padding: '3px 10px', borderRadius: '6px',
+    border: '1px solid var(--dsw-alias-border-l2, rgba(0,0,0,0.15))',
+    background: 'transparent', color: 'inherit', font: '500 12px/1.5 system-ui, sans-serif',
+  },
+  loginStatus: { opacity: 0.75 },
+  loginNotice: { whiteSpace: 'pre-wrap', wordBreak: 'break-word', opacity: 0.85 },
+  loginCode: {
+    font: '600 14px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace',
+    letterSpacing: '0.08em', userSelect: 'all',
+  },
+  loginInput: {
+    flex: 1, minWidth: '120px', padding: '4px 8px', borderRadius: '6px',
+    border: '1px solid var(--dsw-alias-border-l2, rgba(0,0,0,0.15))',
+    background: 'transparent', color: 'inherit', font: 'inherit',
+  },
 } as const
 
 /** Pull one image through DSH's own session-authorized attachment RPC. */
@@ -789,6 +813,171 @@ function WidgetUnit({ owner, text: raw }: { owner: string, text: string }): Reac
   )
 }
 
+/** What `/pi2dsh/login-state` serves: the OAuth providers and the one flow. */
+interface LoginStatePayload {
+  providers?: Array<{ id?: unknown, name?: unknown, signedIn?: unknown }>
+  flow?: {
+    provider?: unknown
+    notices?: Array<{ message?: unknown, code?: unknown }>
+    question?: { id?: unknown, kind?: unknown, title?: unknown, placeholder?: unknown, options?: unknown }
+    done?: { ok?: unknown, summary?: unknown }
+  }
+}
+
+// One login-state poller shared by every provider card on the settings page —
+// same economy as the browser-state watcher above.
+const loginReaders = new Set<(payload: LoginStatePayload) => void>()
+let loginLatest: LoginStatePayload | undefined
+let loginTimer: number | undefined
+
+function watchLogin(notify: (payload: LoginStatePayload) => void): () => void {
+  loginReaders.add(notify)
+  if (loginLatest !== undefined) notify(loginLatest)
+  if (loginTimer === undefined) {
+    const poll = async () => {
+      try {
+        const response = await fetch('/pi2dsh/login-state')
+        if (!response.ok) return
+        loginLatest = await response.json() as LoginStatePayload
+        for (const reader of loginReaders) reader(loginLatest)
+      } catch {
+        // A dropped poll keeps the last view; see the browser-state watcher.
+      }
+    }
+    void poll()
+    loginTimer = window.setInterval(() => { void poll() }, 2000)
+  }
+  return () => {
+    loginReaders.delete(notify)
+    if (loginReaders.size > 0 || loginTimer === undefined) return
+    window.clearInterval(loginTimer)
+    loginTimer = undefined
+    loginLatest = undefined
+  }
+}
+
+function useLoginState(): LoginStatePayload | undefined {
+  const [payload, setPayload] = useState<LoginStatePayload | undefined>(loginLatest)
+  useEffect(() => watchLogin(setPayload), [])
+  return payload
+}
+
+function postLoginAction(action: string, provider: string, value = ''): void {
+  void fetch('/pi2dsh/login-action', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ action, provider, value }),
+  }).catch(() => {
+    // The next poll shows whatever actually happened; a lost POST is retried
+    // by the human, who is looking at the card.
+  })
+}
+
+/** Render a notice string with its URLs clickable (the spine's short links). */
+function linkified(text: string): ReactNode[] {
+  return text.split(/(https?:\/\/\S+)/u).map((part, index) =>
+    /^https?:\/\//u.test(part)
+      ? createElement('a', { key: index, href: part, target: '_blank', rel: 'noreferrer' }, part)
+      : part)
+}
+
+/**
+ * One provider's sign-in controls: status, the sign-in/out button, and the
+ * live flow (notices, device code, questions, outcome). Shared by the per-row
+ * card and the footer directory.
+ */
+function LoginControls({ id, state }: { id: string, state: LoginStatePayload }): ReactNode {
+  const [draft, setDraft] = useState('')
+  const me = (state.providers ?? []).find(entry => entry.id === id)
+  if (me === undefined) return null
+  const signedIn = me.signedIn === true
+  const name = typeof me.name === 'string' ? me.name : id
+  const flow = state.flow !== undefined && state.flow.provider === id ? state.flow : undefined
+  const question = flow?.question
+  const done = flow?.done
+  const running = flow !== undefined && done === undefined
+  return createElement('div', { 'data-pi2dsh': 'login-card', style: styles.loginArea },
+    createElement('div', { style: styles.loginRow },
+      createElement('span', { style: styles.loginStatus },
+        signedIn ? `Signed in to ${name} (pi2dsh)` : `Sign in to ${name} with its own login (pi2dsh)`),
+      running
+        ? createElement('button', {
+          type: 'button', style: styles.loginButton,
+          onClick: () => postLoginAction('cancel', id),
+        }, 'Cancel')
+        : createElement('button', {
+          type: 'button', style: styles.loginButton,
+          onClick: () => postLoginAction(signedIn ? 'signout' : 'begin', id),
+        }, signedIn ? 'Sign out' : 'Sign in')),
+    ...(flow === undefined ? [] : (flow.notices ?? []).map((notice, index) =>
+      createElement('div', { key: `n-${index}`, style: styles.loginNotice },
+        ...linkified(String(notice.message ?? '')),
+        notice.code === undefined ? null : createElement('div', { style: styles.loginCode }, String(notice.code))))),
+    question === undefined ? null : createElement('div', { style: styles.loginRow },
+      question.kind === 'select'
+        ? createElement('span', undefined,
+          createElement('div', { style: styles.loginNotice }, String(question.title ?? '')),
+          ...(Array.isArray(question.options) ? question.options : []).map((option, index) =>
+            createElement('button', {
+              key: `o-${index}`, type: 'button', style: { ...styles.loginButton, margin: '2px 4px 0 0' },
+              onClick: () => postLoginAction('answer', id, String(option)),
+            }, String(option))))
+        : createElement('span', { style: { display: 'flex', gap: '6px', flex: 1, alignItems: 'center' } },
+          createElement('span', { style: styles.loginNotice }, String(question.title ?? '')),
+          createElement('input', {
+            style: styles.loginInput, value: draft,
+            placeholder: typeof question.placeholder === 'string' ? question.placeholder : '',
+            onChange: (event: { target: { value: string } }) => setDraft(event.target.value),
+          }),
+          createElement('button', {
+            type: 'button', style: styles.loginButton,
+            onClick: () => { postLoginAction('answer', id, draft); setDraft('') },
+          }, 'OK'))),
+    done === undefined ? null : createElement('div', { style: styles.loginRow },
+      createElement('span', { style: { ...styles.loginNotice, ...(done.ok === true ? {} : { color: '#F63218' }) } },
+        String(done.summary ?? '')),
+      createElement('button', {
+        type: 'button', style: styles.loginButton,
+        onClick: () => postLoginAction('dismiss', id),
+      }, 'Dismiss')),
+  )
+}
+
+/**
+ * Per-row extras on the Models page's provider cards, keyed 'llm-pi-ai': a
+ * logged-in Pi provider whose credential yields an api key rides an official
+ * llm-pi-ai profile, so its ROW carries the family namespace, and this entry
+ * puts the bridge's sign-in state on that row. Rows outside the bridge's
+ * OAuth ledger render nothing. (Bridge-TRANSPORT routes never get a row at
+ * all — the page lists only configured declarations, verified live on
+ * 0.1.2-alpha.1 — which is why the sign-in DIRECTORY lives in the footer
+ * below, not here.)
+ */
+function ProviderCardLogin(props: { provider?: { provider?: unknown } }): ReactNode {
+  const state = useLoginState()
+  const id = props.provider?.provider
+  if (typeof id !== 'string' || state === undefined) return null
+  return createElement(LoginControls, { id, state })
+}
+
+/**
+ * The bridge's sign-in directory on the Models page footer: every OAuth
+ * provider the engine knows (builtins and package-registered alike), each
+ * with the same controls the per-row card shows. This is the seat that works
+ * BEFORE any login exists — the moment a user actually needs it.
+ */
+function LoginFooter(): ReactNode {
+  const state = useLoginState()
+  if (state === undefined || (state.providers ?? []).length === 0) return null
+  return createElement('div', { 'data-pi2dsh': 'login-footer' },
+    createElement('div', { style: { ...styles.loginStatus, margin: '12px 0 0', font: '500 12px/1.5 system-ui, sans-serif' } },
+      'Pi provider sign-in (pi2dsh)'),
+    ...(state.providers ?? []).map(provider =>
+      typeof provider.id === 'string'
+        ? createElement(LoginControls, { key: provider.id, id: provider.id, state })
+        : null))
+}
+
 function textSeat(marker: string, valueKeys: readonly SurfaceKey[]) {
   return function TextSeat({ sessionId }: { sessionId?: string }) {
     const { surfaces } = useBrowserState(sessionId)
@@ -940,5 +1129,18 @@ export function apply(ctx: ClientContext, options?: { sideThreads?: boolean }): 
     scope.slots.inject('conversation.composer.dock', () => scope.slots.register({
       name: 'conversation.composer.dock', id: 'pi2dsh-working', order: 1,
     }, textSeat('working', ['footer', 'workingMessage', 'workingIndicator', 'hiddenThinkingLabel'])))
+    // The Models settings page's seats (0.1.2 line): the per-row extension
+    // area for llm-pi-ai family rows (logged-in Pi providers ride official
+    // llm-pi-ai profiles), and the footer for the bridge's own sign-in
+    // directory (the page renders only CONFIGURED rows, so a signed-out
+    // provider has no row to hang a card on — verified live on alpha.1).
+    // On hosts without these seats (rc lines) the names are never declared,
+    // so the callbacks never run: graceful absence, not a version probe.
+    scope.slots.inject('settings.models.provider-card', () => scope.slots.register({
+      name: 'settings.models.provider-card', key: 'llm-pi-ai',
+    }, ProviderCardLogin))
+    scope.slots.inject('settings.models.footer', () => scope.slots.register({
+      name: 'settings.models.footer', id: 'pi2dsh-login', order: 100, label: 'Pi provider sign-in',
+    }, LoginFooter))
   })
 }
