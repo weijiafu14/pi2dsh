@@ -560,3 +560,9 @@
 
 毙掉：#2476（与 #1851 同作者同项目，避免重复打扰）；#3634（作者已自答原生根因与解法，再荐插件是推销味）。
 盘点更正：此前口径"code-nav 9 帖"经逐条重扫不成立（queue 里并无 9 条 pi-fff/pi-lens 行），实际站得住的就上述 2 条——按宁可少发原则收敛。
+
+## 上游提案（2026-08-29，0.23.0 发版后）
+
+| # | 性质 | 依据 | 链接 |
+|---|---|---|---|
+| 5011 | 上游提案（Ideas） | ARCH-001 跟进：alpha fail-closed 笔记明写"等一个真实仓外事件消费者"，我们带 alpha 真机复现（`pi2dsh/probe` seq 45 → `SessionFormatUnsupportedError` 用户可见拒载）+ 三条注册形状应门 | [d](https://github.com/deepseek-ai/deepseek-harness/discussions/5011) |

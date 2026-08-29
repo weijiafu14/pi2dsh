@@ -74,6 +74,18 @@ goal/plan/job 也不等于验证 DSH 的同名 subsystem。这些结论应作为
   那个 consumer，上游提案时机已到。注意：`SessionEventMap` 的
   declaration-merge 可扩展性只服务**仓内**插件（生成清单收录它们），不构成
   仓外通道；据此 sidecar 旁路与本缺口分级维持不变。
+- **0.1.2-alpha.1 跟进（2026-08-29）**：alpha 的官方笔记把该缺口显式化为
+  fail-closed（仓外 `SessionEventMap` 成员运行期可写、reload 时
+  `SessionFormatUnsupportedError` 拒载整个会话），并明写"until a real
+  external-event consumer justifies a registration mechanism"。已发跟进提案
+  [DSH Discussion #5011](https://github.com/deepseek-ai/deepseek-harness/discussions/5011)
+  （内部底稿 [`community/upstream-proposal-session-event-registration-alpha.md`](../community/upstream-proposal-session-event-registration-alpha.md)），
+  附 alpha 真机复现：克隆健康会话工件、追加一条 `pi2dsh/probe`（seq 45）仓外
+  事件，web 端点开该会话即得 "contains event type … unknown to this harness;
+  refusing to interpret the log" 的用户可见拒载（截图
+  `community/seam-evidence/46-arch001-open-clone.png`）。提案形状：namespaced
+  注册 + 注册期声明 surface 姿态 + 声明包持有 decoder，保持 fail-closed 语义、
+  只把边界从"仓内成员资格"挪到"注册"。
 
 ### DSH-ARCH-002：模型 compat schema 丢字段（rc.8 已修复）
 
