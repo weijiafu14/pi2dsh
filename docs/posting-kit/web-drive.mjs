@@ -85,13 +85,19 @@ export async function openApp() {
     // and retype once, because a composer that swallowed the opening keystrokes
     // while mounting accepts the whole line on the second pass. A mismatch that
     // survives a clean retype is a real problem and still throws.
-    let typed = await composer.inputValue().catch(() => text)
-    if (typed !== text) {
+    // The composer is a <textarea> on rc lines and a Lexical contenteditable
+    // on the 0.1.2 line; inputValue() throws on the latter, so fall back to
+    // the element's text. Trim: contenteditable renders a trailing newline.
+    const readComposer = () => composer.inputValue().catch(() =>
+      composer.evaluate(node => (node.innerText ?? node.textContent ?? '').replace(/\u00a0/gu, ' ')).catch(() => text))
+    const matches = value => value === text || value.trim() === text.trim()
+    let typed = await readComposer()
+    if (!matches(typed)) {
       await composer.fill('')
       await composer.pressSequentially(text, { delay: 12 })
-      typed = await composer.inputValue().catch(() => text)
+      typed = await readComposer()
     }
-    if (typed !== text) {
+    if (!matches(typed)) {
       // Say WHAT was in the way. An empty composer after focusing means
       // something is still covering it — a first-run dialog on a fresh
       // DSH_HOME, most often — and the bare mismatch names none of that.

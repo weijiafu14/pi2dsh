@@ -692,7 +692,12 @@ async function runSideConversation() {
     const deadline = Date.now() + 60_000
     for (;;) {
       if (web.exitCode !== null) throw new Error(`dsh web exited on startup:\n${webLog}`)
-      const up = await fetch(url).then(() => true).catch(() => false)
+      const up = await fetch(url).then(
+        // 200 = rc lines; 401 = the 0.1.2 launch-token gate answering an
+        // uncookied index read from OUR just-spawned server — up and guarding.
+        // Anything else (the leaked-zombie 400 of 2026-08-28) is NOT ready.
+        response => response.ok || response.status === 401,
+      ).catch(() => false)
       if (up) break
       if (Date.now() > deadline) throw new Error(`dsh web never came up:\n${webLog}`)
       await new Promise(done => setTimeout(done, 500))
@@ -702,7 +707,7 @@ async function runSideConversation() {
     // below read the session logs, never the page (the page legitimately
     // shows the answer — in the side surfaces — so page text proves nothing).
     const shots = shotDir ?? join(scratch, 'shots')
-    await execFile('node', [join(projectRoot, 'docs/posting-kit/capture-side-chat.mjs'), shots, '--url', url], {
+    await execFile('node', [join(projectRoot, 'docs/posting-kit/capture-side-chat.mjs'), shots, '--url', authedUrl(url, webLog)], {
       cwd: projectRoot,
       env: { ...env, PLAYWRIGHT_FROM: playwrightFrom },
       timeout: 300_000,
@@ -781,7 +786,12 @@ async function runVisionBridgeWeb() {
     const deadline = Date.now() + 60_000
     for (;;) {
       if (web.exitCode !== null) throw new Error(`dsh web exited on startup:\n${webLog}`)
-      const up = await fetch(url).then(() => true).catch(() => false)
+      const up = await fetch(url).then(
+        // 200 = rc lines; 401 = the 0.1.2 launch-token gate answering an
+        // uncookied index read from OUR just-spawned server — up and guarding.
+        // Anything else (the leaked-zombie 400 of 2026-08-28) is NOT ready.
+        response => response.ok || response.status === 401,
+      ).catch(() => false)
       if (up) break
       if (Date.now() > deadline) throw new Error(`dsh web never came up:\n${webLog}`)
       await new Promise(done => setTimeout(done, 500))
@@ -791,7 +801,7 @@ async function runVisionBridgeWeb() {
     await stat(image)
     const shots = shotDir ?? join(scratch, 'shots')
     await execFile('node', [
-      join(projectRoot, 'docs/posting-kit/capture-vision.mjs'), shots, '--url', url, '--image', image,
+      join(projectRoot, 'docs/posting-kit/capture-vision.mjs'), shots, '--url', authedUrl(url, webLog), '--image', image,
     ], {
       cwd: projectRoot,
       env: { ...env, PLAYWRIGHT_FROM: playwrightFrom },
@@ -963,7 +973,12 @@ async function runPresentationSurfaces() {
     const deadline = Date.now() + 60_000
     for (;;) {
       if (web.exitCode !== null) throw new Error(`dsh web exited on startup:\n${webLog}`)
-      const up = await fetch(url).then(() => true).catch(() => false)
+      const up = await fetch(url).then(
+        // 200 = rc lines; 401 = the 0.1.2 launch-token gate answering an
+        // uncookied index read from OUR just-spawned server — up and guarding.
+        // Anything else (the leaked-zombie 400 of 2026-08-28) is NOT ready.
+        response => response.ok || response.status === 401,
+      ).catch(() => false)
       if (up) break
       if (Date.now() > deadline) throw new Error(`dsh web never came up:\n${webLog}`)
       await new Promise(done => setTimeout(done, 500))
@@ -972,7 +987,7 @@ async function runPresentationSurfaces() {
     // The capture script IS the assertion: each seat has to hold the string the
     // Pi package supplied, checked inside that seat rather than in page text.
     const shots = shotDir ?? join(scratch, 'shots')
-    await execFile('node', [join(projectRoot, 'docs/posting-kit/capture-surfaces.mjs'), shots, '--url', url], {
+    await execFile('node', [join(projectRoot, 'docs/posting-kit/capture-surfaces.mjs'), shots, '--url', authedUrl(url, webLog)], {
       cwd: projectRoot,
       env: { ...env, PLAYWRIGHT_FROM: playwrightFrom },
       timeout: 300_000,
@@ -1254,6 +1269,21 @@ async function runSubagents() {
  * @param env - environment for npm pack.
  * @returns absolute tarball path, installable with `dsh plugin add`.
  */
+
+/**
+ * The url a BROWSER should open for this server. The 0.1.2 line prints a
+ * one-time launch token into the server log and answers uncookied index
+ * reads with 401; opening the printed `?token=` url once exchanges it for
+ * the session cookie. rc lines print no token and the url passes through.
+ * @param url - the bare origin url.
+ * @param webLog - captured server stdout+stderr so far.
+ * @returns the url for the capture's page.goto().
+ */
+function authedUrl(url, webLog) {
+  const token = /[?&]token=([A-Za-z0-9_-]+)/u.exec(webLog)
+  return token === null ? url : `${url}/?token=${token[1]}`
+}
+
 async function stageSuiteTarball(scratch, env) {
   const suiteDir = join(scratch, 'dsh-x')
   await mkdir(suiteDir, { recursive: true })
@@ -1319,7 +1349,7 @@ async function runDshX() {
     assert(!/failed to mount/u.test(webLog), `a suite member failed to mount:\n${webLog.split('\n').filter(line => /failed to mount/u.test(line)).join('\n')}`)
 
     // The falsifiable web check: each member's command offered by the popover.
-    const probe = await execFile('node', [join(projectRoot, 'scripts/dsh-x-web-probe.mjs'), join(scratch, 'shots'), '--url', url], {
+    const probe = await execFile('node', [join(projectRoot, 'scripts/dsh-x-web-probe.mjs'), join(scratch, 'shots'), '--url', authedUrl(url, webLog)], {
       cwd: projectRoot,
       env: { ...env, PLAYWRIGHT_FROM: playwrightFrom },
       timeout: 600_000,
@@ -1581,7 +1611,12 @@ async function runCodeNavigationWeb() {
     const deadline = Date.now() + 60_000
     for (;;) {
       if (web.exitCode !== null) throw new Error(`dsh web exited on startup:\n${webLog}`)
-      const up = await fetch(url).then(() => true).catch(() => false)
+      const up = await fetch(url).then(
+        // 200 = rc lines; 401 = the 0.1.2 launch-token gate answering an
+        // uncookied index read from OUR just-spawned server — up and guarding.
+        // Anything else (the leaked-zombie 400 of 2026-08-28) is NOT ready.
+        response => response.ok || response.status === 401,
+      ).catch(() => false)
       if (up) break
       if (Date.now() > deadline) throw new Error(`dsh web never came up:\n${webLog}`)
       await new Promise(done => setTimeout(done, 500))
@@ -1589,7 +1624,7 @@ async function runCodeNavigationWeb() {
 
     const shots = shotDir ?? join(scratch, 'shots')
     await execFile('node', [
-      join(projectRoot, 'docs/posting-kit/capture-codenav.mjs'), shots, '--url', url,
+      join(projectRoot, 'docs/posting-kit/capture-codenav.mjs'), shots, '--url', authedUrl(url, webLog),
     ], {
       cwd: projectRoot,
       // The isolated HOME belongs to the dsh server process (pi-lens caches);
@@ -1786,7 +1821,12 @@ async function runMcpAtScaleWeb() {
     const deadline = Date.now() + 60_000
     for (;;) {
       if (web.exitCode !== null) throw new Error(`dsh web exited on startup:\n${webLog}`)
-      const up = await fetch(url).then(() => true).catch(() => false)
+      const up = await fetch(url).then(
+        // 200 = rc lines; 401 = the 0.1.2 launch-token gate answering an
+        // uncookied index read from OUR just-spawned server — up and guarding.
+        // Anything else (the leaked-zombie 400 of 2026-08-28) is NOT ready.
+        response => response.ok || response.status === 401,
+      ).catch(() => false)
       if (up) break
       if (Date.now() > deadline) throw new Error(`dsh web never came up:\n${webLog}`)
       await new Promise(done => setTimeout(done, 500))
@@ -1794,7 +1834,7 @@ async function runMcpAtScaleWeb() {
 
     const shots = shotDir ?? join(scratch, 'shots')
     await execFile('node', [
-      join(projectRoot, 'docs/posting-kit/capture-mcp-scale.mjs'), shots, '--url', url,
+      join(projectRoot, 'docs/posting-kit/capture-mcp-scale.mjs'), shots, '--url', authedUrl(url, webLog),
     ], {
       cwd: projectRoot,
       env: { ...env, ...(process.env.HOME === undefined ? {} : { HOME: process.env.HOME }), PLAYWRIGHT_FROM: playwrightFrom, CAPTURE_WORKSPACE: missionDir },

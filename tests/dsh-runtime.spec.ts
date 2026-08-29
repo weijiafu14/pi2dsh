@@ -259,6 +259,57 @@ describe('an installed Pi package in the real DSH runtime', () => {
     expect([...storedBytes.subarray(0, 8)]).toEqual([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
     expect(storedBytes.length).toBeGreaterThan(8)
 
+    // Over-budget image: a REAL 3000x1500 PNG built by hand (all-black RGBA,
+    // zlib IDAT) — 4.5M pixels, above the 0.1.2 line's
+    // normalizedImageMaxPixels default of 2048x2048. Capability-shaped, not
+    // version-sniffed: dimensions either survive verbatim (rc attachment
+    // services) or were scaled within the pixel budget keeping aspect and
+    // the 8192 long-edge cap (0.1.2 "budget master pixels", 30704dc1).
+    {
+      const { deflateSync } = await import('node:zlib')
+      const bigW = 3000
+      const bigH = 1500
+      const crcTable = Array.from({ length: 256 }, (_, n) => {
+        let c = n
+        for (let k = 0; k < 8; k += 1) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1
+        return c >>> 0
+      })
+      const crc32 = (bytes: Buffer) => {
+        let c = 0xffffffff
+        for (const byte of bytes) c = (crcTable[(c ^ byte) & 0xff] as number) ^ (c >>> 8)
+        return (c ^ 0xffffffff) >>> 0
+      }
+      const chunk = (type: string, body: Buffer) => {
+        const head = Buffer.concat([Buffer.from(type, 'ascii'), body])
+        const out = Buffer.alloc(8 + body.length + 4)
+        out.writeUInt32BE(body.length, 0)
+        head.copy(out, 4)
+        out.writeUInt32BE(crc32(head), 8 + body.length)
+        return out
+      }
+      const ihdr = Buffer.alloc(13)
+      ihdr.writeUInt32BE(bigW, 0)
+      ihdr.writeUInt32BE(bigH, 4)
+      ihdr[8] = 8
+      ihdr[9] = 6
+      const bigPng = Buffer.concat([
+        Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+        chunk('IHDR', ihdr),
+        chunk('IDAT', deflateSync(Buffer.alloc(bigH * (1 + bigW * 4)))),
+        chunk('IEND', Buffer.alloc(0)),
+      ])
+      const savedBig = await ctx.attachments.saveImage({ data: bigPng, mediaType: 'image/png' })
+      const w = (savedBig as { width?: number }).width ?? bigW
+      const h = (savedBig as { height?: number }).height ?? bigH
+      const verbatim = w === bigW && h === bigH
+      const budgeted = w * h <= 2048 * 2048 + 1
+        && Math.max(w, h) <= 8192
+        && Math.abs(w / h - bigW / bigH) < 0.05
+      expect(verbatim || budgeted).toBe(true)
+      const storedBig = Buffer.from((await ctx.attachments.readImage(savedBig)).data)
+      expect([...storedBig.subarray(0, 8)]).toEqual([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
+    }
+
     const messageProbe = await ctx.tools.execute({
       signal,
       callId: CallId('message-probe'),
