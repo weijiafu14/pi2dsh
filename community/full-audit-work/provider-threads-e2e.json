@@ -1,0 +1,284 @@
+{
+  "meta": {
+    "when": "2026-08-30T08:21:26.353Z",
+    "cli": {
+      "spec": "@deepseek-ai/dsh@0.1.1-rc.2",
+      "installed": "0.1.1-rc.2"
+    },
+    "engine": {
+      "spec": "pi2dsh@0.23.0",
+      "installed": "0.23.0"
+    },
+    "upstream": "https://api.deepseek.com",
+    "model": "deepseek-chat"
+  },
+  "cases": {
+    "tools-fields": {
+      "status": "passed",
+      "requests": 3,
+      "thread": 947,
+      "toolsDeclared": [
+        {
+          "name": "bash",
+          "descriptionChars": 1836,
+          "params": {
+            "command": 28,
+            "description": 242,
+            "timeoutMs": 110,
+            "workdir": 110,
+            "run_in_background": 120,
+            "sandbox_permissions": 153,
+            "justification": 118
+          }
+        },
+        {
+          "name": "create_goal",
+          "descriptionChars": 342,
+          "params": {
+            "objective": 73,
+            "max_goal_rounds": 70
+          }
+        },
+        {
+          "name": "edit",
+          "descriptionChars": 59,
+          "params": {
+            "file_path": 49,
+            "old_string": 44,
+            "new_string": 66,
+            "replace_all": 88,
+            "sandbox_permissions": 163,
+            "justification": 125
+          }
+        },
+        {
+          "name": "exit_plan_mode",
+          "descriptionChars": 327,
+          "params": {
+            "plan": 72
+          }
+        },
+        {
+          "name": "get_goal",
+          "descriptionChars": 236,
+          "params": {}
+        },
+        {
+          "name": "glob",
+          "descriptionChars": 407,
+          "params": {
+            "pattern": 222,
+            "path": 95
+          }
+        },
+        {
+          "name": "grep",
+          "descriptionChars": 269,
+          "params": {
+            "pattern": 50,
+            "path": 100,
+            "include": 109
+          }
+        },
+        {
+          "name": "interrupt_agent",
+          "descriptionChars": 504,
+          "params": {
+            "agent_id": 47
+          }
+        },
+        {
+          "name": "job_kill",
+          "descriptionChars": 136,
+          "params": {
+            "job_id": 61,
+            "reason": 68
+          }
+        },
+        {
+          "name": "job_list",
+          "descriptionChars": 85,
+          "params": {}
+        },
+        {
+          "name": "job_output",
+          "descriptionChars": 258,
+          "params": {
+            "job_id": 61,
+            "wait": 138,
+            "timeout_ms": 134
+          }
+        },
+        {
+          "name": "list_agents",
+          "descriptionChars": 1041,
+          "params": {
+            "scope": 93
+          }
+        },
+        {
+          "name": "ralph",
+          "descriptionChars": 489,
+          "params": {
+            "objective": 63,
+            "maxRounds": 76
+          }
+        },
+        {
+          "name": "read",
+          "descriptionChars": 56,
+          "params": {
+            "file_path": 49,
+            "offset": 44,
+            "limit": 52
+          }
+        },
+        {
+          "name": "read_image",
+          "descriptionChars": 371,
+          "params": {
+            "file_path": 59
+          }
+        },
+        {
+          "name": "send_message",
+          "descriptionChars": 428,
+          "params": {
+            "subagent_id": 66,
+            "message": 39
+          }
+        },
+        {
+          "name": "skill",
+          "descriptionChars": 183,
+          "params": {
+            "name": 52
+          }
+        },
+        {
+          "name": "str_replace_editor",
+          "descriptionChars": 909,
+          "params": {
+            "command": 84,
+            "path": 68,
+            "file_text": 83,
+            "insert_line": 110,
+            "new_str": 182,
+            "old_str": 87,
+            "view_range": 330
+          }
+        },
+        {
+          "name": "subagent",
+          "descriptionChars": 791,
+          "params": {
+            "description": 66,
+            "prompt": 130,
+            "run_in_background": 166
+          }
+        },
+        {
+          "name": "subagent_fork",
+          "descriptionChars": 540,
+          "params": {
+            "description": 66,
+            "prompt": 131,
+            "run_in_background": 119
+          }
+        },
+        {
+          "name": "todo_write",
+          "descriptionChars": 805,
+          "params": {
+            "todos": 52
+          }
+        },
+        {
+          "name": "update_goal",
+          "descriptionChars": 396,
+          "params": {
+            "goal_id": 30,
+            "revision": 45,
+            "action": 42,
+            "objective": 51,
+            "max_goal_rounds": 45,
+            "blocked_reason": 63
+          }
+        },
+        {
+          "name": "web_search",
+          "descriptionChars": 152,
+          "params": {
+            "queries": 68
+          }
+        },
+        {
+          "name": "workflow",
+          "descriptionChars": 2500,
+          "params": {
+            "script": 126,
+            "meta": 54,
+            "args": 116
+          }
+        },
+        {
+          "name": "write",
+          "descriptionChars": 42,
+          "params": {
+            "file_path": 50,
+            "content": 33,
+            "sandbox_permissions": 163,
+            "justification": 125
+          }
+        }
+      ],
+      "shellTool": "bash",
+      "run": 737
+    },
+    "write-second-step": {
+      "status": "passed",
+      "requests": 3,
+      "thread": 3342,
+      "toolName": "write",
+      "callId": "call_00_hWfqooNMyI77fJyCJSyg0471",
+      "argsPreview": "\"{\\\"file_path\\\":\\\"probe-3342.txt\\\",\\\"content\\\":\\\"WRITE_PATH_OK\\\"}\"",
+      "modelSteps": 3
+    },
+    "parallel-calls": {
+      "status": "passed",
+      "requests": 3,
+      "thread": 2859,
+      "callIds": [
+        "call_00_RNcEWpwjqTQIMHXaeaZR1299",
+        "call_01_4I82nqHZjEUq7OIW3Wds8434"
+      ],
+      "sameStep": false,
+      "modelSteps": 3,
+      "historyRecords": 43
+    },
+    "long-output": {
+      "status": "passed",
+      "requests": 2,
+      "thread": 2659,
+      "chars": 25949,
+      "toolCallsUsed": 0,
+      "turnEndReason": "completed"
+    },
+    "encoding": {
+      "status": "passed",
+      "requests": 2,
+      "thread": 2670,
+      "chars": 280,
+      "cjkChars": 224
+    },
+    "token-limit": {
+      "status": "passed",
+      "requests": 2,
+      "thread": 1166,
+      "maxTokensSent": 24,
+      "chars": 132,
+      "turnEndReason": "max-tokens",
+      "cliExitNonzero": true
+    }
+  }
+}

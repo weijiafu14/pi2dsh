@@ -20,6 +20,7 @@ import { chmod, copyFile, mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile
 import { homedir, tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { promisify } from 'node:util'
+import { stageSuiteTarball } from './lib/suite-tarball.mjs'
 
 const execFile = promisify(execFileCallback)
 const projectRoot = resolve(new URL('..', import.meta.url).pathname)
@@ -304,9 +305,18 @@ async function main() {
       })
     }
 
+    // headless: engine + plugin (no browser half needed). web: the dsh-work-x
+    // suite — since the 2026-08-27 split the engine ships no client, and the
+    // inline image tool card is the suite's product surface (the suite already
+    // bundles @crazygit/pi-codex-image-gen as a member).
+    const suiteTarball = await stageSuiteTarball(projectRoot, engineSpec, scratch, env)
     for (const profile of ['headless', 'web']) {
-      await runDsh(['plugin', '--profile', profile, 'add', engineSpec])
-      await runDsh(['plugin', '--profile', profile, 'add', imagePluginSpec])
+      if (profile === 'web') {
+        await runDsh(['plugin', '--profile', profile, 'add', suiteTarball])
+      } else {
+        await runDsh(['plugin', '--profile', profile, 'add', engineSpec])
+        await runDsh(['plugin', '--profile', profile, 'add', imagePluginSpec])
+      }
       await writeFile(join(home, 'profiles', profile, 'cordis.patch.yml'), [
         '- id: session-persistence-jsonl',
         '  config:',

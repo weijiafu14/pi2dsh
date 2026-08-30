@@ -49,6 +49,16 @@ createServer((req, res) => {
         maxTokensField: parsed.max_completion_tokens !== undefined
           ? 'max_completion_tokens'
           : parsed.max_tokens !== undefined ? 'max_tokens' : null,
+        maxTokensValue: parsed.max_completion_tokens ?? parsed.max_tokens ?? null,
+        // What the tool declarations carried: name, description length, and
+        // per-parameter description lengths. Length instead of text keeps the
+        // log compact while still proving the fields were sent non-empty.
+        tools: Array.isArray(parsed.tools) ? parsed.tools.map(tool => ({
+          name: tool.function?.name,
+          descriptionChars: typeof tool.function?.description === 'string' ? tool.function.description.length : 0,
+          params: Object.fromEntries(Object.entries(tool.function?.parameters?.properties ?? {})
+            .map(([key, schema]) => [key, typeof schema?.description === 'string' ? schema.description.length : 0])),
+        })) : null,
         // The effort the user picked, after the model's thinkingLevelMap.
         reasoningEffort: parsed.reasoning_effort ?? null,
         // supportsStore and friends: present only when the compat allows them.

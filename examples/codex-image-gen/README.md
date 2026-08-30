@@ -13,11 +13,15 @@ attachments, and a browser tool view that shows the returned pixels inline.
 ## 1. Install
 
 ```sh
-dsh plugin --profile web add pi2dsh
-dsh plugin --profile web add @crazygit/pi-codex-image-gen
+dsh plugin --profile web add dsh-work-x
 ```
 
-Restart `dsh web` after adding the packages.
+The dsh-work-x suite bundles the engine (`pi2dsh`) and
+`@crazygit/pi-codex-image-gen`, and carries the browser half that draws the
+inline image tool card — the engine alone ships no web renderer, so the two
+packages without the suite give you the tool but no inline picture.
+
+Restart `dsh web` after adding the package.
 
 ## 2. Log in to Codex
 
