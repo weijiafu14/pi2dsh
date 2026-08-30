@@ -1,0 +1,79 @@
+{
+ "baseline": {
+  "stopReason": "toolUse",
+  "calls": [
+   {
+    "id": "call_1",
+    "name": "get_time",
+    "args": {
+     "city": "paris"
+    }
+   }
+  ]
+ },
+ "emptyContinuation": {
+  "stopReason": "toolUse",
+  "calls": [
+   {
+    "id": "call_1",
+    "name": "get_time",
+    "args": {
+     "city": "paris"
+    }
+   }
+  ]
+ },
+ "lateIdentity": {
+  "stopReason": "toolUse",
+  "calls": [
+   {
+    "id": "call_9",
+    "name": "get_time",
+    "args": {
+     "city": "paris"
+    }
+   }
+  ]
+ },
+ "parallelNoIds": {
+  "stopReason": "toolUse",
+  "calls": [
+   {
+    "id": "",
+    "name": "get_time",
+    "args": {
+     "city": "paris"
+    }
+   },
+   {
+    "id": "",
+    "name": "get_weather",
+    "args": {
+     "city": "oslo"
+    }
+   }
+  ]
+ },
+ "noIndex": {
+  "stopReason": "toolUse",
+  "calls": [
+   {
+    "id": "call_5",
+    "name": "get_time",
+    "args": {
+     "city": "paris"
+    }
+   }
+  ]
+ },
+ "fencedArgs": {
+  "stopReason": "toolUse",
+  "calls": [
+   {
+    "id": "call_2",
+    "name": "get_time",
+    "args": {}
+   }
+  ]
+ }
+}
