@@ -35,3 +35,20 @@ CLAUDE.md 铁律：“零个社区 Pi 包也必须挂 host 级运行时——内
 - [ ] 修复零包路径（大概率 inject 化 + 零包也跑路由恢复），契约测试钉住
   “空 profile + 存量 auth.json → 路由可用”
 - [ ] 两代（rc.8 / rc2）回归
+
+## 根因与修复（2026-08-30 同日）
+
+倒推收口：`ensureLoggedInProviderRoute` 的恢复循环在**每次包 host 挂载**都跑一遍。
+零包 profile 只有 builtins 那一趟——彼时 credentials-local 尚未组合，
+`publishOAuthCredential` 的 `optionalService(ctx,'credentials')` 立即探测失败、warn 后
+放弃，之后无人重试；装任意 Pi 包会让第二趟（包 host anchor）晚到服务组合之后而
+静默成功。证据闭环：两种运行的日志都恰好一条 warn（builtins 趟），与"第二趟成功不
+再 warn"完全一致。
+
+修复：`restoreLoggedInRouteWhenReady`（src/runtime.ts）——服务已在则维持 awaited
+（mount readiness 语义不变）；不在则走官方 `ctx.inject(['credentials'],cb)`（与
+maybeProjectAuthorizationFlow 同款，服务何时组合都能挂上），per-provider 防重入。
+契约测试：tests/dsh-runtime.spec.ts "a host that mounts before the credentials
+service composes"（先挂后 provide credentials，断言凭证最终发布且不炸）。
+真机确认：verify-codex-write-optional-e2e.mjs 带 PI2DSH_NO_FIXTURE=1（纯零包
+profile）通过。

@@ -1034,6 +1034,87 @@ describe('a stored OAuth login is ready when a restarted host finishes mounting'
   })
 })
 
+describe('a host that mounts before the credentials service composes', () => {
+  it('still publishes the stored login once the service arrives', async () => {
+    // 2026-08-30 (community/full-audit-work/zero-package-oauth-bug.md): an
+    // engine-only profile mounted before credentials-local composed; the
+    // immediate probe warned and gave up, and every turn hit
+    // MISSING_CREDENTIAL even though auth.json held a valid login. Installing
+    // any Pi package shifted mount timing enough to mask it. The restore must
+    // wait for the service through the official inject seam, not probe once.
+    const scratch = await mkdtemp(join(tmpdir(), 'pi2dsh-oauth-late-creds-'))
+    cleanup.push(scratch)
+    await mkdir(join(scratch, 'pkg'), { recursive: true })
+    await writeFile(join(scratch, 'pkg', 'extension.js'), 'export default function () {}\n', 'utf8')
+    const agentDir = join(scratch, 'agent')
+    await mkdir(agentDir, { recursive: true })
+    await writeFile(join(agentDir, 'auth.json'), JSON.stringify({
+      'openai-codex': {
+        type: 'oauth',
+        access: 'stored-access-token',
+        refresh: 'stored-refresh-token',
+        expires: Date.now() + 3_600_000,
+        accountId: 'account-1',
+      },
+    }), 'utf8')
+
+    const stored = new Map<string, string>()
+    const ctx = new Context()
+    await ctx.plugin(SessionStore)
+    await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
+    await ctx.plugin(ToolRuntime)
+    await ctx.plugin(CommandRuntime)
+    await ctx.plugin(SkillRegistry)
+    await ctx.plugin(AgentRegistry)
+    await ctx.plugin(LlmRuntime as never, {} as never)
+    ;(ctx as unknown as { llm: { registerAdapter(providers: string[], adapter: unknown): unknown } })
+      .llm.registerAdapter(['openai-codex'], {
+        providerInfo: (provider: string) => ({ id: provider, name: 'OpenAI (ChatGPT Plus/Pro)' }),
+        providerRetryPolicy: () => undefined,
+        listModels: async () => [],
+        resolveModel: async (provider: string, id: string) => ({ provider, id, name: id }),
+        async *stream() { yield { type: 'finish', reason: { kind: 'stop' } } },
+      })
+    ;(ctx as unknown as { provide(name: string, value: unknown): void }).provide('settings', {
+      update: async () => {},
+    })
+
+    process.env.PI_CODING_AGENT_DIR = agentDir
+    try {
+      // NO credentials service yet — the zero-package composition-order shape.
+      await ctx.plugin({
+        name: 'pi2dsh:oauth-late-creds-test',
+        inject: ['tools', 'systemPrompt', 'commands', 'skills'],
+        async apply(inner: Context) {
+          await applyPiPackage(inner, {
+            rootUrl: pathToFileURL(`${join(scratch, 'pkg')}/`),
+            manifest: {
+              schemaVersion: 1,
+              package: { name: '@pi2dsh-fixtures/oauth-late-creds', version: '0.0.0' },
+              extensions: ['extension.js'],
+              skillDirs: [],
+              prompts: [],
+            } as never,
+          })
+        },
+      } as Plugin.Object)
+      await settle()
+      // Nothing to publish into yet — and no crash, no fabricated success.
+      expect(stored.size).toBe(0)
+
+      // The service composes late, the way credentials-local can.
+      ;(ctx as unknown as { provide(name: string, value: unknown): void }).provide('credentials', {
+        set: async (ref: string, value: string) => { stored.set(ref, value) },
+        describe: async () => ({ configured: false, writable: true }),
+      })
+      await settle()
+      expect(stored.get('PI2DSH_OAUTH_OPENAI_CODEX')).toBe('stored-access-token')
+    } finally {
+      delete process.env.PI_CODING_AGENT_DIR
+    }
+  })
+})
+
 describe('answering nothing at the login picker', () => {
   it('is a cancellation, not a wrong answer', () => {
     // Dismissing the dialog answers with nothing. Feeding that to the choice

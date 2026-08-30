@@ -23,7 +23,11 @@ pi2dsh：通用 Pi Host ABI 兼容层，让 Pi 生态插件原样跑在 DeepSeek
   资源（provider 目录/catalog/伴生映射/登录/凭证存储）经 SharedHostState
   跨包单份共享；包级资源（tools/commands/events）各归各。**零个社区 Pi 包
   也必须挂 host 级运行时**：内建 OAuth provider、`/login`、凭证恢复和伴生路由
-  属于引擎，不得因插件发现结果为空而跳过。
+  属于引擎，不得因插件发现结果为空而跳过。零包 profile 还是**最快挂载路径**，
+  对组合服务的挂载期立即探测在这里必挂（2026-08-30 事故：凭证恢复用
+  `optionalService` 立即探测 credentials，零包时服务未组合、存量登录路由全丢
+  MISSING_CREDENTIAL，装任意包就"碰巧"好——对组合服务一律 `ctx.inject` 等到位，
+  且零包 profile 是必测回归形状，契约测试在 tests/dsh-runtime.spec.ts）。
 - 升级解耦：升引擎不动插件、升插件不动引擎；lockfile 锁死，只有显式
   `add <pkg>@latest` 才动；`pi2dsh inspect <pkg>@<版本>` 是升级预检门。
 - 发现机制 = 读 profile 依赖清单（每项都是用户显式 add 的）+ Pi 官方

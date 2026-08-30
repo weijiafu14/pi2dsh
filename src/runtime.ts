@@ -2691,6 +2691,9 @@ interface SharedHostState {
   /** Provider ids whose DSH authorization-seam projection is armed (an
    * inject scope waiting on — or holding — the authorization service). */
   authorizationArmedIds?: Set<string>
+  /** Provider ids whose deferred route restore is armed (an inject scope
+   * waiting for the credentials service to compose). */
+  routeRestoreArmedIds?: Set<string>
   modelCatalog?: ModelCatalog
   catalogSubscribed?: boolean
   loginCommandRegistered?: boolean
@@ -3227,6 +3230,46 @@ async function supersedeActiveLogin(state: RuntimeState): Promise<string | undef
  * @param config - the provider config, whose oauth block made it loginable.
  * @returns whether this call put a route in place.
  */
+/**
+ * Mount-time route restore that tolerates composition order.
+ *
+ * The credentials service (credentials-local) can compose AFTER a
+ * zero-package profile's host mount — probing immediately loses that race and
+ * a stored login silently produces no route: an engine-only profile with a
+ * valid auth.json hit MISSING_CREDENTIAL on every turn, while installing any
+ * Pi package shifted mount timing enough to mask the bug (2026-08-30,
+ * community/full-audit-work/zero-package-oauth-bug.md). When the service is
+ * already there the restore stays awaited — that is mount readiness, see the
+ * caller's comment. Otherwise the official inject seam re-runs it the moment
+ * the service composes, the same pattern maybeProjectAuthorizationFlow uses.
+ */
+async function restoreLoggedInRouteWhenReady(
+  ctx: Context,
+  state: RuntimeState,
+  name: string,
+  config: UnknownRecord,
+): Promise<void> {
+  if (optionalService(ctx, 'credentials') !== undefined) {
+    await ensureLoggedInProviderRoute(ctx, state, name, config)
+    return
+  }
+  const shared = state.shared
+  shared.routeRestoreArmedIds ??= new Set()
+  if (shared.routeRestoreArmedIds.has(name)) return
+  const inject = (ctx as unknown as { inject?: (deps: string[], callback: (scope: Context) => void) => void }).inject
+  if (typeof inject !== 'function') {
+    // No inject seam to wait on: run once so the "no credentials service"
+    // warning states the truth for this composition instead of staying silent.
+    await ensureLoggedInProviderRoute(ctx, state, name, config)
+    return
+  }
+  shared.routeRestoreArmedIds.add(name)
+  inject.call(ctx, ['credentials'], scope => {
+    ensureLoggedInProviderRoute(scope, state, name, config).catch(error =>
+      logger(ctx).warn(`[pi2dsh] could not restore the route for logged-in provider ${JSON.stringify(name)}: ${error instanceof Error ? error.message : String(error)}`))
+  })
+}
+
 async function ensureLoggedInProviderRoute(
   ctx: Context,
   state: RuntimeState,
@@ -5034,7 +5077,7 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
   // MISSING_CREDENTIAL even though auth.json already contains a valid login.
   for (const [name, config] of [...state.providers]) {
     try {
-      await ensureLoggedInProviderRoute(ctx, state, name, config)
+      await restoreLoggedInRouteWhenReady(ctx, state, name, config)
     } catch (error) {
       logger(ctx).warn(`[pi2dsh] could not restore the route for logged-in provider ${JSON.stringify(name)}: ${error instanceof Error ? error.message : String(error)}`)
     }
