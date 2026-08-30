@@ -797,3 +797,32 @@ reasoning_content 分类零泄漏）。
 候选队列）。
 
 adapter 桶 17 条净新终账：回 10、余 7（各有记因，1 条可升级）。
+
+## 批次 19（2026-08-30 深夜）——dsh_core_only provider 六簇开打（判据：只打桥真实骑的 seam）
+
+**口径拍板（用户确认）**：dsh_core_only 782 条中只做 conformance 义务覆盖的 provider
+六簇（live census 净可回 110）+ ui 对照 + session 子集；sandbox/host_core_other 241 条
+明确不做——"实验进不了项目的不做"。census 装置 $S/census2.mjs，
+provider-core-live.json 留档；新贴池 8-23 后 ≥300 条未扫完，另行批次。
+
+**实验 v2**（全部入库）：transport-classify 增 reasoningFieldVariant（vLLM `reasoning`
+字段 0.84.1 正确分类；0.82.1 注入 seam 不存在，如实记不可测）、invokeTagInContent
+（`<invoke>` 文本落为纯文本零救网）；reasoning-history 增 toolCallWithThinking
+（两代都内联保文本+tool_calls 齐全、真上游 200）、loneSurrogate（孤立代理对经
+pi-ai 路由真上游 200——与 llm-deepseek 的 400 成 A/B）。
+哨兵：transport-classify 结果文件曾因 env 名传错（PI_AI 单复数）写空并推出，
+下一提交补全——生成结果文件后必须 JSON.parse 校验再提交。
+
+wave 1（现有证据直接回，6 条）：
+| 722 / 736 / 2719 | thinkingLevelMap/contextWindow 声明面实测三连 | [722](https://github.com/deepseek-ai/deepseek-harness/discussions/722#discussioncomment-18207577) [736](https://github.com/deepseek-ai/deepseek-harness/discussions/736#discussioncomment-18207578) [2719](https://github.com/deepseek-ai/deepseek-harness/discussions/2719#discussioncomment-18207579) |
+| 1861 | 官方档位白名单的实测过渡路 + 代价说明 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/1861#discussioncomment-18207580) |
+| 3752 | pi-ai 版本边界提案背书：跨版本 A/B 实测差异全家 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/3752#discussioncomment-18207582) |
+| 2674 | 空 id 覆盖：pi-ai 结构性免疫（first-non-empty-wins 可作修复语义）| [c](https://github.com/deepseek-ai/deepseek-harness/discussions/2674#discussioncomment-18207583) |
+
+wave 2（实验 v2 解锁，8 条）：
+| 199 | vLLM reasoning 字段 0.84.1 实测正确分类 + 0.82.1 不可测如实记 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/199#discussioncomment-18207611) |
+| 3857 / 1850 | toolCall+thinking 回放双代测量：字段谁都不给 → 排除绕行解、锁死 llm-deepseek 修复位 | [3857](https://github.com/deepseek-ai/deepseek-harness/discussions/3857#discussioncomment-18207613) [1850](https://github.com/deepseek-ai/deepseek-harness/discussions/1850#discussioncomment-18207614) |
+| 3972 | 归因线索：可能是 #3857 回放丢字段的下游 + 录制自查法 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/3972#discussioncomment-18207615) |
+| 231 | responses 侧同族：回放契约缺口跨适配器 + compat 声明位方向 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/231#discussioncomment-18207616) |
+| 967 | 孤立代理对 A/B：同脏历史 pi-ai 路由 200 → 佐证序列化层修复位 + 临时活路 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/967#discussioncomment-18207617) |
+| 2158 / 3609 | invoke/tool_call 文本落点实测零救网 + 家族上游 #8858 关联 | [2158](https://github.com/deepseek-ai/deepseek-harness/discussions/2158#discussioncomment-18207619) [3609](https://github.com/deepseek-ai/deepseek-harness/discussions/3609#discussioncomment-18207620) |
