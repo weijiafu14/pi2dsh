@@ -844,3 +844,19 @@ web 上新增记忆浮窗与任务坞两块产品面，全部真机 E2E 绿。
 
 待用户拍板：pi2dsh 0.24.0 + dsh-work-x 0.4.0 发版（重定向修复 + 登录卡 +
 零 TUI 投影 + stage beacon + 本批产品面，用户可见量足够一版）。
+
+## 批次 20（2026-08-30 深夜续）——gateway_catalog 簇 11 条
+
+| # | 依据 | 评论 |
+|---|---|---|
+| 3985 | undici 代理坑独立复现（我方 harness 尸检注释为证）+ NODE_USE_ENV_PROXY | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/3985#discussioncomment-18207675) |
+| 4049 | prepareCall 崩溃根因（双代契约实测：字面量 adapter 撞 rc2 分发）+ LlmAdapter 基类修法 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/4049#discussioncomment-18207676) |
+| 3934 | 同族短答 cross-link #4049 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/3934#discussioncomment-18207677) |
+| 2779 | 辅助 LLM 消费者（标题/搜索/子代理）各有路由的机理 + jsonl 实录证据 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/2779#discussioncomment-18207678) |
+| 2330 / 4042 | glm-5.3 目录滞后：显式声明绕目录（已验证形状）+ #3752 版本边界互链 | [2330](https://github.com/deepseek-ai/deepseek-harness/discussions/2330#discussioncomment-18207679) [4042](https://github.com/deepseek-ai/deepseek-harness/discussions/4042#discussioncomment-18207680) |
+| 3200 | 容量 resolve seam 的消费侧实证（listModels/resolveModelInfo 拆分事故亲历）| [c](https://github.com/deepseek-ai/deepseek-harness/discussions/3200#discussioncomment-18207681) |
+| 3973 / 3270 | 发现字段扩展支持 + 显式声明活路（capacity/modality 皆实测） | [3973](https://github.com/deepseek-ai/deepseek-harness/discussions/3973#discussioncomment-18207682) [3270](https://github.com/deepseek-ai/deepseek-harness/discussions/3270#discussioncomment-18207683) |
+| 3612 | thinkingLevelMap 按模型映射（尊重社区 dsh-custom-mode 的边界分工） | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/3612#discussioncomment-18207684) |
+| 2943 | 本地模型即刻可接（battery 就在 127.0.0.1 上跑）+ 本地特有坑 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/2943#discussioncomment-18207685) |
+
+gateway_catalog 30 虚位：回 11、余 19（多为 model-picker UI 诉求，非我方证据面，记因跳过）。
