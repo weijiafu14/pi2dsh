@@ -701,3 +701,18 @@ long-output 换成长文任务并在脚本里注明"整数变体测的是服从�
 时 headless CLI 非零退出是被测行为，harness 需 allowExit。
 
 进行中：#1149（codex write 可选参数，scripts/verify-codex-write-optional-e2e.mjs）。
+
+## 批次 19（2026-08-30，散点收割：机制帖 + 作者帖 4 条）
+
+| # | 性质 | 依据 | 评论链接 |
+|---|---|---|---|
+| 3744 | 首回（同行印证） | skill-stabilizer 机制帖：assemble 瀑布权威性我方独立实测印证 + assembly.tools 可改写杠杆 + 前缀缓存字节稳定性坑（标注为推演非实测）；明写没跑过他的包 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/3744#discussioncomment-18205060) |
+| 2434 | 首回（实证印证） | headless resume 插件作者：subagents E2E 跨进程重开实证印证 resume 机械可达 + 承认我们此前在 #1076 说"给不了"的口径将改为指向他的 overlay + 提醒 patch 行压在无版本化 seam 上；明写没跑过他的插件、mid-turn 问题无证据不猜 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/2434#discussioncomment-18205071) |
+| 1165 | 首回（同行印证） | dsh-repo-map 提案：前缀缓存论点互证（连到 #3744）+ #4191 ripgrep seam 交叉引 + assemble 瀑布作为动态逃生口（明写更伤缓存、他的默认是对的） | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/1165#discussioncomment-18205070) |
+| 2453 | 增量回 | web-search-ollama 作者：确认 ctx.web 官方槽形状正确 + Pi 孪生包挂载级数据点（明写他的 bundle 才是 DSH 用户的短路径） | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/2453#discussioncomment-18205072) |
+
+毙（skills 簇现场复核）：#88（bobleer 已给源码级完整答案）、#3980（PensiveFei/
+wold9168 已答满路径+frontmatter+watcher）、#3625（已有插件推荐表+雷达指路）、
+#3497（作者自荐帖已有 dshbase 对接，我方无差异化增量）、#266（楼内已有三个远程
+方案）。勘探剔除：pi-cc-extensions / pi-codex-conversion / pi-goosedump 名实
+不符（见批次 18 注）。
