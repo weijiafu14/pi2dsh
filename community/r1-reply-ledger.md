@@ -52,6 +52,14 @@ provider 族 84 条里 **43 条已在此前 outreach 波次回过**（全部为�
 ### adapter 17 条（R1 段 2）与 product 5 条（段 3）清单见上一版对应节，编号不变，
 已回 5+5 条已从其中剔除：adapter fresh = 931,1058,1073,1077,1078,1099,1113,1198,1866,2668,2893,3090,3112,3128,3157,3825,4190；product fresh = 196,2441,2602,3169,3283。
 
+## 已回进度（2026-08-30 批次 17 起）
+
+e2e_only A 组已验证并回帖：#947、#3342、#2859、#2659、#2670、#1166（六案连跑器
+`scripts/verify-provider-threads-e2e.mjs`，6/6 passed，commit 86349c9）；#3023、#481
+以"已验基线 + 录制代理归因法"回（依据同一批证据 + retry 实验）。A 组余：#1146、
+#2170、#3957；B 组：#1149 进行中（codex 零包 profile 撞 MISSING_CREDENTIAL，对照实验
+定位中）、#695/#3387 缺凭证。
+
 ## R1 段 1 首个实验判决（2026-08-29，真跑 pi-ai 0.84.1 累加器，故障注入真 wire）
 
 装置：`full-audit-work/accumulator-experiment.mjs`（options.fetch 注入手造 SSE，

@@ -716,3 +716,7 @@ wold9168 已答满路径+frontmatter+watcher）、#3625（已有插件推荐表+
 #3497（作者自荐帖已有 dshbase 对接，我方无差异化增量）、#266（楼内已有三个远程
 方案）。勘探剔除：pi-cc-extensions / pi-codex-conversion / pi-goosedump 名实
 不符（见批次 18 注）。
+
+批次 17 续（同日）：
+| 3023 | 诊断法 | /init 与普通轮请求形状差异解释 + 六案已验基线 + 录制代理归因法 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/3023#discussioncomment-18205102) |
+| 481 | retry 实验 + 基线 | 500/429 重试机制判定（已验注入实验）+ 通路稳定基线 + 归因工具；明写非定论 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/481#discussioncomment-18205103) |
