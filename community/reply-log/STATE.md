@@ -655,3 +655,27 @@ LIKE 兜底、/memory-pin 命令态结构性防模型写入、project 作用域�
 矿脉纪律沉淀：回帖前 npm pack 拿包源码核证每条技术断言——本批就地纠正了一条
 错误记忆（hermes 并非 unicode61，已是 trigram+LIKE，#1456 的回帖角度因此整个
 反转：从"同病相怜"变成"你表里那行的生产样本"）。
+
+## 批次 18（2026-08-30，第二/三矿脉：后台任务实测 + Telegram 理论级）
+
+矿脉勘探纪律先行：pi-cc-extensions 名不符实（是 Claude Code 风格 TUI 包，不是
+skill 导入器）、@howaboua/pi-codex-conversion 亦然（是给 GPT 换 Codex 形工具面，
+不是会话导入器）——npm pack 读 README 后剔除，未浪费回帖。
+
+pi-background-tasks 按标准全套：场景进回归（`examples/background-tasks`，
+bg_run 起 60 秒 ticker + 同轮 bg_logs 中途读，断言"非错 + 含早期 tick +
+不含 tick 60"三条同时成立=只有活任务被读过一种解释）真机一把过。
+pi-telegram 理论级三实锤：top50 黑盒挂载成功、其文档点名的 `agent_settled`
+硬依赖桥接 full 且契约测试钉死（tests/dsh-runtime.spec.ts:428）、配置面
+（/telegram-setup + TELEGRAM_BOT_TOKEN env）零泄漏；缺 bot token 未端到端，
+按批次 16 用户口径明写。
+
+| # | 性质 | 依据 | 评论链接 |
+|---|---|---|---|
+| 971 | 首回（实测级） | 中途读输出正中诉求；E2E 可证伪证据 + example；明写 headless 一次性进程边界 + 他截图那个工具的显示问题归属 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/971#discussioncomment-18205037) |
+| 1301 | 首回（理论级） | 募集帖 Telegram 格：现成 Pi 包 + 挂载/生命周期证据 + 明写无 bot token 未实测 + 对接楼主的实测收录流程 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/1301#discussioncomment-18205039) |
+| 1302 | 首回（理论级） | 同 1301 英文孪生帖 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/1302#discussioncomment-18205041) |
+| 1243 | 增量回（理论级） | 楼上 SSH 是全入口方案；补"窄而安全的配对"选项，明写验证等级 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/1243#discussioncomment-18205038) |
+
+毙：#266（楼内已有 dsh-web-ui 远程插件 / lody ai / goraven H5 三个远程方案，
+理论级第四选项无差异化增量）。
