@@ -907,3 +907,32 @@ launch-token 真机事实）、5118（undici 代理双坑地图）、4496（多�
 | 5036 | dsh-codex-subscription：分享 token 轮换语义/可选参数物化/headless 滞留三条实测坑 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/5036#discussioncomment-18207866) |
 | 4987 | dsh-model-sync：把 5 条目录漂移需求贴送给作者 + contextWindow 陷阱 + resolve seam 数据 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/4987#discussioncomment-18207867) |
 | 4992 | dsh-mcp-adapter(DSH 版)：#1604 同款测量互认 + 度量建议 + tradeoff 提示 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/4992#discussioncomment-18207868) |
+
+## 批次 23（2026-08-31）——header/凭证两族 + 挂账本立账
+
+**用户立规**：每 30 分钟继续一轮；能测能回的都做；**解决不了的记挂账本**
+（community/open-accounts.md，四类：A 上游缺口 / B 宿主策略 / C 我们欠账 / D 证据不足）。
+
+**新实验 1 provider-headers**（注入真 pi-ai）：model.headers 声明原样上线；默认不发
+任何会话标识；`compat.sendSessionAffinityHeaders` 开启后发 session_id +
+x-client-request-id + x-session-affinity（openrouter 格式发 x-session-id）；
+cacheRetention:none 抑制。**关键发现**：DSH llm-pi-ai 有意 withhold 该 compat 键
+（README 明写理由）→ settings 路由做不到逐会话归属 = B 类挂账。
+
+**新实验 2 真机 wire 身份**（录制代理增带脱敏的 header 记录）：自定义路由出站
+**无匿名用户 ID、body 无 user 字段**；实际发的是固定 UA `deepseek-harness/<ver>` +
+OpenAI SDK 的 x-stainless-* 平台指纹（泄露 OS/架构/Node 版本，非身份）。
+
+| # | 依据 | 评论 |
+|---|---|---|
+| 2475 | headers profile 字段实测上线 + 两条诚实告警（别放凭证/归因头赢冲突） | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/2475#discussioncomment-18207942) |
+| 599 | 机制在 pi-ai 但 DSH 有意 withhold → 今天无解，该要的是重新权衡策略 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/599#discussioncomment-18207943) |
+| 3761 | headers 能/body 不能，边界钉死；user 字段挂账待上游 issue | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/3761#discussioncomment-18207944) |
+| 4006 | 轮换凭证：我们"只存解析后 key、payload 留库侧"的形态天然规避该缺陷 + 组合顺序竞态提醒 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/4006#discussioncomment-18207952) |
+| 3503 / 4039 | 钥匙串 provider 今天就能写（我们实现过 CredentialProvider 子类）+ 两条约束 + 诚实边界 | [3503](https://github.com/deepseek-ai/deepseek-harness/discussions/3503#discussioncomment-18207953) [4039](https://github.com/deepseek-ai/deepseek-harness/discussions/4039#discussioncomment-18207954) |
+| 634 | 凭证分层优先级（env 赢且不可编辑）+ 三条解法 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/634#discussioncomment-18207956) |
+| 952 | 真机测量与报告有出入，给三条定位方向 + 证伪方法（不硬翻案） | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/952#discussioncomment-18207977) |
+| 3225 | 白标被有意设计成配置面做不到 + 两条实现建议（归因/白标共存、SDK 指纹） | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/3225#discussioncomment-18207978) |
+
+待办：#3761 的 user 字段上游 issue —— 回帖里说了"你若同意我引你这贴"，**等对方回应
+再提**（自己承诺的礼节自己守）。
