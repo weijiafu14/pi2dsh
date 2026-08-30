@@ -730,3 +730,13 @@ wold9168 已答满路径+frontmatter+watcher）、#3625（已有插件推荐表+
 
 批次 17 续 3（同日）：
 | 695 | alibaba-token-plan E2E | 真 pi-provider-alibaba@1.0.1 + npm 0.23.0 引擎全链 passed（工具环/重启/零凭证落盘）；明写截图报错看不全、不替他定根因 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/695#discussioncomment-18205253) |
+
+批次 17 终（同日）——e2e_only 桶清空：
+| 3957 | 动态目录实证 | alibaba 包冷启动拉活目录注册（与他诊断的静态钉死路径对照）；明写不修官方路径、refresh-on-restart 不冒充 live | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/3957#discussioncomment-18205263) |
+| 2170 | liteLLM 真代理 E2E | DSH 侧零 DEEPSEEK_API_KEY 断言在先、真 liteLLM+真上游全链 completed；补默认路由机理 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/2170#discussioncomment-18205269) |
+| 3387 | 毙 | maintainer 已关闭并入 #2017——回帖是噪音；#2017 另行评估 | — |
+
+**e2e_only 净新 18 条终账：17 回、1 毙（closed-as-dup）。今天共发 13 条，全部
+"验证→回帖"（六案连跑器 + codex 可选参数 + reasoning A/B + alibaba + liteLLM 五套装置）。
+剩余净新 = adapter 17 + product 5，全部等 R1 开发件（段 2 围栏剥离 adapter、段 3
+provider 包），不存在"现在能回而没回"。**
