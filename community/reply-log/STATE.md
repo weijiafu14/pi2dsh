@@ -616,3 +616,16 @@ vision-bridge example 真机 E2E passed（伴生路径，可证伪断言）。vi
 即"现在能回而没回"= 0；**未回帖的 96% 都押在开发进度上**——涨帖唯一路径是把
 东西做出来，与 R1 优先的结论互为印证。（盘外 840 条永不回：782 无诚实插件
 路径、58 走上游提案线。）
+
+## 批次 16（2026-08-30，缺凭证帖按用户口径发"理论可行、未实测"）
+
+用户拍板：缺凭证的照发，明写"理论上 work、无对应 key、有问题来找"。
+CODEX_AUTH_FILE 已由用户供出（~/.codex/auth.json），#1149/codex-image 转入可跑队列。
+
+| # | 性质 | 依据 | 评论链接 |
+|---|---|---|---|
+| 2128 | 首回（理论级） | 确认作者的双 provider 撞名原理（pi-ai 源码层）；补 pi2dsh 直装 opencode provider 包 auth 原样运行的路径；明写无 zen 凭证未实测 + 邀请反馈 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/2128#discussioncomment-18204766) |
+| 3362 | 首回（半实测） | 先认 token 归因该官方查；线路归属半边有 gateway-compat 透传录制实证，usage 对照半边明写无外源付费账号未跑 + 邀请对照 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/3362#discussioncomment-18204767) |
+
+毙：#3387（维护者已关闭指向 #2017，而 #2017 已有我们两条实质回复含 Atlassian OAuth
+全链实测——子场景已覆盖，第三条是噪音）；#695（纯截图配置求助帖，信息不足）。
