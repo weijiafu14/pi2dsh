@@ -207,6 +207,7 @@ it work. **This is the list to trust.**
 | [`pi-vision-tool`](https://www.npmjs.com/package/pi-vision-tool) | Tool registration through a JSON-Schema shape DSH had to convert (`anyOf` → `oneOf`) | CLI + web | — |
 | [`pi-approval-guardian`](https://www.npmjs.com/package/pi-approval-guardian) | Every tool call reviewed by a second model before execution; allow and deny both observed | CLI (bare env) | — |
 | [`pi-hermes-memory`](https://www.npmjs.com/package/pi-hermes-memory) | Cross-session memory end to end: `memory_add` in one session, recalled in a second, fresh one (the codeword existed nowhere else); five tools, ten `/memory-*` commands, system-prompt memory injection | CLI | [`persistent-memory`](examples/persistent-memory/) |
+| [`pi-background-tasks`](https://www.npmjs.com/package/pi-background-tasks) | Background shell job started with `bg_run`, output read **mid-run** with `bg_logs`: the log result carries early ticks of a still-running 60-second job, with the final tick provably absent | CLI | [`background-tasks`](examples/background-tasks/) |
 
 Examples for the two remaining rows are still to be written; per this
 project's own rule they get re-verified from scratch before an example lands,
@@ -240,7 +241,7 @@ useful.
 | **MCP** | `pi-mcp-adapter` · `pi-mcp-extension` |
 | **Web search & fetch** | `pi-web-access` · `pi-deepseek-search` · `pi-web-search` · `@ollama/pi-web-search` · `@juicesharp/rpiv-web-tools` |
 | **Code navigation & editing** | `pi-lens` (ast-grep) · `@narumitw/pi-lsp` · `pi-readseek` · `@ff-labs/pi-fff` · `pi-landstrip` · `pi-hashline-edit-pro`¹ |
-| **Subagents & background work** | `@gotgenes/pi-subagents` · `pi-background-tasks`² · `@mjasnikovs/pi-task` |
+| **Subagents & background work** | `@gotgenes/pi-subagents` · `@mjasnikovs/pi-task` |
 | **Memory** | `pi-hermes-memory` · `pi-goosedump` |
 | **Planning & goals** | `@narumitw/pi-goal` · `pi-goal-list-loop-audit` · `@narumitw/pi-plan-mode` · `@juicesharp/rpiv-todo` |
 | **Asking you / approvals** | `@juicesharp/rpiv-ask-user-question` · `pi-ask-user` · `@gotgenes/pi-permission-system` · `@juicesharp/rpiv-advisor` |
@@ -468,6 +469,7 @@ in one has actually been executed against a real DSH loop before landing.
 | [`tui-mcp`](examples/tui-mcp/) | Keep dsh-TUI's native `/mcp`, add the Pi ecosystem manager as `/pi-mcp`, and exercise its complete host-influenced MCP surface through DSH runtimes |
 | [`mcp-at-scale`](examples/mcp-at-scale/) | A real 51-tool MCP server behind the adapter's two meta-tools: bounded tool surface, lazy discovery at scale, and a timeout budget that cuts a ~120 s tool to seconds — CLI and web |
 | [`persistent-memory`](examples/persistent-memory/) | pi-hermes-memory across two real sessions: save a fact in one, recall it in a fresh one — with the build-approval step (`better-sqlite3`) the install actually needs |
+| [`background-tasks`](examples/background-tasks/) | pi-background-tasks: start a long shell job in the background and read its output while it is still running — the live-tracking property asserted from the tool's own results |
 | [`subagents`](examples/subagents/) | The model runs a small team: delegate, background, steer mid-run, collect, resume with memory, stop for real, manage via `/pi-agents`, reopen across restarts |
 | [`pi-tui-ecosystem`](examples/pi-tui-ecosystem/) | Run the unmodified Pi MCP manager and Pi subagent flow in `@xmoon76/dsh-pi-tui`; native `/login` and Pi OAuth providers coexist without duplicate commands |
 

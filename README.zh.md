@@ -171,6 +171,7 @@ DSH 模型运行时的 sampling、取消与会话重启。完整证据矩阵：
 | [`pi-vision-tool`](https://www.npmjs.com/package/pi-vision-tool) | 工具注册，且带一个 DSH 需要转换的 JSON Schema 形状（`anyOf` → `oneOf`） | CLI + Web | — |
 | [`pi-approval-guardian`](https://www.npmjs.com/package/pi-approval-guardian) | 每次工具调用先由第二个模型审批；放行与拒绝两条路都看到了 | CLI（裸环境） | — |
 | [`pi-hermes-memory`](https://www.npmjs.com/package/pi-hermes-memory) | 跨会话记忆端到端：会话一 `memory_add` 写入，全新会话召回（代号不存在于任何其它输入）；五个工具、十条 `/memory-*` 命令、系统提示记忆注入 | CLI | [`persistent-memory`](examples/persistent-memory/) |
+| [`pi-background-tasks`](https://www.npmjs.com/package/pi-background-tasks) | 后台任务：`bg_run` 起 60 秒长任务，`bg_logs` 在任务**仍在运行时**读到前几行输出（最终行可证明地不在结果里） | CLI | [`background-tasks`](examples/background-tasks/) |
 
 前两个的示例还没写。按本项目自己的规矩，补示例前必须重新端到端验证一遍，所以
 这张表如实标出今天谁有示例。
@@ -197,7 +198,7 @@ Pi 目录里**月下载量前 50 的包**，每个都在真实 DSH 运行时里�
 | **MCP** | `pi-mcp-adapter` · `pi-mcp-extension` |
 | **联网搜索与抓取** | `pi-web-access` · `pi-deepseek-search` · `pi-web-search` · `@ollama/pi-web-search` · `@juicesharp/rpiv-web-tools` |
 | **代码导航与编辑** | `pi-lens`（ast-grep）· `@narumitw/pi-lsp` · `pi-readseek` · `@ff-labs/pi-fff` · `pi-landstrip` · `pi-hashline-edit-pro`¹ |
-| **子代理与后台任务** | `@gotgenes/pi-subagents` · `pi-background-tasks`² · `@mjasnikovs/pi-task` |
+| **子代理与后台任务** | `@gotgenes/pi-subagents` · `@mjasnikovs/pi-task` |
 | **记忆** | `pi-hermes-memory` · `pi-goosedump` |
 | **计划与目标** | `@narumitw/pi-goal` · `pi-goal-list-loop-audit` · `@narumitw/pi-plan-mode` · `@juicesharp/rpiv-todo` |
 | **问你 / 审批** | `@juicesharp/rpiv-ask-user-question` · `pi-ask-user` · `@gotgenes/pi-permission-system` · `@juicesharp/rpiv-advisor` |
@@ -389,6 +390,7 @@ loop 上实际跑过才会进来。
 | [`tui-mcp`](examples/tui-mcp/) | 保留 dsh-TUI 原生 `/mcp`，把 Pi 生态管理面作为 `/pi-mcp` 加进来，并让完整的宿主相关 MCP 功能面穿过 DSH 运行时 |
 | [`mcp-at-scale`](examples/mcp-at-scale/) | 真实 51 工具 MCP 服务器藏在 adapter 两个元工具后面：工具面有界、规模化懒发现、超时预算把 ~120 秒工具砍到秒级——CLI 与 Web 双端 |
 | [`persistent-memory`](examples/persistent-memory/) | pi-hermes-memory 跨两个真会话：一处存事实、全新会话召回——含安装真正需要的构建审批步骤（`better-sqlite3`） |
+| [`background-tasks`](examples/background-tasks/) | pi-background-tasks：后台起长任务、任务仍在跑时读它的输出——"实时跟踪"性质从工具自己的结果断言 |
 | [`subagents`](examples/subagents/) | 模型自己带小团队：派单、后台、中途转向、收结果、带记忆续命、真停得住、`/pi-agents` 管理、跨重启重开 |
 
 ## 其它工具

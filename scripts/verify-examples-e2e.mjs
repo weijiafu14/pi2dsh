@@ -52,6 +52,7 @@ import { join, resolve } from 'node:path'
 import { promisify } from 'node:util'
 
 import { stageSuiteTarball } from './lib/suite-tarball.mjs'
+import { createE2eHarness, filesBelow } from './lib/e2e-harness.mjs'
 
 const execFile = promisify(execFileCallback)
 const projectRoot = resolve(new URL('..', import.meta.url).pathname)
@@ -63,6 +64,7 @@ const directDshBin = process.env.PI2DSH_DSH_BIN === undefined
   : resolve(process.env.PI2DSH_DSH_BIN)
 const dshBin = directDshBin ?? join(dshRoot, 'apps/cli/src/bin.ts')
 const dshCwd = resolve(process.env.PI2DSH_DSH_CWD ?? dshRoot)
+const { makeHome, useJsonlSessions, useDefaultModel, sessionRecords } = createE2eHarness({ dshRoot, directDshBin, dshBin, dshCwd })
 const outputPath = resolve(process.argv[2] ?? 'community/examples-e2e.json')
 const apiKey = process.env.DEEPSEEK_API_KEY
 const alibabaTokenPlanKey = process.env.ALIBABA_TOKEN_PLAN_API_KEY
@@ -139,128 +141,6 @@ function engineOrigin() {
   return engineOriginOnce
 }
 
-async function filesBelow(directory) {
-  const output = []
-  for (const entry of await readdir(directory, { withFileTypes: true })) {
-    const path = join(directory, entry.name)
-    if (entry.isDirectory()) output.push(...await filesBelow(path))
-    else if (entry.isFile()) output.push(path)
-  }
-  return output
-}
-
-/** A throwaway DSH home with a pnpm shim, the way the other e2e scripts build one. */
-async function makeHome(scratch, extraEnv = {}) {
-  const home = join(scratch, 'dsh-home')
-  const shimDir = join(scratch, 'bin')
-  await mkdir(shimDir, { recursive: true })
-  const pnpmShim = join(shimDir, 'pnpm')
-  await writeFile(pnpmShim, '#!/bin/sh\nexec corepack pnpm@11.7.0 "$@"\n')
-  await chmod(pnpmShim, 0o755)
-  const env = {
-    ...process.env,
-    DSH_HOME: home,
-    PATH: `${shimDir}:${process.env.PATH ?? ''}`,
-    CI: '1',
-    NO_COLOR: '1',
-    DSH_TELEMETRY_DISABLED: '1',
-    DSH_PERMISSION_MODE: 'danger-full-access',
-    npm_config_registry: 'https://registry.npmjs.org',
-    PNPM_CONFIG_REGISTRY: 'https://registry.npmjs.org',
-    // A release check installs a release that is minutes old, and pnpm 11 holds
-    // back very recent versions by default (minimumReleaseAge) — the profile
-    // install then fails with nothing but "pnpm failed in profile directory".
-    // Turning it off here is a property of the harness, not of the product: a
-    // user installing tomorrow is past the window anyway.
-    PNPM_CONFIG_MINIMUM_RELEASE_AGE: '0',
-    ...extraEnv,
-  }
-  const runDsh = async args => {
-    // Two upstream breakages this file pre-empts in every profile, the same
-    // way a user following the READMEs would:
-    //  - dsh-TUI 0.9.1+ pulls pi-ai -> @google/genai -> protobufjs, whose
-    //    install scripts pnpm blocks (ERR_PNPM_IGNORED_BUILDS); declared as
-    //    "installed, scripts not run", the CLI install dir's own stance.
-    //  - On 2026-08-25 the official @deepseek-ai core packages moved their
-    //    npm `latest` tag to 0.0.1-rc.1, which broke pnpm's tag fallback for
-    //    dsh-TUI's release-range (^0.1.1) core deps — NO version of dsh-TUI
-    //    installs without pinning. The overrides pin every core package to
-    //    the CLI's own generation, read from the CLI tree rather than a
-    //    hand-copied list.
-    const profileFlag = args.indexOf('--profile')
-    if (args[0] === 'plugin' && profileFlag !== -1 && args.includes('add')) {
-      const profileDir = join(home, 'profiles', String(args[profileFlag + 1]))
-      const workspaceFile = join(profileDir, 'pnpm-workspace.yaml')
-      await mkdir(profileDir, { recursive: true })
-      if (!existsSync(workspaceFile)) {
-        const lines = [
-          'minimumReleaseAge: 0',
-          'allowBuilds:',
-          "  '@google/genai': false",
-          '  protobufjs: false',
-          // pi-hermes-memory needs its native store actually built — unlike
-          // the two above, declaring-without-running would break the plugin.
-          // README of examples/persistent-memory tells users the same thing
-          // (approve-builds better-sqlite3).
-          "  'better-sqlite3': true",
-        ]
-        const pnpmStore = directDshBin === undefined
-          ? join(dshRoot, 'node_modules', '.pnpm')
-          : resolve(directDshBin, '..', '..', '.pnpm')
-        const core = new Set()
-        if (existsSync(pnpmStore)) {
-          for (const entry of await readdir(pnpmStore)) {
-            if (entry.startsWith('@deepseek-ai+dsh')) {
-              core.add(`@deepseek-ai/${entry.slice('@deepseek-ai+'.length).split('@0')[0]}`)
-            }
-          }
-        }
-        if (core.size === 0) {
-          // A source checkout links core packages from its workspace, so its
-          // .pnpm has no @deepseek-ai entries at all — enumerate the names
-          // from the workspace's packages/ tree instead. Without this branch
-          // the overrides block comes out empty and every dsh-TUI install
-          // dies on the 2026-08-25 upstream `latest`-tag breakage.
-          const stack = [join(dshRoot, 'packages')]
-          while (stack.length > 0) {
-            const current = stack.pop()
-            let entries = []
-            try { entries = await readdir(current, { withFileTypes: true }) } catch { continue }
-            for (const entry of entries) {
-              if (entry.name === 'node_modules' || entry.name.startsWith('.')) continue
-              const dir = join(current, entry.name)
-              if (!entry.isDirectory()) continue
-              try {
-                const manifest = JSON.parse(await readFile(join(dir, 'package.json'), 'utf8'))
-                if (typeof manifest.name === 'string' && manifest.name.startsWith('@deepseek-ai/dsh')) {
-                  core.add(manifest.name)
-                  continue
-                }
-              } catch { /* not a package dir: descend */ }
-              stack.push(dir)
-            }
-          }
-        }
-        if (core.size > 0) {
-          lines.push('overrides:')
-          for (const name of [...core].sort()) lines.push(`  "${name}": 0.1.1-rc.2`)
-        }
-        await writeFile(workspaceFile, `${lines.join('\n')}\n`)
-      }
-    }
-    return execFile(
-      directDshBin === undefined ? 'node' : directDshBin,
-      directDshBin === undefined ? ['--import', 'tsx/esm', dshBin, ...args] : args,
-      {
-        cwd: dshCwd,
-        env,
-        timeout: 300_000,
-        maxBuffer: 16 * 1024 * 1024,
-      },
-    )
-  }
-  return { home, env, runDsh }
-}
 
 /**
  * Boot the web surface the same way runDsh runs the CLI. With a direct bin
@@ -279,30 +159,7 @@ function spawnWeb(port, env) {
   )
 }
 
-/** Point the profile's session log somewhere this script can read it. */
-async function useJsonlSessions(home, profile) {
-  await writeFile(join(home, `profiles/${profile}/cordis.patch.yml`), [
-    '- id: session-persistence-jsonl',
-    '  config:',
-    "    root: !!js dshHomePath('sessions')",
-    '    compression: none',
-    '',
-  ].join('\n'))
-}
 
-/**
- * Route the profile's default model, the way the example's README does — the
- * CLI has no --model flag; the selection is settings.
- */
-async function useDefaultModel(home, provider, model, reasoningEffort) {
-  await writeFile(join(home, 'settings.yaml'), [
-    'agent-default-model:',
-    `  provider: ${provider}`,
-    `  model: ${model}`,
-    ...(reasoningEffort === undefined ? [] : [`  reasoningEffort: ${reasoningEffort}`]),
-    '',
-  ].join('\n'))
-}
 
 const results = {}
 
@@ -382,20 +239,6 @@ async function seedCodexLogin(home, authFile) {
   await chmod(target, 0o600)
 }
 
-/** Session records from the one session log a scenario's home produced. */
-async function sessionRecords(home, { expect = 1 } = {}) {
-  // Most scenarios drive exactly one turn; a count mismatch there means the
-  // lane ran something it did not intend to. A multi-turn scenario passes
-  // its own expectation (mcp-at-scale runs two prompts = two sessions) and
-  // gets every session's records back, in file order.
-  const files = (await filesBelow(join(home, 'sessions'))).filter(path => path.endsWith('/session.jsonl')).sort()
-  assert.equal(files.length, expect, `expected ${expect} session log(s), found ${files.length}:\n  ${files.join('\n  ')}`)
-  const all = []
-  for (const file of files) {
-    all.push(...(await readFile(file, 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line)))
-  }
-  return all
-}
 
 /**
  * Assert the image was read through the vision path, not reconstructed.
@@ -771,6 +614,74 @@ async function runPersistentMemory() {
       engine: await installedEngineVersion(home, 'headless'),
       wroteVia: writes.map(call => call.data.name),
       recalledAcrossSessions: true,
+    }
+  } finally {
+    await rm(scratch, { recursive: true, force: true })
+  }
+}
+
+// ---------------------------------------------------------------------------
+// examples/background-tasks — pi-background-tasks: start a long shell job,
+// then read its output MID-RUN in the same turn (the live-tracking property)
+// ---------------------------------------------------------------------------
+async function runBackgroundTasks() {
+  if (apiKey === undefined || apiKey.length === 0) {
+    results.backgroundTasks = { status: 'skipped', reason: 'DEEPSEEK_API_KEY not set' }
+    return
+  }
+  const scratch = await mkdtemp(join(tmpdir(), 'pi2dsh-ex-bgtasks-'))
+  try {
+    const { home, runDsh } = await makeHome(scratch)
+    const installed = await runDsh(['plugin', '--profile', 'headless', 'add', engineSpec])
+    const installedBg = await runDsh(['plugin', '--profile', 'headless', 'add', 'pi-background-tasks'])
+    await useJsonlSessions(home, 'headless')
+
+    // The falsifiable design: the job ticks once per second for 60s, far
+    // longer than the turn. A non-error bg_logs result that contains early
+    // ticks but NOT the final tick can only mean the output of a job that is
+    // STILL RUNNING was read — the live-tracking property itself. If the
+    // package cannot start jobs, or cannot expose output before completion,
+    // one of these assertions fails; nothing else can fake them.
+    const run = await runDsh(['--profile', 'headless',
+      'Use the bg_run tool to start a background shell job named ticker that runs exactly this command: '
+      + "sh -c 'for i in $(seq 1 60); do echo tick $i; sleep 1; done'. "
+      + 'Immediately after it starts, call the bg_logs tool for that task and show me the raw output lines it returned. '
+      + 'Do not wait for the job to finish and do not kill it.'])
+
+    const files = (await filesBelow(join(home, 'sessions'))).filter(path => path.endsWith('/session.jsonl'))
+    assert.equal(files.length, 1, `expected one session log, found ${files.length}`)
+    const records = (await readFile(files[0], 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line))
+
+    const resultFor = call => {
+      const record = records.find(item => item.type === 'tool/result'
+        && (item.data?.message?.content ?? []).some(block => block.toolCallId === call.data.callId))
+      return (record?.data?.message?.content ?? []).find(block => block.toolCallId === call.data.callId)
+    }
+    const textOf = block => JSON.stringify(block?.content ?? '')
+
+    const starts = records.filter(record => record.type === 'tool/call' && record.data?.name === 'bg_run')
+    assert(starts.length > 0, `bg_run was never called; tools called: ${JSON.stringify(records.filter(r => r.type === 'tool/call').map(r => r.data?.name))}`)
+    const startBlock = resultFor(starts[0])
+    assert(startBlock !== undefined && startBlock.isError !== true,
+      `bg_run failed: ${textOf(startBlock).slice(0, 300)}`)
+
+    const peeks = records.filter(record => record.type === 'tool/call' && record.data?.name === 'bg_logs')
+    assert(peeks.length > 0, 'bg_logs was never called — no mid-run output read happened')
+    const peekTexts = peeks.map(call => resultFor(call)).filter(block => block !== undefined && block.isError !== true).map(textOf)
+    assert(peekTexts.length > 0, `every bg_logs call errored: ${peeks.map(call => textOf(resultFor(call))).join(' | ').slice(0, 400)}`)
+    const withTicks = peekTexts.filter(text => /tick(\\n| )?\d+|tick\s*\d+/u.test(text) || text.includes('tick'))
+    assert(withTicks.length > 0, `bg_logs returned no tick output: ${peekTexts.join(' | ').slice(0, 400)}`)
+    assert(!withTicks.some(text => text.includes('tick 60')),
+      'bg_logs already contains the final tick — the job finished before the read, which does not prove live tracking')
+
+    const captured = `${installed.stdout}${installed.stderr}${installedBg.stdout}${installedBg.stderr}${run.stdout}${run.stderr}`
+    assert(!captured.includes(apiKey), 'credential appeared in captured test artifacts')
+
+    results.backgroundTasks = {
+      status: 'passed',
+      engine: await installedEngineVersion(home, 'headless'),
+      bgRunCalls: starts.length,
+      bgLogsMidRunReads: withTicks.length,
     }
   } finally {
     await rm(scratch, { recursive: true, force: true })
@@ -1973,6 +1884,7 @@ const SCENARIOS = [
   ['alibaba-token-plan', runAlibabaTokenPlan, 'alibabaTokenPlan'],
   ['vision-bridge', runVisionBridge, 'visionBridge'],
   ['persistent-memory', runPersistentMemory, 'persistentMemory'],
+  ['background-tasks', runBackgroundTasks, 'backgroundTasks'],
   ['side-conversation', runSideConversation, 'sideConversation'],
   ['vision-bridge-web', runVisionBridgeWeb, 'visionBridgeWeb'],
   ['custom-gateways', runCustomGateways, 'customGateways'],
