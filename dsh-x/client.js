@@ -1819,10 +1819,8 @@ window.__ModuleLoader__.load({
 				"data-dsh-x": "memory-entry"
 			}, (0, react.createElement)("div", { style: ui$2.entryText }, entry.text), entry.created === void 0 ? null : (0, react.createElement)("div", { style: ui$2.entryMeta }, `created ${entry.created}` + (entry.last !== void 0 && entry.last !== entry.created ? ` · updated ${entry.last}` : "")));
 		}
-		/** The floating memory window over the active session. */
-		function MemoryWindow({ useSessions }) {
-			const session = useOnStage(useSessions);
-			const [openPanel, setOpenPanel] = (0, react.useState)(false);
+		/** The panel content — fetch, pins, search, groups — shared by both seats. */
+		function MemoryPanelBody({ session, active }) {
 			const [state, setState] = (0, react.useState)(void 0);
 			const [failed, setFailed] = (0, react.useState)(false);
 			const [query, setQuery] = (0, react.useState)("");
@@ -1830,7 +1828,7 @@ window.__ModuleLoader__.load({
 			const [note, setNote] = (0, react.useState)(void 0);
 			const [generation, setGeneration] = (0, react.useState)(0);
 			(0, react.useEffect)(() => {
-				if (!openPanel) return;
+				if (!active) return;
 				let live = true;
 				const pull = async () => {
 					try {
@@ -1854,14 +1852,9 @@ window.__ModuleLoader__.load({
 					live = false;
 					window.clearInterval(timer);
 				};
-			}, [openPanel, generation]);
-			if (session === "") return null;
-			if (!openPanel) return (0, react_dom.createPortal)((0, react.createElement)("button", {
-				style: ui$2.dot,
-				title: "Memory — what the agent remembers across sessions",
-				"data-dsh-x": "memory-dot",
-				onClick: () => setOpenPanel(true)
-			}, "🧠"), document.body);
+			}, [active, generation]);
+			if (failed && state === void 0) return (0, react.createElement)("div", { style: ui$2.empty }, "The memory route is not answering — is the dsh-work-x suite mounted in this profile?");
+			if (state === void 0) return (0, react.createElement)("div", { style: ui$2.sub }, "Loading memory…");
 			const afterWrite = (result, fallback) => {
 				setNote(result.ok ? {
 					text: result.detail ?? fallback,
@@ -1881,76 +1874,112 @@ window.__ModuleLoader__.load({
 				setPinDraft("");
 				runMemoryCommand(session, "memory-pin", text).then((result) => afterWrite(result, "pinned"));
 			};
-			let body;
-			if (failed && state === void 0) body = (0, react.createElement)("div", { style: ui$2.empty }, "The memory route is not answering — is the dsh-work-x suite mounted in this profile?");
-			else if (state === void 0) body = (0, react.createElement)("div", { style: ui$2.sub }, "Loading memory…");
-			else {
-				const total = state.global.length + state.user.length + Object.values(state.projects).reduce((sum, entries) => sum + entries.length, 0);
-				const groups = [
-					...Object.entries(state.projects).map(([name, entries]) => [`Project · ${name}`, entries]),
-					["Global", state.global],
-					["About you", state.user]
-				];
-				body = (0, react.createElement)("div", { style: { display: "contents" } }, note === void 0 ? null : (0, react.createElement)("div", {
-					style: note.tone === "error" ? ui$2.noteError : ui$2.note,
-					"data-dsh-x": "memory-note"
-				}, note.text), (0, react.createElement)("div", { style: ui$2.group }, "Pinned rules (every session, every turn)"), ...state.standing.map((text, index) => (0, react.createElement)("div", {
-					key: `pin-${index}`,
-					style: {
-						...ui$2.entry,
-						flexDirection: "row",
-						...ui$2.pinRow
-					},
-					"data-dsh-x": "memory-pin"
-				}, (0, react.createElement)("div", { style: {
-					...ui$2.entryText,
+			const total = state.global.length + state.user.length + Object.values(state.projects).reduce((sum, entries) => sum + entries.length, 0);
+			const groups = [
+				...Object.entries(state.projects).map(([name, entries]) => [`Project · ${name}`, entries]),
+				["Global", state.global],
+				["About you", state.user]
+			];
+			return (0, react.createElement)("div", { style: { display: "contents" } }, (0, react.createElement)("div", {
+				style: ui$2.sub,
+				"data-dsh-x": "memory-counts"
+			}, `${total} memories · ${state.standing.length} pinned`), note === void 0 ? null : (0, react.createElement)("div", {
+				style: note.tone === "error" ? ui$2.noteError : ui$2.note,
+				"data-dsh-x": "memory-note"
+			}, note.text), (0, react.createElement)("div", { style: ui$2.group }, "Pinned rules (every session, every turn)"), ...state.standing.map((text, index) => (0, react.createElement)("div", {
+				key: `pin-${index}`,
+				style: {
+					...ui$2.entry,
+					flexDirection: "row",
+					...ui$2.pinRow
+				},
+				"data-dsh-x": "memory-pin"
+			}, (0, react.createElement)("div", { style: {
+				...ui$2.entryText,
+				flex: 1
+			} }, `${index + 1}. ${text}`), (0, react.createElement)("button", {
+				style: ui$2.pinRemove,
+				"data-dsh-x": "memory-pin-remove",
+				onClick: () => removePin(index + 1)
+			}, "Unpin"))), (0, react.createElement)("div", { style: ui$2.pinAddRow }, (0, react.createElement)("input", {
+				style: {
+					...ui$2.search,
 					flex: 1
-				} }, `${index + 1}. ${text}`), (0, react.createElement)("button", {
-					style: ui$2.pinRemove,
-					"data-dsh-x": "memory-pin-remove",
-					onClick: () => removePin(index + 1)
-				}, "Unpin"))), (0, react.createElement)("div", { style: ui$2.pinAddRow }, (0, react.createElement)("input", {
-					style: {
-						...ui$2.search,
-						flex: 1
-					},
-					placeholder: "Pin a rule that must always hold…",
-					value: pinDraft,
-					"data-dsh-x": "memory-pin-input",
-					onChange: (event) => setPinDraft(event.target.value),
-					onKeyDown: (event) => {
-						if (event.key === "Enter") {
-							event.preventDefault();
-							addPin();
-						}
+				},
+				placeholder: "Pin a rule that must always hold…",
+				value: pinDraft,
+				"data-dsh-x": "memory-pin-input",
+				onChange: (event) => setPinDraft(event.target.value),
+				onKeyDown: (event) => {
+					if (event.key === "Enter") {
+						event.preventDefault();
+						addPin();
 					}
-				}), (0, react.createElement)("button", {
-					style: ui$2.pinAddButton,
-					"data-dsh-x": "memory-pin-add",
-					onClick: addPin
-				}, "Pin")), (0, react.createElement)("div", { style: ui$2.budget }, `${state.standingBudget.entries}/${state.standingBudget.maxEntries} pins · ${state.standingBudget.chars}/${state.standingBudget.maxChars} chars — pins are injected into every turn, so the budget is deliberately hard`), total === 0 ? (0, react.createElement)("div", { style: ui$2.empty }, "No durable memories yet. Ask the agent to remember something (\"remember that …\") — its memory tools write here, and the background review distills lessons on its own.") : null, total > 0 ? (0, react.createElement)("input", {
-					style: ui$2.search,
-					placeholder: "Search memories…",
-					value: query,
-					"data-dsh-x": "memory-search",
-					onChange: (event) => setQuery(event.target.value)
-				}) : null, ...groups.flatMap(([title, entries]) => {
-					const visibleEntries = entries.filter((entry) => matches(query, entry.text));
-					if (visibleEntries.length === 0) return [];
-					return [(0, react.createElement)("div", {
-						key: `g-${title}`,
-						style: ui$2.group
-					}, title), ...visibleEntries.map((entry, index) => entryCard(entry, `${title}-${index}`))];
-				}), total > 0 ? (0, react.createElement)("div", { style: ui$2.sub }, "Read-only list — edits and deletions go through the agent's own memory tools or the /memory-* commands, so the package's store and its search index never drift apart.") : null);
-			}
+				}
+			}), (0, react.createElement)("button", {
+				style: ui$2.pinAddButton,
+				"data-dsh-x": "memory-pin-add",
+				onClick: addPin
+			}, "Pin")), (0, react.createElement)("div", { style: ui$2.budget }, `${state.standingBudget.entries}/${state.standingBudget.maxEntries} pins · ${state.standingBudget.chars}/${state.standingBudget.maxChars} chars — pins are injected into every turn, so the budget is deliberately hard`), total === 0 ? (0, react.createElement)("div", { style: ui$2.empty }, "No durable memories yet. Ask the agent to remember something (\"remember that …\") — its memory tools write here, and the background review distills lessons on its own.") : null, total > 0 ? (0, react.createElement)("input", {
+				style: ui$2.search,
+				placeholder: "Search memories…",
+				value: query,
+				"data-dsh-x": "memory-search",
+				onChange: (event) => setQuery(event.target.value)
+			}) : null, ...groups.flatMap(([title, entries]) => {
+				const visibleEntries = entries.filter((entry) => matches(query, entry.text));
+				if (visibleEntries.length === 0) return [];
+				return [(0, react.createElement)("div", {
+					key: `g-${title}`,
+					style: ui$2.group
+				}, title), ...visibleEntries.map((entry, index) => entryCard(entry, `${title}-${index}`))];
+			}), total > 0 ? (0, react.createElement)("div", { style: ui$2.sub }, "Read-only list — edits and deletions go through the agent's own memory tools or the /memory-* commands, so the package's store and its search index never drift apart.") : null);
+		}
+		/** The floating memory window over the active session. */
+		function MemoryWindow({ useSessions }) {
+			const session = useOnStage(useSessions);
+			const [openPanel, setOpenPanel] = (0, react.useState)(false);
+			if (session === "") return null;
+			if (!openPanel) return (0, react_dom.createPortal)((0, react.createElement)("button", {
+				style: ui$2.dot,
+				title: "Memory — what the agent remembers across sessions",
+				"data-dsh-x": "memory-dot",
+				onClick: () => setOpenPanel(true)
+			}, "🧠"), document.body);
 			return (0, react_dom.createPortal)((0, react.createElement)("div", {
 				style: ui$2.panel,
 				"data-dsh-x": "memory-tab"
-			}, (0, react.createElement)("div", { style: ui$2.header }, (0, react.createElement)("span", { style: { flex: 1 } }, "Memory"), state === void 0 ? null : (0, react.createElement)("span", { style: ui$2.sub }, `${state.global.length + state.user.length + Object.values(state.projects).reduce((sum, entries) => sum + entries.length, 0)} memories · ${state.standing.length} pinned`), (0, react.createElement)("button", {
+			}, (0, react.createElement)("div", { style: ui$2.header }, (0, react.createElement)("span", { style: { flex: 1 } }, "Memory"), (0, react.createElement)("button", {
 				style: ui$2.headerButton,
 				title: "Close",
 				onClick: () => setOpenPanel(false)
-			}, "×")), (0, react.createElement)("div", { style: ui$2.body }, body)), document.body);
+			}, "×")), (0, react.createElement)("div", { style: ui$2.body }, (0, react.createElement)(MemoryPanelBody, {
+				session,
+				active: true
+			}))), document.body);
+		}
+		/** The same panel as a sidebar tab (needs the optional dsh-better-sidebar). */
+		function MemorySidebarTab({ scope, visible }) {
+			return (0, react.createElement)("div", {
+				style: {
+					...ui$2.body,
+					overflowY: "visible"
+				},
+				"data-dsh-x": "memory-tab"
+			}, (0, react.createElement)(MemoryPanelBody, {
+				session: scope.sessionId ?? "",
+				active: visible
+			}));
+		}
+		/** Seat the sidebar tab wherever the community sidebar is installed. */
+		function registerMemorySeats(ctx) {
+			ctx.inject(["betterSidebar"], (scope) => {
+				scope.betterSidebar?.registerTab({
+					id: "dsh-work-x:memory",
+					title: "Memory",
+					component: MemorySidebarTab
+				});
+			});
 		}
 		//#endregion
 		//#region dsh-x/src/side-chat.ts
@@ -2358,6 +2387,14 @@ window.__ModuleLoader__.load({
 				flexDirection: "column",
 				gap: "8px"
 			},
+			tabRoot: {
+				display: "flex",
+				flexDirection: "column",
+				gap: "8px",
+				padding: "12px",
+				font: "400 12.5px/1.5 system-ui, -apple-system, sans-serif",
+				color: "inherit"
+			},
 			card: {
 				border: "1px solid rgba(120,120,130,0.25)",
 				borderRadius: "10px",
@@ -2437,15 +2474,10 @@ window.__ModuleLoader__.load({
 			const seconds = Math.max(0, Math.round(((end ?? Date.now()) - start) / 1e3));
 			return seconds < 60 ? `${seconds}s` : `${Math.floor(seconds / 60)}m${seconds % 60}s`;
 		}
-		/** Floating dock over the active session; renders nothing when no tasks exist. */
-		function TasksDock({ useSessions }) {
-			const session = useOnStage(useSessions);
+		function useTasks(session, active, watching) {
 			const [tasks, setTasks] = (0, react.useState)([]);
-			const [openPanel, setOpenPanel] = (0, react.useState)(false);
-			const [watching, setWatching] = (0, react.useState)(void 0);
-			const [note, setNote] = (0, react.useState)(void 0);
 			(0, react.useEffect)(() => {
-				if (session === "") return;
+				if (session === "" || !active) return;
 				let live = true;
 				const pull = async () => {
 					try {
@@ -2464,15 +2496,18 @@ window.__ModuleLoader__.load({
 					live = false;
 					window.clearInterval(timer);
 				};
-			}, [session, watching]);
-			if (session === "" || tasks.length === 0) return null;
-			const running = tasks.filter(RUNNING);
-			if (!openPanel) return (0, react_dom.createPortal)((0, react.createElement)("button", {
-				style: ui.pill,
-				title: "Background tasks",
-				"data-dsh-x": "tasks-pill",
-				onClick: () => setOpenPanel(true)
-			}, running.length > 0 ? (0, react.createElement)("span", { style: ui.pulse }) : null, running.length > 0 ? `${running.length} task${running.length > 1 ? "s" : ""} running` : `${tasks.length} task${tasks.length > 1 ? "s" : ""}`), document.body);
+			}, [
+				session,
+				active,
+				watching
+			]);
+			return tasks;
+		}
+		/** The task list + live output + kill — shared by the dock panel and the sidebar tab. */
+		function TasksListBody({ session, active }) {
+			const [watching, setWatching] = (0, react.useState)(void 0);
+			const [note, setNote] = (0, react.useState)(void 0);
+			const tasks = useTasks(session, active, watching);
 			const kill = (task) => {
 				setNote(void 0);
 				fetch("/pi2dsh/pi-command", {
@@ -2489,17 +2524,10 @@ window.__ModuleLoader__.load({
 					setNote(response.ok ? payload.notice ?? `kill requested for ${task.id}` : payload.error ?? "kill failed");
 				}).catch((error) => setNote(String(error)));
 			};
-			return (0, react_dom.createPortal)((0, react.createElement)("div", {
-				style: ui.panel,
-				"data-dsh-x": "tasks-panel"
-			}, (0, react.createElement)("div", { style: ui.header }, (0, react.createElement)("span", { style: { flex: 1 } }, "Background tasks"), (0, react.createElement)("button", {
-				style: ui.headerButton,
-				title: "Close",
-				onClick: () => setOpenPanel(false)
-			}, "×")), (0, react.createElement)("div", { style: ui.body }, note === void 0 ? null : (0, react.createElement)("div", {
+			return (0, react.createElement)("div", { style: { display: "contents" } }, note === void 0 ? null : (0, react.createElement)("div", {
 				style: ui.note,
 				"data-dsh-x": "tasks-note"
-			}, note), tasks.length === 0 ? (0, react.createElement)("div", { style: ui.empty }, "No background tasks in this workspace.") : null, ...tasks.map((task) => (0, react.createElement)("div", {
+			}, note), tasks.length === 0 ? (0, react.createElement)("div", { style: ui.empty }, "No background tasks in this workspace. Ask the agent to run something long with bg_run, or use /bg — the list fills in on its own.") : null, ...tasks.map((task) => (0, react.createElement)("div", {
 				key: task.id,
 				style: ui.card,
 				"data-dsh-x": "tasks-card"
@@ -2522,7 +2550,52 @@ window.__ModuleLoader__.load({
 			}, watching === task.id ? "hide output" : "show output"), watching === task.id && task.output !== void 0 ? (0, react.createElement)("div", {
 				style: ui.outputBox,
 				"data-dsh-x": "tasks-output"
-			}, task.output.length > 0 ? task.output : "(no output yet)") : null)))), document.body);
+			}, task.output.length > 0 ? task.output : "(no output yet)") : null)));
+		}
+		/** Floating dock over the active session; renders nothing when no tasks exist. */
+		function TasksDock({ useSessions }) {
+			const session = useOnStage(useSessions);
+			const [openPanel, setOpenPanel] = (0, react.useState)(false);
+			const tasks = useTasks(session, session !== "", void 0);
+			if (session === "" || tasks.length === 0) return null;
+			const running = tasks.filter(RUNNING);
+			if (!openPanel) return (0, react_dom.createPortal)((0, react.createElement)("button", {
+				style: ui.pill,
+				title: "Background tasks",
+				"data-dsh-x": "tasks-pill",
+				onClick: () => setOpenPanel(true)
+			}, running.length > 0 ? (0, react.createElement)("span", { style: ui.pulse }) : null, running.length > 0 ? `${running.length} task${running.length > 1 ? "s" : ""} running` : `${tasks.length} task${tasks.length > 1 ? "s" : ""}`), document.body);
+			return (0, react_dom.createPortal)((0, react.createElement)("div", {
+				style: ui.panel,
+				"data-dsh-x": "tasks-panel"
+			}, (0, react.createElement)("div", { style: ui.header }, (0, react.createElement)("span", { style: { flex: 1 } }, "Background tasks"), (0, react.createElement)("button", {
+				style: ui.headerButton,
+				title: "Close",
+				onClick: () => setOpenPanel(false)
+			}, "×")), (0, react.createElement)("div", { style: ui.body }, (0, react.createElement)(TasksListBody, {
+				session,
+				active: true
+			}))), document.body);
+		}
+		/** The same list as a sidebar tab (needs the optional dsh-better-sidebar). */
+		function TasksSidebarTab({ scope, visible }) {
+			return (0, react.createElement)("div", {
+				style: ui.tabRoot,
+				"data-dsh-x": "tasks-tab"
+			}, (0, react.createElement)(TasksListBody, {
+				session: scope.sessionId ?? "",
+				active: visible
+			}));
+		}
+		/** Seat the sidebar tab wherever the community sidebar is installed. */
+		function registerTasksSeats(ctx) {
+			ctx.inject(["betterSidebar"], (scope) => {
+				scope.betterSidebar?.registerTab({
+					id: "dsh-work-x:tasks",
+					title: "Tasks",
+					component: TasksSidebarTab
+				});
+			});
 		}
 		//#endregion
 		//#region dsh-x/src/client.ts
@@ -2530,6 +2603,8 @@ window.__ModuleLoader__.load({
 		function apply(ctx) {
 			apply$1(ctx, { sideThreads: false });
 			registerMcpTab(ctx);
+			registerMemorySeats(ctx);
+			registerTasksSeats(ctx);
 			registerDiagnosticsTab(ctx);
 			ctx.inject(["slots"], (scope) => {
 				const slots = scope.slots;

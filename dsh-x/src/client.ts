@@ -6,9 +6,9 @@
 import { apply as engineApply, inject as engineInject } from '../../src/client.js'
 import { registerDiagnosticsTab } from './diagnostics-tab.js'
 import { registerMcpTab } from './mcp-tab.js'
-import { MemoryWindow } from './memory-tab.js'
+import { MemoryWindow, registerMemorySeats } from './memory-tab.js'
 import { SideChatWindow } from './side-chat.js'
-import { TasksDock } from './tasks-dock.js'
+import { TasksDock, registerTasksSeats } from './tasks-dock.js'
 
 export const inject = engineInject
 
@@ -17,6 +17,8 @@ export function apply(ctx: Parameters<typeof engineApply>[0]): void {
   // commands), so the engine's plain read-only thread panel steps aside.
   engineApply(ctx, { sideThreads: false })
   registerMcpTab(ctx as never)
+  registerMemorySeats(ctx as never)
+  registerTasksSeats(ctx as never)
   registerDiagnosticsTab(ctx as never)
   ;(ctx as unknown as {
     inject(services: string[], apply: (scope: {

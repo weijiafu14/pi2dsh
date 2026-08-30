@@ -59,8 +59,10 @@ subagents natively (click through to steer or stop them), and dsh-work-x adds an
 **MCP tab** there — this session's servers grouped by layer (project /
 global), with per-project enable/disable. A machine-wide view of the same
 servers lives in **Settings → MCP** and works with or without the sidebar.
-Without `dsh-better-sidebar` everything still runs; you just lose those two
-panels. (DSH has no way yet for one plugin to declare a companion bundle —
+With the sidebar installed, **Memory** and **Tasks** tabs appear there too —
+the same panels as the floating window and dock, in workbench form. Without
+`dsh-better-sidebar` everything still runs; the floating pieces carry the
+same functionality. (DSH has no way yet for one plugin to declare a companion bundle —
 [we've proposed one](https://github.com/deepseek-ai/deepseek-harness/discussions/4543) —
 so the install command names both.)
 

@@ -1,10 +1,14 @@
 // The suite's memory manager: the product face of pi-hermes-memory — a
 // floating window (dot → panel, dismissible, session-scoped) listing pinned
 // standing rules and project / global / user memories, with search and pin
-// management. Seated in shell.overlay: the overlay standard kit carries the
-// sessions hook, and the ACTIVE session is what makes the package's command
-// runner reachable for the pin writes. (The sidebar-tab seat was rejected:
-// `betterSidebar` is a third-party service no stock composition provides.)
+// management.
+//
+// Two seats, one data path:
+//   - MemoryWindow (shell.overlay, stock) — the floating dot/panel; the
+//     overlay standard kit carries the sessions hook, and the ACTIVE session
+//     is what makes the package's command runner reachable for pin writes.
+//   - MemorySidebarTab (betterSidebar, optional) — the same panel as a
+//     sidebar tab when the community sidebar is installed.
 //
 // Reads the suite's /dsh-x/memory-state route (the package's own Markdown
 // files — MEMORY.md / USER.md / STANDING.md / projects-memory — read-only).
@@ -25,6 +29,17 @@ interface MemoryStateView {
 }
 
 type SessionsHook = <T>(selector: (state: { current: string }) => T) => T
+interface SidebarTabScope { sessionId: string }
+interface BetterSidebarService {
+  registerTab(descriptor: {
+    id: string
+    title: string
+    component: (props: { scope: SidebarTabScope, visible: boolean }) => ReactNode
+  }): () => void
+}
+export interface MemoryUiContext {
+  inject(services: string[], apply: (scope: { betterSidebar?: BetterSidebarService }) => void): void
+}
 
 const MEMORY_PACKAGE = 'pi-hermes-memory'
 
@@ -115,10 +130,8 @@ function entryCard(entry: MemoryEntry, key: string): ReactNode {
   )
 }
 
-/** The floating memory window over the active session. */
-export function MemoryWindow({ useSessions }: { useSessions: SessionsHook }): ReactNode {
-  const session = useOnStage(useSessions as never)
-  const [openPanel, setOpenPanel] = useState(false)
+/** The panel content — fetch, pins, search, groups — shared by both seats. */
+function MemoryPanelBody({ session, active }: { session: string, active: boolean }): ReactNode {
   const [state, setState] = useState<MemoryStateView | undefined>(undefined)
   const [failed, setFailed] = useState(false)
   const [query, setQuery] = useState('')
@@ -127,7 +140,7 @@ export function MemoryWindow({ useSessions }: { useSessions: SessionsHook }): Re
   const [generation, setGeneration] = useState(0)
 
   useEffect(() => {
-    if (!openPanel) return
+    if (!active) return
     let live = true
     const pull = async () => {
       try {
@@ -149,17 +162,13 @@ export function MemoryWindow({ useSessions }: { useSessions: SessionsHook }): Re
       live = false
       window.clearInterval(timer)
     }
-  }, [openPanel, generation])
+  }, [active, generation])
 
-  if (session === '') return null
-
-  if (!openPanel) {
-    return createPortal(createElement('button', {
-      style: ui.dot,
-      title: 'Memory — what the agent remembers across sessions',
-      'data-dsh-x': 'memory-dot',
-      onClick: () => setOpenPanel(true),
-    }, '🧠'), document.body)
+  if (failed && state === undefined) {
+    return createElement('div', { style: ui.empty }, 'The memory route is not answering — is the dsh-work-x suite mounted in this profile?')
+  }
+  if (state === undefined) {
+    return createElement('div', { style: ui.sub }, 'Loading memory…')
   }
 
   const afterWrite = (result: { ok: boolean, detail?: string }, fallback: string): void => {
@@ -176,73 +185,104 @@ export function MemoryWindow({ useSessions }: { useSessions: SessionsHook }): Re
     void runMemoryCommand(session, 'memory-pin', text).then(result => afterWrite(result, 'pinned'))
   }
 
-  let body: ReactNode
-  if (failed && state === undefined) {
-    body = createElement('div', { style: ui.empty }, 'The memory route is not answering — is the dsh-work-x suite mounted in this profile?')
-  } else if (state === undefined) {
-    body = createElement('div', { style: ui.sub }, 'Loading memory…')
-  } else {
-    const total = state.global.length + state.user.length
-      + Object.values(state.projects).reduce((sum, entries) => sum + entries.length, 0)
-    const groups: Array<[string, MemoryEntry[]]> = [
-      ...Object.entries(state.projects).map(([name, entries]): [string, MemoryEntry[]] => [`Project · ${name}`, entries]),
-      ['Global', state.global],
-      ['About you', state.user],
-    ]
-    body = createElement('div', { style: { display: 'contents' } },
-      note === undefined ? null : createElement('div', { style: note.tone === 'error' ? ui.noteError : ui.note, 'data-dsh-x': 'memory-note' }, note.text),
-      createElement('div', { style: ui.group }, 'Pinned rules (every session, every turn)'),
-      ...state.standing.map((text, index) => createElement('div', { key: `pin-${index}`, style: { ...ui.entry, flexDirection: 'row', ...ui.pinRow }, 'data-dsh-x': 'memory-pin' },
-        createElement('div', { style: { ...ui.entryText, flex: 1 } }, `${index + 1}. ${text}`),
-        createElement('button', { style: ui.pinRemove, 'data-dsh-x': 'memory-pin-remove', onClick: () => removePin(index + 1) }, 'Unpin'),
-      )),
-      createElement('div', { style: ui.pinAddRow },
-        createElement('input', {
-          style: { ...ui.search, flex: 1 },
-          placeholder: 'Pin a rule that must always hold…',
-          value: pinDraft,
-          'data-dsh-x': 'memory-pin-input',
-          onChange: (event: { target: { value: string } }) => setPinDraft(event.target.value),
-          onKeyDown: (event: { key: string, preventDefault(): void }) => {
-            if (event.key === 'Enter') {
-              event.preventDefault()
-              addPin()
-            }
-          },
-        }),
-        createElement('button', { style: ui.pinAddButton, 'data-dsh-x': 'memory-pin-add', onClick: addPin }, 'Pin'),
-      ),
-      createElement('div', { style: ui.budget },
-        `${state.standingBudget.entries}/${state.standingBudget.maxEntries} pins · ${state.standingBudget.chars}/${state.standingBudget.maxChars} chars — pins are injected into every turn, so the budget is deliberately hard`),
-      total === 0 ? createElement('div', { style: ui.empty },
-        'No durable memories yet. Ask the agent to remember something ("remember that …") — its memory tools write here, and the background review distills lessons on its own.') : null,
-      total > 0 ? createElement('input', {
-        style: ui.search,
-        placeholder: 'Search memories…',
-        value: query,
-        'data-dsh-x': 'memory-search',
-        onChange: (event: { target: { value: string } }) => setQuery(event.target.value),
-      }) : null,
-      ...groups.flatMap(([title, entries]) => {
-        const visibleEntries = entries.filter(entry => matches(query, entry.text))
-        if (visibleEntries.length === 0) return []
-        return [
-          createElement('div', { key: `g-${title}`, style: ui.group }, title),
-          ...visibleEntries.map((entry, index) => entryCard(entry, `${title}-${index}`)),
-        ]
+  const total = state.global.length + state.user.length
+    + Object.values(state.projects).reduce((sum, entries) => sum + entries.length, 0)
+  const groups: Array<[string, MemoryEntry[]]> = [
+    ...Object.entries(state.projects).map(([name, entries]): [string, MemoryEntry[]] => [`Project · ${name}`, entries]),
+    ['Global', state.global],
+    ['About you', state.user],
+  ]
+
+  return createElement('div', { style: { display: 'contents' } },
+    createElement('div', { style: ui.sub, 'data-dsh-x': 'memory-counts' },
+      `${total} memories · ${state.standing.length} pinned`),
+    note === undefined ? null : createElement('div', { style: note.tone === 'error' ? ui.noteError : ui.note, 'data-dsh-x': 'memory-note' }, note.text),
+    createElement('div', { style: ui.group }, 'Pinned rules (every session, every turn)'),
+    ...state.standing.map((text, index) => createElement('div', { key: `pin-${index}`, style: { ...ui.entry, flexDirection: 'row', ...ui.pinRow }, 'data-dsh-x': 'memory-pin' },
+      createElement('div', { style: { ...ui.entryText, flex: 1 } }, `${index + 1}. ${text}`),
+      createElement('button', { style: ui.pinRemove, 'data-dsh-x': 'memory-pin-remove', onClick: () => removePin(index + 1) }, 'Unpin'),
+    )),
+    createElement('div', { style: ui.pinAddRow },
+      createElement('input', {
+        style: { ...ui.search, flex: 1 },
+        placeholder: 'Pin a rule that must always hold…',
+        value: pinDraft,
+        'data-dsh-x': 'memory-pin-input',
+        onChange: (event: { target: { value: string } }) => setPinDraft(event.target.value),
+        onKeyDown: (event: { key: string, preventDefault(): void }) => {
+          if (event.key === 'Enter') {
+            event.preventDefault()
+            addPin()
+          }
+        },
       }),
-      total > 0 ? createElement('div', { style: ui.sub },
-        'Read-only list — edits and deletions go through the agent\'s own memory tools or the /memory-* commands, so the package\'s store and its search index never drift apart.') : null,
-    )
+      createElement('button', { style: ui.pinAddButton, 'data-dsh-x': 'memory-pin-add', onClick: addPin }, 'Pin'),
+    ),
+    createElement('div', { style: ui.budget },
+      `${state.standingBudget.entries}/${state.standingBudget.maxEntries} pins · ${state.standingBudget.chars}/${state.standingBudget.maxChars} chars — pins are injected into every turn, so the budget is deliberately hard`),
+    total === 0 ? createElement('div', { style: ui.empty },
+      'No durable memories yet. Ask the agent to remember something ("remember that …") — its memory tools write here, and the background review distills lessons on its own.') : null,
+    total > 0 ? createElement('input', {
+      style: ui.search,
+      placeholder: 'Search memories…',
+      value: query,
+      'data-dsh-x': 'memory-search',
+      onChange: (event: { target: { value: string } }) => setQuery(event.target.value),
+    }) : null,
+    ...groups.flatMap(([title, entries]) => {
+      const visibleEntries = entries.filter(entry => matches(query, entry.text))
+      if (visibleEntries.length === 0) return []
+      return [
+        createElement('div', { key: `g-${title}`, style: ui.group }, title),
+        ...visibleEntries.map((entry, index) => entryCard(entry, `${title}-${index}`)),
+      ]
+    }),
+    total > 0 ? createElement('div', { style: ui.sub },
+      "Read-only list — edits and deletions go through the agent's own memory tools or the /memory-* commands, so the package's store and its search index never drift apart.") : null,
+  )
+}
+
+/** The floating memory window over the active session. */
+export function MemoryWindow({ useSessions }: { useSessions: SessionsHook }): ReactNode {
+  const session = useOnStage(useSessions as never)
+  const [openPanel, setOpenPanel] = useState(false)
+
+  if (session === '') return null
+
+  if (!openPanel) {
+    return createPortal(createElement('button', {
+      style: ui.dot,
+      title: 'Memory — what the agent remembers across sessions',
+      'data-dsh-x': 'memory-dot',
+      onClick: () => setOpenPanel(true),
+    }, '🧠'), document.body)
   }
 
   return createPortal(createElement('div', { style: ui.panel, 'data-dsh-x': 'memory-tab' },
     createElement('div', { style: ui.header },
       createElement('span', { style: { flex: 1 } }, 'Memory'),
-      state === undefined ? null : createElement('span', { style: ui.sub },
-        `${state.global.length + state.user.length + Object.values(state.projects).reduce((sum, entries) => sum + entries.length, 0)} memories · ${state.standing.length} pinned`),
       createElement('button', { style: ui.headerButton, title: 'Close', onClick: () => setOpenPanel(false) }, '×'),
     ),
-    createElement('div', { style: ui.body }, body),
+    createElement('div', { style: ui.body },
+      createElement(MemoryPanelBody, { session, active: true }),
+    ),
   ), document.body)
+}
+
+/** The same panel as a sidebar tab (needs the optional dsh-better-sidebar). */
+function MemorySidebarTab({ scope, visible }: { scope: SidebarTabScope, visible: boolean }): ReactNode {
+  return createElement('div', { style: { ...ui.body, overflowY: 'visible' }, 'data-dsh-x': 'memory-tab' },
+    createElement(MemoryPanelBody, { session: scope.sessionId ?? '', active: visible }),
+  )
+}
+
+/** Seat the sidebar tab wherever the community sidebar is installed. */
+export function registerMemorySeats(ctx: MemoryUiContext): void {
+  ctx.inject(['betterSidebar'], (scope) => {
+    scope.betterSidebar?.registerTab({
+      id: 'dsh-work-x:memory',
+      title: 'Memory',
+      component: MemorySidebarTab,
+    })
+  })
 }

@@ -1,6 +1,11 @@
-// The suite's background-tasks dock: the product face of pi-background-tasks
-// on the web — a floating pill that exists only while tasks exist, expanding
-// into a list with live output and a kill control.
+// The suite's background-tasks surfaces: the product faces of
+// pi-background-tasks on the web.
+//
+// Two seats, one data path:
+//   - TasksDock (shell.overlay, stock) — a floating pill that exists only
+//     while tasks exist, expanding into the panel. Works on a clean install.
+//   - TasksSidebarTab (betterSidebar, optional) — the same panel as a
+//     sidebar tab when the community sidebar is installed.
 //
 // Reads the suite's /dsh-x/tasks-state route (the package's own durable task
 // snapshots, plus a pid liveness probe). The one write — kill — runs the
@@ -24,6 +29,17 @@ interface TaskView {
 }
 
 type SessionsHook = <T>(selector: (state: { current: string }) => T) => T
+interface SidebarTabScope { sessionId: string }
+interface BetterSidebarService {
+  registerTab(descriptor: {
+    id: string
+    title: string
+    component: (props: { scope: SidebarTabScope, visible: boolean }) => ReactNode
+  }): () => void
+}
+export interface TasksUiContext {
+  inject(services: string[], apply: (scope: { betterSidebar?: BetterSidebarService }) => void): void
+}
 
 const TASKS_PACKAGE = 'pi-background-tasks'
 
@@ -59,6 +75,10 @@ const ui = {
     color: 'inherit', font: 'inherit', padding: '2px 4px',
   },
   body: { overflowY: 'auto', padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: '8px' },
+  tabRoot: {
+    display: 'flex', flexDirection: 'column', gap: '8px', padding: '12px',
+    font: '400 12.5px/1.5 system-ui, -apple-system, sans-serif', color: 'inherit',
+  },
   card: {
     border: '1px solid rgba(120,120,130,0.25)', borderRadius: '10px', padding: '8px 10px',
     display: 'flex', flexDirection: 'column', gap: '5px',
@@ -95,16 +115,10 @@ function since(start?: number, end?: number): string {
   return seconds < 60 ? `${seconds}s` : `${Math.floor(seconds / 60)}m${seconds % 60}s`
 }
 
-/** Floating dock over the active session; renders nothing when no tasks exist. */
-export function TasksDock({ useSessions }: { useSessions: SessionsHook }): ReactNode {
-  const session = useOnStage(useSessions as never)
+function useTasks(session: string, active: boolean, watching: string | undefined): TaskView[] {
   const [tasks, setTasks] = useState<TaskView[]>([])
-  const [openPanel, setOpenPanel] = useState(false)
-  const [watching, setWatching] = useState<string | undefined>(undefined)
-  const [note, setNote] = useState<string | undefined>(undefined)
-
   useEffect(() => {
-    if (session === '') return
+    if (session === '' || !active) return
     let live = true
     const pull = async () => {
       try {
@@ -121,7 +135,62 @@ export function TasksDock({ useSessions }: { useSessions: SessionsHook }): React
       live = false
       window.clearInterval(timer)
     }
-  }, [session, watching])
+  }, [session, active, watching])
+  return tasks
+}
+
+/** The task list + live output + kill — shared by the dock panel and the sidebar tab. */
+function TasksListBody({ session, active }: { session: string, active: boolean }): ReactNode {
+  const [watching, setWatching] = useState<string | undefined>(undefined)
+  const [note, setNote] = useState<string | undefined>(undefined)
+  const tasks = useTasks(session, active, watching)
+
+  const kill = (task: TaskView): void => {
+    setNote(undefined)
+    void fetch('/pi2dsh/pi-command', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ session, package: TASKS_PACKAGE, command: 'kill', args: task.id }),
+    }).then(async (response) => {
+      const payload = await response.json() as { error?: string, notice?: string }
+      setNote(response.ok ? (payload.notice ?? `kill requested for ${task.id}`) : (payload.error ?? 'kill failed'))
+    }).catch(error => setNote(String(error)))
+  }
+
+  return createElement('div', { style: { display: 'contents' } },
+    note === undefined ? null : createElement('div', { style: ui.note, 'data-dsh-x': 'tasks-note' }, note),
+    tasks.length === 0 ? createElement('div', { style: ui.empty },
+      'No background tasks in this workspace. Ask the agent to run something long with bg_run, or use /bg — the list fills in on its own.') : null,
+    ...tasks.map(task => createElement('div', { key: task.id, style: ui.card, 'data-dsh-x': 'tasks-card' },
+      createElement('div', { style: ui.cardHead },
+        createElement('span', { style: ui.name }, task.name ?? task.id),
+        createElement('span', {
+          style: { ...ui.badge, ...(RUNNING(task) ? ui.badgeLive : {}) },
+        }, RUNNING(task) ? 'running' : task.status === 'running' ? 'stale' : task.status),
+        RUNNING(task) ? createElement('button', { style: ui.kill, 'data-dsh-x': 'tasks-kill', onClick: () => kill(task) }, 'Kill') : null,
+      ),
+      createElement('div', { style: ui.command }, task.command),
+      createElement('div', { style: ui.meta },
+        `${task.id} · ${since(task.startTime, task.endTime)}`
+        + (typeof task.exitCode === 'number' ? ` · exit ${task.exitCode}` : '')
+        + (typeof task.bytesWritten === 'number' ? ` · ${task.bytesWritten}B output` : '')),
+      createElement('button', {
+        style: { ...ui.headerButton, alignSelf: 'flex-start', opacity: 0.75, padding: 0 },
+        'data-dsh-x': 'tasks-output-toggle',
+        onClick: () => setWatching(watching === task.id ? undefined : task.id),
+      }, watching === task.id ? 'hide output' : 'show output'),
+      watching === task.id && task.output !== undefined
+        ? createElement('div', { style: ui.outputBox, 'data-dsh-x': 'tasks-output' }, task.output.length > 0 ? task.output : '(no output yet)')
+        : null,
+    )),
+  )
+}
+
+/** Floating dock over the active session; renders nothing when no tasks exist. */
+export function TasksDock({ useSessions }: { useSessions: SessionsHook }): ReactNode {
+  const session = useOnStage(useSessions as never)
+  const [openPanel, setOpenPanel] = useState(false)
+  const tasks = useTasks(session, session !== '', undefined)
 
   if (session === '' || tasks.length === 0) return null
   const running = tasks.filter(RUNNING)
@@ -138,48 +207,31 @@ export function TasksDock({ useSessions }: { useSessions: SessionsHook }): React
     ), document.body)
   }
 
-  const kill = (task: TaskView): void => {
-    setNote(undefined)
-    void fetch('/pi2dsh/pi-command', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ session, package: TASKS_PACKAGE, command: 'kill', args: task.id }),
-    }).then(async (response) => {
-      const payload = await response.json() as { error?: string, notice?: string }
-      setNote(response.ok ? (payload.notice ?? `kill requested for ${task.id}`) : (payload.error ?? 'kill failed'))
-    }).catch(error => setNote(String(error)))
-  }
-
   return createPortal(createElement('div', { style: ui.panel, 'data-dsh-x': 'tasks-panel' },
     createElement('div', { style: ui.header },
       createElement('span', { style: { flex: 1 } }, 'Background tasks'),
       createElement('button', { style: ui.headerButton, title: 'Close', onClick: () => setOpenPanel(false) }, '×'),
     ),
     createElement('div', { style: ui.body },
-      note === undefined ? null : createElement('div', { style: ui.note, 'data-dsh-x': 'tasks-note' }, note),
-      tasks.length === 0 ? createElement('div', { style: ui.empty }, 'No background tasks in this workspace.') : null,
-      ...tasks.map(task => createElement('div', { key: task.id, style: ui.card, 'data-dsh-x': 'tasks-card' },
-        createElement('div', { style: ui.cardHead },
-          createElement('span', { style: ui.name }, task.name ?? task.id),
-          createElement('span', {
-            style: { ...ui.badge, ...(RUNNING(task) ? ui.badgeLive : {}) },
-          }, RUNNING(task) ? 'running' : task.status === 'running' ? 'stale' : task.status),
-          RUNNING(task) ? createElement('button', { style: ui.kill, 'data-dsh-x': 'tasks-kill', onClick: () => kill(task) }, 'Kill') : null,
-        ),
-        createElement('div', { style: ui.command }, task.command),
-        createElement('div', { style: ui.meta },
-          `${task.id} · ${since(task.startTime, task.endTime)}`
-          + (typeof task.exitCode === 'number' ? ` · exit ${task.exitCode}` : '')
-          + (typeof task.bytesWritten === 'number' ? ` · ${task.bytesWritten}B output` : '')),
-        createElement('button', {
-          style: { ...ui.headerButton, alignSelf: 'flex-start', opacity: 0.75, padding: 0 },
-          'data-dsh-x': 'tasks-output-toggle',
-          onClick: () => setWatching(watching === task.id ? undefined : task.id),
-        }, watching === task.id ? 'hide output' : 'show output'),
-        watching === task.id && task.output !== undefined
-          ? createElement('div', { style: ui.outputBox, 'data-dsh-x': 'tasks-output' }, task.output.length > 0 ? task.output : '(no output yet)')
-          : null,
-      )),
+      createElement(TasksListBody, { session, active: true }),
     ),
   ), document.body)
+}
+
+/** The same list as a sidebar tab (needs the optional dsh-better-sidebar). */
+function TasksSidebarTab({ scope, visible }: { scope: SidebarTabScope, visible: boolean }): ReactNode {
+  return createElement('div', { style: ui.tabRoot, 'data-dsh-x': 'tasks-tab' },
+    createElement(TasksListBody, { session: scope.sessionId ?? '', active: visible }),
+  )
+}
+
+/** Seat the sidebar tab wherever the community sidebar is installed. */
+export function registerTasksSeats(ctx: TasksUiContext): void {
+  ctx.inject(['betterSidebar'], (scope) => {
+    scope.betterSidebar?.registerTab({
+      id: 'dsh-work-x:tasks',
+      title: 'Tasks',
+      component: TasksSidebarTab,
+    })
+  })
 }
