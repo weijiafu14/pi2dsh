@@ -1523,7 +1523,11 @@ async function runWorkXMemoryTasks() {
       web.kill('SIGTERM')
       await new Promise(done => { web.once('exit', done); setTimeout(done, 5000) })
     }
-    await removeScratch(scratch, 'work-x-memory-tasks')
+    if (process.env.PI2DSH_KEEP_SCRATCH === '1') {
+      console.error(`[examples-e2e] kept work-x-memory-tasks scratch for diagnosis: ${scratch}`)
+    } else {
+      await removeScratch(scratch, 'work-x-memory-tasks')
+    }
   }
 }
 
