@@ -1,0 +1,123 @@
+{
+  "declaredCustomHeader": {
+    "customHeaderOnWire": "CUSTOM_HEADER_MARKER",
+    "sessionHeaders": {},
+    "headerNames": [
+      "accept",
+      "authorization",
+      "content-type",
+      "user-agent",
+      "x-custom-gateway-token",
+      "x-stainless-arch",
+      "x-stainless-lang",
+      "x-stainless-os",
+      "x-stainless-package-version",
+      "x-stainless-retry-count",
+      "x-stainless-runtime",
+      "x-stainless-runtime-version"
+    ]
+  },
+  "sessionIdDefault": {
+    "customHeaderOnWire": null,
+    "sessionHeaders": {},
+    "headerNames": [
+      "accept",
+      "authorization",
+      "content-type",
+      "user-agent",
+      "x-stainless-arch",
+      "x-stainless-lang",
+      "x-stainless-os",
+      "x-stainless-package-version",
+      "x-stainless-retry-count",
+      "x-stainless-runtime",
+      "x-stainless-runtime-version"
+    ]
+  },
+  "sessionAffinityOptIn": {
+    "customHeaderOnWire": null,
+    "sessionHeaders": {
+      "session_id": "session-abc123",
+      "x-client-request-id": "session-abc123",
+      "x-session-affinity": "session-abc123"
+    },
+    "headerNames": [
+      "accept",
+      "authorization",
+      "content-type",
+      "session_id",
+      "user-agent",
+      "x-client-request-id",
+      "x-session-affinity",
+      "x-stainless-arch",
+      "x-stainless-lang",
+      "x-stainless-os",
+      "x-stainless-package-version",
+      "x-stainless-retry-count",
+      "x-stainless-runtime",
+      "x-stainless-runtime-version"
+    ]
+  },
+  "sessionAffinityOpenrouter": {
+    "customHeaderOnWire": null,
+    "sessionHeaders": {
+      "x-session-id": "session-abc123"
+    },
+    "headerNames": [
+      "accept",
+      "authorization",
+      "content-type",
+      "user-agent",
+      "x-session-id",
+      "x-stainless-arch",
+      "x-stainless-lang",
+      "x-stainless-os",
+      "x-stainless-package-version",
+      "x-stainless-retry-count",
+      "x-stainless-runtime",
+      "x-stainless-runtime-version"
+    ]
+  },
+  "sessionAffinityCacheNone": {
+    "customHeaderOnWire": null,
+    "sessionHeaders": {},
+    "headerNames": [
+      "accept",
+      "authorization",
+      "content-type",
+      "user-agent",
+      "x-stainless-arch",
+      "x-stainless-lang",
+      "x-stainless-os",
+      "x-stainless-package-version",
+      "x-stainless-retry-count",
+      "x-stainless-runtime",
+      "x-stainless-runtime-version"
+    ]
+  },
+  "customHeaderPlusSession": {
+    "customHeaderOnWire": "CUSTOM_HEADER_MARKER",
+    "sessionHeaders": {
+      "session_id": "session-abc123",
+      "x-client-request-id": "session-abc123",
+      "x-session-affinity": "session-abc123"
+    },
+    "headerNames": [
+      "accept",
+      "authorization",
+      "content-type",
+      "session_id",
+      "user-agent",
+      "x-client-request-id",
+      "x-custom-gateway-token",
+      "x-session-affinity",
+      "x-stainless-arch",
+      "x-stainless-lang",
+      "x-stainless-os",
+      "x-stainless-package-version",
+      "x-stainless-retry-count",
+      "x-stainless-runtime",
+      "x-stainless-runtime-version"
+    ]
+  }
+}
