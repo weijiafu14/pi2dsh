@@ -570,6 +570,12 @@
 ## 上游候选报告队列（发帖前等拍板）
 
 - alpha `dsh plugin add` 裸转发 pnpm 撞自写 `packages: [.]`（需 `add -w` 才能装）。
+- `tools.register()` 验 output 不验 parameters 的不对称：`assertSupportedJsonSchema`
+  全文件只对 `output.schema` 调用（core/tools/src/index.ts:1045），`parameters`
+  零校验直入模型请求；叠加官方 mcp-client 逐字透传 inputSchema（lib/index.js:149），
+  坏 schema 只能到严格端点才炸成无指向的逐请求 400。已有四组真机对照证据
+  （community/malformed-tool-schema-e2e.json，#4213 回帖引用）；修法一行：
+  register 时同样 assert parameters。
 - ~~alpha New Session 草稿视图不换台~~ **已发**（2026-08-29，用户放行）：
   [DSH Discussion #5035](https://github.com/deepseek-ai/deepseek-harness/discussions/5035)
   （General 类目；底稿 community/upstream-report-draft-view-stage.md；复现
@@ -740,3 +746,22 @@ wold9168 已答满路径+frontmatter+watcher）、#3625（已有插件推荐表+
 "验证→回帖"（六案连跑器 + codex 可选参数 + reasoning A/B + alibaba + liteLLM 五套装置）。
 剩余净新 = adapter 17 + product 5，全部等 R1 开发件（段 2 围栏剥离 adapter、段 3
 provider 包），不存在"现在能回而没回"。**
+
+## 批次 20（2026-08-30，#4213 用户点单：机制真机复现后重回）
+
+用户转发邮件点名此帖「验证我们怎么解决他的问题然后去回帖」。8-26 已有一条推荐性
+回帖，本次按标准补硬证据后追加实证跟帖。
+
+验证四组对照（scripts/verify-malformed-tool-schema.mjs，真 deepseek-official，
+零 mock）：A 官方路径+裸属性表 parameters=入口 INVALID_REQUEST 400 模型从未运行
+（端点原话点名工具）；B 对照组正常——唯一变量即 schema；C 桥+唯一坏包=响亮拒启
+点名包与原因；C2 坏好同包=per-extension 隔离、坏入口点名跳过、会话照常。
+源码链：register() 只验 output 不验 parameters + mcp-client 逐字透传（坐标见
+提交信息）。过程纠错：首轮 fixture 缺 output 声明在注册层被拦（DSH 是验 output
+的），补官方 createOutput 同款形状后才测到 parameters 那条缝——差点错定位。
+
+| # | 性质 | 依据 | 评论链接 |
+|---|---|---|---|
+| 4213 | 实证跟帖 | 四组对照 + 源码双坐标 + 自救指引（端点报错点名罪魁）+ 明写"v2"包名 npm/GitHub 均无搜获请楼主贴来源 + 楼上通用卫生不治此根因 + 我方两层结构性防御（lazy proxy / 注册期校验）皆有装置实测 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/4213#discussioncomment-18205294) |
+
+副产物：上游候选 +1（register 验 output 不验 parameters，见候选队列）。
