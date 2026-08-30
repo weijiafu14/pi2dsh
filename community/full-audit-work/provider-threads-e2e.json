@@ -1,6 +1,6 @@
 {
   "meta": {
-    "when": "2026-08-30T08:21:26.353Z",
+    "when": "2026-08-30T08:40:30.690Z",
     "cli": {
       "spec": "@deepseek-ai/dsh@0.1.1-rc.2",
       "installed": "0.1.1-rc.2"
@@ -279,6 +279,10 @@
       "chars": 132,
       "turnEndReason": "max-tokens",
       "cliExitNonzero": true
+    },
+    "cross-provider-history": {
+      "status": "failed",
+      "error": "Error: Command failed: /private/tmp/claude-502/-Users-weijiafu14-projj-coding-jd-com-fm-common-synDbToEs-pi2dsh/f274bb2a-17b1-4c5b-8afd-7ef596ba73e2/scratchpad/stock-cli-011rc2/node_modules/.bin/dsh --profile headless --resume session-84f7a80b-ef86-4284-a9b4-8e8f16a1faea Reply with exactly: SECOND_TURN_OK\nerror: unknown option '--resume'\n\n    at genericNodeError (node:internal/errors:983:15)\n    at wrappedFn (node:internal/errors:537:14)\n    at ChildProcess.exithandler (node:child_process:417:12)\n    at ChildProcess.emit (node:events:519:28)\n    at maybeClose (node:internal/child_process:1101:16)\n    at ChildProcess._handle.onexit (node:internal/child_process:304:5)"
     }
   }
 }

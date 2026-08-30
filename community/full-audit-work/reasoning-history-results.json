@@ -1,0 +1,34 @@
+{
+  "transform": {
+    "pi-ai-0.82.1": {
+      "assistantKeys": [
+        "content",
+        "role"
+      ],
+      "reasoningContentField": false,
+      "thinkingTextPreserved": true,
+      "assistantContent": "REASONING_MARKER_84121: the user asks 2+2; that is 4.The answer is 4."
+    },
+    "pi-ai-0.84.1": {
+      "assistantKeys": [
+        "content",
+        "role"
+      ],
+      "reasoningContentField": false,
+      "thinkingTextPreserved": true,
+      "assistantContent": "REASONING_MARKER_84121: the user asks 2+2; that is 4.The answer is 4."
+    }
+  },
+  "live": {
+    "pi-ai-0.84.1": {
+      "requestAssistantKeys": [
+        "content",
+        "role"
+      ],
+      "thinkingTextOnWire": true,
+      "upstream": "https://api.deepseek.com",
+      "stopReason": "stop",
+      "finalText": "HISTORY_OK"
+    }
+  }
+}
