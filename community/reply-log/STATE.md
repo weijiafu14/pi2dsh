@@ -936,3 +936,18 @@ OpenAI SDK 的 x-stainless-* 平台指纹（泄露 OS/架构/Node 版本，非�
 
 待办：#3761 的 user 字段上游 issue —— 回帖里说了"你若同意我引你这贴"，**等对方回应
 再提**（自己承诺的礼节自己守）。
+
+## 批次 24（2026-08-31）——retry/分类簇 4 条 + O(n²) 实测
+
+**新实验 args-reparse-scaling**：#3923 的二次方判断实测坐实——chunks ×8 → 耗时 ×48，
+per-chunk 成本随累积长度上升（0.081→0.493ms）；64KB 参数≈1.6s 纯 CPU 卡顿。
+提了有界节流的修法形状，并主动提出可为候选补丁复跑。
+
+| # | 依据 | 评论 |
+|---|---|---|
+| 3923 | 二次方规模实测表 + 低阈值提醒 + 修法形状 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/3923#discussioncomment-18208050) |
+| 1127 | 分层：传输层瞬时族已正确，语义误报只有 adapter 能修；建议保留原始错误 + 决策可观测 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/1127#discussioncomment-18208051) |
+| 1631 | 三种情况自辨 + 录制代理看原始错误体（自救判据） | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/1631#discussioncomment-18208052) |
+| 666 | 两件事拆开：文案骗人 + 重试机制其实存在只是没开放配置 | 见下 |
+
+上游报账（不发，攒着）：body 字段透传缺失（消费者 #3761/#599）。
