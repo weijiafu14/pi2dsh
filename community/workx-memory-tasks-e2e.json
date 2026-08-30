@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "pi2dshCommit": "42df35f340e85801713be9f84646fe51e548b319",
+  "dshCommit": "69fff74f6f3e1f37939784885ef823477f06ace3",
+  "results": {
+    "workXMemoryTasks": {
+      "status": "passed",
+      "engine": {
+        "version": "0.23.0",
+        "from": "local",
+        "spec": "file:<working-tree>",
+        "commit": "42df35f340e85801713be9f84646fe51e548b319",
+        "dirty": true
+      },
+      "memoryTabShowsStore": true,
+      "pinRoundTrip": true,
+      "dockKilledTask": true,
+      "screenshots": [
+        "01-memory-tab.png",
+        "02-tasks-dock-live.png",
+        "03-tasks-killed.png"
+      ]
+    }
+  }
+}

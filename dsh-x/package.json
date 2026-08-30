@@ -43,13 +43,17 @@
       "pi-mcp-adapter",
       "@tintinweb/pi-subagents",
       "pi-btw",
-      "@crazygit/pi-codex-image-gen"
+      "@crazygit/pi-codex-image-gen",
+      "pi-hermes-memory",
+      "pi-background-tasks"
     ]
   },
   "dependencies": {
     "@crazygit/pi-codex-image-gen": "0.2.2",
     "@tintinweb/pi-subagents": "0.18.0",
+    "pi-background-tasks": "2.4.2",
     "pi-btw": "0.4.1",
+    "pi-hermes-memory": "0.9.7",
     "pi-mcp-adapter": "2.27.0",
     "pi2dsh": "^0.22.0"
   },

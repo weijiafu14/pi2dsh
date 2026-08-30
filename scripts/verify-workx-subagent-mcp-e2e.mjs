@@ -273,7 +273,7 @@ try {
 
   // ---- 6. durable-log assertions ----------------------------------------
   const problems = []
-  if (!/preparing 5 Pi package\(s\)|preparing 4 Pi package\(s\)/u.test(output)) {
+  if (!/preparing \d Pi package\(s\)/u.test(output)) {
     problems.push('the engine never reported preparing the suite packages')
   }
   const sessions = await loadSessions(ECHO)

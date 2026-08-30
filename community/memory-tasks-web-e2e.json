@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "pi2dshCommit": "d72925ef3c268d6618f85a96e125f1a6465ae7fd",
+  "dshCommit": "69fff74f6f3e1f37939784885ef823477f06ace3",
+  "results": {
+    "memoryTasksWeb": {
+      "status": "passed",
+      "engine": {
+        "version": "0.23.0",
+        "from": "local",
+        "spec": "file:<working-tree>",
+        "commit": "d72925ef3c268d6618f85a96e125f1a6465ae7fd",
+        "dirty": true
+      },
+      "memoryRecalledAcrossWebSessions": true,
+      "bgMidRunReadOnWeb": true,
+      "storeIsolatedToDshHome": true,
+      "screenshots": [
+        "01-memory-save-web.png",
+        "02-memory-recall-web.png",
+        "03-background-tasks-web.png"
+      ]
+    }
+  }
+}

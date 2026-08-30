@@ -6,7 +6,9 @@
 import { apply as engineApply, inject as engineInject } from '../../src/client.js'
 import { registerDiagnosticsTab } from './diagnostics-tab.js'
 import { registerMcpTab } from './mcp-tab.js'
+import { MemoryWindow } from './memory-tab.js'
 import { SideChatWindow } from './side-chat.js'
+import { TasksDock } from './tasks-dock.js'
 
 export const inject = engineInject
 
@@ -29,5 +31,11 @@ export function apply(ctx: Parameters<typeof engineApply>[0]): void {
     slots.inject('shell.overlay', () => slots.register({
       name: 'shell.overlay', id: 'dsh-work-x-side-chat', order: 3,
     }, SideChatWindow))
+    slots.inject('shell.overlay', () => slots.register({
+      name: 'shell.overlay', id: 'dsh-work-x-tasks-dock', order: 4,
+    }, TasksDock))
+    slots.inject('shell.overlay', () => slots.register({
+      name: 'shell.overlay', id: 'dsh-work-x-memory', order: 5,
+    }, MemoryWindow))
   })
 }

@@ -1264,7 +1264,7 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region dsh-x/src/diagnostics-tab.ts
-		const ui$2 = {
+		const ui$4 = {
 			root: {
 				display: "flex",
 				flexDirection: "column",
@@ -1348,17 +1348,17 @@ window.__ModuleLoader__.load({
 		function ProblemsTab({ scope, visible }) {
 			const views = useDiagnostics(scope.sessionId ?? "", visible);
 			if (views === void 0) return (0, react.createElement)("div", {
-				style: ui$2.root,
+				style: ui$4.root,
 				"data-dsh-x": "problems-tab"
-			}, (0, react.createElement)("div", { style: ui$2.sub }, "Loading diagnostics…"));
+			}, (0, react.createElement)("div", { style: ui$4.sub }, "Loading diagnostics…"));
 			const files = views.reduce((sum, entry) => sum + entry.view.files.length, 0);
 			return (0, react.createElement)("div", {
-				style: ui$2.root,
+				style: ui$4.root,
 				"data-dsh-x": "problems-tab"
-			}, (0, react.createElement)("div", { style: ui$2.headline }, (0, react.createElement)("span", null, "Problems · this session"), (0, react.createElement)("span", { style: ui$2.sub }, files === 0 ? "none reported" : `${files} file${files === 1 ? "" : "s"}`)), views.length === 0 ? (0, react.createElement)("div", { style: ui$2.empty }, "No diagnostics reported yet. When a plugin runs its code checks (for example an LSP diagnostics tool), its findings appear here for this session.") : views.map((entry) => (0, react.createElement)("div", {
+			}, (0, react.createElement)("div", { style: ui$4.headline }, (0, react.createElement)("span", null, "Problems · this session"), (0, react.createElement)("span", { style: ui$4.sub }, files === 0 ? "none reported" : `${files} file${files === 1 ? "" : "s"}`)), views.length === 0 ? (0, react.createElement)("div", { style: ui$4.empty }, "No diagnostics reported yet. When a plugin runs its code checks (for example an LSP diagnostics tool), its findings appear here for this session.") : views.map((entry) => (0, react.createElement)("div", {
 				key: `${entry.owner}-${entry.key}`,
 				style: { display: "contents" }
-			}, (0, react.createElement)("div", { style: ui$2.ownerRow }, (0, react.createElement)("span", null, entry.view.title ?? entry.owner), entry.view.badge === void 0 ? null : (0, react.createElement)("span", { style: ui$2.ownerBadge }, entry.view.badge)), (0, react.createElement)(DiagnosticsRows, { view: entry.view }))));
+			}, (0, react.createElement)("div", { style: ui$4.ownerRow }, (0, react.createElement)("span", null, entry.view.title ?? entry.owner), entry.view.badge === void 0 ? null : (0, react.createElement)("span", { style: ui$4.ownerBadge }, entry.view.badge)), (0, react.createElement)(DiagnosticsRows, { view: entry.view }))));
 		}
 		/** Seat the Problems tab beside the MCP tab, when a sidebar is composed. */
 		function registerDiagnosticsTab(ctx) {
@@ -1372,7 +1372,7 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region dsh-x/src/mcp-tab.ts
-		const ui$1 = {
+		const ui$3 = {
 			root: {
 				display: "flex",
 				flexDirection: "column",
@@ -1498,24 +1498,24 @@ window.__ModuleLoader__.load({
 			return (0, react.createElement)("div", {
 				key: server.name,
 				style: {
-					...ui$1.card,
+					...ui$3.card,
 					opacity: server.disabled ? .55 : 1
 				},
 				"data-dsh-x": "mcp-server"
-			}, (0, react.createElement)("div", { style: ui$1.cardHead }, (0, react.createElement)("span", { style: ui$1.name }, server.name), (0, react.createElement)("span", { style: ui$1.badge }, server.transport), server.disabled ? (0, react.createElement)("span", { style: ui$1.badge }, "disabled") : null, (0, react.createElement)("button", {
-				style: ui$1.toggle,
+			}, (0, react.createElement)("div", { style: ui$3.cardHead }, (0, react.createElement)("span", { style: ui$3.name }, server.name), (0, react.createElement)("span", { style: ui$3.badge }, server.transport), server.disabled ? (0, react.createElement)("span", { style: ui$3.badge }, "disabled") : null, (0, react.createElement)("button", {
+				style: ui$3.toggle,
 				title: toggleTitle,
 				onClick: () => onToggle(server)
-			}, server.disabled ? "Enable" : "Disable")), (0, react.createElement)("div", { style: ui$1.target }, server.target), (0, react.createElement)("div", { style: ui$1.meta }, `from ${server.sourcePath.split("/").slice(-2).join("/")}` + (server.envKeys.length > 0 ? ` · env: ${server.envKeys.join(", ")}` : "") + (server.headerKeys.length > 0 ? ` · headers: ${server.headerKeys.join(", ")}` : "")));
+			}, server.disabled ? "Enable" : "Disable")), (0, react.createElement)("div", { style: ui$3.target }, server.target), (0, react.createElement)("div", { style: ui$3.meta }, `from ${server.sourcePath.split("/").slice(-2).join("/")}` + (server.envKeys.length > 0 ? ` · env: ${server.envKeys.join(", ")}` : "") + (server.headerKeys.length > 0 ? ` · headers: ${server.headerKeys.join(", ")}` : "")));
 		}
 		function emptyGuide() {
-			return (0, react.createElement)("div", { style: ui$1.empty }, "No MCP servers configured yet. Add one to ", (0, react.createElement)("span", { style: ui$1.code }, ".mcp.json"), " in your workspace, or globally to ", (0, react.createElement)("span", { style: ui$1.code }, "~/.config/mcp/mcp.json"), " (the same format Claude Code and Cursor read):", (0, react.createElement)("pre", { style: {
-				...ui$1.code,
+			return (0, react.createElement)("div", { style: ui$3.empty }, "No MCP servers configured yet. Add one to ", (0, react.createElement)("span", { style: ui$3.code }, ".mcp.json"), " in your workspace, or globally to ", (0, react.createElement)("span", { style: ui$3.code }, "~/.config/mcp/mcp.json"), " (the same format Claude Code and Cursor read):", (0, react.createElement)("pre", { style: {
+				...ui$3.code,
 				display: "block",
 				padding: "8px",
 				marginTop: "6px",
 				whiteSpace: "pre"
-			} }, "{\n  \"mcpServers\": {\n    \"everything\": {\n      \"command\": \"npx\",\n      \"args\": [\"-y\", \"@modelcontextprotocol/server-everything\"]\n    }\n  }\n}"), "New sessions pick it up automatically. For discovery, OAuth and per-tool controls, run ", (0, react.createElement)("span", { style: ui$1.code }, "/mcp"), " in the composer.");
+			} }, "{\n  \"mcpServers\": {\n    \"everything\": {\n      \"command\": \"npx\",\n      \"args\": [\"-y\", \"@modelcontextprotocol/server-everything\"]\n    }\n  }\n}"), "New sessions pick it up automatically. For discovery, OAuth and per-tool controls, run ", (0, react.createElement)("span", { style: ui$3.code }, "/mcp"), " in the composer.");
 		}
 		function useToggle(session, scope, patch) {
 			const [note, setNote] = (0, react.useState)(void 0);
@@ -1561,18 +1561,18 @@ window.__ModuleLoader__.load({
 			const { state, failed, patch } = useMcpState(session, visible);
 			const { note, toggle } = useToggle(session, "project", patch);
 			if (failed && state === void 0) return (0, react.createElement)("div", {
-				style: ui$1.root,
+				style: ui$3.root,
 				"data-dsh-x": "mcp-tab"
-			}, (0, react.createElement)("div", { style: ui$1.empty }, "The MCP state route is not answering — is the pi2dsh engine mounted in this profile?"));
+			}, (0, react.createElement)("div", { style: ui$3.empty }, "The MCP state route is not answering — is the pi2dsh engine mounted in this profile?"));
 			if (state === void 0) return (0, react.createElement)("div", {
-				style: ui$1.root,
+				style: ui$3.root,
 				"data-dsh-x": "mcp-tab"
-			}, (0, react.createElement)("div", { style: ui$1.sub }, "Loading MCP configuration…"));
+			}, (0, react.createElement)("div", { style: ui$3.sub }, "Loading MCP configuration…"));
 			return (0, react.createElement)("div", {
-				style: ui$1.root,
+				style: ui$3.root,
 				"data-dsh-x": "mcp-tab"
-			}, (0, react.createElement)("div", { style: ui$1.headline }, (0, react.createElement)("span", null, "MCP servers · this session"), (0, react.createElement)("span", { style: ui$1.sub }, `${state.servers.length} configured`)), note === void 0 ? null : (0, react.createElement)("div", {
-				style: ui$1.note,
+			}, (0, react.createElement)("div", { style: ui$3.headline }, (0, react.createElement)("span", null, "MCP servers · this session"), (0, react.createElement)("span", { style: ui$3.sub }, `${state.servers.length} configured`)), note === void 0 ? null : (0, react.createElement)("div", {
+				style: ui$3.note,
 				"data-dsh-x": "mcp-note"
 			}, note), state.servers.length === 0 ? emptyGuide() : [["project", "This project"], ["global", "Global (all projects)"]].map(([layer, title]) => {
 				const members = state.servers.filter((server) => server.layer === layer);
@@ -1580,29 +1580,29 @@ window.__ModuleLoader__.load({
 				return (0, react.createElement)("div", {
 					key: layer,
 					style: { display: "contents" }
-				}, (0, react.createElement)("div", { style: ui$1.group }, title), ...members.map((server) => serverCard(server, toggle, server.disabled ? "Enable for this project" : "Disable for this project")));
-			}), (0, react.createElement)("div", { style: ui$1.meta }, `layers: ${state.sources.length === 0 ? "none found" : state.sources.map((source) => source.split("/").slice(-2).join("/")).join(" → ")}`));
+				}, (0, react.createElement)("div", { style: ui$3.group }, title), ...members.map((server) => serverCard(server, toggle, server.disabled ? "Enable for this project" : "Disable for this project")));
+			}), (0, react.createElement)("div", { style: ui$3.meta }, `layers: ${state.sources.length === 0 ? "none found" : state.sources.map((source) => source.split("/").slice(-2).join("/")).join(" → ")}`));
 		}
 		/** The GLOBAL view (Settings → MCP): cross-project layers only. */
 		function SettingsMcpSection() {
 			const { state, failed, patch } = useMcpState("", true);
 			const { note, toggle } = useToggle("", "global", patch);
 			if (failed && state === void 0) return (0, react.createElement)("div", {
-				style: ui$1.root,
+				style: ui$3.root,
 				"data-dsh-x": "mcp-settings"
-			}, (0, react.createElement)("div", { style: ui$1.empty }, "The MCP state route is not answering — is the pi2dsh engine mounted in this profile?"));
+			}, (0, react.createElement)("div", { style: ui$3.empty }, "The MCP state route is not answering — is the pi2dsh engine mounted in this profile?"));
 			if (state === void 0) return (0, react.createElement)("div", {
-				style: ui$1.root,
+				style: ui$3.root,
 				"data-dsh-x": "mcp-settings"
-			}, (0, react.createElement)("div", { style: ui$1.sub }, "Loading MCP configuration…"));
+			}, (0, react.createElement)("div", { style: ui$3.sub }, "Loading MCP configuration…"));
 			const globals = state.servers.filter((server) => server.layer === "global");
 			return (0, react.createElement)("div", {
-				style: ui$1.root,
+				style: ui$3.root,
 				"data-dsh-x": "mcp-settings"
-			}, (0, react.createElement)("div", { style: ui$1.headline }, (0, react.createElement)("span", null, "MCP servers · global"), (0, react.createElement)("span", { style: ui$1.sub }, `${globals.length} configured`)), (0, react.createElement)("div", { style: ui$1.sub }, "Cross-project servers from your machine-level config layers. Project-level servers live in each workspace's .mcp.json and show up in the session sidebar."), note === void 0 ? null : (0, react.createElement)("div", {
-				style: ui$1.note,
+			}, (0, react.createElement)("div", { style: ui$3.headline }, (0, react.createElement)("span", null, "MCP servers · global"), (0, react.createElement)("span", { style: ui$3.sub }, `${globals.length} configured`)), (0, react.createElement)("div", { style: ui$3.sub }, "Cross-project servers from your machine-level config layers. Project-level servers live in each workspace's .mcp.json and show up in the session sidebar."), note === void 0 ? null : (0, react.createElement)("div", {
+				style: ui$3.note,
 				"data-dsh-x": "mcp-note"
-			}, note), globals.length === 0 ? emptyGuide() : globals.map((server) => serverCard(server, toggle, server.disabled ? "Enable everywhere" : "Disable everywhere")), (0, react.createElement)("div", { style: ui$1.meta }, `layers: ${state.sources.length === 0 ? "none found" : state.sources.map((source) => source.split("/").slice(-2).join("/")).join(" → ")}`));
+			}, note), globals.length === 0 ? emptyGuide() : globals.map((server) => serverCard(server, toggle, server.disabled ? "Enable everywhere" : "Disable everywhere")), (0, react.createElement)("div", { style: ui$3.meta }, `layers: ${state.sources.length === 0 ? "none found" : state.sources.map((source) => source.split("/").slice(-2).join("/")).join(" → ")}`));
 		}
 		/** Seat both views: the sidebar tab (optional) and the Settings section. */
 		function registerMcpTab(ctx) {
@@ -1625,9 +1625,337 @@ window.__ModuleLoader__.load({
 			});
 		}
 		//#endregion
+		//#region dsh-x/src/memory-tab.ts
+		const MEMORY_PACKAGE = "pi-hermes-memory";
+		const ui$2 = {
+			dot: {
+				position: "fixed",
+				right: "20px",
+				bottom: "196px",
+				zIndex: 55,
+				width: "38px",
+				height: "38px",
+				borderRadius: "999px",
+				pointerEvents: "auto",
+				display: "flex",
+				alignItems: "center",
+				justifyContent: "center",
+				cursor: "pointer",
+				border: "1px solid var(--dsw-alias-border-l2, rgba(0,0,0,0.1))",
+				background: "var(--dsw-alias-bg-layer-2, #fff)",
+				color: "inherit",
+				boxShadow: "var(--dsw-shadow-lv2, 0 6px 20px rgba(0,0,0,0.14))",
+				fontSize: "17px"
+			},
+			panel: {
+				position: "fixed",
+				right: "20px",
+				bottom: "196px",
+				zIndex: 56,
+				width: "min(420px, 92vw)",
+				maxHeight: "62vh",
+				display: "flex",
+				flexDirection: "column",
+				pointerEvents: "auto",
+				overflow: "hidden",
+				borderRadius: "14px",
+				border: "1px solid var(--dsw-alias-border-l2, rgba(0,0,0,0.1))",
+				background: "var(--dsw-alias-bg-layer-2, #fff)",
+				color: "inherit",
+				boxShadow: "var(--dsw-shadow-lv3, 0 16px 40px rgba(0,0,0,0.18))",
+				font: "400 13px/1.5 system-ui, -apple-system, sans-serif"
+			},
+			header: {
+				display: "flex",
+				alignItems: "center",
+				gap: "8px",
+				padding: "10px 12px",
+				borderBottom: "1px solid var(--dsw-alias-border-l1, rgba(0,0,0,0.06))",
+				font: "600 12.5px/1.4 system-ui, sans-serif"
+			},
+			headerButton: {
+				cursor: "pointer",
+				opacity: .55,
+				background: "none",
+				border: "none",
+				color: "inherit",
+				font: "inherit",
+				padding: "2px 4px"
+			},
+			body: {
+				overflowY: "auto",
+				padding: "10px 12px",
+				display: "flex",
+				flexDirection: "column",
+				gap: "9px"
+			},
+			sub: {
+				opacity: .65,
+				fontSize: "12px"
+			},
+			group: {
+				font: "600 11px/1.4 system-ui, sans-serif",
+				opacity: .55,
+				textTransform: "uppercase",
+				letterSpacing: "0.06em",
+				marginTop: "4px"
+			},
+			search: {
+				border: "1px solid var(--dsw-alias-border-l2, rgba(0,0,0,0.12))",
+				borderRadius: "8px",
+				padding: "6px 10px",
+				font: "inherit",
+				color: "inherit",
+				background: "transparent",
+				outline: "none"
+			},
+			entry: {
+				border: "1px solid rgba(120,120,130,0.22)",
+				borderRadius: "9px",
+				padding: "7px 10px",
+				display: "flex",
+				flexDirection: "column",
+				gap: "3px",
+				background: "var(--dsw-alias-bg-layer-1, rgba(127,127,127,0.03))"
+			},
+			entryText: {
+				whiteSpace: "pre-wrap",
+				wordBreak: "break-word",
+				fontSize: "12.5px"
+			},
+			entryMeta: {
+				fontSize: "10.5px",
+				opacity: .55
+			},
+			pinRow: {
+				display: "flex",
+				alignItems: "flex-start",
+				gap: "8px"
+			},
+			pinRemove: {
+				cursor: "pointer",
+				border: "1px solid rgba(246,50,24,0.35)",
+				color: "#F63218",
+				borderRadius: "7px",
+				padding: "1px 8px",
+				background: "transparent",
+				font: "500 10.5px/1.5 system-ui, sans-serif",
+				flexShrink: 0
+			},
+			pinAddRow: {
+				display: "flex",
+				gap: "6px"
+			},
+			pinAddButton: {
+				cursor: "pointer",
+				border: "none",
+				borderRadius: "8px",
+				padding: "6px 11px",
+				background: "var(--dsw-alias-button-primary-fill, #1869F5)",
+				color: "#fff",
+				font: "500 12px/1.3 system-ui, sans-serif",
+				flexShrink: 0
+			},
+			note: {
+				fontSize: "12px",
+				padding: "6px 10px",
+				borderRadius: "8px",
+				background: "rgba(40,159,234,0.12)"
+			},
+			noteError: {
+				fontSize: "12px",
+				padding: "6px 10px",
+				borderRadius: "8px",
+				background: "rgba(246,50,24,0.1)",
+				color: "#F63218"
+			},
+			empty: {
+				padding: "12px",
+				borderRadius: "10px",
+				border: "1px dashed rgba(120,120,130,0.4)",
+				fontSize: "12.5px",
+				lineHeight: 1.7
+			},
+			budget: {
+				fontSize: "10.5px",
+				opacity: .55
+			}
+		};
+		async function runMemoryCommand(session, command, args) {
+			try {
+				const response = await fetch("/pi2dsh/pi-command", {
+					method: "POST",
+					headers: { "content-type": "application/json" },
+					body: JSON.stringify({
+						session,
+						package: MEMORY_PACKAGE,
+						command,
+						args
+					})
+				});
+				const payload = await response.json();
+				if (!response.ok) return {
+					ok: false,
+					detail: payload.error ?? "the command failed"
+				};
+				return {
+					ok: true,
+					...payload.notice === void 0 ? {} : { detail: payload.notice }
+				};
+			} catch (error) {
+				return {
+					ok: false,
+					detail: String(error)
+				};
+			}
+		}
+		function matches(query, text) {
+			return query.length === 0 || text.toLowerCase().includes(query.toLowerCase());
+		}
+		function entryCard(entry, key) {
+			return (0, react.createElement)("div", {
+				key,
+				style: ui$2.entry,
+				"data-dsh-x": "memory-entry"
+			}, (0, react.createElement)("div", { style: ui$2.entryText }, entry.text), entry.created === void 0 ? null : (0, react.createElement)("div", { style: ui$2.entryMeta }, `created ${entry.created}` + (entry.last !== void 0 && entry.last !== entry.created ? ` · updated ${entry.last}` : "")));
+		}
+		/** The floating memory window over the active session. */
+		function MemoryWindow({ useSessions }) {
+			const session = useOnStage(useSessions);
+			const [openPanel, setOpenPanel] = (0, react.useState)(false);
+			const [state, setState] = (0, react.useState)(void 0);
+			const [failed, setFailed] = (0, react.useState)(false);
+			const [query, setQuery] = (0, react.useState)("");
+			const [pinDraft, setPinDraft] = (0, react.useState)("");
+			const [note, setNote] = (0, react.useState)(void 0);
+			const [generation, setGeneration] = (0, react.useState)(0);
+			(0, react.useEffect)(() => {
+				if (!openPanel) return;
+				let live = true;
+				const pull = async () => {
+					try {
+						const response = await fetch("/dsh-x/memory-state");
+						if (!live) return;
+						if (!response.ok) {
+							setFailed(true);
+							return;
+						}
+						setState(await response.json());
+						setFailed(false);
+					} catch {
+						if (live) setFailed(true);
+					}
+				};
+				pull();
+				const timer = window.setInterval(() => {
+					pull();
+				}, 5e3);
+				return () => {
+					live = false;
+					window.clearInterval(timer);
+				};
+			}, [openPanel, generation]);
+			if (session === "") return null;
+			if (!openPanel) return (0, react_dom.createPortal)((0, react.createElement)("button", {
+				style: ui$2.dot,
+				title: "Memory — what the agent remembers across sessions",
+				"data-dsh-x": "memory-dot",
+				onClick: () => setOpenPanel(true)
+			}, "🧠"), document.body);
+			const afterWrite = (result, fallback) => {
+				setNote(result.ok ? {
+					text: result.detail ?? fallback,
+					tone: "info"
+				} : {
+					text: result.detail ?? "the command failed",
+					tone: "error"
+				});
+				setGeneration((value) => value + 1);
+			};
+			const removePin = (position) => {
+				runMemoryCommand(session, "memory-pin", `remove ${position}`).then((result) => afterWrite(result, "pin removed"));
+			};
+			const addPin = () => {
+				const text = pinDraft.trim();
+				if (text.length === 0) return;
+				setPinDraft("");
+				runMemoryCommand(session, "memory-pin", text).then((result) => afterWrite(result, "pinned"));
+			};
+			let body;
+			if (failed && state === void 0) body = (0, react.createElement)("div", { style: ui$2.empty }, "The memory route is not answering — is the dsh-work-x suite mounted in this profile?");
+			else if (state === void 0) body = (0, react.createElement)("div", { style: ui$2.sub }, "Loading memory…");
+			else {
+				const total = state.global.length + state.user.length + Object.values(state.projects).reduce((sum, entries) => sum + entries.length, 0);
+				const groups = [
+					...Object.entries(state.projects).map(([name, entries]) => [`Project · ${name}`, entries]),
+					["Global", state.global],
+					["About you", state.user]
+				];
+				body = (0, react.createElement)("div", { style: { display: "contents" } }, note === void 0 ? null : (0, react.createElement)("div", {
+					style: note.tone === "error" ? ui$2.noteError : ui$2.note,
+					"data-dsh-x": "memory-note"
+				}, note.text), (0, react.createElement)("div", { style: ui$2.group }, "Pinned rules (every session, every turn)"), ...state.standing.map((text, index) => (0, react.createElement)("div", {
+					key: `pin-${index}`,
+					style: {
+						...ui$2.entry,
+						flexDirection: "row",
+						...ui$2.pinRow
+					},
+					"data-dsh-x": "memory-pin"
+				}, (0, react.createElement)("div", { style: {
+					...ui$2.entryText,
+					flex: 1
+				} }, `${index + 1}. ${text}`), (0, react.createElement)("button", {
+					style: ui$2.pinRemove,
+					"data-dsh-x": "memory-pin-remove",
+					onClick: () => removePin(index + 1)
+				}, "Unpin"))), (0, react.createElement)("div", { style: ui$2.pinAddRow }, (0, react.createElement)("input", {
+					style: {
+						...ui$2.search,
+						flex: 1
+					},
+					placeholder: "Pin a rule that must always hold…",
+					value: pinDraft,
+					"data-dsh-x": "memory-pin-input",
+					onChange: (event) => setPinDraft(event.target.value),
+					onKeyDown: (event) => {
+						if (event.key === "Enter") {
+							event.preventDefault();
+							addPin();
+						}
+					}
+				}), (0, react.createElement)("button", {
+					style: ui$2.pinAddButton,
+					"data-dsh-x": "memory-pin-add",
+					onClick: addPin
+				}, "Pin")), (0, react.createElement)("div", { style: ui$2.budget }, `${state.standingBudget.entries}/${state.standingBudget.maxEntries} pins · ${state.standingBudget.chars}/${state.standingBudget.maxChars} chars — pins are injected into every turn, so the budget is deliberately hard`), total === 0 ? (0, react.createElement)("div", { style: ui$2.empty }, "No durable memories yet. Ask the agent to remember something (\"remember that …\") — its memory tools write here, and the background review distills lessons on its own.") : null, total > 0 ? (0, react.createElement)("input", {
+					style: ui$2.search,
+					placeholder: "Search memories…",
+					value: query,
+					"data-dsh-x": "memory-search",
+					onChange: (event) => setQuery(event.target.value)
+				}) : null, ...groups.flatMap(([title, entries]) => {
+					const visibleEntries = entries.filter((entry) => matches(query, entry.text));
+					if (visibleEntries.length === 0) return [];
+					return [(0, react.createElement)("div", {
+						key: `g-${title}`,
+						style: ui$2.group
+					}, title), ...visibleEntries.map((entry, index) => entryCard(entry, `${title}-${index}`))];
+				}), total > 0 ? (0, react.createElement)("div", { style: ui$2.sub }, "Read-only list — edits and deletions go through the agent's own memory tools or the /memory-* commands, so the package's store and its search index never drift apart.") : null);
+			}
+			return (0, react_dom.createPortal)((0, react.createElement)("div", {
+				style: ui$2.panel,
+				"data-dsh-x": "memory-tab"
+			}, (0, react.createElement)("div", { style: ui$2.header }, (0, react.createElement)("span", { style: { flex: 1 } }, "Memory"), state === void 0 ? null : (0, react.createElement)("span", { style: ui$2.sub }, `${state.global.length + state.user.length + Object.values(state.projects).reduce((sum, entries) => sum + entries.length, 0)} memories · ${state.standing.length} pinned`), (0, react.createElement)("button", {
+				style: ui$2.headerButton,
+				title: "Close",
+				onClick: () => setOpenPanel(false)
+			}, "×")), (0, react.createElement)("div", { style: ui$2.body }, body)), document.body);
+		}
+		//#endregion
 		//#region dsh-x/src/side-chat.ts
 		const SIDE_PACKAGE = "pi-btw";
-		const ui = {
+		const ui$1 = {
 			window: {
 				position: "fixed",
 				right: "20px",
@@ -1870,7 +2198,7 @@ window.__ModuleLoader__.load({
 			}, [messages.length, pending]);
 			if (session === "") return null;
 			if (mode === "dot") return (0, react_dom.createPortal)((0, react.createElement)("button", {
-				style: ui.dot,
+				style: ui$1.dot,
 				title: "Side chat — ask without touching the main thread",
 				"data-dsh-x": "side-chat-dot",
 				onClick: () => {
@@ -1896,17 +2224,17 @@ window.__ModuleLoader__.load({
 			};
 			return (0, react_dom.createPortal)((0, react.createElement)("div", {
 				style: {
-					...ui.window,
-					...mode === "max" ? ui.windowMax : {}
+					...ui$1.window,
+					...mode === "max" ? ui$1.windowMax : {}
 				},
 				"data-dsh-x": "side-chat"
-			}, (0, react.createElement)("div", { style: ui.header }, (0, react.createElement)("span", { style: {
+			}, (0, react.createElement)("div", { style: ui$1.header }, (0, react.createElement)("span", { style: {
 				flex: 1,
 				overflow: "hidden",
 				textOverflow: "ellipsis",
 				whiteSpace: "nowrap"
 			} }, "Side chat"), thread === void 0 ? null : (0, react.createElement)("button", {
-				style: ui.headerButton,
+				style: ui$1.headerButton,
 				title: "Summarize this side thread and inject the summary into the main agent",
 				"data-dsh-x": "side-chat-inject",
 				onClick: () => {
@@ -1920,24 +2248,24 @@ window.__ModuleLoader__.load({
 					}));
 				}
 			}, "⤴ Inject"), (0, react.createElement)("button", {
-				style: ui.headerButton,
+				style: ui$1.headerButton,
 				title: mode === "max" ? "Shrink" : "Expand",
 				onClick: () => setMode(mode === "max" ? "panel" : "max")
 			}, mode === "max" ? "⤡" : "⤢"), (0, react.createElement)("button", {
-				style: ui.headerButton,
+				style: ui$1.headerButton,
 				title: "Close",
 				onClick: () => setMode("dot")
 			}, "×")), (0, react.createElement)("div", {
-				style: ui.body,
+				style: ui$1.body,
 				ref: bodyRef
-			}, messages.length === 0 && !pending ? (0, react.createElement)("div", { style: ui.emptyNote }, "Ask a quick question without touching the main thread. The side chat sees the main conversation's context; answers stay here unless you save or inject them.") : null, ...messages.map((message, index) => (0, react.createElement)("div", {
+			}, messages.length === 0 && !pending ? (0, react.createElement)("div", { style: ui$1.emptyNote }, "Ask a quick question without touching the main thread. The side chat sees the main conversation's context; answers stay here unless you save or inject them.") : null, ...messages.map((message, index) => (0, react.createElement)("div", {
 				key: index,
-				style: message.role === "user" ? ui.bubbleUser : ui.bubbleAssistant
-			}, message.text)), pending || thread?.running === true ? (0, react.createElement)("div", { style: ui.working }, "Answering…") : null, note === void 0 ? null : (0, react.createElement)("div", {
-				style: note.tone === "error" ? ui.noteError : ui.noteInfo,
+				style: message.role === "user" ? ui$1.bubbleUser : ui$1.bubbleAssistant
+			}, message.text)), pending || thread?.running === true ? (0, react.createElement)("div", { style: ui$1.working }, "Answering…") : null, note === void 0 ? null : (0, react.createElement)("div", {
+				style: note.tone === "error" ? ui$1.noteError : ui$1.noteInfo,
 				"data-dsh-x": "side-chat-note"
-			}, note.text)), (0, react.createElement)("div", { style: ui.footer }, (0, react.createElement)("div", { style: ui.inputRow }, (0, react.createElement)("textarea", {
-				style: ui.input,
+			}, note.text)), (0, react.createElement)("div", { style: ui$1.footer }, (0, react.createElement)("div", { style: ui$1.inputRow }, (0, react.createElement)("textarea", {
+				style: ui$1.input,
 				rows: 1,
 				placeholder: "Ask a quick question…",
 				value: draft,
@@ -1950,14 +2278,251 @@ window.__ModuleLoader__.load({
 					}
 				}
 			}), (0, react.createElement)("button", {
-				style: ui.send,
+				style: ui$1.send,
 				onClick: submit,
 				"data-dsh-x": "side-chat-send"
-			}, "Send")), (0, react.createElement)("div", { style: ui.actionRow }, (0, react.createElement)("label", { style: ui.saveLabel }, (0, react.createElement)("input", {
+			}, "Send")), (0, react.createElement)("div", { style: ui$1.actionRow }, (0, react.createElement)("label", { style: ui$1.saveLabel }, (0, react.createElement)("input", {
 				type: "checkbox",
 				checked: save,
 				onChange: (event) => setSave(event.target.checked)
 			}), "also save into the main conversation")))), document.body);
+		}
+		//#endregion
+		//#region dsh-x/src/tasks-dock.ts
+		const TASKS_PACKAGE = "pi-background-tasks";
+		const ui = {
+			pill: {
+				position: "fixed",
+				right: "20px",
+				bottom: "152px",
+				zIndex: 55,
+				height: "38px",
+				borderRadius: "999px",
+				pointerEvents: "auto",
+				display: "flex",
+				alignItems: "center",
+				gap: "7px",
+				padding: "0 14px",
+				cursor: "pointer",
+				border: "1px solid var(--dsw-alias-border-l2, rgba(0,0,0,0.1))",
+				background: "var(--dsw-alias-bg-layer-2, #fff)",
+				color: "inherit",
+				boxShadow: "var(--dsw-shadow-lv2, 0 6px 20px rgba(0,0,0,0.14))",
+				font: "500 12px/1.4 system-ui, -apple-system, sans-serif"
+			},
+			pulse: {
+				width: "8px",
+				height: "8px",
+				borderRadius: "999px",
+				background: "#2FBC44"
+			},
+			panel: {
+				position: "fixed",
+				right: "20px",
+				bottom: "152px",
+				zIndex: 55,
+				width: "min(420px, 92vw)",
+				maxHeight: "60vh",
+				display: "flex",
+				flexDirection: "column",
+				pointerEvents: "auto",
+				overflow: "hidden",
+				borderRadius: "14px",
+				border: "1px solid var(--dsw-alias-border-l2, rgba(0,0,0,0.1))",
+				background: "var(--dsw-alias-bg-layer-2, #fff)",
+				color: "inherit",
+				boxShadow: "var(--dsw-shadow-lv3, 0 16px 40px rgba(0,0,0,0.18))",
+				font: "400 12.5px/1.5 system-ui, -apple-system, sans-serif"
+			},
+			header: {
+				display: "flex",
+				alignItems: "center",
+				gap: "8px",
+				padding: "10px 12px",
+				borderBottom: "1px solid var(--dsw-alias-border-l1, rgba(0,0,0,0.06))",
+				font: "600 12.5px/1.4 system-ui, sans-serif"
+			},
+			headerButton: {
+				cursor: "pointer",
+				opacity: .55,
+				background: "none",
+				border: "none",
+				color: "inherit",
+				font: "inherit",
+				padding: "2px 4px"
+			},
+			body: {
+				overflowY: "auto",
+				padding: "10px 12px",
+				display: "flex",
+				flexDirection: "column",
+				gap: "8px"
+			},
+			card: {
+				border: "1px solid rgba(120,120,130,0.25)",
+				borderRadius: "10px",
+				padding: "8px 10px",
+				display: "flex",
+				flexDirection: "column",
+				gap: "5px",
+				background: "var(--dsw-alias-bg-layer-1, rgba(127,127,127,0.03))"
+			},
+			cardHead: {
+				display: "flex",
+				alignItems: "center",
+				gap: "8px"
+			},
+			name: {
+				font: "600 12.5px/1.4 system-ui, sans-serif",
+				flex: 1,
+				overflow: "hidden",
+				textOverflow: "ellipsis",
+				whiteSpace: "nowrap"
+			},
+			badge: {
+				fontSize: "10.5px",
+				padding: "1px 7px",
+				borderRadius: "999px",
+				border: "1px solid rgba(120,120,130,0.35)",
+				opacity: .85
+			},
+			badgeLive: {
+				borderColor: "rgba(47,188,68,0.6)",
+				color: "#2FBC44"
+			},
+			command: {
+				font: "400 11px/1.5 ui-monospace, monospace",
+				opacity: .7,
+				wordBreak: "break-all"
+			},
+			meta: {
+				fontSize: "11px",
+				opacity: .6
+			},
+			kill: {
+				cursor: "pointer",
+				border: "1px solid rgba(246,50,24,0.4)",
+				color: "#F63218",
+				borderRadius: "7px",
+				padding: "2px 9px",
+				background: "transparent",
+				font: "500 11px/1.5 system-ui, sans-serif"
+			},
+			outputBox: {
+				font: "400 11px/1.5 ui-monospace, monospace",
+				whiteSpace: "pre-wrap",
+				wordBreak: "break-all",
+				background: "rgba(127,127,127,0.09)",
+				borderRadius: "8px",
+				padding: "8px",
+				maxHeight: "180px",
+				overflowY: "auto"
+			},
+			note: {
+				fontSize: "11.5px",
+				padding: "5px 9px",
+				borderRadius: "8px",
+				background: "rgba(40,159,234,0.12)"
+			},
+			empty: {
+				padding: "12px 6px",
+				opacity: .6,
+				fontSize: "12px",
+				lineHeight: 1.7
+			}
+		};
+		const RUNNING = (task) => task.status === "running" && task.alive;
+		function since(start, end) {
+			if (typeof start !== "number") return "";
+			const seconds = Math.max(0, Math.round(((end ?? Date.now()) - start) / 1e3));
+			return seconds < 60 ? `${seconds}s` : `${Math.floor(seconds / 60)}m${seconds % 60}s`;
+		}
+		/** Floating dock over the active session; renders nothing when no tasks exist. */
+		function TasksDock({ useSessions }) {
+			const session = useOnStage(useSessions);
+			const [tasks, setTasks] = (0, react.useState)([]);
+			const [openPanel, setOpenPanel] = (0, react.useState)(false);
+			const [watching, setWatching] = (0, react.useState)(void 0);
+			const [note, setNote] = (0, react.useState)(void 0);
+			(0, react.useEffect)(() => {
+				if (session === "") return;
+				let live = true;
+				const pull = async () => {
+					try {
+						const query = watching === void 0 ? "" : `&output=${encodeURIComponent(watching)}`;
+						const response = await fetch(`/dsh-x/tasks-state?session=${encodeURIComponent(session)}${query}`);
+						if (!live || !response.ok) return;
+						const payload = await response.json();
+						setTasks(payload.tasks ?? []);
+					} catch {}
+				};
+				pull();
+				const timer = window.setInterval(() => {
+					pull();
+				}, 2500);
+				return () => {
+					live = false;
+					window.clearInterval(timer);
+				};
+			}, [session, watching]);
+			if (session === "" || tasks.length === 0) return null;
+			const running = tasks.filter(RUNNING);
+			if (!openPanel) return (0, react_dom.createPortal)((0, react.createElement)("button", {
+				style: ui.pill,
+				title: "Background tasks",
+				"data-dsh-x": "tasks-pill",
+				onClick: () => setOpenPanel(true)
+			}, running.length > 0 ? (0, react.createElement)("span", { style: ui.pulse }) : null, running.length > 0 ? `${running.length} task${running.length > 1 ? "s" : ""} running` : `${tasks.length} task${tasks.length > 1 ? "s" : ""}`), document.body);
+			const kill = (task) => {
+				setNote(void 0);
+				fetch("/pi2dsh/pi-command", {
+					method: "POST",
+					headers: { "content-type": "application/json" },
+					body: JSON.stringify({
+						session,
+						package: TASKS_PACKAGE,
+						command: "kill",
+						args: task.id
+					})
+				}).then(async (response) => {
+					const payload = await response.json();
+					setNote(response.ok ? payload.notice ?? `kill requested for ${task.id}` : payload.error ?? "kill failed");
+				}).catch((error) => setNote(String(error)));
+			};
+			return (0, react_dom.createPortal)((0, react.createElement)("div", {
+				style: ui.panel,
+				"data-dsh-x": "tasks-panel"
+			}, (0, react.createElement)("div", { style: ui.header }, (0, react.createElement)("span", { style: { flex: 1 } }, "Background tasks"), (0, react.createElement)("button", {
+				style: ui.headerButton,
+				title: "Close",
+				onClick: () => setOpenPanel(false)
+			}, "×")), (0, react.createElement)("div", { style: ui.body }, note === void 0 ? null : (0, react.createElement)("div", {
+				style: ui.note,
+				"data-dsh-x": "tasks-note"
+			}, note), tasks.length === 0 ? (0, react.createElement)("div", { style: ui.empty }, "No background tasks in this workspace.") : null, ...tasks.map((task) => (0, react.createElement)("div", {
+				key: task.id,
+				style: ui.card,
+				"data-dsh-x": "tasks-card"
+			}, (0, react.createElement)("div", { style: ui.cardHead }, (0, react.createElement)("span", { style: ui.name }, task.name ?? task.id), (0, react.createElement)("span", { style: {
+				...ui.badge,
+				...RUNNING(task) ? ui.badgeLive : {}
+			} }, RUNNING(task) ? "running" : task.status === "running" ? "stale" : task.status), RUNNING(task) ? (0, react.createElement)("button", {
+				style: ui.kill,
+				"data-dsh-x": "tasks-kill",
+				onClick: () => kill(task)
+			}, "Kill") : null), (0, react.createElement)("div", { style: ui.command }, task.command), (0, react.createElement)("div", { style: ui.meta }, `${task.id} · ${since(task.startTime, task.endTime)}` + (typeof task.exitCode === "number" ? ` · exit ${task.exitCode}` : "") + (typeof task.bytesWritten === "number" ? ` · ${task.bytesWritten}B output` : "")), (0, react.createElement)("button", {
+				style: {
+					...ui.headerButton,
+					alignSelf: "flex-start",
+					opacity: .75,
+					padding: 0
+				},
+				"data-dsh-x": "tasks-output-toggle",
+				onClick: () => setWatching(watching === task.id ? void 0 : task.id)
+			}, watching === task.id ? "hide output" : "show output"), watching === task.id && task.output !== void 0 ? (0, react.createElement)("div", {
+				style: ui.outputBox,
+				"data-dsh-x": "tasks-output"
+			}, task.output.length > 0 ? task.output : "(no output yet)") : null)))), document.body);
 		}
 		//#endregion
 		//#region dsh-x/src/client.ts
@@ -1974,6 +2539,16 @@ window.__ModuleLoader__.load({
 					id: "dsh-work-x-side-chat",
 					order: 3
 				}, SideChatWindow));
+				slots.inject("shell.overlay", () => slots.register({
+					name: "shell.overlay",
+					id: "dsh-work-x-tasks-dock",
+					order: 4
+				}, TasksDock));
+				slots.inject("shell.overlay", () => slots.register({
+					name: "shell.overlay",
+					id: "dsh-work-x-memory",
+					order: 5
+				}, MemoryWindow));
 			});
 		}
 		//#endregion

@@ -7,7 +7,7 @@ dsh plugin --profile <your-profile> add dsh-work-x
 ```
 
 Restart `dsh` (plugins mount at startup). That is the entire setup: the suite
-carries the [pi2dsh](https://github.com/weijiafu14/pi2dsh) engine and four
+carries the [pi2dsh](https://github.com/weijiafu14/pi2dsh) engine and six
 capability packages, versions pinned to combinations that have been verified
 end to end on a real DSH loop — never "should work", always "was watched
 working".
@@ -23,12 +23,21 @@ working".
 | **Subagents** | Low-level agent registry, no product surface | Spawn / parallel / background delegation, **mid-run steering**, resume (in-session and **across restarts**), stop-with-parent, per-child model & thinking level, live inheritance of your `/model` switches — [acceptance report](../community/subagents-acceptance-report.md) |
 | **Side conversations** | — | `/btw <question>`: ask something off-topic without polluting the main context; answer lands in a side panel |
 | **Image generation** | — | Codex-backed image generation as a normal tool call, generated pixels shown inline (bring your own Codex credential) |
+| **Persistent memory** | Sessions forget everything | Cross-session facts, corrections and preferences (`memory_add`/`memory_search`, `/memory-*` commands), plus a **floating Memory window** on the web: browse and search what the agent remembers, pin/unpin standing rules with a hard budget |
+| **Background tasks** | A long tool call pins the conversation | `bg_run` starts named shell jobs and keeps talking, `bg_logs` reads output **mid-run**, plus a **tasks dock** on the web: a pill appears while jobs run — live output, one-click kill |
 
 The suite: [`pi-mcp-adapter`](https://www.npmjs.com/package/pi-mcp-adapter) ·
 [`@tintinweb/pi-subagents`](https://www.npmjs.com/package/@tintinweb/pi-subagents) ·
 [`pi-btw`](https://www.npmjs.com/package/pi-btw) ·
-[`@crazygit/pi-codex-image-gen`](https://www.npmjs.com/package/@crazygit/pi-codex-image-gen),
-running unmodified through the pi2dsh compatibility engine. Vision companion
+[`@crazygit/pi-codex-image-gen`](https://www.npmjs.com/package/@crazygit/pi-codex-image-gen) ·
+[`pi-hermes-memory`](https://www.npmjs.com/package/pi-hermes-memory) ·
+[`pi-background-tasks`](https://www.npmjs.com/package/pi-background-tasks),
+running unmodified through the pi2dsh compatibility engine.
+
+`pi-hermes-memory` builds a native SQLite store (`better-sqlite3`); if the
+install stops with `ERR_PNPM_IGNORED_BUILDS`, run `pnpm approve-builds` inside
+the profile directory (select `better-sqlite3`) and re-run the add — that gate
+is the host's own supply-chain approval, not an error. Vision companion
 routes are **off** in this suite; subscription logins stay whatever your DSH
 profile already has.
 
@@ -54,6 +63,28 @@ Without `dsh-better-sidebar` everything still runs; you just lose those two
 panels. (DSH has no way yet for one plugin to declare a companion bundle —
 [we've proposed one](https://github.com/deepseek-ai/deepseek-harness/discussions/4543) —
 so the install command names both.)
+
+## Memory window & tasks dock
+
+Two floating pieces join the side-chat dot on the web surface (each is
+dismissible, session-scoped, and absent when it has nothing to show):
+
+- **Memory (🧠 dot)** — everything the agent durably remembers, grouped by
+  project / global / about-you, with search. The *Pinned rules* section
+  manages standing instructions injected into every turn: pin from the input,
+  unpin per entry, hard budget shown (the writes run `pi-hermes-memory`'s own
+  `/memory-pin` command — the store's anti-injection design keeps a single
+  writer). The list itself is read-only by design; edits and deletions go
+  through the agent's memory tools so store and search index never drift.
+- **Tasks pill** — appears only while background jobs exist. Expand for each
+  job's status, runtime and byte count; *show output* streams the job's
+  output while it is still running; *Kill* runs the package's own `/kill`.
+
+Both were verified by the automated regression end to end on a clean install:
+the memory window shows a fact that exists only in the plugin's store, a pin
+round-trips through STANDING.md and back out, and the dock's kill provably
+ends a 180-second job early — asserted from the store files and the task
+snapshots on disk, not from page text.
 
 ## Configuration
 

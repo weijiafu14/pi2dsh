@@ -1423,6 +1423,110 @@ function authedUrl(url, webLog) {
 }
 
 
+// ---------------------------------------------------------------------------
+// dsh-work-x memory tab + tasks dock — the PRODUCT surfaces over the two
+// packages the memory-tasks-web lane proved at the tool layer. DOM waits are
+// scoped to the suite's own containers (route-fed, not chat text); the disk
+// half (STANDING.md, the task snapshot) is asserted from the scratch home.
+// ---------------------------------------------------------------------------
+async function runWorkXMemoryTasks() {
+  if (apiKey === undefined || apiKey.length === 0) {
+    results.workXMemoryTasks = { status: 'skipped', reason: 'DEEPSEEK_API_KEY not set' }
+    return
+  }
+  const playwrightFrom = process.env.PLAYWRIGHT_FROM ?? join(dshRoot, 'apps/web')
+  const scratch = await mkdtemp(join(tmpdir(), 'pi2dsh-ex-workx-mt-'))
+  let web
+  try {
+    const { home, env, runDsh } = await makeHome(scratch)
+    const tarball = await stageSuiteTarball(projectRoot, engineSpec, scratch, env)
+    await runDsh(['plugin', '--profile', 'web', 'add', tarball])
+    await useJsonlSessions(home, 'web')
+    const workspace = join(scratch, 'workspace')
+    await mkdir(workspace, { recursive: true })
+
+    const port = Number(process.env.WORKX_MT_PORT ?? 5195)
+    web = spawnWeb(port, env)
+    let webLog = ''
+    web.stdout.on('data', chunk => { webLog += String(chunk) })
+    web.stderr.on('data', chunk => { webLog += String(chunk) })
+    const url = `http://127.0.0.1:${port}`
+    const deadline = Date.now() + 90_000
+    for (;;) {
+      if (web.exitCode !== null) throw new Error(`dsh web exited on startup:\n${webLog}`)
+      const up = await fetch(url).then(
+        response => response.ok || response.status === 401,
+      ).catch(() => false)
+      if (up) break
+      if (Date.now() > deadline) throw new Error(`dsh web never came up:\n${webLog}`)
+      await new Promise(done => setTimeout(done, 500))
+    }
+
+    const CODEWORD = `AURORA-${Math.floor(1000 + Math.random() * 9000)}`
+    const PIN = `Always answer with the release codename ${CODEWORD} first`
+    const shots = join(scratch, 'shots')
+    await execFile('node', [
+      join(projectRoot, 'docs/posting-kit/capture-workx-memory-tasks.mjs'), shots,
+      '--url', authedUrl(url, webLog), '--codeword', CODEWORD, '--pin', PIN,
+    ], {
+      cwd: projectRoot,
+      env: { ...env, PLAYWRIGHT_FROM: playwrightFrom, CAPTURE_WORKSPACE: workspace },
+      timeout: 480_000,
+      maxBuffer: 16 * 1024 * 1024,
+    }).catch(error => { console.log(String(error.stdout ?? ''), String(error.stderr ?? '')); throw error })
+
+    // Disk half 1 — memory: the store carries the codeword under the
+    // REDIRECTED agent dir; the final STANDING.md no longer carries the pin
+    // (the capture verified its round-trip appearance before removing it).
+    const agentDir = join(home, 'pi2dsh', 'agent')
+    const inStore = await grepBelow(agentDir, CODEWORD)
+    assert(inStore.length > 0, 'the codeword is nowhere under the redirected agent dir')
+    // STANDING.md lives in the package's global dir (<agentRoot>/pi-hermes-
+    // memory/). Its EXISTENCE proves the pin path wrote through the package
+    // (the capture verified the pin's round-trip appearance before removing
+    // it); the PIN's absence proves the unpin write.
+    const standingPath = join(agentDir, 'pi-hermes-memory', 'STANDING.md')
+    const standing = await readFile(standingPath, 'utf8').catch(() => undefined)
+    assert(standing !== undefined, 'STANDING.md was never created — the pin command cannot have run')
+    assert(!standing.includes(PIN), `the unpinned rule is still in STANDING.md:\n${standing}`)
+
+    // Disk half 2 — tasks: the package's own snapshot shows a ticker that
+    // ENDED long before its nominal 180s (only the dock's kill explains it),
+    // with real tick output on disk.
+    const snapshots = []
+    for (const file of await filesBelow(join(workspace, '.pi', 'tasks')).catch(() => [])) {
+      if (!file.endsWith('.json')) continue
+      try {
+        snapshots.push(JSON.parse(await readFile(file, 'utf8')))
+      } catch { /* partial write — irrelevant to the assertion below */ }
+    }
+    const ticker = snapshots.find(snapshot => /tick/u.test(String(snapshot.command ?? '')))
+    assert(ticker !== undefined, `no ticker task snapshot on disk (${snapshots.length} snapshots)`)
+    assert(ticker.status !== 'running' && typeof ticker.endTime === 'number',
+      `the ticker is still marked running after the dock kill: ${JSON.stringify(ticker).slice(0, 300)}`)
+    assert(ticker.endTime - ticker.startTime < 170_000,
+      'the ticker ran to its nominal end — the kill proved nothing')
+    const outputs = await grepBelow(join(workspace, '.pi', 'tasks'), 'tick ')
+    assert(outputs.some(file => file.endsWith('.output')), 'no task output file carries tick lines')
+
+    const shotsTaken = await readdir(shots)
+    results.workXMemoryTasks = {
+      status: 'passed',
+      engine: await installedEngineVersion(home, 'web', 'dsh-work-x'),
+      memoryTabShowsStore: true,
+      pinRoundTrip: true,
+      dockKilledTask: true,
+      screenshots: shotsTaken.sort(),
+    }
+  } finally {
+    if (web !== undefined) {
+      web.kill('SIGTERM')
+      await new Promise(done => { web.once('exit', done); setTimeout(done, 5000) })
+    }
+    await removeScratch(scratch, 'work-x-memory-tasks')
+  }
+}
+
 async function runDshX() {
   const playwrightFrom = process.env.PLAYWRIGHT_FROM ?? join(dshRoot, 'apps/web')
   const scratch = await mkdtemp(join(tmpdir(), 'pi2dsh-ex-dshx-'))
@@ -1459,11 +1563,11 @@ async function runDshX() {
     // The suite's own patch mounted the engine, the engine expanded the suite
     // manifest to all four members, and companions stayed off (v1 surface).
     const mountDeadline = Date.now() + 60_000
-    while (!/preparing 4 Pi package\(s\)/u.test(webLog) && Date.now() < mountDeadline) {
+    while (!/preparing 6 Pi package\(s\)/u.test(webLog) && Date.now() < mountDeadline) {
       await new Promise(done => setTimeout(done, 500))
     }
-    assert(/preparing 4 Pi package\(s\)/u.test(webLog), `the engine never prepared the 4 suite packages:\n${webLog.slice(-2000)}`)
-    for (const name of ['pi-mcp-adapter', '@tintinweb/pi-subagents', 'pi-btw', '@crazygit/pi-codex-image-gen']) {
+    assert(/preparing 6 Pi package\(s\)/u.test(webLog), `the engine never prepared the 6 suite packages:\n${webLog.slice(-2000)}`)
+    for (const name of ['pi-mcp-adapter', '@tintinweb/pi-subagents', 'pi-btw', '@crazygit/pi-codex-image-gen', 'pi-hermes-memory', 'pi-background-tasks']) {
       assert(webLog.includes(name), `suite member ${name} is missing from the engine mount line`)
     }
     assert(!/companion route/u.test(webLog), 'vision companions must stay OFF under dsh-x, but a companion route registered')
@@ -1515,7 +1619,7 @@ async function runDshX() {
     results.dshX = {
       status: 'passed',
       engine: await installedEngineVersion(home, 'web', 'dsh-work-x'),
-      suite: ['pi-mcp-adapter', '@tintinweb/pi-subagents', 'pi-btw', '@crazygit/pi-codex-image-gen'],
+      suite: ['pi-mcp-adapter', '@tintinweb/pi-subagents', 'pi-btw', '@crazygit/pi-codex-image-gen', 'pi-hermes-memory', 'pi-background-tasks'],
       sideChat,
       ...(mountedLine === undefined ? {} : { commands: JSON.parse(mountedLine) }),
     }
@@ -1999,6 +2103,7 @@ const SCENARIOS = [
   ['persistent-memory', runPersistentMemory, 'persistentMemory'],
   ['background-tasks', runBackgroundTasks, 'backgroundTasks'],
   ['memory-tasks-web', runMemoryTasksWeb, 'memoryTasksWeb'],
+  ['work-x-memory-tasks', runWorkXMemoryTasks, 'workXMemoryTasks'],
   ['side-conversation', runSideConversation, 'sideConversation'],
   ['vision-bridge-web', runVisionBridgeWeb, 'visionBridgeWeb'],
   ['custom-gateways', runCustomGateways, 'customGateways'],
