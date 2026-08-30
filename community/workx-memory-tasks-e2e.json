@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "pi2dshCommit": "42df35f340e85801713be9f84646fe51e548b319",
+  "pi2dshCommit": "864e561ef993efb6d6c1ca1a1a0f08fa7de8d132",
   "dshCommit": "69fff74f6f3e1f37939784885ef823477f06ace3",
   "results": {
     "workXMemoryTasks": {
@@ -9,15 +9,15 @@
         "version": "0.23.0",
         "from": "local",
         "spec": "file:<working-tree>",
-        "commit": "42df35f340e85801713be9f84646fe51e548b319",
+        "commit": "864e561ef993efb6d6c1ca1a1a0f08fa7de8d132",
         "dirty": true
       },
       "memoryTabShowsStore": true,
       "pinRoundTrip": true,
       "dockKilledTask": true,
       "screenshots": [
-        "01-memory-tab.png",
-        "02-tasks-dock-live.png",
+        "01-memory-settings.png",
+        "02-tasks-chip-live.png",
         "03-tasks-killed.png"
       ]
     }

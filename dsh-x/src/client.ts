@@ -6,9 +6,9 @@
 import { apply as engineApply, inject as engineInject } from '../../src/client.js'
 import { registerDiagnosticsTab } from './diagnostics-tab.js'
 import { registerMcpTab } from './mcp-tab.js'
-import { MemoryWindow, registerMemorySeats } from './memory-tab.js'
+import { SettingsMemorySection, registerMemorySeats } from './memory-tab.js'
 import { SideChatWindow } from './side-chat.js'
-import { TasksDock, registerTasksSeats } from './tasks-dock.js'
+import { TasksChip, registerTasksSeats } from './tasks-dock.js'
 
 export const inject = engineInject
 
@@ -33,11 +33,14 @@ export function apply(ctx: Parameters<typeof engineApply>[0]): void {
     slots.inject('shell.overlay', () => slots.register({
       name: 'shell.overlay', id: 'dsh-work-x-side-chat', order: 3,
     }, SideChatWindow))
-    slots.inject('shell.overlay', () => slots.register({
-      name: 'shell.overlay', id: 'dsh-work-x-tasks-dock', order: 4,
-    }, TasksDock))
-    slots.inject('shell.overlay', () => slots.register({
-      name: 'shell.overlay', id: 'dsh-work-x-memory', order: 5,
-    }, MemoryWindow))
+    // The tasks chip rides the host's own composer status row (the same row
+    // the packages' working/footer text lives in) — the host lays it out.
+    slots.inject('conversation.composer.dock', () => slots.register({
+      name: 'conversation.composer.dock', id: 'dsh-work-x-tasks', order: 2,
+    }, TasksChip))
+    // Memory management is a Settings page, like every mainstream assistant.
+    slots.inject('settings.section', () => slots.register({
+      name: 'settings.section', id: 'dsh-work-x-memory', order: 61, label: () => 'Memory',
+    }, SettingsMemorySection))
   })
 }

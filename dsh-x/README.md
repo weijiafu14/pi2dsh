@@ -23,8 +23,8 @@ working".
 | **Subagents** | Low-level agent registry, no product surface | Spawn / parallel / background delegation, **mid-run steering**, resume (in-session and **across restarts**), stop-with-parent, per-child model & thinking level, live inheritance of your `/model` switches — [acceptance report](../community/subagents-acceptance-report.md) |
 | **Side conversations** | — | `/btw <question>`: ask something off-topic without polluting the main context; answer lands in a side panel |
 | **Image generation** | — | Codex-backed image generation as a normal tool call, generated pixels shown inline (bring your own Codex credential) |
-| **Persistent memory** | Sessions forget everything | Cross-session facts, corrections and preferences (`memory_add`/`memory_search`, `/memory-*` commands), plus a **floating Memory window** on the web: browse and search what the agent remembers, pin/unpin standing rules with a hard budget |
-| **Background tasks** | A long tool call pins the conversation | `bg_run` starts named shell jobs and keeps talking, `bg_logs` reads output **mid-run**, plus a **tasks dock** on the web: a pill appears while jobs run — live output, one-click kill |
+| **Persistent memory** | Sessions forget everything | Cross-session facts, corrections and preferences (`memory_add`/`memory_search`, `/memory-*` commands), plus a **Settings → Memory page** on the web: browse and search what the agent remembers, pin/unpin standing rules with a hard budget |
+| **Background tasks** | A long tool call pins the conversation | `bg_run` starts named shell jobs and keeps talking, `bg_logs` reads output **mid-run**, plus a **tasks chip** on the web: it joins the composer's status row while jobs run — live output, one-click kill |
 
 The suite: [`pi-mcp-adapter`](https://www.npmjs.com/package/pi-mcp-adapter) ·
 [`@tintinweb/pi-subagents`](https://www.npmjs.com/package/@tintinweb/pi-subagents) ·
@@ -60,31 +60,31 @@ subagents natively (click through to steer or stop them), and dsh-work-x adds an
 global), with per-project enable/disable. A machine-wide view of the same
 servers lives in **Settings → MCP** and works with or without the sidebar.
 With the sidebar installed, **Memory** and **Tasks** tabs appear there too —
-the same panels as the floating window and dock, in workbench form. Without
-`dsh-better-sidebar` everything still runs; the floating pieces carry the
-same functionality. (DSH has no way yet for one plugin to declare a companion bundle —
+the same panels in workbench form. Without
+`dsh-better-sidebar` everything still runs — Settings → Memory and the tasks
+chip carry the same functionality. (DSH has no way yet for one plugin to declare a companion bundle —
 [we've proposed one](https://github.com/deepseek-ai/deepseek-harness/discussions/4543) —
 so the install command names both.)
 
-## Memory window & tasks dock
+## Memory page & tasks chip
 
-Two floating pieces join the side-chat dot on the web surface (each is
-dismissible, session-scoped, and absent when it has nothing to show):
+No floating-button clutter: the side-chat dot stays the only floating piece.
 
-- **Memory (🧠 dot)** — everything the agent durably remembers, grouped by
-  project / global / about-you, with search. The *Pinned rules* section
-  manages standing instructions injected into every turn: pin from the input,
-  unpin per entry, hard budget shown (the writes run `pi-hermes-memory`'s own
-  `/memory-pin` command — the store's anti-injection design keeps a single
-  writer). The list itself is read-only by design; edits and deletions go
-  through the agent's memory tools so store and search index never drift.
-- **Tasks pill** — appears only while background jobs exist. Expand for each
-  job's status, runtime and byte count; *show output* streams the job's
-  output while it is still running; *Kill* runs the package's own `/kill`.
+- **Settings → Memory** — everything the agent durably remembers, grouped by
+  project / global / about-you, with search; the *Pinned rules* section
+  manages standing instructions injected into every turn (pin, unpin, hard
+  budget shown). The writes run `pi-hermes-memory`'s own `/memory-pin`
+  command, so the store's single-writer anti-injection design holds; the
+  memory list itself is read-only by design — edits and deletions go through
+  the agent's memory tools so store and search index never drift.
+- **Tasks chip** — while background jobs run, a small clickable chip joins
+  the host's own status row beside the composer ("1 task running"). Click it
+  for each job's status, live output while it still runs, and a one-click
+  kill (the package's own `/kill`). No jobs, no chip.
 
 Both were verified by the automated regression end to end on a clean install:
-the memory window shows a fact that exists only in the plugin's store, a pin
-round-trips through STANDING.md and back out, and the dock's kill provably
+the Memory page shows a fact that exists only in the plugin's store, a pin
+round-trips through STANDING.md and back out, and the chip's kill provably
 ends a 180-second job early — asserted from the store files and the task
 snapshots on disk, not from page text.
 

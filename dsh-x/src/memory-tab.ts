@@ -4,9 +4,11 @@
 // management.
 //
 // Two seats, one data path:
-//   - MemoryWindow (shell.overlay, stock) — the floating dot/panel; the
-//     overlay standard kit carries the sessions hook, and the ACTIVE session
-//     is what makes the package's command runner reachable for pin writes.
+//   - SettingsMemorySection (settings.section, stock) — a full Memory page
+//     in Settings, where ChatGPT and Claude also put memory management. Pin
+//     writes go through /pi2dsh/pi-command with an empty session — the
+//     engine routes that to any session where the package is mounted (the
+//     command's effect is global state either way).
 //   - MemorySidebarTab (betterSidebar, optional) — the same panel as a
 //     sidebar tab when the community sidebar is installed.
 //
@@ -16,8 +18,6 @@
 // /pi2dsh/pi-command: STANDING.md keeps exactly one writer besides the
 // user's editor, which is the package's own anti-injection design.
 import { createElement, useEffect, useState, type ReactNode } from 'react'
-import { createPortal } from 'react-dom'
-import { useOnStage } from '../../src/client.js'
 
 interface MemoryEntry { text: string, created?: string, last?: string }
 interface MemoryStateView {
@@ -28,7 +28,6 @@ interface MemoryStateView {
   projects: Record<string, MemoryEntry[]>
 }
 
-type SessionsHook = <T>(selector: (state: { current: string }) => T) => T
 interface SidebarTabScope { sessionId: string }
 interface BetterSidebarService {
   registerTab(descriptor: {
@@ -44,33 +43,6 @@ export interface MemoryUiContext {
 const MEMORY_PACKAGE = 'pi-hermes-memory'
 
 const ui = {
-  dot: {
-    position: 'fixed', right: '20px', bottom: '196px', zIndex: 55,
-    width: '38px', height: '38px', borderRadius: '999px', pointerEvents: 'auto',
-    display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-    border: '1px solid var(--dsw-alias-border-l2, rgba(0,0,0,0.1))',
-    background: 'var(--dsw-alias-bg-layer-2, #fff)', color: 'inherit',
-    boxShadow: 'var(--dsw-shadow-lv2, 0 6px 20px rgba(0,0,0,0.14))',
-    fontSize: '17px',
-  },
-  panel: {
-    position: 'fixed', right: '20px', bottom: '196px', zIndex: 56,
-    width: 'min(420px, 92vw)', maxHeight: '62vh', display: 'flex', flexDirection: 'column',
-    pointerEvents: 'auto', overflow: 'hidden', borderRadius: '14px',
-    border: '1px solid var(--dsw-alias-border-l2, rgba(0,0,0,0.1))',
-    background: 'var(--dsw-alias-bg-layer-2, #fff)', color: 'inherit',
-    boxShadow: 'var(--dsw-shadow-lv3, 0 16px 40px rgba(0,0,0,0.18))',
-    font: '400 13px/1.5 system-ui, -apple-system, sans-serif',
-  },
-  header: {
-    display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 12px',
-    borderBottom: '1px solid var(--dsw-alias-border-l1, rgba(0,0,0,0.06))',
-    font: '600 12.5px/1.4 system-ui, sans-serif',
-  },
-  headerButton: {
-    cursor: 'pointer', opacity: 0.55, background: 'none', border: 'none',
-    color: 'inherit', font: 'inherit', padding: '2px 4px',
-  },
   body: { overflowY: 'auto', padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: '9px' },
   sub: { opacity: 0.65, fontSize: '12px' },
   group: { font: '600 11px/1.4 system-ui, sans-serif', opacity: 0.55, textTransform: 'uppercase' as const, letterSpacing: '0.06em', marginTop: '4px' },
@@ -242,31 +214,14 @@ function MemoryPanelBody({ session, active }: { session: string, active: boolean
   )
 }
 
-/** The floating memory window over the active session. */
-export function MemoryWindow({ useSessions }: { useSessions: SessionsHook }): ReactNode {
-  const session = useOnStage(useSessions as never)
-  const [openPanel, setOpenPanel] = useState(false)
-
-  if (session === '') return null
-
-  if (!openPanel) {
-    return createPortal(createElement('button', {
-      style: ui.dot,
-      title: 'Memory — what the agent remembers across sessions',
-      'data-dsh-x': 'memory-dot',
-      onClick: () => setOpenPanel(true),
-    }, '🧠'), document.body)
-  }
-
-  return createPortal(createElement('div', { style: ui.panel, 'data-dsh-x': 'memory-tab' },
-    createElement('div', { style: ui.header },
-      createElement('span', { style: { flex: 1 } }, 'Memory'),
-      createElement('button', { style: ui.headerButton, title: 'Close', onClick: () => setOpenPanel(false) }, '×'),
-    ),
-    createElement('div', { style: ui.body },
-      createElement(MemoryPanelBody, { session, active: true }),
-    ),
-  ), document.body)
+/** The Settings page: full memory management, always reachable. */
+export function SettingsMemorySection(): ReactNode {
+  return createElement('div', { style: { ...ui.body, overflowY: 'visible' }, 'data-dsh-x': 'memory-tab' },
+    createElement('div', { style: { font: '600 13px/1.4 system-ui, sans-serif' } }, 'Memory'),
+    createElement('div', { style: ui.sub },
+      'What the agent durably remembers across sessions, and the rules pinned into every turn.'),
+    createElement(MemoryPanelBody, { session: '', active: true }),
+  )
 }
 
 /** The same panel as a sidebar tab (needs the optional dsh-better-sidebar). */

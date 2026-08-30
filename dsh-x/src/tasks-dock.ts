@@ -2,10 +2,12 @@
 // pi-background-tasks on the web.
 //
 // Two seats, one data path:
-//   - TasksDock (shell.overlay, stock) — a floating pill that exists only
-//     while tasks exist, expanding into the panel. Works on a clean install.
-//   - TasksSidebarTab (betterSidebar, optional) — the same panel as a
-//     sidebar tab when the community sidebar is installed.
+//   - TasksChip (conversation.composer.dock, stock) — a small clickable chip
+//     in the host's own status row beside the composer, present only while
+//     tasks exist; click opens the panel. No free-floating circles: the host
+//     lays the row out, we never hand-stack coordinates.
+//   - TasksSidebarTab (betterSidebar, optional) — the same list as a sidebar
+//     tab when the community sidebar is installed.
 //
 // Reads the suite's /dsh-x/tasks-state route (the package's own durable task
 // snapshots, plus a pid liveness probe). The one write — kill — runs the
@@ -13,7 +15,6 @@
 // escalation and cleanup semantics hold; nothing is reimplemented.
 import { createElement, useEffect, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { useOnStage } from '../../src/client.js'
 
 interface TaskView {
   id: string
@@ -28,7 +29,6 @@ interface TaskView {
   output?: string
 }
 
-type SessionsHook = <T>(selector: (state: { current: string }) => T) => T
 interface SidebarTabScope { sessionId: string }
 interface BetterSidebarService {
   registerTab(descriptor: {
@@ -44,20 +44,18 @@ export interface TasksUiContext {
 const TASKS_PACKAGE = 'pi-background-tasks'
 
 const ui = {
-  pill: {
-    position: 'fixed', right: '20px', bottom: '152px', zIndex: 55,
-    height: '38px', borderRadius: '999px', pointerEvents: 'auto',
-    display: 'flex', alignItems: 'center', gap: '7px', padding: '0 14px',
-    cursor: 'pointer', border: '1px solid var(--dsw-alias-border-l2, rgba(0,0,0,0.1))',
-    background: 'var(--dsw-alias-bg-layer-2, #fff)', color: 'inherit',
-    boxShadow: 'var(--dsw-shadow-lv2, 0 6px 20px rgba(0,0,0,0.14))',
-    font: '500 12px/1.4 system-ui, -apple-system, sans-serif',
+  chip: {
+    display: 'inline-flex', alignItems: 'center', gap: '6px',
+    padding: '2px 10px', borderRadius: '999px', cursor: 'pointer',
+    border: '1px solid var(--dsw-alias-border-l2, rgba(0,0,0,0.12))',
+    background: 'var(--dsw-alias-bg-layer-2, rgba(127,127,127,0.06))', color: 'inherit',
+    font: '500 11.5px/1.6 system-ui, -apple-system, sans-serif',
   },
   pulse: {
     width: '8px', height: '8px', borderRadius: '999px', background: '#2FBC44',
   },
   panel: {
-    position: 'fixed', right: '20px', bottom: '152px', zIndex: 55,
+    position: 'fixed', right: '20px', bottom: '120px', zIndex: 55,
     width: 'min(420px, 92vw)', maxHeight: '60vh', display: 'flex', flexDirection: 'column',
     pointerEvents: 'auto', overflow: 'hidden', borderRadius: '14px',
     border: '1px solid var(--dsw-alias-border-l2, rgba(0,0,0,0.1))',
@@ -166,6 +164,7 @@ function TasksListBody({ session, active }: { session: string, active: boolean }
         createElement('span', { style: ui.name }, task.name ?? task.id),
         createElement('span', {
           style: { ...ui.badge, ...(RUNNING(task) ? ui.badgeLive : {}) },
+          'data-dsh-x': 'tasks-status',
         }, RUNNING(task) ? 'running' : task.status === 'running' ? 'stale' : task.status),
         RUNNING(task) ? createElement('button', { style: ui.kill, 'data-dsh-x': 'tasks-kill', onClick: () => kill(task) }, 'Kill') : null,
       ),
@@ -186,36 +185,38 @@ function TasksListBody({ session, active }: { session: string, active: boolean }
   )
 }
 
-/** Floating dock over the active session; renders nothing when no tasks exist. */
-export function TasksDock({ useSessions }: { useSessions: SessionsHook }): ReactNode {
-  const session = useOnStage(useSessions as never)
+/**
+ * The chip in the host's composer status row: present only while tasks
+ * exist, click for the panel. Receives the session standard kit.
+ */
+export function TasksChip({ sessionId }: { sessionId?: string }): ReactNode {
+  const session = sessionId ?? ''
   const [openPanel, setOpenPanel] = useState(false)
   const tasks = useTasks(session, session !== '', undefined)
 
   if (session === '' || tasks.length === 0) return null
   const running = tasks.filter(RUNNING)
 
-  if (!openPanel) {
-    return createPortal(createElement('button', {
-      style: ui.pill,
-      title: 'Background tasks',
-      'data-dsh-x': 'tasks-pill',
-      onClick: () => setOpenPanel(true),
+  return createElement('span', { style: { display: 'inline-flex' } },
+    createElement('button', {
+      style: ui.chip,
+      title: 'Background tasks — click for live output and controls',
+      'data-dsh-x': 'tasks-chip',
+      onClick: () => setOpenPanel(open => !open),
     },
       running.length > 0 ? createElement('span', { style: ui.pulse }) : null,
       running.length > 0 ? `${running.length} task${running.length > 1 ? 's' : ''} running` : `${tasks.length} task${tasks.length > 1 ? 's' : ''}`,
-    ), document.body)
-  }
-
-  return createPortal(createElement('div', { style: ui.panel, 'data-dsh-x': 'tasks-panel' },
-    createElement('div', { style: ui.header },
-      createElement('span', { style: { flex: 1 } }, 'Background tasks'),
-      createElement('button', { style: ui.headerButton, title: 'Close', onClick: () => setOpenPanel(false) }, '×'),
     ),
-    createElement('div', { style: ui.body },
-      createElement(TasksListBody, { session, active: true }),
-    ),
-  ), document.body)
+    openPanel ? createPortal(createElement('div', { style: ui.panel, 'data-dsh-x': 'tasks-panel' },
+      createElement('div', { style: ui.header },
+        createElement('span', { style: { flex: 1 } }, 'Background tasks'),
+        createElement('button', { style: ui.headerButton, title: 'Close', onClick: () => setOpenPanel(false) }, '×'),
+      ),
+      createElement('div', { style: ui.body },
+        createElement(TasksListBody, { session, active: true }),
+      ),
+    ), document.body) : null,
+  )
 }
 
 /** The same list as a sidebar tab (needs the optional dsh-better-sidebar). */

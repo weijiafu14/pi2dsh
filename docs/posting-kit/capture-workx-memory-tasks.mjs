@@ -1,11 +1,13 @@
-// Drive the dsh-work-x memory tab + background-tasks dock as a user does.
+// Drive the dsh-work-x Memory settings page + tasks chip as a user does.
 //
 //   node docs/posting-kit/capture-workx-memory-tasks.mjs <out-dir> \
 //     --url http://… --codeword X --pin "rule text"
 //
-// Every waitFor below is itself an assertion (a broken route/command/render
-// times this script out and the caller fails); the caller adds the disk-level
-// half (STANDING.md content, task snapshot status) from the scratch home.
+// The product shape under test (2026-08-30 design): NO floating circles
+// beyond the side-chat dot. Memory lives in Settings → Memory; the tasks
+// entry is a clickable chip in the host's composer status row, present only
+// while tasks exist. Every waitFor below is itself an assertion; the caller
+// adds the disk-level half from the scratch home.
 import { openApp } from './web-drive.mjs'
 
 const flag = (name) => {
@@ -22,60 +24,49 @@ await page.getByRole('button', { name: /new session/iu }).first().click({ timeou
 // 1. The model writes a durable memory through the package's own tool.
 await send(`Use the memory_add tool to remember this durable project fact: my project codename is ${CODEWORD}. Confirm in one short sentence.`)
 
-// 2. Open the floating memory window and see the STORE's content (the
-// codeword inside the window container can only have come through
-// /dsh-x/memory-state — the container renders route data, not chat text).
-await page.locator('[data-dsh-x="memory-dot"]').click({ timeout: 30_000 })
-const tabRoot = page.locator('[data-dsh-x="memory-tab"]')
-await tabRoot.getByText(CODEWORD).first().waitFor({ timeout: 30_000 })
-
-// 3. Pin a standing rule through the tab (round trip: pi-command →
-// STANDING.md → /dsh-x/memory-state → the pin list).
-await page.locator('[data-dsh-x="memory-pin-input"]').fill(PIN)
-await page.locator('[data-dsh-x="memory-pin-add"]').click()
-await page.locator('[data-dsh-x="memory-pin"]').getByText(PIN).first().waitFor({ timeout: 30_000 }).catch(async (error) => {
-  const note = await page.locator('[data-dsh-x="memory-note"]').textContent().catch(() => '(no note)')
-  const window = await page.locator('[data-dsh-x="memory-tab"]').textContent().catch(() => '(no window)')
-  console.error(`pin never appeared; note: ${note}\nwindow: ${String(window).slice(0, 600)}`)
-  throw error
-})
-await shot('01-memory-tab')
-
-// Close the window before composing again: its pin input is also a textbox,
-// and the composer locator targets the LAST textbox on the page.
-await page.locator('[data-dsh-x="memory-tab"]').getByTitle('Close').click()
-
-// 4. Start a long background job; the dock pill must appear on its own.
+// 2. Start a long background job; the chip must appear in the composer's
+// status row on its own.
 await send('Use the bg_run tool to start a background shell job named ticker that runs exactly this command: '
   + "sh -c 'for i in $(seq 1 180); do echo tick $i; sleep 1; done'. "
   + 'Confirm the task id in one short sentence. Do not wait for it and do not kill it.')
-await page.locator('[data-dsh-x="tasks-pill"]').waitFor({ timeout: 60_000 })
-await page.locator('[data-dsh-x="tasks-pill"]').click()
+await page.locator('[data-dsh-x="tasks-chip"]').waitFor({ timeout: 60_000 })
+await page.locator('[data-dsh-x="tasks-chip"]').click()
 await page.locator('[data-dsh-x="tasks-card"]').first().waitFor({ timeout: 15_000 })
 
-// 5. Live output while the job runs.
+// 3. Live output while the job runs, then kill from the panel.
 await page.locator('[data-dsh-x="tasks-output-toggle"]').first().click()
 await page.waitForFunction(() => {
   const box = document.querySelector('[data-dsh-x="tasks-output"]')
   return box !== null && /tick \d+/u.test(box.textContent ?? '')
 }, undefined, { timeout: 45_000 })
-await shot('02-tasks-dock-live')
-
-// 6. Kill from the dock; the running badge must go away well before the
-// job's nominal 180s end (the caller asserts the snapshot on disk).
+await shot('02-tasks-chip-live')
 await page.locator('[data-dsh-x="tasks-kill"]').first().click()
+// The status badge carries its own marker: textContent on the whole card
+// concatenates adjacent nodes without whitespace, so a word-boundary match
+// there is vacuously false-green (caught 2026-08-30: shot 03 was byte-equal
+// to shot 02 because this wait passed instantly).
 await page.waitForFunction(() => {
-  const cards = [...document.querySelectorAll('[data-dsh-x="tasks-card"]')]
-  return cards.length > 0 && cards.every(card => !/\brunning\b/u.test(card.textContent ?? ''))
+  const badges = [...document.querySelectorAll('[data-dsh-x="tasks-status"]')]
+  return badges.length > 0 && badges.every(badge => (badge.textContent ?? '').trim() !== 'running')
 }, undefined, { timeout: 45_000 })
 await shot('03-tasks-killed')
-
-// 7. Close the tasks panel (it floats over the memory dot's corner), reopen
-// the memory window and unpin; the entry must leave the list (removal round
-// trip).
 await page.locator('[data-dsh-x="tasks-panel"]').getByTitle('Close').click()
-await page.locator('[data-dsh-x="memory-dot"]').click({ timeout: 15_000 })
-await page.locator('[data-dsh-x="memory-pin-remove"]').first().waitFor({ timeout: 15_000 })
+
+// 4. Settings → Memory: the STORE's content (the codeword inside the page
+// container can only have come through /dsh-x/memory-state), pin a rule,
+// see it round-trip, unpin it, see it leave.
+await page.getByText('Settings', { exact: true }).first().click({ timeout: 30_000 })
+await page.getByText('Memory', { exact: true }).first().click({ timeout: 30_000 })
+const memoryRoot = page.locator('[data-dsh-x="memory-tab"]')
+await memoryRoot.getByText(CODEWORD).first().waitFor({ timeout: 30_000 })
+await page.locator('[data-dsh-x="memory-pin-input"]').fill(PIN)
+await page.locator('[data-dsh-x="memory-pin-add"]').click()
+await page.locator('[data-dsh-x="memory-pin"]').getByText(PIN).first().waitFor({ timeout: 30_000 }).catch(async (error) => {
+  const note = await page.locator('[data-dsh-x="memory-note"]').textContent().catch(() => '(no note)')
+  console.error(`pin never appeared; note: ${note}`)
+  throw error
+})
+await shot('01-memory-settings')
 await page.locator('[data-dsh-x="memory-pin-remove"]').first().click()
 await page.waitForFunction(pin => {
   const root = document.querySelector('[data-dsh-x="memory-tab"]')

@@ -155,9 +155,21 @@ export class BrowserSurfaces {
     }
   }
 
-  /** The registered runner for (session, package), when one is mounted. */
+  /**
+   * The registered runner for (session, package), when one is mounted.
+   *
+   * An empty sessionId means "any session where the package is mounted":
+   * session-free product UI (a Settings page) invoking a package command
+   * whose effect is global state — the handler itself is the package's own
+   * either way, and every mounted copy routes to the same package storage.
+   */
   commandRunner(sessionId: string, packageName: string): PiCommandRunner | undefined {
-    return this.#commandRunners.get(sessionId)?.get(packageName)
+    if (sessionId !== '') return this.#commandRunners.get(sessionId)?.get(packageName)
+    for (const runners of this.#commandRunners.values()) {
+      const runner = runners.get(packageName)
+      if (runner !== undefined) return runner
+    }
+    return undefined
   }
 
   /**

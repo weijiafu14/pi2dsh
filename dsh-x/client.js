@@ -1628,60 +1628,6 @@ window.__ModuleLoader__.load({
 		//#region dsh-x/src/memory-tab.ts
 		const MEMORY_PACKAGE = "pi-hermes-memory";
 		const ui$2 = {
-			dot: {
-				position: "fixed",
-				right: "20px",
-				bottom: "196px",
-				zIndex: 55,
-				width: "38px",
-				height: "38px",
-				borderRadius: "999px",
-				pointerEvents: "auto",
-				display: "flex",
-				alignItems: "center",
-				justifyContent: "center",
-				cursor: "pointer",
-				border: "1px solid var(--dsw-alias-border-l2, rgba(0,0,0,0.1))",
-				background: "var(--dsw-alias-bg-layer-2, #fff)",
-				color: "inherit",
-				boxShadow: "var(--dsw-shadow-lv2, 0 6px 20px rgba(0,0,0,0.14))",
-				fontSize: "17px"
-			},
-			panel: {
-				position: "fixed",
-				right: "20px",
-				bottom: "196px",
-				zIndex: 56,
-				width: "min(420px, 92vw)",
-				maxHeight: "62vh",
-				display: "flex",
-				flexDirection: "column",
-				pointerEvents: "auto",
-				overflow: "hidden",
-				borderRadius: "14px",
-				border: "1px solid var(--dsw-alias-border-l2, rgba(0,0,0,0.1))",
-				background: "var(--dsw-alias-bg-layer-2, #fff)",
-				color: "inherit",
-				boxShadow: "var(--dsw-shadow-lv3, 0 16px 40px rgba(0,0,0,0.18))",
-				font: "400 13px/1.5 system-ui, -apple-system, sans-serif"
-			},
-			header: {
-				display: "flex",
-				alignItems: "center",
-				gap: "8px",
-				padding: "10px 12px",
-				borderBottom: "1px solid var(--dsw-alias-border-l1, rgba(0,0,0,0.06))",
-				font: "600 12.5px/1.4 system-ui, sans-serif"
-			},
-			headerButton: {
-				cursor: "pointer",
-				opacity: .55,
-				background: "none",
-				border: "none",
-				color: "inherit",
-				font: "inherit",
-				padding: "2px 4px"
-			},
 			body: {
 				overflowY: "auto",
 				padding: "10px 12px",
@@ -1935,28 +1881,18 @@ window.__ModuleLoader__.load({
 				}, title), ...visibleEntries.map((entry, index) => entryCard(entry, `${title}-${index}`))];
 			}), total > 0 ? (0, react.createElement)("div", { style: ui$2.sub }, "Read-only list — edits and deletions go through the agent's own memory tools or the /memory-* commands, so the package's store and its search index never drift apart.") : null);
 		}
-		/** The floating memory window over the active session. */
-		function MemoryWindow({ useSessions }) {
-			const session = useOnStage(useSessions);
-			const [openPanel, setOpenPanel] = (0, react.useState)(false);
-			if (session === "") return null;
-			if (!openPanel) return (0, react_dom.createPortal)((0, react.createElement)("button", {
-				style: ui$2.dot,
-				title: "Memory — what the agent remembers across sessions",
-				"data-dsh-x": "memory-dot",
-				onClick: () => setOpenPanel(true)
-			}, "🧠"), document.body);
-			return (0, react_dom.createPortal)((0, react.createElement)("div", {
-				style: ui$2.panel,
+		/** The Settings page: full memory management, always reachable. */
+		function SettingsMemorySection() {
+			return (0, react.createElement)("div", {
+				style: {
+					...ui$2.body,
+					overflowY: "visible"
+				},
 				"data-dsh-x": "memory-tab"
-			}, (0, react.createElement)("div", { style: ui$2.header }, (0, react.createElement)("span", { style: { flex: 1 } }, "Memory"), (0, react.createElement)("button", {
-				style: ui$2.headerButton,
-				title: "Close",
-				onClick: () => setOpenPanel(false)
-			}, "×")), (0, react.createElement)("div", { style: ui$2.body }, (0, react.createElement)(MemoryPanelBody, {
-				session,
+			}, (0, react.createElement)("div", { style: { font: "600 13px/1.4 system-ui, sans-serif" } }, "Memory"), (0, react.createElement)("div", { style: ui$2.sub }, "What the agent durably remembers across sessions, and the rules pinned into every turn."), (0, react.createElement)(MemoryPanelBody, {
+				session: "",
 				active: true
-			}))), document.body);
+			}));
 		}
 		/** The same panel as a sidebar tab (needs the optional dsh-better-sidebar). */
 		function MemorySidebarTab({ scope, visible }) {
@@ -2320,24 +2256,17 @@ window.__ModuleLoader__.load({
 		//#region dsh-x/src/tasks-dock.ts
 		const TASKS_PACKAGE = "pi-background-tasks";
 		const ui = {
-			pill: {
-				position: "fixed",
-				right: "20px",
-				bottom: "152px",
-				zIndex: 55,
-				height: "38px",
-				borderRadius: "999px",
-				pointerEvents: "auto",
-				display: "flex",
+			chip: {
+				display: "inline-flex",
 				alignItems: "center",
-				gap: "7px",
-				padding: "0 14px",
+				gap: "6px",
+				padding: "2px 10px",
+				borderRadius: "999px",
 				cursor: "pointer",
-				border: "1px solid var(--dsw-alias-border-l2, rgba(0,0,0,0.1))",
-				background: "var(--dsw-alias-bg-layer-2, #fff)",
+				border: "1px solid var(--dsw-alias-border-l2, rgba(0,0,0,0.12))",
+				background: "var(--dsw-alias-bg-layer-2, rgba(127,127,127,0.06))",
 				color: "inherit",
-				boxShadow: "var(--dsw-shadow-lv2, 0 6px 20px rgba(0,0,0,0.14))",
-				font: "500 12px/1.4 system-ui, -apple-system, sans-serif"
+				font: "500 11.5px/1.6 system-ui, -apple-system, sans-serif"
 			},
 			pulse: {
 				width: "8px",
@@ -2348,7 +2277,7 @@ window.__ModuleLoader__.load({
 			panel: {
 				position: "fixed",
 				right: "20px",
-				bottom: "152px",
+				bottom: "120px",
 				zIndex: 55,
 				width: "min(420px, 92vw)",
 				maxHeight: "60vh",
@@ -2531,10 +2460,13 @@ window.__ModuleLoader__.load({
 				key: task.id,
 				style: ui.card,
 				"data-dsh-x": "tasks-card"
-			}, (0, react.createElement)("div", { style: ui.cardHead }, (0, react.createElement)("span", { style: ui.name }, task.name ?? task.id), (0, react.createElement)("span", { style: {
-				...ui.badge,
-				...RUNNING(task) ? ui.badgeLive : {}
-			} }, RUNNING(task) ? "running" : task.status === "running" ? "stale" : task.status), RUNNING(task) ? (0, react.createElement)("button", {
+			}, (0, react.createElement)("div", { style: ui.cardHead }, (0, react.createElement)("span", { style: ui.name }, task.name ?? task.id), (0, react.createElement)("span", {
+				style: {
+					...ui.badge,
+					...RUNNING(task) ? ui.badgeLive : {}
+				},
+				"data-dsh-x": "tasks-status"
+			}, RUNNING(task) ? "running" : task.status === "running" ? "stale" : task.status), RUNNING(task) ? (0, react.createElement)("button", {
 				style: ui.kill,
 				"data-dsh-x": "tasks-kill",
 				onClick: () => kill(task)
@@ -2552,20 +2484,22 @@ window.__ModuleLoader__.load({
 				"data-dsh-x": "tasks-output"
 			}, task.output.length > 0 ? task.output : "(no output yet)") : null)));
 		}
-		/** Floating dock over the active session; renders nothing when no tasks exist. */
-		function TasksDock({ useSessions }) {
-			const session = useOnStage(useSessions);
+		/**
+		* The chip in the host's composer status row: present only while tasks
+		* exist, click for the panel. Receives the session standard kit.
+		*/
+		function TasksChip({ sessionId }) {
+			const session = sessionId ?? "";
 			const [openPanel, setOpenPanel] = (0, react.useState)(false);
 			const tasks = useTasks(session, session !== "", void 0);
 			if (session === "" || tasks.length === 0) return null;
 			const running = tasks.filter(RUNNING);
-			if (!openPanel) return (0, react_dom.createPortal)((0, react.createElement)("button", {
-				style: ui.pill,
-				title: "Background tasks",
-				"data-dsh-x": "tasks-pill",
-				onClick: () => setOpenPanel(true)
-			}, running.length > 0 ? (0, react.createElement)("span", { style: ui.pulse }) : null, running.length > 0 ? `${running.length} task${running.length > 1 ? "s" : ""} running` : `${tasks.length} task${tasks.length > 1 ? "s" : ""}`), document.body);
-			return (0, react_dom.createPortal)((0, react.createElement)("div", {
+			return (0, react.createElement)("span", { style: { display: "inline-flex" } }, (0, react.createElement)("button", {
+				style: ui.chip,
+				title: "Background tasks — click for live output and controls",
+				"data-dsh-x": "tasks-chip",
+				onClick: () => setOpenPanel((open) => !open)
+			}, running.length > 0 ? (0, react.createElement)("span", { style: ui.pulse }) : null, running.length > 0 ? `${running.length} task${running.length > 1 ? "s" : ""} running` : `${tasks.length} task${tasks.length > 1 ? "s" : ""}`), openPanel ? (0, react_dom.createPortal)((0, react.createElement)("div", {
 				style: ui.panel,
 				"data-dsh-x": "tasks-panel"
 			}, (0, react.createElement)("div", { style: ui.header }, (0, react.createElement)("span", { style: { flex: 1 } }, "Background tasks"), (0, react.createElement)("button", {
@@ -2575,7 +2509,7 @@ window.__ModuleLoader__.load({
 			}, "×")), (0, react.createElement)("div", { style: ui.body }, (0, react.createElement)(TasksListBody, {
 				session,
 				active: true
-			}))), document.body);
+			}))), document.body) : null);
 		}
 		/** The same list as a sidebar tab (needs the optional dsh-better-sidebar). */
 		function TasksSidebarTab({ scope, visible }) {
@@ -2614,16 +2548,17 @@ window.__ModuleLoader__.load({
 					id: "dsh-work-x-side-chat",
 					order: 3
 				}, SideChatWindow));
-				slots.inject("shell.overlay", () => slots.register({
-					name: "shell.overlay",
-					id: "dsh-work-x-tasks-dock",
-					order: 4
-				}, TasksDock));
-				slots.inject("shell.overlay", () => slots.register({
-					name: "shell.overlay",
+				slots.inject("conversation.composer.dock", () => slots.register({
+					name: "conversation.composer.dock",
+					id: "dsh-work-x-tasks",
+					order: 2
+				}, TasksChip));
+				slots.inject("settings.section", () => slots.register({
+					name: "settings.section",
 					id: "dsh-work-x-memory",
-					order: 5
-				}, MemoryWindow));
+					order: 61,
+					label: () => "Memory"
+				}, SettingsMemorySection));
 			});
 		}
 		//#endregion
