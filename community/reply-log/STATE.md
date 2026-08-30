@@ -679,3 +679,25 @@ pi-telegram 理论级三实锤：top50 黑盒挂载成功、其文档点名的 `
 
 毙：#266（楼内已有 dsh-web-ui 远程插件 / lody ai / goraven H5 三个远程方案，
 理论级第四选项无差异化增量）。
+
+## 批次 17（2026-08-30）——provider-threads 验证连跑器，验证→回帖六连
+
+装置：`scripts/verify-provider-threads-e2e.mjs`（stock @deepseek-ai/dsh@0.1.1-rc.2 +
+npm 引擎 pi2dsh@0.23.0 + catalog-only Pi provider + 透传录制代理 → 真 api.deepseek.com），
+证据 `community/full-audit-work/provider-threads-e2e.json`（commit 86349c9），6/6 passed。
+
+| # | case | 判决要点 | 评论 |
+|---|---|---|---|
+| 947 | tools-fields | bash 声明 1836 字符 description、command/description 参数俱全上线；工具执行+第二模型步 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/947#discussioncomment-18205042) |
+| 3342 | write-second-step | write 全链：call_00 id、args file_path+content、落盘、3 模型步 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/3342#discussioncomment-18205044) |
+| 2859 | parallel-calls + 累加器注入 | 双 call id 独立非空、43 条历史可解析；无 id 畸形族由 accumulator 实验覆盖；明写不构成官方 adapter 修复 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/2859#discussioncomment-18205045) |
+| 2659 | long-output + token-limit 对照 | 25949 字符完整到达 completed；对照组 max_tokens:24 上线、max-tokens 如实收尾 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/2659#discussioncomment-18205046) |
+| 2670 | encoding | 224 CJK 零 U+FFFD；两类故障拆开+录制代理归因法 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/2670#discussioncomment-18205047) |
+| 1166 | token-limit | 声明 maxTokens:24 真上线，turn/end max-tokens、部分文本保留、CLI 非零退出 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/1166#discussioncomment-18205049) |
+
+哨兵教训（进装置不进对外文案）：① jsonl 里助手文本在 `data.message.content` 不在
+`data.content`——形状必须先实证再断言；② deepseek-chat 拒绝手写 3000 整数（两种措辞都拒），
+long-output 换成长文任务并在脚本里注明"整数变体测的是服从性不是传输"；③ max-tokens 收尾
+时 headless CLI 非零退出是被测行为，harness 需 allowExit。
+
+进行中：#1149（codex write 可选参数，scripts/verify-codex-write-optional-e2e.mjs）。
