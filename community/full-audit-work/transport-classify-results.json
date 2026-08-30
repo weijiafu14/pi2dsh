@@ -1,0 +1,34 @@
+{
+  "tcpReset": {
+    "trace": [
+      "attempt0:throw fetch failed (read tcp reset)",
+      "attempt1:200"
+    ],
+    "recovered": true,
+    "stopReason": "stop"
+  },
+  "reasoningStream": {
+    "blocks": [
+      {
+        "type": "thinking",
+        "text": "THINK_PART"
+      },
+      {
+        "type": "text",
+        "text": "visible answer"
+      }
+    ],
+    "thinkingBlockPresent": true,
+    "thinkingLeakedIntoText": false,
+    "eventTypes": [
+      "start",
+      "thinking_start",
+      "thinking_delta",
+      "text_start",
+      "text_delta",
+      "thinking_end",
+      "text_end",
+      "done"
+    ]
+  }
+}
