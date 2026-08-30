@@ -56,8 +56,9 @@ provider 族 84 条里 **43 条已在此前 outreach 波次回过**（全部为�
 
 e2e_only 18 条：**17 回、1 毙**（#3387 maintainer 关闭并入 #2017）。本日 13 条全部
 带机器可复核证据（provider-threads 六案连跑器 / codex-write-optional /
-reasoning-history A/B / alibaba-token-plan / litellm-route）。剩余净新 = adapter 17
-+ product 5，解锁条件是 R1 段 2/段 3 开发件；评论链接权威在
+reasoning-history A/B / alibaba-token-plan / litellm-route）。adapter 17 条已按"上游化"路线消化：围栏缺口报上游
+（earendil-works/pi#8858）+ 10 条证据回帖（批次 18），余 7 条记因跳过（1 条可升级）；
+product 5 条仍等段 3 provider 包；评论链接权威在
 community/reply-log/STATE.md 批次 17 各节。
 
 ## R1 段 1 首个实验判决（2026-08-29，真跑 pi-ai 0.84.1 累加器，故障注入真 wire）

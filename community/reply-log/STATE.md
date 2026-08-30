@@ -765,3 +765,35 @@ provider 包），不存在"现在能回而没回"。**
 | 4213 | 实证跟帖 | 四组对照 + 源码双坐标 + 自救指引（端点报错点名罪魁）+ 明写"v2"包名 npm/GitHub 均无搜获请楼主贴来源 + 楼上通用卫生不治此根因 + 我方两层结构性防御（lazy proxy / 注册期校验）皆有装置实测 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/4213#discussioncomment-18205294) |
 
 副产物：上游候选 +1（register 验 output 不验 parameters，见候选队列）。
+
+## 批次 18（2026-08-30 晚）——围栏缺口上游化 + adapter 桶证据回帖
+
+**上游 issue**：[earendil-works/pi#8858](https://github.com/earendil-works/pi/issues/8858)
+——openai-completions 围栏参数静默降级 `{}`（repair 管线缺口）。发前证伪：最新 0.84.4
+复测仍在（accumulator-experiment-results-0.84.4.json）；修复归上游、证据指我方仓库
+（用户拍板的宣传姿势）。判定修正记录：曾计划在桥内做剥离，被用户以"非通用 ABI、
+损专业性"否掉——正确姿势是真 Pi 同样坏的不修不掩、报上游。
+
+**新增实验**：transport-classify-experiment（TCP 连接错 pi-ai 层重试恢复；
+reasoning_content 分类零泄漏）。
+
+| # | 依据 | 评论 |
+|---|---|---|
+| 3047 | 跨层测量：pi-ai 侧同输入静默 `{}`（比他那层的响亮拒绝更糟）+ 上游 issue | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/3047#discussioncomment-18207514) |
+| 3090 | 累加器 A/B：空串/无 id 族全扛住（index 键控+首个非空胜出）+ 真机双 call；明写不修 llm-deepseek | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/3090#discussioncomment-18207515) |
+| 3128 | Retry-After 传输层实测被尊重 → 锅收窄到 wrapper 重试层 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/3128#discussioncomment-18207516) |
+| 3112 | tcpReset 探针：传输层可重试恢复 → 确证 classifyPiAiError 是唯一修点 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/3112#discussioncomment-18207517) |
+| 1198 | reasoningStream 探针：分类零泄漏 → 嫌疑收窄到网关不发 reasoning_content；给录制自查法 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/1198#discussioncomment-18207519) |
+| 1058 | thinkingLevelMap 上线实测（gateway-compat 断言）+ llama-server 配法；明写 llama 侧归属 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/1058#discussioncomment-18207520) |
+| 1866 | localhost 路由实测基线（battery 就跑在 127.0.0.1）+ 两条配置路径 + 本地特有坑 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/1866#discussioncomment-18207521) |
+| 1113 | 保留名冲突机理 + assembly.tools 改写杠杆（1604 实测）；明写是绕行非修复 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/1113#discussioncomment-18207522) |
+| 4190 | 独立复现佐证：我方 codex 装置早撞同现象（stopChild + terminated-after-durable-turn 证据在库）；明写没测 5 分钟数值 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/4190#discussioncomment-18207523) |
+| 1077 | 重试机制测量 + 持续/瞬时二分归因法 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/1077#discussioncomment-18207524) |
+| 931 | 症状族二分（空 id 族 / 围栏族）+ 录制自查；明写非定论 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/931#discussioncomment-18207525) |
+
+**跳过（记因）**：1073/1099（截图/一句话，无从下证）、1078（web-search 架构设计诉求，
+无我方证据面）、2668（Bearer 开关是上游特性诉求）、2893（过泛）、3157（timeout 配置面
+未实证）、3825（mapUsage 丢 reasoning 细分——**可下一批用 transform 探针升级为实测**，
+候选队列）。
+
+adapter 桶 17 条净新终账：回 10、余 7（各有记因，1 条可升级）。
