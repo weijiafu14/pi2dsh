@@ -5,7 +5,7 @@
 // config narrows or overrides it.
 import { realpathSync } from 'node:fs'
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
+import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
@@ -145,6 +145,43 @@ describe('engine discovery', () => {
 })
 
 describe('engine mounting on a real DSH composition', () => {
+  it('publishes the redirected agent dir to plugin-visible env, honoring a user-set value', async () => {
+    // Packages read process.env.PI_CODING_AGENT_DIR (or ~/.pi/agent) at
+    // module load — pi-hermes-memory's paths.ts does — so the redirect must
+    // reach the ENV, not just the aliased getAgentDir import. Regression:
+    // without this, hermes wrote into the machine's real ~/.pi/agent.
+    const saved = process.env.PI_CODING_AGENT_DIR
+    try {
+      delete process.env.PI_CODING_AGENT_DIR
+      const root = await makeProfile({})
+      const ctx = new Context()
+      await ctx.plugin(SessionStore)
+      await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
+      await ctx.plugin(ToolRuntime)
+      await ctx.plugin(CommandRuntime)
+      await ctx.plugin(SkillRegistry)
+      ;(ctx as unknown as { baseUrl: string }).baseUrl = `file://${root}/cordis.yml`
+      await apply(ctx, {})
+      const dshHome = process.env.DSH_HOME ?? join(homedir(), '.dsh')
+      expect(process.env.PI_CODING_AGENT_DIR).toBe(join(dshHome, 'pi2dsh', 'agent'))
+
+      // A value the user set explicitly is never overridden.
+      process.env.PI_CODING_AGENT_DIR = '/tmp/user-chosen-agent-dir'
+      const ctx2 = new Context()
+      await ctx2.plugin(SessionStore)
+      await ctx2.plugin(SystemPrompt, { includeHarnessIdentity: false })
+      await ctx2.plugin(ToolRuntime)
+      await ctx2.plugin(CommandRuntime)
+      await ctx2.plugin(SkillRegistry)
+      ;(ctx2 as unknown as { baseUrl: string }).baseUrl = `file://${root}/cordis.yml`
+      await apply(ctx2, {})
+      expect(process.env.PI_CODING_AGENT_DIR).toBe('/tmp/user-chosen-agent-dir')
+    } finally {
+      if (saved === undefined) delete process.env.PI_CODING_AGENT_DIR
+      else process.env.PI_CODING_AGENT_DIR = saved
+    }
+  })
+
   it('exposes the cordis plugin surface and mounts discovered packages through one bridge', async () => {
     expect(name).toBe('pi2dsh')
     expect(inject).toEqual(['tools', 'systemPrompt', 'commands', 'skills'])

@@ -47,7 +47,7 @@ import { execFile as execFileCallback, spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { createRequire } from 'node:module'
 import { chmod, mkdir, mkdtemp, readFile, readdir, realpath, rm, stat, symlink, writeFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
+import { homedir, tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { promisify } from 'node:util'
 
@@ -519,6 +519,17 @@ async function runVisionBridge() {
   }
 }
 
+/** Every file below `dir` whose text contains `needle` (missing dir = none). */
+async function grepBelow(dir, needle) {
+  const files = await filesBelow(dir).catch(() => [])
+  const hits = []
+  for (const file of files) {
+    const text = await readFile(file, 'utf8').catch(() => '')
+    if (text.includes(needle)) hits.push(file)
+  }
+  return hits
+}
+
 // ---------------------------------------------------------------------------
 // examples/persistent-memory — pi-hermes-memory across two REAL sessions
 // ---------------------------------------------------------------------------
@@ -535,9 +546,11 @@ async function runPersistentMemory() {
     await useJsonlSessions(home, 'headless')
 
     // The falsifiable design: the codeword exists ONLY in session A's user
-    // message. A fresh home means session B can answer it only if the plugin
-    // really persisted it — there is no other channel.
-    const CODEWORD = 'ZEPHYR-7741'
+    // message. It is random per run — a fixed codeword false-greens the
+    // recall as soon as ANY earlier run's store is still reachable (which is
+    // exactly what happened when the plugin-visible agent dir was not yet
+    // redirected and every run shared the real ~/.pi/agent).
+    const CODEWORD = `ZEPHYR-${Math.floor(1000 + Math.random() * 9000)}`
     const runA = await runDsh(['--profile', 'headless',
       `Remember this durable project fact for future sessions: my project codename is ${CODEWORD}. `
       + 'Save it to persistent memory now, then confirm in one short sentence.'])
@@ -582,11 +595,20 @@ async function runPersistentMemory() {
     const captured = `${installed.stdout}${installed.stderr}${installedMemory.stdout}${installedMemory.stderr}${runA.stdout}${runA.stderr}${runB.stdout}${runB.stderr}`
     assert(!captured.includes(apiKey), 'credential appeared in captured test artifacts')
 
+    // Isolation: the store must live under the DSH home's redirected agent
+    // dir, and the REAL ~/.pi/agent must never see this run's codeword.
+    const inScratch = await grepBelow(join(home, 'pi2dsh', 'agent'), CODEWORD)
+    assert(inScratch.length > 0, 'the codeword is nowhere under the redirected agent dir — where did the plugin write?')
+    const inRealHome = await grepBelow(join(homedir(), '.pi', 'agent'), CODEWORD)
+    assert(inRealHome.length === 0,
+      `the plugin wrote into the REAL ~/.pi/agent: ${inRealHome.join(', ')}`)
+
     results.persistentMemory = {
       status: 'passed',
       engine: await installedEngineVersion(home, 'headless'),
       wroteVia: writes.map(call => call.data.name),
       recalledAcrossSessions: true,
+      storeIsolatedToDshHome: true,
     }
   } finally {
     await rm(scratch, { recursive: true, force: true })
@@ -658,6 +680,124 @@ async function runBackgroundTasks() {
     }
   } finally {
     await rm(scratch, { recursive: true, force: true })
+  }
+}
+
+// ---------------------------------------------------------------------------
+// memory + background-tasks on the WEB surface — the tool layer, driven as a
+// user does. The CLI lanes prove the bridge; this proves the surface (the
+// "works headless, breaks in the browser" failure mode has shipped before).
+// ---------------------------------------------------------------------------
+async function runMemoryTasksWeb() {
+  if (apiKey === undefined || apiKey.length === 0) {
+    results.memoryTasksWeb = { status: 'skipped', reason: 'DEEPSEEK_API_KEY not set' }
+    return
+  }
+  const playwrightFrom = process.env.PLAYWRIGHT_FROM ?? join(dshRoot, 'apps/web')
+  const scratch = await mkdtemp(join(tmpdir(), 'pi2dsh-ex-memtasks-web-'))
+  let web
+  try {
+    const { home, env, runDsh } = await makeHome(scratch)
+    await runDsh(['plugin', '--profile', 'web', 'add', engineSpec])
+    await runDsh(['plugin', '--profile', 'web', 'add', 'pi-hermes-memory'])
+    await runDsh(['plugin', '--profile', 'web', 'add', 'pi-background-tasks'])
+    await useJsonlSessions(home, 'web')
+
+    const port = Number(process.env.MEMTASKS_PORT ?? 5191)
+    web = spawnWeb(port, env)
+    let webLog = ''
+    web.stdout.on('data', chunk => { webLog += String(chunk) })
+    web.stderr.on('data', chunk => { webLog += String(chunk) })
+    const url = `http://127.0.0.1:${port}`
+    const deadline = Date.now() + 60_000
+    for (;;) {
+      if (web.exitCode !== null) throw new Error(`dsh web exited on startup:\n${webLog}`)
+      const up = await fetch(url).then(
+        response => response.ok || response.status === 401,
+      ).catch(() => false)
+      if (up) break
+      if (Date.now() > deadline) throw new Error(`dsh web never came up:\n${webLog}`)
+      await new Promise(done => setTimeout(done, 500))
+    }
+
+    const CODEWORD = `NIMBUS-${Math.floor(1000 + Math.random() * 9000)}`
+    const shots = join(scratch, 'shots')
+    await execFile('node', [
+      join(projectRoot, 'docs/posting-kit/capture-memory-tasks.mjs'), shots,
+      '--url', authedUrl(url, webLog), '--codeword', CODEWORD,
+    ], {
+      cwd: projectRoot,
+      env: { ...env, PLAYWRIGHT_FROM: playwrightFrom },
+      timeout: 420_000,
+      maxBuffer: 16 * 1024 * 1024,
+    }).catch(error => { console.log(String(error.stdout ?? '')); throw error })
+    const files = (await filesBelow(join(home, 'sessions'))).filter(path => path.endsWith('/session.jsonl'))
+    assert(files.length >= 2, `expected two web sessions, found ${files.length}`)
+    const load = async file => (await readFile(file, 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line))
+    const logs = await Promise.all(files.map(load))
+    const userText = records => records
+      .filter(record => record.type === 'user/message')
+      .flatMap(record => Array.isArray(record.data?.content) ? record.data.content : [])
+      .map(block => String(block.text ?? '')).join('\n')
+    const assistantText = records => records
+      .filter(record => record.type === 'assistant/message')
+      .flatMap(record => record.data?.message?.content ?? [])
+      .filter(block => block.type === 'text').map(block => String(block.text ?? '')).join('\n')
+    const resultFor = (records, call) => {
+      const record = records.find(item => item.type === 'tool/result'
+        && (item.data?.message?.content ?? []).some(block => block.toolCallId === call.data.callId))
+      return (record?.data?.message?.content ?? []).find(block => block.toolCallId === call.data.callId)
+    }
+
+    // Memory: A saved through the plugin's tool; B (codeword absent from every
+    // user input) still answers it — the store is the only possible source.
+    const a = logs.find(records => userText(records).includes(CODEWORD))
+    assert(a !== undefined, 'no web session carries the memorize prompt')
+    const writes = a.filter(record => record.type === 'tool/call' && /^memory_(add|replace)$/u.test(String(record.data?.name ?? '')))
+    assert(writes.length > 0, 'web session A never called the memory write tool')
+    for (const call of writes) {
+      const block = resultFor(a, call)
+      assert(block?.isError !== true, `memory write failed on web: ${JSON.stringify(block?.content).slice(0, 300)}`)
+    }
+    const b = logs.find(records => !userText(records).includes(CODEWORD) && assistantText(records).includes(CODEWORD))
+    assert(b !== undefined, 'no fresh web session recalled the codename')
+
+    // Background job: bg_run non-error, bg_logs non-error with early ticks and
+    // provably without the final tick — the mid-run read, on the web surface.
+    const withBg = logs.find(records => records.some(record => record.type === 'tool/call' && record.data?.name === 'bg_run'))
+    assert(withBg !== undefined, 'no web session called bg_run')
+    const start = withBg.find(record => record.type === 'tool/call' && record.data?.name === 'bg_run')
+    const startBlock = resultFor(withBg, start)
+    assert(startBlock !== undefined && startBlock.isError !== true, `bg_run failed on web: ${JSON.stringify(startBlock?.content).slice(0, 300)}`)
+    const peeks = withBg.filter(record => record.type === 'tool/call' && record.data?.name === 'bg_logs')
+    assert(peeks.length > 0, 'bg_logs was never called on web')
+    const peekTexts = peeks.map(call => resultFor(withBg, call)).filter(block => block !== undefined && block.isError !== true)
+      .map(block => JSON.stringify(block.content ?? ''))
+    assert(peekTexts.some(text => text.includes('tick')), 'bg_logs returned no tick output on web')
+    assert(!peekTexts.some(text => text.includes('tick 60')), 'bg_logs already contains the final tick — not a mid-run read')
+
+    // Isolation: redirected agent dir holds the store; the real ~/.pi/agent
+    // never sees this run's codeword.
+    const inScratch = await grepBelow(join(home, 'pi2dsh', 'agent'), CODEWORD)
+    assert(inScratch.length > 0, 'the codeword is nowhere under the redirected agent dir')
+    const inRealHome = await grepBelow(join(homedir(), '.pi', 'agent'), CODEWORD)
+    assert(inRealHome.length === 0, `the plugin wrote into the REAL ~/.pi/agent: ${inRealHome.join(', ')}`)
+
+    const shotsTaken = await readdir(shots)
+    results.memoryTasksWeb = {
+      status: 'passed',
+      engine: await installedEngineVersion(home, 'web'),
+      memoryRecalledAcrossWebSessions: true,
+      bgMidRunReadOnWeb: true,
+      storeIsolatedToDshHome: true,
+      screenshots: shotsTaken.sort(),
+    }
+  } finally {
+    if (web !== undefined) {
+      web.kill('SIGTERM')
+      await new Promise(done => { web.once('exit', done); setTimeout(done, 5000) })
+    }
+    await removeScratch(scratch, 'memory-tasks-web')
   }
 }
 
@@ -1858,6 +1998,7 @@ const SCENARIOS = [
   ['vision-bridge', runVisionBridge, 'visionBridge'],
   ['persistent-memory', runPersistentMemory, 'persistentMemory'],
   ['background-tasks', runBackgroundTasks, 'backgroundTasks'],
+  ['memory-tasks-web', runMemoryTasksWeb, 'memoryTasksWeb'],
   ['side-conversation', runSideConversation, 'sideConversation'],
   ['vision-bridge-web', runVisionBridgeWeb, 'visionBridgeWeb'],
   ['custom-gateways', runCustomGateways, 'customGateways'],

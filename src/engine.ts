@@ -25,7 +25,7 @@ import { fileURLToPath } from 'node:url'
 import type { Context } from '@deepseek-ai/cordis'
 import { applyPreparedPiHost, preparePiHost, type PreparedPiHostPackage } from './host.js'
 import { getSharedChildExtensionCatalog, registerChildExtensionCatalog, registerVisionCompanions, runtimeInternals } from './runtime.js'
-import { providePiExtensionDiscovery } from './compat/pi-coding-agent.js'
+import { getAgentDir, providePiExtensionDiscovery } from './compat/pi-coding-agent.js'
 import { resolvePiPackage } from './source.js'
 
 export interface EngineConfig {
@@ -506,6 +506,20 @@ export const name = 'pi2dsh'
 export const inject = ['tools', 'systemPrompt', 'commands', 'skills']
 
 export async function apply(ctx: Context, config: EngineConfig = {}): Promise<void> {
+  // The redirected Pi agent directory must be visible to PLUGIN code, not
+  // just to the bridge's own vendored components. Packages that import
+  // `getAgentDir` from the aliased pi-coding-agent are redirected already,
+  // but real packages also read `process.env.PI_CODING_AGENT_DIR` (or fall
+  // back to ~/.pi/agent) at module load — pi-hermes-memory's paths.ts does
+  // exactly that, and without this line its store landed in the REAL
+  // ~/.pi/agent, colliding with any actual Pi installation. Publishing the
+  // same path the shim computes keeps both classes on one directory; a
+  // user-set value is honored (the shim reads the env first, so the two can
+  // never disagree). Set before any package module is imported.
+  if (process.env.PI_CODING_AGENT_DIR === undefined || process.env.PI_CODING_AGENT_DIR === '') {
+    process.env.PI_CODING_AGENT_DIR = getAgentDir()
+  }
+
   // Same emission as the runtime's logger helper: the cordis logger AND the
   // console — profile logger levels must never hide what the engine mounted.
   const log = (ctx as unknown as { logger?: { info?(m: string): void, warn?(m: string): void } }).logger
