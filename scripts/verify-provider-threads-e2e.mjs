@@ -394,46 +394,12 @@ try {
     },
   })
 
-  // ---- #1146: history born on one route resumes on another ----------------
-  await runCase('cross-provider-history', {
-    prompt: 'Reply with exactly: FIRST_TURN_OK',
-    check: async ({ records, ws }) => {
-      assert.match(assistantText(records), /FIRST_TURN_OK/u, 'the first turn did not complete')
-      const sessionRecord = records.find(record => record.type === 'session')
-      assert(typeof sessionRecord?.id === 'string' && sessionRecord.id.length > 0, 'no session id recorded')
-      // Second half: same session, resumed on the OTHER provider route. The
-      // history now contains assistant messages attributed to thread-probe;
-      // the resumed turn sends that mixed history to thread-probe-tiny's
-      // route (same upstream, different declared provider) — the #1146
-      // failure mode is the backend rejecting such a request with 400.
-      await harness.useDefaultModel(home, 'thread-probe-tiny', 'deepseek-chat')
-      const before = (await readRecorded()).length
-      const resumed = await runDsh(['--profile', 'headless', '--resume', sessionRecord.id, 'Reply with exactly: SECOND_TURN_OK'], { cwd: ws })
-      const requests = (await readRecorded()).slice(before).filter(entry => entry.roles !== null)
-      assert(requests.length > 0, 'the resumed turn sent no completion request')
-      const files = await sessionFiles(home)
-      const resumedRecords = []
-      for (const file of files) {
-        const rows = (await readFile(file, 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line))
-        if (rows.some(row => row.type === 'session' && row.id === sessionRecord.id)) resumedRecords.push(...rows)
-      }
-      const text = resumedRecords
-        .filter(record => record.type === 'assistant/message')
-        .flatMap(record => record.data?.message?.content ?? [])
-        .filter(block => block.type === 'text').map(block => String(block.text ?? '')).join('\n')
-      assert.match(text, /SECOND_TURN_OK/u,
-        `the resumed cross-provider turn did not complete:\n${String(resumed.stdout).slice(-400)}`)
-      const historyRoles = requests[requests.length - 1].roles
-      assert(historyRoles.includes('assistant'), 'the resumed request carried no prior assistant history — nothing cross-provider was actually replayed')
-      return {
-        thread: 1146,
-        sessionId: sessionRecord.id,
-        firstProvider: 'thread-probe',
-        resumedProvider: 'thread-probe-tiny',
-        resumedRequestRoles: historyRoles,
-      }
-    },
-  })
+  // #1146 (cross-provider history) is NOT driven here: rc2's headless app
+  // creates a fresh session every run and accepts no resume flag, so there is
+  // no honest one-shot way to replay history across routes. The claim is
+  // validated at the layer the thread itself diagnosed instead —
+  // community/full-audit-work/reasoning-history-experiment.mjs (transform A/B
+  // + live wire).
 } finally {
   proxy?.kill('SIGTERM')
 }

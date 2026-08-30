@@ -720,3 +720,10 @@ wold9168 已答满路径+frontmatter+watcher）、#3625（已有插件推荐表+
 批次 17 续（同日）：
 | 3023 | 诊断法 | /init 与普通轮请求形状差异解释 + 六案已验基线 + 录制代理归因法 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/3023#discussioncomment-18205102) |
 | 481 | retry 实验 + 基线 | 500/429 重试机制判定（已验注入实验）+ 通路稳定基线 + 归因工具；明写非定论 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/481#discussioncomment-18205103) |
+
+批次 17 续 2（同日）：
+| 1149 | codex write 可选参数 | 真 gpt-5.6-sol 经我们 codex 路由：write args 仅 file_path/content，零物化、验证过、completed；明写单点数据 + 工作树引擎 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/1149#discussioncomment-18205171) |
+| 1146 | reasoning 历史回放 | transform A/B（0.82.1/0.84.1 都不丢 thinking 块，内联进 content、无 reasoning_content 字段）+ 0.84.1 真上游端到端 200；把贴主根因收窄到 dsh→pi context 规范化层 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/1146#discussioncomment-18205205) |
+
+哨兵：rc2 headless 无 resume 入口（`--resume` 是 TUI 的，headless 每次造新会话，源码实锤）
+——跨 provider 场景以 transform 层实验替代，battery 里不留假案。
