@@ -860,3 +860,23 @@ web 上新增记忆浮窗与任务坞两块产品面，全部真机 E2E 绿。
 | 2943 | 本地模型即刻可接（battery 就在 127.0.0.1 上跑）+ 本地特有坑 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/2943#discussioncomment-18207685) |
 
 gateway_catalog 30 虚位：回 11、余 19（多为 model-picker UI 诉求，非我方证据面，记因跳过）。
+
+## 批次 21（2026-08-30 深夜续 2）——tool_stream 空 id 家族清仓 + 第二个上游 issue
+
+**新缺口实测 + 上游 issue**：duplicateIndex 探针——两个完整调用共用同一 index 时
+pi-ai 累加器静默吞掉第二个（0.84.1/0.84.4 同现），与 #4091 对 llm-deepseek 的机械证明
+成对；已报上游 [earendil-works/pi#8861](https://github.com/earendil-works/pi/issues/8861)
+（修法提案：非空 id 不同即开新块，id 优先于 index 定身份）。
+
+空 id/name 家族 12 条（1713/2090/2802/2916/3260/3281/3299/3807/3822/4062/3955/2725）：
+统一证据（累加器 A/B 免疫 + first-non-empty-wins 语义蓝本 + 真机活证 + #8861 诚实披露
+同路已知坑），按各贴变体（null/空串/中途丢失/一行修）定制开头，全部互链 #3090/#2674。
+评论号 18207714-18207728。
+
+另 4 条：#4091（跨适配器确认 + 上游 issue）、#3315（孤立代理对 A/B 同族 #967）、
+#2225（重试旋钮传输层全齐、缺的是配置面）、#3852（RFC 分层背书：第 1 层实测无缺陷）。
+评论号 18207731-18207734。
+
+跳过记因：#1171（帖身与标题不符，不盲回）；#805（custom input property 族待探针）；
+retry/oauth/replay/metadata 簇余量待下批逐条审。
+新贴池 census3 完成：8-23 后 928 条、844 虚位——需独立分类批次。
