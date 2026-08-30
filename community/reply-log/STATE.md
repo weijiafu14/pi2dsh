@@ -727,3 +727,6 @@ wold9168 已答满路径+frontmatter+watcher）、#3625（已有插件推荐表+
 
 哨兵：rc2 headless 无 resume 入口（`--resume` 是 TUI 的，headless 每次造新会话，源码实锤）
 ——跨 provider 场景以 transform 层实验替代，battery 里不留假案。
+
+批次 17 续 3（同日）：
+| 695 | alibaba-token-plan E2E | 真 pi-provider-alibaba@1.0.1 + npm 0.23.0 引擎全链 passed（工具环/重启/零凭证落盘）；明写截图报错看不全、不替他定根因 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/695#discussioncomment-18205253) |
