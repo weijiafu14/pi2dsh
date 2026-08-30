@@ -826,3 +826,21 @@ wave 2（实验 v2 解锁，8 条）：
 | 231 | responses 侧同族：回放契约缺口跨适配器 + compat 声明位方向 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/231#discussioncomment-18207616) |
 | 967 | 孤立代理对 A/B：同脏历史 pi-ai 路由 200 → 佐证序列化层修复位 + 临时活路 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/967#discussioncomment-18207617) |
 | 2158 / 3609 | invoke/tool_call 文本落点实测零救网 + 家族上游 #8858 关联 | [2158](https://github.com/deepseek-ai/deepseek-harness/discussions/2158#discussioncomment-18207619) [3609](https://github.com/deepseek-ai/deepseek-harness/discussions/3609#discussioncomment-18207620) |
+
+## 产品化工作项（2026-08-30，用户拍板"记忆/任务的 web 管理面"后落地）
+
+一句话：dsh-work-x 套件 4→6 成员（+pi-hermes-memory、+pi-background-tasks），
+web 上新增记忆浮窗与任务坞两块产品面，全部真机 E2E 绿。
+
+过程中挖出并修掉的引擎级事故（独立成 commit）：
+- **插件面 agent 目录重定向漏洞**：hermes 直读 env/homedir，store 写进真机
+  ~/.pi/agent（E2E 代号在真机 projects-memory 实锤）；修法=引擎 apply 最早处
+  发布 PI_CODING_AGENT_DIR（用户已设则尊重），契约测试钉死；场景补"代号逐
+  run 随机 + 双向隔离断言"。真机残留待用户手动清（权限分类器拦了 rm）。
+- 三条 E2E 新增：memory-tasks-web（web 工具层双包）、work-x-memory-tasks
+  （产品面全回路）、persistent-memory 隔离强化。
+- 误判并撤回：betterSidebar 缺席不是缺陷（dsh-x README 明写可选伴侣）；
+  新产品面因此全部坐 stock shell.overlay。
+
+待用户拍板：pi2dsh 0.24.0 + dsh-work-x 0.4.0 发版（重定向修复 + 登录卡 +
+零 TUI 投影 + stage beacon + 本批产品面，用户可见量足够一版）。
