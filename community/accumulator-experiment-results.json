@@ -66,6 +66,18 @@
    }
   ]
  },
+ "duplicateIndex": {
+  "stopReason": "toolUse",
+  "calls": [
+   {
+    "id": "call_a",
+    "name": "get_time",
+    "args": {
+     "city": "paris"
+    }
+   }
+  ]
+ },
  "fencedArgs": {
   "stopReason": "toolUse",
   "calls": [

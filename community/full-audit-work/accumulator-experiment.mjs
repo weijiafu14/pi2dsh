@@ -50,6 +50,13 @@ const CASES = {
     chunk({ tool_calls: [{ id: 'call_5', function: { arguments: '{"city":"paris"}' } }] }),
     chunk({}, 'tool_calls'),
   ],
+  // G. TWO calls arriving under the SAME index (the #4091 shape): does the
+  // accumulator keep them apart (by id) or silently merge them into one?
+  duplicateIndex: [
+    chunk({ role: 'assistant', tool_calls: [{ index: 0, id: 'call_a', type: 'function', function: { name: 'get_time', arguments: '{"city":"paris"}' } }] }),
+    chunk({ tool_calls: [{ index: 0, id: 'call_b', type: 'function', function: { name: 'get_weather', arguments: '{"city":"oslo"}' } }] }),
+    chunk({}, 'tool_calls'),
+  ],
   // F. markdown fence around arguments (the #3047 family)
   fencedArgs: [
     chunk({ role: 'assistant', tool_calls: [{ index: 0, id: 'call_2', type: 'function', function: { name: 'get_time', arguments: '```json\n{"city":"paris"}\n```' } }] }),
