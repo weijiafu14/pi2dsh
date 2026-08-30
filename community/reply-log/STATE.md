@@ -902,3 +902,8 @@ launch-token 真机事实）、5118（undici 代理双坑地图）、4496（多�
 已在 #4891 发共建邀请）；② Show Your Plugins 一周 168 帖——插件作者聚集地，
 待专项扫描（Pi 插件作者邀请跑 pi2dsh / DSH 插件作者互链）；③ Q&A 类别有
 "被采纳为答案"机制，新贴快答是成为 answer 的最短路径。
+
+批次 22 续——Show Your Plugins 同行交流 3 条（真互助不抢流量）：
+| 5036 | dsh-codex-subscription：分享 token 轮换语义/可选参数物化/headless 滞留三条实测坑 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/5036#discussioncomment-18207866) |
+| 4987 | dsh-model-sync：把 5 条目录漂移需求贴送给作者 + contextWindow 陷阱 + resolve seam 数据 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/4987#discussioncomment-18207867) |
+| 4992 | dsh-mcp-adapter(DSH 版)：#1604 同款测量互认 + 度量建议 + tradeoff 提示 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/4992#discussioncomment-18207868) |
