@@ -17,6 +17,30 @@
       "reasoningContentField": false,
       "thinkingTextPreserved": true,
       "assistantContent": "REASONING_MARKER_84121: the user asks 2+2; that is 4.The answer is 4."
+    },
+    "pi-ai-0.82.1:toolCallWithThinking": {
+      "assistantKeys": [
+        "content",
+        "role",
+        "tool_calls"
+      ],
+      "hasToolCalls": true,
+      "reasoningContentField": false,
+      "thinkingTextOnWire": true,
+      "assistantContent": "TOOL_THINK_MARKER: need get_time for Paris.",
+      "toolRolePresent": true
+    },
+    "pi-ai-0.84.1:toolCallWithThinking": {
+      "assistantKeys": [
+        "content",
+        "role",
+        "tool_calls"
+      ],
+      "hasToolCalls": true,
+      "reasoningContentField": false,
+      "thinkingTextOnWire": true,
+      "assistantContent": "TOOL_THINK_MARKER: need get_time for Paris.",
+      "toolRolePresent": true
     }
   },
   "live": {
@@ -29,6 +53,23 @@
       "upstream": "https://api.deepseek.com",
       "stopReason": "stop",
       "finalText": "HISTORY_OK"
+    },
+    "pi-ai-0.84.1:toolCallWithThinking": {
+      "requestAssistantKeys": [
+        [
+          "content",
+          "role",
+          "tool_calls"
+        ]
+      ],
+      "thinkingTextOnWire": true,
+      "stopReason": "stop",
+      "finalText": "TOOL_HISTORY_OK"
+    },
+    "pi-ai-0.84.1:loneSurrogate": {
+      "bodyHasReplacementChar": false,
+      "stopReason": "stop",
+      "finalText": "SURROGATE_OK"
     }
   }
 }

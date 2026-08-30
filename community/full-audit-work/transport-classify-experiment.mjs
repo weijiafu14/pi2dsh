@@ -82,4 +82,41 @@ const results = {}
   }
 }
 
+// ---- #199: vLLM streams thinking as `reasoning` (not reasoning_content) --
+{
+  const body = sse([
+    chunk({ role: 'assistant', reasoning: 'VLLM_THINK_' }),
+    chunk({ reasoning: 'PART' }),
+    chunk({ content: 'visible answer' }),
+    chunk({}, 'stop'),
+  ])
+  const fetchImpl = async () => new Response(body, { status: 200, headers: { 'content-type': 'text/event-stream' } })
+  const s = stream(model, context, { apiKey: 'k', fetch: fetchImpl })
+  let final
+  for await (const event of s) if (event.partial) final = event.partial
+  results.reasoningFieldVariant = {
+    blocks: (final?.content ?? []).map(block => ({ type: block.type, text: String(block.text ?? block.thinking ?? '').slice(0, 60) })),
+    thinkingBlockPresent: (final?.content ?? []).some(block => block.type === 'thinking'),
+    thinkingTextAnywhere: JSON.stringify(final?.content ?? []).includes('VLLM_THINK_'),
+  }
+}
+
+// ---- #2158/#3609: Anthropic-style <invoke> emitted as plain content ------
+{
+  const body = sse([
+    chunk({ role: 'assistant', content: '<invoke name="write"><parameter name="file_path">a.txt</parameter></invoke>' }),
+    chunk({}, 'stop'),
+  ])
+  const fetchImpl = async () => new Response(body, { status: 200, headers: { 'content-type': 'text/event-stream' } })
+  const s = stream(model, context, { apiKey: 'k', fetch: fetchImpl })
+  let final
+  for await (const event of s) if (event.partial) final = event.partial
+  results.invokeTagInContent = {
+    blocks: (final?.content ?? []).map(block => block.type),
+    toolCallDetected: (final?.content ?? []).some(block => block.type === 'toolCall'),
+    landsAsText: (final?.content ?? []).some(block => block.type === 'text' && String(block.text).includes('<invoke')),
+    stopReason: final?.stopReason,
+  }
+}
+
 console.log(JSON.stringify(results, null, 2))
