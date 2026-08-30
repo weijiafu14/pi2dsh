@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "source": "reassessed-live.json + manual review against pi2dsh 0.20 E2E evidence",
+  "drafts": [
+    {
+      "number": 314,
+      "body": "这个 `dsh-mcp-client` 激活挂起问题本身仍然属于官方 MCP client 的缺陷；但如果当前目标是先让远程 Streamable HTTP MCP 真正连通，可以换一条已经端到端验证过的运行时：\n\n```sh\ndsh plugin --profile web add pi2dsh pi-mcp-adapter\n```\n\n重启后由原 `pi-mcp-adapter` 自己负责 Streamable HTTP/SSE transport、连接生命周期、工具同步和重连，pi2dsh 只把工具、命令、问答和附件投影进 DSH。我们已经在 stock DSH 上跑过真实 Streamable HTTP server、动态工具注册和模型工具回合；Atlassian Remote MCP 的 OAuth/DCR/PKCE/刷新链也完整通过。\n\n如果希望连管理界面一起装，可以直接使用组合套件：\n\n```sh\ndsh plugin --profile web add dsh-work-x dsh-better-sidebar\n```\n\n这是一条可立即使用的替代 MCP runtime，不代表你报告的 native `dsh-mcp-client` 激活/fiber/failOnStartupError 问题已经修复。复现与边界：https://github.com/weijiafu14/pi2dsh/blob/main/docs/mcp-compatibility.md"
+    },
+    {
+      "number": 1751,
+      "body": "现在已经有不需要手写 YAML 的产品入口了。`dsh-work-x` 把验证过的 MCP runtime 和 Web 管理面一起装进 DSH：\n\n```sh\ndsh plugin --profile web add dsh-work-x dsh-better-sidebar\ndsh web\n```\n\n重启后有两层入口：\n\n- **Settings → MCP**：机器级 MCP 管理，不装 sidebar 也能用；\n- sidebar 的 **MCP tab**：按 project/global 分层显示当前会话的 server，可在项目层启用/停用；\n- `/pi-mcp`：原 `pi-mcp-adapter` 的连接、OAuth、重连和 server 管理面。\n\n套件底层不是给官方 `dsh-mcp-client` 补一个表单，而是保留原 Pi MCP runtime 自己的 transport、OAuth、缓存和重连，再通过 pi2dsh 接进 DSH。stdio、Streamable HTTP/SSE、OAuth、resources/prompts、MCP Apps 和真实模型工具回合均有 E2E。\n\n项目：https://www.npmjs.com/package/dsh-work-x"
+    },
+    {
+      "number": 1541,
+      "body": "现在可以把“多模态”拆成两种能力接进 DSH：\n\n1. **识图，不要求主模型原生支持图片**：装 `pi2dsh + @kassing/pi-vision`，图片先由任意 OpenAI-compatible 视觉端点分析，结果作为文本证据注入，最后仍由 DeepSeek 等文本模型回答。\n2. **生图/编辑图片**：`dsh-work-x` 已内置验证过的 Codex image 工具，生成结果进入 DSH 原生附件库并直接显示在工具卡；参考图片编辑也跑通了。\n\n```sh\n# 开箱即用工作台：MCP + Subagents + btw + 生图\ndsh plugin --profile web add dsh-work-x dsh-better-sidebar\n\n# 只给文本模型增加识图能力\ndsh plugin --profile web add pi2dsh @kassing/pi-vision\n```\n\n识图路线可以接你自己的视觉模型，不需要把主会话切到 Codex；生图路线才使用 ChatGPT/Codex OAuth。两条都是真实 DSH Web E2E，不是只验证工具注册。\n\n![在 DSH 对话中真实生成并显示图片](https://raw.githubusercontent.com/weijiafu14/pi2dsh/main/docs/posting-kit/assets/codex-image-gen/dragonball-dsh-result-v2.png)\n\n项目：https://github.com/weijiafu14/pi2dsh"
+    },
+    {
+      "number": 3816,
+      "body": "这个 native `llm-pi-ai` 的动态发现/合并语义目前仍没有被修好。不过如果眼前需求是先用上 OpenCode Go 新增的主要模型，可以绕开 DSH 锁定的旧 catalog，直接安装独立 Provider：\n\n```sh\ndsh plugin --profile web add pi2dsh pi-opencode-go-provider\n# 启动前设置 OPENCODE_API_KEY，随后重启 DSH\n```\n\n我们在干净 profile 里验证过：`opencode-go` 作为一个 DSH route 注册，当前 19 个模型进入选择器，已经包含 `glm-5.3`、`qwen3.8-max`、`gpt-5.6-luna`；每个模型自己的协议、输入模态和 reasoning 映射也一起进入目录，不需要再拆成第二个 hand-declared provider。\n\n边界需要说清：这条替代 Provider 目前解决的是上述已维护的 19 个模型，不等于你提案中的“实时 29/29 + last-good + catalog 合并”已经实现；官方 route 的动态刷新能力仍应继续推进。\n\n项目：https://github.com/weijiafu14/pi2dsh"
+    },
+    {
+      "number": 3958,
+      "body": "如果主要是想立即用 OpenCode Go 新增模型，可以不等 DSH 内置 `llm-pi-ai` 更新，直接安装维护较新目录的 Provider：\n\n```sh\ndsh plugin --profile web add pi2dsh pi-opencode-go-provider\n# 启动前设置 OPENCODE_API_KEY，重启 DSH\n```\n\n刚在干净 DSH profile 复核：`opencode-go` 当前有 19 个模型进入选择器，包含 `glm-5.3`、`qwen3.8-max` 和 `gpt-5.6-luna`，模型自己的协议、输入模态与思考档位也会一起投影进 DSH。\n\n这是一条现在可用的替代 Provider 路线，不会更新官方 `llm-pi-ai` 那份旧 catalog；官方依赖和动态目录问题仍然存在。\n\nhttps://github.com/weijiafu14/pi2dsh"
+    },
+    {
+      "number": 1767,
+      "body": "现在已经有真正的 CLI/TUI 形态，可以直接放进 IDEA、VS Code 等 IDE 的集成终端里使用：\n\n```sh\ndsh plugin --profile pi-tui add @xmoon76/dsh-pi-tui\ndsh --profile pi-tui\n```\n\n如果还希望在这个 TUI 里使用 Pi 的 MCP、Subagent 等插件生态，再加 pi2dsh 和需要的原包即可：\n\n```sh\ndsh plugin --profile pi-tui add pi2dsh pi-mcp-adapter @tintinweb/pi-subagents\n```\n\n我们已用正式 npm 包跑过组合 E2E：原生 `/login`、Pi MCP 管理器、真实 MCP 工具调用、`/agents` 交互面和真实子代理回合同时成立，没有 DSH/TUI fork。\n\n边界：这是终端原生界面，适合 IDE integrated terminal；它不是 JetBrains 专用 Tool Window 插件，也不是桌面壳。\n\n项目：https://github.com/XMoon/dsh-pi-tui\n兼容层：https://github.com/weijiafu14/pi2dsh"
+    },
+    {
+      "number": 1776,
+      "body": "The TUI half is now available as a normal published DSH package:\n\n```sh\ndsh plugin --profile pi-tui add @xmoon76/dsh-pi-tui\ndsh --profile pi-tui\n```\n\nFor a batteries-included third-party distribution, `dsh-work-x` is also published as one curated suite: it pins the verified pi2dsh engine plus MCP, subagents, side conversations and image generation.\n\n```sh\ndsh plugin --profile web add dsh-work-x dsh-better-sidebar\n```\n\nThe stock-package E2E covers native `/login`, Pi MCP and subagent UIs, a real MCP call and a real child-agent turn. No DSH/TUI fork is required.\n\nOne boundary from your second request remains: DSH still has no bundle-level way for one plugin to declare an independent companion client bundle, so `dsh-better-sidebar` must currently be named beside the suite. That missing distribution seam is tracked in #4543; npm publication and ordinary `dsh plugin add` already work today.\n\nTUI: https://github.com/XMoon/dsh-pi-tui\nSuite: https://www.npmjs.com/package/dsh-work-x"
+    },
+    {
+      "number": 2353,
+      "body": "Tavily 现在可以不等 DSH 增加原生 `web-search-tavily` Provider，直接作为 Agent 工具接入：\n\n```sh\ndsh plugin --profile web add pi2dsh @juicesharp/rpiv-web-tools\n```\n\n重启后运行 `/web-tools`，选择 Tavily 并配置 `TAVILY_API_KEY`。这个原包同时提供：\n\n- `web_search`：支持 Tavily，也能在 Brave、Serper、Exa、You.com、Jina、Firecrawl、Perplexity、SearXNG、Ollama 间切换；\n- `web_fetch`：读取搜索结果里的公开网页正文，不需要搜索 key。\n\n我刚用当前最新版原包重新跑了真实 DSH runtime：`web_search`/`web_fetch` 都成功注册，SearXNG 搜索协议完整穿过 DSH 工具链，公网 HTTPS 页面抓取成功。\n\n它不会修改 DSH 自带 Web Search Provider，而是增加一条可以立即使用的独立搜索工具路线。搜索质量仍取决于所选引擎，重要问题最好跨 Provider 搜索并抓取多个一手来源，避免单一索引造成信息茧房。\n\n项目：https://github.com/weijiafu14/pi2dsh"
+    }
+  ]
+}

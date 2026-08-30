@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "groups": [
+    {
+      "id": "subagents-live-route",
+      "numbers": [455, 1358, 1472, 1725, 2006, 2672, 2904, 3377, 3552, 3741, 4065, 4077, 4158],
+      "evidence": "pi2dsh 0.17 stock-TUI model-follow E2E: parent durable request route changes deepseek-official→work-gw after /model; unpinned child durable request is work-gw only; real child tool marker lands.",
+      "defaultStatus": "ready_now"
+    },
+    {
+      "id": "subagents-explicit-model",
+      "numbers": [1100, 1105, 1312, 1369, 3878],
+      "evidence": "pi2dsh 0.17 explicit-model-thinking E2E: parent remains work-gw; Agent explicitly passes deepseek-official/deepseek-v4-flash; child durable header uses official route and real bash marker lands.",
+      "defaultStatus": "ready_now"
+    },
+    {
+      "id": "subagents-per-child-reasoning",
+      "numbers": [2970, 3008],
+      "evidence": "Same npm 0.17 E2E: Agent passes thinking=max; child durable request/header carries reasoningEffort=max while parent stays on another route.",
+      "defaultStatus": "ready_now"
+    },
+    {
+      "id": "subagents-lifecycle-result-steer",
+      "numbers": [1056, 1136, 1190, 4174],
+      "evidence": "Stock npm/TUI/headless real-model E2E covers background child, deterministic get_subagent_result(wait), foreground headless workaround, explicit mid-run steer with unique observable file effect, stop and resume.",
+      "defaultStatus": "ready_now"
+    },
+    {
+      "id": "vision-bridge-web-cli",
+      "numbers": [245, 321, 356, 357, 427, 474, 588, 686, 784, 901, 908, 911, 1029, 1070, 1264, 1327, 1354, 1378, 1434, 1464, 1487, 1621, 1882, 1986, 2005, 2370, 2782, 2789, 2892, 3050, 3127],
+      "evidence": "@kassing/pi-vision automatic companion route and pi-vision-tool fallback run through pi2dsh on real DSH CLI/Web: pasted image is analyzed, result injected, text model answers the unseen color; child/session logs prove pixel-free text route. Plugin-owned alternate, not DSH native admission fix.",
+      "defaultStatus": "ready_now"
+    },
+    {
+      "id": "provider-demonstrated-routes",
+      "numbers": [208, 472, 473, 551, 614, 636, 843, 990, 1064, 1208, 1232, 1272, 1309, 1498, 1643, 1705, 2007, 2023, 2277, 2388, 2489, 2587, 2637, 2804, 3004, 3076, 3330, 3397, 3531],
+      "evidence": "Repository Provider evidence: package-owned Pi transports become native DSH routes; reasoning/compat fields reach outgoing requests; catalog-only routes use official llm-pi-ai; Codex OAuth drives a real DSH call; gateway/tool fixtures and named replies are recorded.",
+      "defaultStatus": "ready_now"
+    },
+    {
+      "id": "provider-independent-web-search",
+      "numbers": [408, 567, 779, 940, 1717],
+      "evidence": "@juicesharp/rpiv-web-tools has real DSH tool-call E2E independent of chat-model provider. Do not generalize beyond basic search unless exact freshness/filter behavior is tested.",
+      "defaultStatus": "ready_now"
+    },
+    {
+      "id": "persistent-memory",
+      "numbers": [1638],
+      "evidence": "pi-hermes-memory cross-process real DSH E2E: process A memory_add persists; independent process B memory_search recalls the nonce.",
+      "defaultStatus": "ready_now"
+    },
+    {
+      "id": "codex-image-generation",
+      "numbers": [1963],
+      "evidence": "pi-codex-image-gen generation/editing uses Codex OAuth through pi2dsh; real DSH Web tool execution stores attachment and renders pixels in a plugin-owned image card.",
+      "defaultStatus": "ready_now"
+    },
+    {
+      "id": "approval-guardian-review",
+      "numbers": [421],
+      "evidence": "pi-approval-guardian reviewer allow/deny path has real DSH E2E; it is an alternate review gate, not a native Codex review-mode patch.",
+      "defaultStatus": "ready_now"
+    }
+  ]
+}

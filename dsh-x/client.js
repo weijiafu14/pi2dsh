@@ -1778,7 +1778,7 @@ window.__ModuleLoader__.load({
 				let live = true;
 				const pull = async () => {
 					try {
-						const response = await fetch("/dsh-x/memory-state");
+						const response = await fetch(`/dsh-x/memory-state?session=${encodeURIComponent(session)}`);
 						if (!live) return;
 						if (!response.ok) {
 							setFailed(true);
@@ -1821,8 +1821,10 @@ window.__ModuleLoader__.load({
 				runMemoryCommand(session, "memory-pin", text).then((result) => afterWrite(result, "pinned"));
 			};
 			const total = state.global.length + state.user.length + Object.values(state.projects).reduce((sum, entries) => sum + entries.length, 0);
+			const current = state.currentProject ?? void 0;
 			const groups = [
-				...Object.entries(state.projects).map(([name, entries]) => [`Project · ${name}`, entries]),
+				...current !== void 0 && state.projects[current] !== void 0 ? [[`This project · ${current}`, state.projects[current]]] : [],
+				...Object.entries(state.projects).filter(([name]) => name !== current).map(([name, entries]) => [`Project · ${name}`, entries]),
 				["Global", state.global],
 				["About you", state.user]
 			];
@@ -2515,7 +2517,8 @@ window.__ModuleLoader__.load({
 		function TasksSidebarTab({ scope, visible }) {
 			return (0, react.createElement)("div", {
 				style: ui.tabRoot,
-				"data-dsh-x": "tasks-tab"
+				"data-dsh-x": "tasks-tab",
+				"data-session": scope.sessionId ?? "(none)"
 			}, (0, react.createElement)(TasksListBody, {
 				session: scope.sessionId ?? "",
 				active: visible
@@ -2526,7 +2529,7 @@ window.__ModuleLoader__.load({
 			ctx.inject(["betterSidebar"], (scope) => {
 				scope.betterSidebar?.registerTab({
 					id: "dsh-work-x:tasks",
-					title: "Tasks",
+					title: "Jobs",
 					component: TasksSidebarTab
 				});
 			});

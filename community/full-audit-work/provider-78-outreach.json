@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "postedAt": "2026-08-24",
+  "rule": "Reply when solved and no selected Answer; skip selected Answer and existing weijiafu14 comments.",
+  "selectedAnswerSkipped": [2170, 3169],
+  "posted": [
+    {"number": 1682, "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/1682#discussioncomment-18136657"},
+    {"number": 175, "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/175#discussioncomment-18136658"},
+    {"number": 668, "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/668#discussioncomment-18136660"},
+    {"number": 1080, "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/1080#discussioncomment-18136663"},
+    {"number": 1118, "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/1118#discussioncomment-18136664"},
+    {"number": 1148, "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/1148#discussioncomment-18136665"},
+    {"number": 1786, "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/1786#discussioncomment-18136666"},
+    {"number": 3335, "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3335#discussioncomment-18136667"},
+    {"number": 3363, "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3363#discussioncomment-18136668"},
+    {"number": 3372, "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3372#discussioncomment-18136669"},
+    {"number": 3379, "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3379#discussioncomment-18136671"},
+    {"number": 3394, "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3394#discussioncomment-18136672"},
+    {"number": 3493, "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3493#discussioncomment-18136674"},
+    {"number": 3495, "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3495#discussioncomment-18136676"},
+    {"number": 3538, "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3538#discussioncomment-18136678"},
+    {"number": 3745, "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3745#discussioncomment-18136680"},
+    {"number": 3949, "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3949#discussioncomment-18136682"}
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "overrides": [
+    {
+      "number": 2655,
+      "verdict": "multi_product_composition",
+      "owner": "composition",
+      "engineeringCluster": "mcp_runtime",
+      "sharedCapabilities": ["mcp", "commands_hooks", "session_persistence"],
+      "recommendedProducts": ["pi-mcp-adapter", "Serena MCP"],
+      "solution": "组合 pi-mcp-adapter 的 MCP 管理面与一个 Serena workspace bootstrap：在 session_start 读取当前 DSH cwd，显式调用 Serena activate_project，再允许 list_dir 等项目工具执行。不能把 No active project 当成 DSH 崩溃或仅靠 transport 安装解决。",
+      "blocker": "Serena MCP 自身要求先激活项目；当前组合缺少把 DSH 会话 cwd 传入 Serena 项目状态的启动步骤。",
+      "evidenceNeeded": "全新 DSH workspace 启动 Serena MCP，session_start 自动激活 cwd；首次 list_dir 成功；重启后再次成功且不会串到另一个 workspace。",
+      "cost": "s",
+      "confidence": 0.96,
+      "manualOverride": true,
+      "overrideReason": "原帖日志明确是 Serena No active project；自动审计连续把它误写成 ready_now，与自身 blocker 矛盾。"
+    }
+  ]
+}

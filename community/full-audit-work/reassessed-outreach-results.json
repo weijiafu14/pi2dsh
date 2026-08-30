@@ -1,0 +1,89 @@
+{
+  "schemaVersion": 1,
+  "postedAt": "2026-08-26T07:17:48.676Z",
+  "source": "reassessed-outreach-drafts.json",
+  "postedCount": 8,
+  "skippedAfterReview": [],
+  "results": [
+    {
+      "number": 314,
+      "discussionUrl": "https://github.com/deepseek-ai/deepseek-harness/discussions/314",
+      "id": "DC_kwDOT3T1g84BFRQV",
+      "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/314#discussioncomment-18158613",
+      "createdAt": "2026-08-26T07:17:31Z",
+      "author": {
+        "login": "weijiafu14"
+      }
+    },
+    {
+      "number": 1751,
+      "discussionUrl": "https://github.com/deepseek-ai/deepseek-harness/discussions/1751",
+      "id": "DC_kwDOT3T1g84BFRQX",
+      "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/1751#discussioncomment-18158615",
+      "createdAt": "2026-08-26T07:17:34Z",
+      "author": {
+        "login": "weijiafu14"
+      }
+    },
+    {
+      "number": 1541,
+      "discussionUrl": "https://github.com/deepseek-ai/deepseek-harness/discussions/1541",
+      "id": "DC_kwDOT3T1g84BFRQY",
+      "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/1541#discussioncomment-18158616",
+      "createdAt": "2026-08-26T07:17:36Z",
+      "author": {
+        "login": "weijiafu14"
+      }
+    },
+    {
+      "number": 3816,
+      "discussionUrl": "https://github.com/deepseek-ai/deepseek-harness/discussions/3816",
+      "id": "DC_kwDOT3T1g84BFRQZ",
+      "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3816#discussioncomment-18158617",
+      "createdAt": "2026-08-26T07:17:38Z",
+      "author": {
+        "login": "weijiafu14"
+      }
+    },
+    {
+      "number": 3958,
+      "discussionUrl": "https://github.com/deepseek-ai/deepseek-harness/discussions/3958",
+      "id": "DC_kwDOT3T1g84BFRQa",
+      "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3958#discussioncomment-18158618",
+      "createdAt": "2026-08-26T07:17:40Z",
+      "author": {
+        "login": "weijiafu14"
+      }
+    },
+    {
+      "number": 1767,
+      "discussionUrl": "https://github.com/deepseek-ai/deepseek-harness/discussions/1767",
+      "id": "DC_kwDOT3T1g84BFRQb",
+      "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/1767#discussioncomment-18158619",
+      "createdAt": "2026-08-26T07:17:42Z",
+      "author": {
+        "login": "weijiafu14"
+      }
+    },
+    {
+      "number": 1776,
+      "discussionUrl": "https://github.com/deepseek-ai/deepseek-harness/discussions/1776",
+      "id": "DC_kwDOT3T1g84BFRQd",
+      "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/1776#discussioncomment-18158621",
+      "createdAt": "2026-08-26T07:17:45Z",
+      "author": {
+        "login": "weijiafu14"
+      }
+    },
+    {
+      "number": 2353,
+      "discussionUrl": "https://github.com/deepseek-ai/deepseek-harness/discussions/2353",
+      "id": "DC_kwDOT3T1g84BFRQe",
+      "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/2353#discussioncomment-18158622",
+      "createdAt": "2026-08-26T07:17:47Z",
+      "author": {
+        "login": "weijiafu14"
+      }
+    }
+  ]
+}

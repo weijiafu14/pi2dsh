@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "postedAt": "2026-08-25T06:00:51.897Z",
+  "source": "provider-stream-theoretical-outreach.json",
+  "postedCount": 5,
+  "skippedAfterReview": [
+    {
+      "number": 2859,
+      "reason": "The provider supplies no id for the entire call. Pi retains an empty id and pi2dsh currently forwards it; the alternate provider route does not close this case."
+    },
+    {
+      "number": 1149,
+      "reason": "The report demonstrates Codex materializing optional schema fields. Switching stream parsers does not remove those generated values or make DSH escalation validators accept null."
+    },
+    {
+      "number": 3342,
+      "reason": "The screenshot shows PTC/Code Mode dispatch and module-syntax failures, not null/empty SSE identity overwrite. A provider transport is not a demonstrated solution."
+    }
+  ],
+  "results": [
+    {
+      "number": 2820,
+      "discussionUrl": "https://github.com/deepseek-ai/deepseek-harness/discussions/2820",
+      "id": "DC_kwDOT3T1g84BFNqp",
+      "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/2820#discussioncomment-18143913",
+      "createdAt": "2026-08-25T06:00:44Z",
+      "author": {
+        "login": "weijiafu14"
+      }
+    },
+    {
+      "number": 2823,
+      "discussionUrl": "https://github.com/deepseek-ai/deepseek-harness/discussions/2823",
+      "id": "DC_kwDOT3T1g84BFNqr",
+      "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/2823#discussioncomment-18143915",
+      "createdAt": "2026-08-25T06:00:45Z",
+      "author": {
+        "login": "weijiafu14"
+      }
+    },
+    {
+      "number": 2855,
+      "discussionUrl": "https://github.com/deepseek-ai/deepseek-harness/discussions/2855",
+      "id": "DC_kwDOT3T1g84BFNqt",
+      "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/2855#discussioncomment-18143917",
+      "createdAt": "2026-08-25T06:00:47Z",
+      "author": {
+        "login": "weijiafu14"
+      }
+    },
+    {
+      "number": 3374,
+      "discussionUrl": "https://github.com/deepseek-ai/deepseek-harness/discussions/3374",
+      "id": "DC_kwDOT3T1g84BFNqu",
+      "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3374#discussioncomment-18143918",
+      "createdAt": "2026-08-25T06:00:49Z",
+      "author": {
+        "login": "weijiafu14"
+      }
+    },
+    {
+      "number": 3384,
+      "discussionUrl": "https://github.com/deepseek-ai/deepseek-harness/discussions/3384",
+      "id": "DC_kwDOT3T1g84BFNqv",
+      "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3384#discussioncomment-18143919",
+      "createdAt": "2026-08-25T06:00:51Z",
+      "author": {
+        "login": "weijiafu14"
+      }
+    }
+  ]
+}

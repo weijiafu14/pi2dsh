@@ -1,0 +1,14 @@
+{
+  "results": {
+    "workXSidebar": {
+      "status": "passed",
+      "screenshots": [
+        "00-sidebar-open.png",
+        "01-sidebar-memory.png",
+        "02-sidebar-tasks.png",
+        "zz-menu-Jobs.png",
+        "zz-menu-Memory.png"
+      ]
+    }
+  }
+}

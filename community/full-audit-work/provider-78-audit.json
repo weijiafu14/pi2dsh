@@ -1,0 +1,2973 @@
+{
+  "schemaVersion": 1,
+  "fetchedAt": "2026-08-24T14:06:28.892Z",
+  "auditedAt": "2026-08-24T14:10:25.275Z",
+  "candidateCount": 78,
+  "auditedCount": 78,
+  "unauditedCount": 0,
+  "verdicts": [
+    "ready_reply",
+    "e2e_only",
+    "pi2dsh_standard_gap",
+    "pi_provider_product_gap",
+    "multi_product_composition",
+    "dsh_upstream",
+    "candidate_error"
+  ],
+  "layers": [
+    "none",
+    "test_only",
+    "pi2dsh_host_abi",
+    "pi_provider_product",
+    "composition",
+    "dsh_public_seam",
+    "dsh_core",
+    "named_service_unknown"
+  ],
+  "audits": [
+    {
+      "number": 175,
+      "verdict": "ready_reply",
+      "missingLayer": "none",
+      "actualProblem": "用户配置 API key 后，DeepSeek Harness 无法连接任何模型，报错 'DeepSeek API request to https://api.deepseek.com failed'，实际是公司网络代理或 TLS 证书校验问题，而非模型或 API key 配置问题。",
+      "requiredSemantics": [
+        "Node.js fetch 需要读取代理环境变量（NODE_USE_ENV_PROXY=1）",
+        "TLS 证书校验需要信任公司内部 CA（NODE_EXTRA_CA_CERTS 或 NODE_USE_SYSTEM_CA=1）",
+        "区分 transport 层失败（DNS/TCP/代理/TLS）与 HTTP 状态错误（401/403/429）"
+      ],
+      "latestThreadState": "多个用户确认通过设置 NODE_USE_ENV_PROXY=1 解决代理问题；另有用户通过 NODE_EXTRA_CA_CERTS 或 NODE_USE_SYSTEM_CA=1 解决 TLS 证书问题；denial123789 提供了详细的诊断决策树和探针命令；fanaticism 提到使用 codex 解决，但实际是环境变量配置问题。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/175#discussioncomment-18009917",
+          "fact": "reina4xa 指出 Node fetch 默认不读 http_proxy，建议 NODE_USE_ENV_PROXY=1"
+        },
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/175#discussioncomment-18010968",
+          "fact": "DominicRen 确认 export NODE_USE_ENV_PROXY=1 有效"
+        },
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/175#discussioncomment-18011979",
+          "fact": "Infin1te2021 建议公司网络设置 NODE_EXTRA_CA_CERTS"
+        },
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/175#discussioncomment-18075611",
+          "fact": "denial123789 提供详细诊断决策树，区分 transport 层失败与 HTTP 状态错误"
+        },
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/175#discussioncomment-18076515",
+          "fact": "xaunchu 建议 NODE_USE_SYSTEM_CA=1 使用 Windows 信任的公司证书"
+        }
+      ],
+      "piPublicSemantic": "none",
+      "dshPublicSeam": "none",
+      "currentPi2dshGap": "none",
+      "implementationTask": "none",
+      "genericStandardWork": false,
+      "affectedProviders": [],
+      "acceptanceE2E": [],
+      "replyCondition": "问题已通过环境变量配置解决，多个用户确认有效，无需 pi2dsh 介入",
+      "devCluster": "node-fetch-proxy-tls-environment",
+      "confidence": 0.95,
+      "fullBodyChars": 117,
+      "topLevelCommentCount": 12,
+      "replyCount": 14
+    },
+    {
+      "number": 196,
+      "verdict": "ready_reply",
+      "missingLayer": "none",
+      "actualProblem": "用户希望支持@选中文件功能，并希望在使用非DeepSeek官方渠道的API配置时也能设置模型的思考强度。",
+      "requiredSemantics": [
+        "@文件引用功能",
+        "自定义API配置下的思考强度设置"
+      ],
+      "latestThreadState": "ogj130评论指出思考强度问题已通过配置修改解决：在~/.dsh/settings.yaml中为模型添加reasoningEfforts声明，重启dsh服务后链路打通，wire层会发送reasoning: { effort: \"...\" }。blackteaYES评论提到支持自定义提供商配置模型思考级别的插件#1247。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/196#discussioncomment-18021954",
+          "fact": "ogj130确认思考强度问题已通过settings.yaml配置reasoningEfforts解决，并附有截图验证"
+        },
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/196#discussioncomment-18049959",
+          "fact": "blackteaYES提到支持自定义提供商配置模型思考级别的插件#1247"
+        }
+      ],
+      "piPublicSemantic": "none",
+      "dshPublicSeam": "none",
+      "currentPi2dshGap": "none",
+      "implementationTask": "none",
+      "genericStandardWork": false,
+      "affectedProviders": [],
+      "acceptanceE2E": [],
+      "replyCondition": "思考强度问题已被ogj130的评论证明可通过DSH配置解决，且blackteaYES提到已有插件支持。@文件功能未在评论中讨论，但用户的主要问题（思考强度）已解决。",
+      "devCluster": "reasoning-effort-config-resolved",
+      "confidence": 0.9,
+      "fullBodyChars": 580,
+      "topLevelCommentCount": 4,
+      "replyCount": 0
+    },
+    {
+      "number": 366,
+      "verdict": "pi_provider_product_gap",
+      "missingLayer": "pi_provider_product",
+      "actualProblem": "用户希望模型能自动在flash和pro之间切换，类似Claude的自动选择功能，无需手动指定模型。",
+      "requiredSemantics": [
+        "自动模型选择/路由逻辑",
+        "基于任务复杂度或用户配置的模型切换策略",
+        "模型选择策略的可配置性"
+      ],
+      "latestThreadState": "讨论无评论，仅原始请求。旧审计认为这是Pi包的产品功能需求，需要实现自动切换逻辑。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/366",
+          "fact": "用户请求自动在flash和pro之间切换，类似Claude的自动选择功能"
+        }
+      ],
+      "piPublicSemantic": "Pi Provider模型路由/选择能力，支持配置模型选择策略",
+      "dshPublicSeam": "DSH Provider路由机制，允许Provider处理模型选择",
+      "currentPi2dshGap": "pi2dsh已支持模型路由和兼容性，但缺少自动切换策略的产品功能",
+      "implementationTask": "在Pi Provider中实现自动模型选择策略，基于任务复杂度或用户配置在flash和pro之间自动切换",
+      "genericStandardWork": true,
+      "affectedProviders": [
+        "所有支持flash/pro模型的Provider"
+      ],
+      "acceptanceE2E": [
+        "配置自动切换策略后，简单任务自动使用flash模型",
+        "配置自动切换策略后，复杂任务自动使用pro模型",
+        "用户可配置切换阈值或规则"
+      ],
+      "replyCondition": "需要确认Pi Provider是否已有自动模型选择功能，或需要开发新的路由策略产品功能",
+      "devCluster": "provider-model-auto-routing",
+      "confidence": 0.7,
+      "fullBodyChars": 31,
+      "topLevelCommentCount": 0,
+      "replyCount": 0
+    },
+    {
+      "number": 481,
+      "verdict": "e2e_only",
+      "missingLayer": "test_only",
+      "actualProblem": "用户给五子棋添加人机对战AI时，DeepSeek API流式请求失败，报错'DeepSeek API stream from https://api.deepseek.com failed'，需要确认是服务端过载还是协议兼容问题",
+      "requiredSemantics": [
+        "DeepSeek API流式响应错误处理",
+        "重试机制（当前延迟531ms）",
+        "错误信息可诊断性"
+      ],
+      "latestThreadState": "仅有一条评论指出'人多，等会儿再试'，暗示可能是服务端过载而非协议问题；无更多技术细节或复现步骤",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/481#discussioncomment-18006731",
+          "fact": "评论者认为错误可能是由于用户过多导致，建议稍后重试"
+        }
+      ],
+      "piPublicSemantic": "none",
+      "dshPublicSeam": "none",
+      "currentPi2dshGap": "none",
+      "implementationTask": "使用同一DeepSeek端点，通过pi2dsh的provider-owned transport复现流式请求失败场景，对比官方适配器行为，确认是否为服务端过载或协议兼容问题",
+      "genericStandardWork": false,
+      "affectedProviders": [
+        "deepseek"
+      ],
+      "acceptanceE2E": [
+        "在pi2dsh provider-owned transport下，对DeepSeek API发起流式请求，记录错误形状",
+        "在官方deepseek-harness适配器下，对同一端点发起相同请求，对比错误形状",
+        "确认错误是否为HTTP 429/503等过载错误，而非协议解析错误",
+        "若为过载错误，验证pi2dsh重试机制是否正常工作"
+      ],
+      "replyCondition": "必须先在pi2dsh和官方适配器下分别复现该错误，确认根因后才能回复",
+      "devCluster": "provider-retry-errors",
+      "confidence": 0.9,
+      "fullBodyChars": 73,
+      "topLevelCommentCount": 1,
+      "replyCount": 0
+    },
+    {
+      "number": 668,
+      "verdict": "pi_provider_product_gap",
+      "missingLayer": "pi_provider_product",
+      "actualProblem": "用户需要可配置的重试次数（如10次）以应对公司内网模型资源紧张的情况，当前DSH默认只有两次重试，需要手动监控。",
+      "requiredSemantics": [
+        "可配置的重试次数上限",
+        "按错误类别区分可重试与不可重试错误",
+        "遵守取消信号和Retry-After头",
+        "指数退避策略"
+      ],
+      "latestThreadState": "讨论无评论，无上游修复或重复信息。旧审计指出这是Provider产品工作，需要E2E验证。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/668",
+          "fact": "用户要求可配置重试次数，当前只有两次，需要增加至10次以应对资源紧张。"
+        }
+      ],
+      "piPublicSemantic": "Pi Provider可拥有自己的传输层，可自定义重试策略（次数、退避、错误分类）。",
+      "dshPublicSeam": "DSH允许Provider通过package-owned transport实现自定义重试逻辑，无内置重试配置。",
+      "currentPi2dshGap": "pi2dsh当前未提供可配置的重试次数上限，默认只有两次，且未实现按错误类别的重试策略。",
+      "implementationTask": "在pi2dsh的Provider传输层中实现可配置的重试策略，包括：1) 可配置的重试次数上限；2) 按错误类别（如429、5xx）区分可重试与不可重试；3) 遵守取消信号和Retry-After头；4) 指数退避算法。",
+      "genericStandardWork": true,
+      "affectedProviders": [
+        "all conforming providers"
+      ],
+      "acceptanceE2E": [
+        "配置重试次数为10，假网关连续返回可重试错误后成功，断言实际重试次数为10",
+        "配置重试次数为10，假网关返回不可重试错误（如400），断言不重试",
+        "配置重试次数为10，假网关返回429带Retry-After头，断言等待指定时间后重试",
+        "配置重试次数为10，请求被取消，断言立即停止重试"
+      ],
+      "replyCondition": "需要先实现并验证可配置重试策略的E2E测试，证明pi2dsh能支持10次重试且遵守取消/Retry-After。",
+      "devCluster": "provider-retry-errors",
+      "confidence": 0.9,
+      "fullBodyChars": 52,
+      "topLevelCommentCount": 0,
+      "replyCount": 0
+    },
+    {
+      "number": 695,
+      "verdict": "e2e_only",
+      "missingLayer": "named_service_unknown",
+      "actualProblem": "用户配置 API 失败，截图显示配置界面报错，但未提供可机读的错误信息或服务名称，无法确定具体是哪个服务、哪种配置步骤失败。",
+      "requiredSemantics": [
+        "识别截图中的具体服务名称",
+        "获取可机读的错误信息（HTTP 状态码、错误码、响应体）",
+        "确认失败发生在配置保存、凭证验证还是模型路由阶段"
+      ],
+      "latestThreadState": "讨论无评论，无回答，仅有截图。旧审计标记为 e2e_only，需要命名服务的真实 E2E 验证。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/695",
+          "fact": "用户上传两张截图显示配置界面报错，但无文字描述、无服务名、无错误详情。"
+        }
+      ],
+      "piPublicSemantic": "none",
+      "dshPublicSeam": "none",
+      "currentPi2dshGap": "none",
+      "implementationTask": "none",
+      "genericStandardWork": false,
+      "affectedProviders": [],
+      "acceptanceE2E": [
+        "用户提供具体服务名称和可机读错误信息",
+        "在干净 profile 中保存该服务凭证，目录中出现对应条目",
+        "使用该凭证发起真实调用并成功返回"
+      ],
+      "replyCondition": "必须等到用户提供具体服务名称和可机读错误信息，否则无法确定是 pi2dsh 可解决的 Provider 配置问题还是 DSH 上游问题。",
+      "devCluster": "provider-oauth-credentials",
+      "confidence": 0.9,
+      "fullBodyChars": 291,
+      "topLevelCommentCount": 0,
+      "replyCount": 0
+    },
+    {
+      "number": 743,
+      "verdict": "e2e_only",
+      "missingLayer": "named_service_unknown",
+      "actualProblem": "用户希望 DSH 接入 gpt-daybreak-blue 和 kimi-k3 两个模型，并提及月费订阅比 API 调用更经济，暗示需要处理订阅凭证而非 API key。",
+      "requiredSemantics": [
+        "gpt-daybreak-blue 和 kimi-k3 的模型目录注册",
+        "订阅凭证（非 API key）的认证流程",
+        "两个服务的真实协议调用兼容性"
+      ],
+      "latestThreadState": "讨论仅有标题和正文，无任何评论或回复。正文包含两张截图（未提供文字内容），用户表达月费订阅比 API 调用更划算。无上游修复或重复信息。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/743",
+          "fact": "讨论无评论，仅标题和正文，正文含两张截图，用户提及月费订阅比 API 调用更经济"
+        }
+      ],
+      "piPublicSemantic": "none",
+      "dshPublicSeam": "none",
+      "currentPi2dshGap": "none",
+      "implementationTask": "为 gpt-daybreak-blue 和 kimi-k3 选择或实现 transport-owning Pi Provider，验证订阅凭证认证和真实调用。",
+      "genericStandardWork": false,
+      "affectedProviders": [
+        "gpt-daybreak-blue",
+        "kimi-k3"
+      ],
+      "acceptanceE2E": [
+        "使用订阅凭证成功认证 gpt-daybreak-blue 并完成一次真实模型调用",
+        "使用订阅凭证成功认证 kimi-k3 并完成一次真实模型调用",
+        "确认订阅 token 不落入日志"
+      ],
+      "replyCondition": "在获得两个服务的真实凭证和完成 E2E 验证前，不应回复声称已支持。",
+      "devCluster": "provider-gateway-catalog",
+      "confidence": 0.94,
+      "fullBodyChars": 374,
+      "topLevelCommentCount": 0,
+      "replyCount": 0
+    },
+    {
+      "number": 762,
+      "verdict": "ready_reply",
+      "missingLayer": "none",
+      "actualProblem": "用户询问是否存在自动路由分发功能，并反馈模型禁止多模态看图，想知道相关功能是否未完成。",
+      "requiredSemantics": [
+        "自动路由分发",
+        "多模态图像处理",
+        "视觉模型集成"
+      ],
+      "latestThreadState": "weijiafu14 回复说明图片自动路由已实现，通过 pi2dsh 和 @kassing/pi-vision 插件组合，配置视觉模型后可为每个纯文本模型生成 -vision 伴生项，自动分析图片并注入上下文，已在真实 DSH Web loop 验证。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/762#discussioncomment-18033283",
+          "fact": "weijiafu14 提供完整配置方案，说明图片自动路由已实现并验证，包含 pi2dsh 和 pi-vision 插件组合及视觉模型配置"
+        }
+      ],
+      "piPublicSemantic": "Pi Provider 注册/目录/模型路由，支持伴生模型路由",
+      "dshPublicSeam": "DSH 模型目录和路由机制",
+      "currentPi2dshGap": "none",
+      "implementationTask": "none",
+      "genericStandardWork": false,
+      "affectedProviders": [],
+      "acceptanceE2E": [],
+      "replyCondition": "已有真实 DSH Web loop 验证证据，可直接回复用户",
+      "devCluster": "vision-bridge-routing",
+      "confidence": 0.95,
+      "fullBodyChars": 52,
+      "topLevelCommentCount": 1,
+      "replyCount": 0
+    },
+    {
+      "number": 931,
+      "verdict": "candidate_error",
+      "missingLayer": "none",
+      "actualProblem": "用户使用 v4 flash 模型运行任务时持续报错工具不可调用，需要确认是模型能力限制、工具协议不匹配还是配置问题。",
+      "requiredSemantics": [
+        "工具调用协议兼容性验证",
+        "模型能力与工具调用支持确认",
+        "错误信息诊断"
+      ],
+      "latestThreadState": "讨论仅有标题和两张截图，无任何评论或回复。截图显示错误信息但无法从文本中解析具体内容。无上游修复或重复信息。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/931",
+          "fact": "讨论仅包含两张截图，无文字描述或评论，无法确定具体错误类型和模型配置"
+        }
+      ],
+      "piPublicSemantic": "none",
+      "dshPublicSeam": "none",
+      "currentPi2dshGap": "none",
+      "implementationTask": "none",
+      "genericStandardWork": false,
+      "affectedProviders": [],
+      "acceptanceE2E": [],
+      "replyCondition": "需要用户提供具体错误信息文本、模型配置和调用代码，或确认是否为模型本身不支持工具调用",
+      "devCluster": "insufficient-information",
+      "confidence": 0.9,
+      "fullBodyChars": 320,
+      "topLevelCommentCount": 0,
+      "replyCount": 0
+    },
+    {
+      "number": 947,
+      "verdict": "candidate_error",
+      "missingLayer": "none",
+      "actualProblem": "用户配置自定义网关模型时，调用工具链出现API错误，提示缺少必要参数command和description，导致API调用失败。",
+      "requiredSemantics": [
+        "工具schema完整序列化",
+        "网关协议兼容性"
+      ],
+      "latestThreadState": "讨论无任何评论或回复，仅有原始问题描述和截图，无额外信息确认具体网关类型或错误复现细节。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/947",
+          "fact": "用户报告自定义网关模型调用工具时出现缺少command和description参数的API错误，无其他评论或回复"
+        }
+      ],
+      "piPublicSemantic": "none",
+      "dshPublicSeam": "none",
+      "currentPi2dshGap": "none",
+      "implementationTask": "none",
+      "genericStandardWork": false,
+      "affectedProviders": [],
+      "acceptanceE2E": [],
+      "replyCondition": "需要更多信息确认具体网关类型、工具定义格式和错误复现步骤，否则无法定义具体工作",
+      "devCluster": "insufficient-information-gateway-tool-schema",
+      "confidence": 0.9,
+      "fullBodyChars": 272,
+      "topLevelCommentCount": 0,
+      "replyCount": 0
+    },
+    {
+      "number": 1058,
+      "verdict": "pi_provider_product_gap",
+      "missingLayer": "pi_provider_product",
+      "actualProblem": "用户使用llama-server本地部署DeepSeek V4 Flash模型，希望在DeepSeek Harness中调整思考强度（reasoning effort），但本地部署的模型没有官方模型那样的思考强度选项。用户需要一种方式在DSH中控制本地模型的推理强度。",
+      "requiredSemantics": [
+        "将DSH的reasoningEffort会话偏好映射为llama-server可识别的请求参数",
+        "支持自定义provider的reasoning_effort参数透传",
+        "保持与官方模型一致的思考强度控制体验"
+      ],
+      "latestThreadState": "ciceroyang解释了DSH中思考强度的控制位置：官方模型通过settings.yaml或Web GUI设置reasoningEffort，而llama-server/OpenAI兼容端点需要自定义provider，但DSH官方adapter可能不映射reasoning_effort参数。blackteaYES随后推荐了支持自定义提供商配置模型思考级别的插件#1247。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/1058#discussioncomment-18013343",
+          "fact": "ciceroyang说明官方模型通过settings.yaml或Web GUI设置reasoningEffort，llama-server需要自定义provider但DSH官方adapter可能不映射该参数"
+        },
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/1058#discussioncomment-18049906",
+          "fact": "blackteaYES推荐插件#1247支持自定义提供商配置模型思考级别"
+        }
+      ],
+      "piPublicSemantic": "Pi Provider的reasoningEffort参数映射能力，支持将DSH的思考强度设置转换为provider特定的请求参数",
+      "dshPublicSeam": "DSH的自定义provider表单和reasoningEffort会话偏好设置",
+      "currentPi2dshGap": "pi2dsh需要为llama-server/OpenAI兼容端点提供reasoning_effort参数的正确映射，确保DSH的思考强度设置能透传到本地部署的模型",
+      "implementationTask": "在pi2dsh的provider适配层中，为llama-server/OpenAI兼容端点实现reasoningEffort到reasoning_effort请求参数的映射，确保DSH的思考强度设置能正确传递给本地模型",
+      "genericStandardWork": true,
+      "affectedProviders": [
+        "llama-server",
+        "OpenAI兼容端点"
+      ],
+      "acceptanceE2E": [
+        "配置llama-server本地模型后，在DSH中调整思考强度，实际请求llama-server的payload中包含对应的reasoning_effort参数",
+        "不同思考强度设置下，llama-server返回的响应有明显差异",
+        "思考强度设置能持久化并在新会话中生效"
+      ],
+      "replyCondition": "需要确认插件#1247是否已解决该问题，或pi2dsh需要为llama-server实现reasoning_effort参数映射",
+      "devCluster": "provider-reasoning-compat",
+      "confidence": 0.85,
+      "fullBodyChars": 905,
+      "topLevelCommentCount": 2,
+      "replyCount": 0
+    },
+    {
+      "number": 1063,
+      "verdict": "pi_provider_product_gap",
+      "missingLayer": "pi_provider_product",
+      "actualProblem": "用户使用tokenhub的API key在DSH中调用模型时提示错误，需要确认DSH是否支持tokenhub以及如何正确配置使用。",
+      "requiredSemantics": [
+        "tokenhub provider的注册和配置",
+        "tokenhub API key的传递和认证",
+        "tokenhub模型调用的兼容性"
+      ],
+      "latestThreadState": "讨论无评论，无官方回复，问题未解决。用户仅报告tokenhub API key在DSH中不可用，未提供具体错误信息或配置细节。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/1063",
+          "fact": "用户报告tokenhub API key在其他地方可用，但在DSH中提示错误，询问是否支持。"
+        }
+      ],
+      "piPublicSemantic": "Pi Provider支持自定义OpenAI兼容provider配置，包括baseURL、API key环境变量引用和模型列表。",
+      "dshPublicSeam": "DSH支持通过Pi Provider目录注册自定义provider，并传递API key到模型调用。",
+      "currentPi2dshGap": "pi2dsh已支持Provider注册和凭据映射，但tokenhub作为特定服务商需要验证其API兼容性和认证方式是否与现有OpenAI兼容路径完全匹配。",
+      "implementationTask": "为tokenhub创建Pi Provider配置，验证其API端点、认证方式和模型列表与DSH的兼容性，确保API key正确传递。",
+      "genericStandardWork": true,
+      "affectedProviders": [
+        "tokenhub"
+      ],
+      "acceptanceE2E": [
+        "使用tokenhub API key在DSH中成功发起模型调用",
+        "请求头包含正确的Authorization信息",
+        "tokenhub模型返回结果与预期一致"
+      ],
+      "replyCondition": "需要用户提供具体错误信息、tokenhub API文档或配置细节，以确定是认证方式、端点地址还是模型兼容性问题。",
+      "devCluster": "provider-gateway-catalog",
+      "confidence": 0.7,
+      "fullBodyChars": 52,
+      "topLevelCommentCount": 0,
+      "replyCount": 0
+    },
+    {
+      "number": 1073,
+      "verdict": "ready_reply",
+      "missingLayer": "none",
+      "actualProblem": "用户无法在 opencode 中使用 DeepSeek Go 订阅，模型列表为空或无法调用，需要正确的 base URL 配置。",
+      "requiredSemantics": [
+        "正确的 base URL 配置",
+        "模型选择与订阅匹配"
+      ],
+      "latestThreadState": "评论中已给出解决方案：将 base URL 设置为 https://opencode.ai/zen/go/v1，并确认选择 opencodego 下的模型。用户尚未确认是否解决。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/1073#discussioncomment-18030253",
+          "fact": "jqzzovo 回复指出 base URL 应填 https://opencode.ai/zen/go/v1"
+        },
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/1073#discussioncomment-18013488",
+          "fact": "MoTingFeng 建议勾选需要的模型并确认选择 opencodego 下的模型"
+        }
+      ],
+      "piPublicSemantic": "none",
+      "dshPublicSeam": "none",
+      "currentPi2dshGap": "none",
+      "implementationTask": "none",
+      "genericStandardWork": false,
+      "affectedProviders": [],
+      "acceptanceE2E": [],
+      "replyCondition": "已有评论提供明确解决方案（base URL 配置），无需 pi2dsh 介入；用户问题属于 opencode 客户端配置而非 DSH 或 pi2dsh 缺陷。",
+      "devCluster": "user-configuration-issue",
+      "confidence": 0.95,
+      "fullBodyChars": 265,
+      "topLevelCommentCount": 1,
+      "replyCount": 6
+    },
+    {
+      "number": 1077,
+      "verdict": "pi_provider_product_gap",
+      "missingLayer": "pi_provider_product",
+      "actualProblem": "用户连接 OpenCode Go 模型时连接不稳定，重试两次失败后即放弃连接，需要增强重试机制和稳定性。",
+      "requiredSemantics": [
+        "可配置的重试次数",
+        "可配置的重试延迟",
+        "可配置的重试策略（如指数退避）",
+        "连接失败的错误分类和可重试性判断"
+      ],
+      "latestThreadState": "讨论无评论，仅有原始问题描述。旧审计认为这是 pi2dsh 适配层工作，但根据当前 pi2dsh 事实，重试策略属于 Provider 产品行为而非 Host ABI 映射。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/1077",
+          "fact": "用户报告 OpenCode Go 连接失败，重试延迟 908ms，失败原因 terminated，两次失败后放弃连接"
+        }
+      ],
+      "piPublicSemantic": "Pi Provider 可配置重试策略（次数、延迟、退避算法）",
+      "dshPublicSeam": "DSH Provider 接口允许自定义传输层，Provider 可自行实现重试逻辑",
+      "currentPi2dshGap": "无直接缺口，pi2dsh 已支持 Provider 自有传输，但 OpenCode Go Provider 未实现增强重试",
+      "implementationTask": "在 OpenCode Go Provider 中实现可配置的重试策略，包括重试次数、延迟和退避算法，并正确处理 terminated 错误",
+      "genericStandardWork": false,
+      "affectedProviders": [
+        "opencode-go"
+      ],
+      "acceptanceE2E": [
+        "配置重试次数为 5 次，模拟连续 3 次连接失败后第 4 次成功，验证实际重试 3 次",
+        "配置重试延迟为 2 秒，验证两次重试间隔约 2 秒",
+        "配置指数退避策略，验证重试延迟按指数增长",
+        "验证 terminated 错误被正确分类为可重试错误"
+      ],
+      "replyCondition": "OpenCode Go Provider 已实现可配置重试策略，或已有明确的重试增强计划",
+      "devCluster": "provider-retry-policy",
+      "confidence": 0.85,
+      "fullBodyChars": 27,
+      "topLevelCommentCount": 0,
+      "replyCount": 0
+    },
+    {
+      "number": 1078,
+      "verdict": "dsh_upstream",
+      "missingLayer": "dsh_core",
+      "actualProblem": "web_search 功能在 DSH 中静态绑定单一端点，不跟随会话路由的模型提供商，多提供商部署时需手动同步配置，用户期望搜索自动跟随当前会话的模型提供商。",
+      "requiredSemantics": [
+        "web_search 应读取当前会话路由的模型提供商 ID",
+        "根据提供商 ID 动态选择对应的搜索端点和认证",
+        "保持现有静态配置的向后兼容性"
+      ],
+      "latestThreadState": "讨论无评论，原始问题描述明确指向 DSH 核心的 web-search-deepseek 进程级配置缺陷，需要 DSH 核心修改 provider 选择逻辑。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/1078",
+          "fact": "web-search-deepseek 是进程级配置，不读取 per-agent 路由的 provider，需要 DSH 核心修改"
+        }
+      ],
+      "piPublicSemantic": "none",
+      "dshPublicSeam": "LlmCallConfig.provider 字段（packages/llm/llm/src/call-config.ts）",
+      "currentPi2dshGap": "none",
+      "implementationTask": "none",
+      "genericStandardWork": false,
+      "affectedProviders": [],
+      "acceptanceE2E": [],
+      "replyCondition": "DSH 核心实现 web_search 跟随路由 provider 的功能，或用户接受使用独立搜索路径的替代方案",
+      "devCluster": "dsh-core-web-search-provider-routing",
+      "confidence": 0.95,
+      "fullBodyChars": 2515,
+      "topLevelCommentCount": 0,
+      "replyCount": 0
+    },
+    {
+      "number": 1080,
+      "verdict": "ready_reply",
+      "missingLayer": "none",
+      "actualProblem": "用户需要将 DSH 配置为使用 OpenCode Go 订阅中的 DeepSeek V4 模型，并解决 404 和 API key 无效的错误。",
+      "requiredSemantics": [
+        "OpenCode Go 的 OpenAI 兼容端点 https://opencode.ai/zen/go/v1",
+        "pi-ai 内置目录中 opencode-go provider 的默认凭据引用 OPENCODE_API_KEY",
+        "deepseek-v4-pro/flash 模型在 openai-completions 协议下且自带 thinkingFormat: deepseek",
+        "最小化目录覆盖以保留内置目录的 thinking 格式等细节"
+      ],
+      "latestThreadState": "讨论帖提供了完整的配置解决方案，包括正确的端点、凭据引用和验证方法。评论仅包含欢迎信息和微信群推广，没有新的技术问题或矛盾信息。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/1080",
+          "fact": "用户提供了完整的配置方案，包括正确的端点 https://opencode.ai/zen/go/v1 和凭据引用 OPENCODE_API_KEY"
+        },
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/1080#discussioncomment-18013480",
+          "fact": "评论仅包含欢迎信息和微信群推广，没有技术性反馈"
+        }
+      ],
+      "piPublicSemantic": "pi-ai 内置目录原生支持 opencode-go provider，包含正确的端点、模型列表和 thinkingFormat 配置",
+      "dshPublicSeam": "DSH 的 llm-pi-ai providers 配置支持最小化覆盖，保留内置目录的默认设置",
+      "currentPi2dshGap": "none",
+      "implementationTask": "none",
+      "genericStandardWork": false,
+      "affectedProviders": [
+        "opencode-go"
+      ],
+      "acceptanceE2E": [
+        "使用 OPENCODE_API_KEY 凭据引用配置 opencode-go provider",
+        "使用 https://opencode.ai/zen/go/v1 作为端点",
+        "成功列出 deepseek-v4-pro/flash 模型",
+        "完成一轮真实对话生成"
+      ],
+      "replyCondition": "讨论帖已提供完整解决方案，且评论没有提出新的技术问题，可以直接回复确认配置正确",
+      "devCluster": "provider-gateway-catalog",
+      "confidence": 0.95,
+      "fullBodyChars": 2789,
+      "topLevelCommentCount": 3,
+      "replyCount": 0
+    },
+    {
+      "number": 1099,
+      "verdict": "candidate_error",
+      "missingLayer": "none",
+      "actualProblem": "用户报告无法连接DeepSeek官网API，提到官网登录后未氪金也有key，但讨论内容主要是邀请加入微信群和无关图片，没有具体的技术细节或错误信息。",
+      "requiredSemantics": [],
+      "latestThreadState": "讨论内容为中文，包含微信群邀请和无关图片，没有提供具体的连接错误、API调用代码或配置信息。评论者leenkcool的回复为空，chainCAI质疑拉人进群的行为。没有有效的技术讨论或问题描述。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/1099#discussioncomment-18013742",
+          "fact": "Leyiao369发布微信群邀请图片，欢迎北京用户入群"
+        },
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/1099#discussioncomment-18013826",
+          "fact": "leenkcool发布空回复，chainCAI质疑拉人进群行为"
+        },
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/1099#discussioncomment-18014004",
+          "fact": "silingyuan0发布无关图片，无技术内容"
+        }
+      ],
+      "piPublicSemantic": "none",
+      "dshPublicSeam": "none",
+      "currentPi2dshGap": "none",
+      "implementationTask": "none",
+      "genericStandardWork": false,
+      "affectedProviders": [],
+      "acceptanceE2E": [],
+      "replyCondition": "需要用户提供具体的连接错误信息、API调用代码、配置详情或复现步骤，否则无法进行技术诊断或提供解决方案。",
+      "devCluster": "insufficient-information",
+      "confidence": 0.95,
+      "fullBodyChars": 12,
+      "topLevelCommentCount": 3,
+      "replyCount": 1
+    },
+    {
+      "number": 1113,
+      "verdict": "pi_provider_product_gap",
+      "missingLayer": "pi_provider_product",
+      "actualProblem": "用户通过 OpenCode Go 调用 grok 4.5 时，因工具名 web_search 被上游保留而报 400 错误，无法正常使用该模型。",
+      "requiredSemantics": [
+        "工具名冲突检测与处理",
+        "保留名过滤或重命名机制",
+        "错误信息透传与用户可理解提示"
+      ],
+      "latestThreadState": "无评论或回复，仅原始问题描述，无额外上下文或上游修复信息。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/1113",
+          "fact": "用户报告使用 grok 4.5 时 web_search 工具名被保留导致 400 错误"
+        }
+      ],
+      "piPublicSemantic": "Pi Provider 可定义自己的工具集，但工具名需符合上游 provider 的保留名约束",
+      "dshPublicSeam": "DSH 核心工具解析不感知 provider 保留名，工具名冲突需在 Provider 层处理",
+      "currentPi2dshGap": "pi2dsh 当前无通用工具名冲突检测/重命名机制，无法自动处理保留名冲突",
+      "implementationTask": "在 pi2dsh 的 Provider 工具注册流程中增加保留名检测与自动重命名/过滤逻辑，确保工具名不与上游 provider 保留名冲突",
+      "genericStandardWork": true,
+      "affectedProviders": [
+        "所有可能使用保留工具名的 Provider，如 grok 系列"
+      ],
+      "acceptanceE2E": [
+        "构造含 web_search 工具的 Provider 路由，调用 grok 4.5 不再报 400 保留名错误",
+        "验证重命名后的工具功能正常，不影响模型调用",
+        "验证错误信息在冲突无法解决时能清晰提示用户"
+      ],
+      "replyCondition": "需确认 pi2dsh 是否已有工具名冲突处理机制，若无则需实现后回复",
+      "devCluster": "provider-tool-name-conflict",
+      "confidence": 0.7,
+      "fullBodyChars": 242,
+      "topLevelCommentCount": 0,
+      "replyCount": 0
+    },
+    {
+      "number": 1118,
+      "verdict": "ready_reply",
+      "missingLayer": "none",
+      "actualProblem": "用户报告无法使用智谱模型，但后续评论确认问题已解决（'已经可以'），无需进一步排查或开发工作。",
+      "requiredSemantics": [],
+      "latestThreadState": "用户最初报告无法使用智谱模型，有评论询问是否有余额，用户回复'订阅的'。最终用户于2026-08-20确认'已经可以'，问题已解决。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/1118#discussioncomment-18088570",
+          "fact": "用户确认问题已解决（'已经可以'）"
+        }
+      ],
+      "piPublicSemantic": "none",
+      "dshPublicSeam": "none",
+      "currentPi2dshGap": "none",
+      "implementationTask": "none",
+      "genericStandardWork": false,
+      "affectedProviders": [],
+      "acceptanceE2E": [],
+      "replyCondition": "用户已确认问题解决，无需进一步回复或开发工作",
+      "devCluster": "resolved-user-confirmed",
+      "confidence": 0.95,
+      "fullBodyChars": 132,
+      "topLevelCommentCount": 2,
+      "replyCount": 1
+    },
+    {
+      "number": 1146,
+      "verdict": "pi2dsh_standard_gap",
+      "missingLayer": "pi2dsh_host_abi",
+      "actualProblem": "用户通过 pi-ai DeepSeek 路由发送消息时，跨 provider 历史消息中的 reasoning 内容在回传时丢失，导致 DeepSeek thinking 模式后端返回 400 错误",
+      "requiredSemantics": [
+        "跨 provider 历史消息中的 reasoning 内容必须保留并回传给后端",
+        "thinking 块必须携带 thinkingSignature 才能在 OpenAI-completions 线上发出 reasoning_content",
+        "foreign assistant 消息中的 thinking 块不能被转换为普通文本"
+      ],
+      "latestThreadState": "讨论无评论，用户提供了完整的 bug 报告和修复方案，包括 harness 侧 replay.ts 和 pi-ai 侧 transform-messages.js 的修改，以及 wire 级测试验证",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/1146",
+          "fact": "用户报告 pi-ai DeepSeek 路由在回传跨 provider 历史消息时丢失 reasoning_content，导致后端 400 错误"
+        },
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/1146",
+          "fact": "用户提供了修复方案：在 replay.ts 中为 thinking 块添加 thinkingSignature，并在 transform-messages.js 中保留 foreign thinking 块"
+        }
+      ],
+      "piPublicSemantic": "pi-ai 的 thinking 块需要 thinkingSignature 才能在 OpenAI-completions 线上发出 reasoning_content；foreign assistant 消息中的 thinking 块默认被转换为文本",
+      "dshPublicSeam": "pi2dsh 的 replay.ts 中 foreignAssistant 函数负责将 harness 的 reasoning 内容块转换为 pi-ai thinking 块",
+      "currentPi2dshGap": "pi2dsh 在 foreignAssistant 中转换 reasoning 块时未添加 thinkingSignature，导致 pi-ai 无法在线上发出 reasoning_content",
+      "implementationTask": "在 pi2dsh 的 replay.ts 中，为 foreignAssistant 和 replayedAssistant 的 reasoning 分支添加 thinkingSignature: 'reasoning_content' 默认值",
+      "genericStandardWork": true,
+      "affectedProviders": [
+        "所有使用 pi-ai 且需要回传 reasoning 内容的 provider"
+      ],
+      "acceptanceE2E": [
+        "使用跨 provider 历史消息（含 reasoning 内容）通过 pi-ai DeepSeek 路由发送消息，后端返回 200 而非 400",
+        "wire 级测试验证请求体中 assistant 消息包含 reasoning_content 字段"
+      ],
+      "replyCondition": "确认 pi2dsh 的 replay.ts 中 foreignAssistant 函数确实缺少 thinkingSignature 处理",
+      "devCluster": "provider-reasoning-compat",
+      "confidence": 0.85,
+      "fullBodyChars": 4117,
+      "topLevelCommentCount": 0,
+      "replyCount": 0
+    },
+    {
+      "number": 1148,
+      "verdict": "ready_reply",
+      "missingLayer": "none",
+      "actualProblem": "用户无法更改API配置，截图显示API设置界面无法修改",
+      "requiredSemantics": [
+        "环境变量中API key的清除",
+        "配置界面刷新"
+      ],
+      "latestThreadState": "phospholipid-cloud已给出解决方案：删除环境变量中的deepseek api key（通过sysdm.cpl），然后重启或刷新deepseek harness",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/1148#discussioncomment-18014868",
+          "fact": "phospholipid-cloud建议删除环境变量中的deepseek api key并重启/刷新"
+        }
+      ],
+      "piPublicSemantic": "none",
+      "dshPublicSeam": "none",
+      "currentPi2dshGap": "none",
+      "implementationTask": "none",
+      "genericStandardWork": false,
+      "affectedProviders": [],
+      "acceptanceE2E": [],
+      "replyCondition": "已有评论提供解决方案，问题已解决",
+      "devCluster": "environment-variable-config",
+      "confidence": 0.95,
+      "fullBodyChars": 151,
+      "topLevelCommentCount": 1,
+      "replyCount": 0
+    },
+    {
+      "number": 1149,
+      "verdict": "dsh_upstream",
+      "missingLayer": "dsh_core",
+      "actualProblem": "GPT-5.6-sol 通过 Codex Responses 路径调用工具时，模型会为 schema 中声明但不在 required 数组中的可选顶层属性自动生成类型合法的默认值（string→\"\"、enum→首个枚举值），DSH 将 sandbox_permissions 和 justification 字段的成对存在解释为真实升级请求，导致普通文件写入/命令执行被卡住。",
+      "requiredSemantics": [
+        "DSH 工具 schema 中可选参数（sandbox_permissions、justification）应允许显式 null 值",
+        "escalation 校验前应将 null 归一化为未提供状态",
+        "保持成对校验、strictly-wider、approval 和 fail-closed 语义不变",
+        "非扩权 no-op 场景（danger-full-access + workspace-write 等）不应触发 approval"
+      ],
+      "latestThreadState": "slicenferqin 创建上游依赖追踪器 earendil-works/pi#8105，并验证 PTC/Code Mode 作为临时 workaround 有效。kirkchinese 提供绕过 DSH 的直接边界探针，证明 Codex 会 materialize 可选属性默认值，且 nullable schema 可表达未提供状态，同时指出 strict:null 不是必要条件。slicenferqin 同意修正根因描述，计划在 DSH 侧评估 escalation 字段接受 nullable 的独立 hardening，并保留 PTC/Code Mode 仅作为临时 workaround。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/1149#discussioncomment-18014224",
+          "fact": "创建上游依赖追踪器 earendil-works/pi#8105"
+        },
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/1149#discussioncomment-18014660",
+          "fact": "验证 PTC/Code Mode 作为临时 workaround 有效，文件创建和写入成功"
+        },
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/1149#discussioncomment-18025886",
+          "fact": "直接边界探针证明 Codex 会为可选属性生成默认值（string→\"\"、enum→首个枚举值），nullable schema 可表达未提供状态，strict:null 不是必要条件"
+        },
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/1149#discussioncomment-18026649",
+          "fact": "同意修正根因描述，计划在 DSH 侧评估 escalation 字段接受 nullable 的独立 hardening，保留 PTC/Code Mode 仅作为临时 workaround"
+        }
+      ],
+      "piPublicSemantic": "none",
+      "dshPublicSeam": "DSH 工具 schema 定义（packages/shell/tool-bash、packages/shell/tool-pwsh、packages/fs/tool-fs、packages/fs/tool-fs/src/sandbox）中的 escalation 参数定义和 validateEscalationArgs 校验逻辑",
+      "currentPi2dshGap": "none",
+      "implementationTask": "none",
+      "genericStandardWork": false,
+      "affectedProviders": [],
+      "acceptanceE2E": [],
+      "replyCondition": "无需回复，问题已由 DSH 核心团队确认并计划修复，且上游追踪器已创建",
+      "devCluster": "dsh-core-escalation-null-normalization",
+      "confidence": 0.95,
+      "fullBodyChars": 318,
+      "topLevelCommentCount": 4,
+      "replyCount": 0
+    },
+    {
+      "number": 1166,
+      "verdict": "dsh_upstream",
+      "missingLayer": "dsh_core",
+      "actualProblem": "用户在使用 dsh 时遇到 'Output token limit reached' 错误，根本原因是 dsh 核心的上下文窗口管理/压缩逻辑未能正确处理模型实际上下文限制（如 Ollama/LM Studio 的 65K 或 64K 限制），导致在长会话中达到硬限制而无法继续。",
+      "requiredSemantics": [
+        "dsh 核心需要正确读取/使用模型的实际上下文窗口大小（如 n_ctx）",
+        "dsh 核心需要在会话创建时正确捕获上下文窗口配置，并在配置更改时更新",
+        "dsh 核心需要在达到上下文限制前触发压缩，而不是等到硬限制",
+        "dsh 核心需要处理 max-tokens 完成后的恢复/继续机制"
+      ],
+      "latestThreadState": "讨论确认了多个用户遇到相同问题，bevinkatti 分析了根因是上下文窗口管理问题而非简单的输出限制。davidmacmillan 指出 dsh 核心的两个 bug：1) 不读取 llama-server 的 n_ctx 参数；2) 上下文窗口发现仅在手动获取模型时触发。luisecastro 确认修改配置并新建会话可解决，但重启后会被覆盖。bevinkatti 进一步确认是会话创建时捕获的配置未更新。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/1166#discussioncomment-18069495",
+          "fact": "bevinkatti 分析 dsh-agent-loop 将 max-tokens 完成视为正常完成，不会自动触发压缩"
+        },
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/1166#discussioncomment-18081172",
+          "fact": "LeonidasTMT 提供日志显示 65216 prompt + 320 eval = 65536，达到 Ollama 硬限制"
+        },
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/1166#discussioncomment-18096116",
+          "fact": "davidmacmillan 指出 dsh 不读取 n_ctx 参数，且上下文窗口发现仅在手动获取模型时触发"
+        },
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/1166#discussioncomment-18100179",
+          "fact": "luisecastro 确认修改配置并新建会话可解决，但重启后会被覆盖为默认值"
+        },
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/1166#discussioncomment-18126685",
+          "fact": "bevinkatti 确认上下文窗口值在会话创建时被捕获，配置更改不会更新现有会话"
+        }
+      ],
+      "piPublicSemantic": "none",
+      "dshPublicSeam": "dsh 核心的上下文窗口管理、压缩触发逻辑、会话配置持久化",
+      "currentPi2dshGap": "none",
+      "implementationTask": "none",
+      "genericStandardWork": false,
+      "affectedProviders": [],
+      "acceptanceE2E": [],
+      "replyCondition": "需要 dsh 核心修复上下文窗口管理和压缩逻辑，pi2dsh 无法通过 provider 路由解决此问题",
+      "devCluster": "dsh-core-context-window-management",
+      "confidence": 0.95,
+      "fullBodyChars": 131,
+      "topLevelCommentCount": 9,
+      "replyCount": 7
+    },
+    {
+      "number": 1198,
+      "verdict": "pi_provider_product_gap",
+      "missingLayer": "pi_provider_product",
+      "actualProblem": "用户通过 pi-ai 路由使用 deepseek-v4-flash 时，工具调用循环中大部分 step 的思考内容直接以正文显示，而非折叠在 Think 行中。根因是 pi-ai 在序列化历史 assistant 消息时无法回传 reasoning_content（thinkingSignature 缺失导致空字符串），上游检测到空回传后静默降级，将思考直接写入 content 通道。",
+      "requiredSemantics": [
+        "pi-ai 在 thinking_end 事件中生成带 thinkingSignature 的 reasoning block",
+        "pi-ai 序列化历史 assistant 消息时正确填充 reasoning_content 字段",
+        "pi-ai 对 requiresReasoningContentOnAssistantMessages 声明的模型保持 thinking 通道稳定"
+      ],
+      "latestThreadState": "评论者 HualuozhE 提供了完整的代码级根因定位：pi-ai stream.ts L151-153 的 thinking_end 不携带 thinkingSignature，openai-completions.js L868-875 序列化时 signature 为 undefined，L924-927 兜底为空字符串，上游检测到空回传后静默降级。对照组 dsh-llm-deepseek 正确回传 reasoning_content，直连正常。与 #1146 同根，与 dsh-vision-router issue #83 是同一缺陷的两种表现。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/1198#discussioncomment-18037389",
+          "fact": "pi-ai stream.ts L151-153 thinking_end 生成的 reasoning block 不带 thinkingSignature"
+        },
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/1198#discussioncomment-18037389",
+          "fact": "openai-completions.js L868-875 因 signature undefined 无法填充 reasoning_content，L924-927 兜底为空字符串"
+        },
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/1198#discussioncomment-18037389",
+          "fact": "pi-ai catalog 对 opencode-go/deepseek-v4-flash 声明 requiresReasoningContentOnAssistantMessages: true，空回传导致上游静默降级"
+        },
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/1198#discussioncomment-18037389",
+          "fact": "dsh-llm-deepseek serialize.ts L96-99 正确回传 reasoning_content，直连链路正常"
+        }
+      ],
+      "piPublicSemantic": "pi-ai 的 thinking_end 事件应生成带 thinkingSignature 的 reasoning block，序列化历史 assistant 消息时应正确填充 reasoning_content 字段",
+      "dshPublicSeam": "dsh-llm-pi-ai 适配器的 toStreamChunks 映射和序列化逻辑",
+      "currentPi2dshGap": "pi2dsh 无法修复 pi-ai 内部的 thinkingSignature 生成和 reasoning_content 序列化逻辑，这是 pi-ai 产品自身的缺陷",
+      "implementationTask": "修复 pi-ai 的 thinking_end 事件生成逻辑，使其携带 thinkingSignature；修复 openai-completions.js 的序列化逻辑，正确填充 reasoning_content 字段",
+      "genericStandardWork": false,
+      "affectedProviders": [
+        "opencode-go/deepseek-v4-flash",
+        "所有声明 requiresReasoningContentOnAssistantMessages 的模型"
+      ],
+      "acceptanceE2E": [
+        "通过 pi-ai 路由 deepseek-v4-flash 进行工具密集调用，验证所有 step 的思考内容都显示在 Think 折叠行",
+        "验证 session.jsonl 中每个工具调用轮后的 assistant 消息都包含非空的 reasoning_content",
+        "验证 thinking_end 事件生成的 reasoning block 包含 thinkingSignature"
+      ],
+      "replyCondition": "pi-ai 上游修复 thinkingSignature 生成和 reasoning_content 序列化逻辑，或 pi2dsh 提供绕过 pi-ai 序列化的替代方案",
+      "devCluster": "pi-ai-reasoning-content-serialization",
+      "confidence": 0.95,
+      "fullBodyChars": 1619,
+      "topLevelCommentCount": 1,
+      "replyCount": 0
+    },
+    {
+      "number": 1604,
+      "verdict": "candidate_error",
+      "missingLayer": "none",
+      "actualProblem": "用户提出大型 MCP 目录是否应保持所有 schema 模型可见的设计问题，并发布独立测量工具和插件，讨论生态标准化方向。",
+      "requiredSemantics": [
+        "工具暴露面测量",
+        "schema 序列化字节计算",
+        "MCP 目录路由"
+      ],
+      "latestThreadState": "作者发布 rc.9 插件更新，提供缓存索引和测量数据，无其他评论或回复。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/1604#discussioncomment-18022795",
+          "fact": "作者更新插件到 rc.9，提供缓存索引和测量数据，强调是组件测量而非通用声明。"
+        }
+      ],
+      "piPublicSemantic": "none",
+      "dshPublicSeam": "none",
+      "currentPi2dshGap": "none",
+      "implementationTask": "none",
+      "genericStandardWork": false,
+      "affectedProviders": [],
+      "acceptanceE2E": [],
+      "replyCondition": "无需回复，讨论已由作者自行解决，无 Pi/pi2dsh 相关需求。",
+      "devCluster": "mcp-tool-visibility-measurement",
+      "confidence": 0.95,
+      "fullBodyChars": 1993,
+      "topLevelCommentCount": 1,
+      "replyCount": 0
+    },
+    {
+      "number": 1682,
+      "verdict": "pi_provider_product_gap",
+      "missingLayer": "pi_provider_product",
+      "actualProblem": "用户希望在使用本地部署模型（如 Qwen 37B 在 5090 上）时，能够为自定义模型设置上下文窗口上限（如 100k），因为本地模型实际能力可能低于官方默认值（如 256k），避免因超出实际上下文限制导致无法压缩或错误。",
+      "requiredSemantics": [
+        "自定义模型注册时支持配置上下文窗口上限",
+        "配置的上下文上限在 DSH 模型路由/压缩逻辑中生效",
+        "本地模型上下文上限可覆盖官方默认值"
+      ],
+      "latestThreadState": "讨论无评论，无官方回复，无上游修复或重复标记。仅原始功能请求。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/1682",
+          "fact": "用户请求为自定义模型添加上下文上限设置，因本地部署模型可能达不到官方上限"
+        }
+      ],
+      "piPublicSemantic": "Pi Provider 模型注册/目录 API 中应支持上下文窗口大小配置字段",
+      "dshPublicSeam": "DSH 模型路由/压缩逻辑应读取模型上下文窗口配置",
+      "currentPi2dshGap": "pi2dsh 0.17 已映射 Provider 注册/目录/模型路由，但未提供上下文窗口上限配置的传递机制",
+      "implementationTask": "在 Pi Provider 模型注册/目录 API 中增加上下文窗口上限配置字段，并在 pi2dsh 中将其映射到 DSH 模型路由配置",
+      "genericStandardWork": true,
+      "affectedProviders": [
+        "all conforming providers"
+      ],
+      "acceptanceE2E": [
+        "注册自定义模型时设置上下文上限为 100k",
+        "DSH 模型路由/压缩逻辑使用 100k 而非官方默认值",
+        "验证超限时触发压缩而非错误"
+      ],
+      "replyCondition": "需确认 Pi Provider 模型注册 API 是否已支持上下文窗口配置，以及 pi2dsh 是否已传递该配置",
+      "devCluster": "provider-model-context-window-config",
+      "confidence": 0.85,
+      "fullBodyChars": 66,
+      "topLevelCommentCount": 0,
+      "replyCount": 0
+    },
+    {
+      "number": 1786,
+      "verdict": "pi_provider_product_gap",
+      "missingLayer": "pi_provider_product",
+      "actualProblem": "用户希望在 DSH Web 添加 zai-coding-cn 的 GLM 5.3 模型时，自动获取上下文长度和最大输出 Token，避免手动填写。",
+      "requiredSemantics": [
+        "模型目录中显式声明 contextWindow 和 maxTokens",
+        "provider 路由配置以支持 zai-coding-cn 的 API",
+        "Web UI 区分 endpoint disclosed、catalog known、user supplied 三种状态"
+      ],
+      "latestThreadState": "denial123789 指出这是元数据未由 endpoint 提供的问题，llm-pi-ai 只对 OpenAI-compatible 路由请求 /models 并读取容量字段，不会从 Hugging Face 下载 config.json 或推断值。建议显式配置模型目录。sliverwolf233 回复称在 Claude Code 中可正确配置，暗示期望自动检测。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/1786#discussioncomment-18027064",
+          "fact": "llm-pi-ai 只对 OpenAI-compatible 路由请求 /models 并读取容量字段，缺失则保持未知，需手工配置"
+        },
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/1786#discussioncomment-18029774",
+          "fact": "用户在 Claude Code 中可正确配置，期望 DSH 也能自动识别"
+        }
+      ],
+      "piPublicSemantic": "Provider-owned transport 可声明模型目录，包含 contextWindow 和 maxTokens 字段",
+      "dshPublicSeam": "llm-pi-ai 的 endpoint interrogation 和 catalog resolution 机制",
+      "currentPi2dshGap": "无直接 gap；pi2dsh 已支持 provider 路由和模型目录声明，但需要为 zai-coding-cn 提供具体配置",
+      "implementationTask": "为 zai-coding-cn 创建 provider 配置，声明 GLM 5.3 的 contextWindow 和 maxTokens，并确保 Web UI 正确显示",
+      "genericStandardWork": false,
+      "affectedProviders": [
+        "zai-coding-cn"
+      ],
+      "acceptanceE2E": [
+        "配置 zai-coding-cn provider 后，DSH Web 添加 GLM 5.3 时自动填充正确的 contextWindow 和 maxTokens",
+        "验证 /models 响应是否包含容量字段，若不包含则显式配置",
+        "确认 Web UI 显示 endpoint disclosed、catalog known 或 user supplied 状态"
+      ],
+      "replyCondition": "需要确认 zai-coding-cn 的 /models 响应是否包含容量字段，以及用户是否接受显式配置方案",
+      "devCluster": "provider-gateway-catalog",
+      "confidence": 0.8,
+      "fullBodyChars": 794,
+      "topLevelCommentCount": 1,
+      "replyCount": 1
+    },
+    {
+      "number": 1866,
+      "verdict": "ready_reply",
+      "missingLayer": "none",
+      "actualProblem": "用户无法在 DSH 中添加 Ollama 作为自定义 Provider，请求提供 localhost 适配版本。实际需求是成功配置并调用本地 Ollama 服务。",
+      "requiredSemantics": [
+        "Ollama 的 OpenAI 兼容端点 http://localhost:11434/v1 可被 DSH 自定义 Provider 接受",
+        "API key 可为空以支持本地 Ollama",
+        "模型 ID 必须与 ollama list 输出完全匹配（含 tag）",
+        "localhost 解析属于 DSH 宿主进程而非浏览器环境"
+      ],
+      "latestThreadState": "denial123789 的回复已完整解答：DSH 自定义 Provider 实现不拒绝 localhost 或要求非空 API key。创建门槛包括：小写 Provider ID、非空 Base URL（如 http://127.0.0.1:11434/v1）、openai-completions 协议、至少一个有效模型 ID。API key 可留空。关键边界是 localhost 属于 DSH 宿主进程而非浏览器，若 DSH 运行在 Docker/WSL/VM 中需注意环境差异。已提供稳定视觉指南和可审查的源码变更。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/1866#discussioncomment-18029268",
+          "fact": "denial123789 确认 DSH 自定义 Provider 不拒绝 localhost 或要求非空 API key，并列出完整创建门槛和 host-vs-browser 诊断方法"
+        },
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/1866#discussioncomment-18028653",
+          "fact": "zoahdev 提出常见失败点：baseURL 形状、模型 ID 匹配、API key 可选性"
+        }
+      ],
+      "piPublicSemantic": "none",
+      "dshPublicSeam": "none",
+      "currentPi2dshGap": "none",
+      "implementationTask": "none",
+      "genericStandardWork": false,
+      "affectedProviders": [],
+      "acceptanceE2E": [],
+      "replyCondition": "已有评论完整解答了用户问题，确认 DSH 原生支持 localhost 自定义 Provider，无需 pi2dsh 介入。",
+      "devCluster": "dsh-native-custom-provider-support",
+      "confidence": 0.95,
+      "fullBodyChars": 160,
+      "topLevelCommentCount": 2,
+      "replyCount": 0
+    },
+    {
+      "number": 2053,
+      "verdict": "dsh_upstream",
+      "missingLayer": "dsh_public_seam",
+      "actualProblem": "第三方DSH插件（如团队运行时、工作流插件）需要权威的接口来确定子代理/插件运行时实际生效的provider/model/reasoningEffort，并确认session request/header事件是否为权威证据，以及插件路由的推荐组合点。",
+      "requiredSemantics": [
+        "权威的生效模型选择查询接口或文档化不变量",
+        "request/header事件作为实际发送记录的权威性确认",
+        "agentOptions与installModelSelection的优先级规则",
+        "插件路由（per-member models, fallback chains）的推荐组合点"
+      ],
+      "latestThreadState": "评论指出该讨论与#1498/#2006同源，且被标记为#1581/#1472/#2006的重复。DSHelm已通过keyless测试验证自身路径的四个环节一致，但问题核心是DSH缺少公开的权威模型解析seam。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/2053#discussioncomment-18031988",
+          "fact": "评论指出模型选择/继承机制与#1498/#2006同源，并引用dsh-handbook第9章讨论"
+        },
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/2053#discussioncomment-18042702",
+          "fact": "评论明确标记为#1581/#1472/#2006的重复"
+        }
+      ],
+      "piPublicSemantic": "none",
+      "dshPublicSeam": "ctx.llm.resolveModelInfo（能力查询）、installModelSelection（组合配置）、prepareCall（验证）、session request/header事件（实际记录）",
+      "currentPi2dshGap": "none",
+      "implementationTask": "none",
+      "genericStandardWork": false,
+      "affectedProviders": [],
+      "acceptanceE2E": [],
+      "replyCondition": "该讨论已被标记为重复且属于DSH核心API设计问题，不涉及pi2dsh的Provider适配层。除非DSH官方在#1581/#1472/#2006中明确需要pi2dsh参与，否则不应回复。",
+      "devCluster": "dsh-core-model-selection-seam",
+      "confidence": 0.95,
+      "fullBodyChars": 2949,
+      "topLevelCommentCount": 2,
+      "replyCount": 0
+    },
+    {
+      "number": 2128,
+      "verdict": "e2e_only",
+      "missingLayer": "test_only",
+      "actualProblem": "用户使用 opencode zen 的 DeepSeek 模型接入 dhs/harness 时遇到 API key is invalid 错误，需要确认正确的 Base URL 配置（Zen 端点 https://opencode.ai/zen/v1 而非 Go 端点）",
+      "requiredSemantics": [
+        "opencode zen provider 的正确 Base URL 端点配置",
+        "opencode zen 与 opencode-go 的 provider 路由区分",
+        "DeepSeek 模型通过 opencode zen 端点的认证和调用"
+      ],
+      "latestThreadState": "原帖提出使用 Zen 端点 https://opencode.ai/zen/v1 的解决方案，但评论者 zcr2012 反馈使用 OpenCode Zen 的 Flash 免费模型仍然失败，说明仅更换 Base URL 不足以解决问题，需要进一步排查",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/2128#discussioncomment-18086856",
+          "fact": "评论者使用 OpenCode Zen Flash 免费模型，即使按建议配置 Zen 端点仍然报错"
+        }
+      ],
+      "piPublicSemantic": "opencode 和 opencode-go 是 pi-ai 中两条不同的 provider 路由，分别对应 Zen 和 Go 端点",
+      "dshPublicSeam": "DSH 的 provider 配置允许设置 Base URL，但需要正确的端点才能通过认证",
+      "currentPi2dshGap": "pi2dsh 已支持 provider 注册和 transport 配置，但需要验证 opencode zen 特定端点的实际调用是否成功",
+      "implementationTask": "使用真实 OpenCode Zen 凭证（包括 Flash 免费模型）进行端到端测试，验证 https://opencode.ai/zen/v1 端点配置下 DeepSeek 模型调用是否成功",
+      "genericStandardWork": true,
+      "affectedProviders": [
+        "opencode",
+        "opencode-go"
+      ],
+      "acceptanceE2E": [
+        "使用真实 OpenCode Zen 凭证配置 https://opencode.ai/zen/v1 端点，DeepSeek 模型调用成功",
+        "使用 https://opencode.ai/zen/go/v1 端点作为控制组，DeepSeek 模型调用失败（API key is invalid）",
+        "OpenCode Zen Flash 免费模型在正确端点下也能成功调用"
+      ],
+      "replyCondition": "需要先完成真实 OpenCode Zen 凭证的端到端测试，确认正确端点配置下 DeepSeek 模型（包括 Flash 免费模型）能成功调用",
+      "devCluster": "provider-gateway-endpoint-validation",
+      "confidence": 0.9,
+      "fullBodyChars": 362,
+      "topLevelCommentCount": 1,
+      "replyCount": 0
+    },
+    {
+      "number": 2170,
+      "verdict": "ready_reply",
+      "missingLayer": "none",
+      "actualProblem": "用户希望禁用直连 DeepSeek，仅通过 liteLLM 代理连接，但配置后启动 TUI 时提示 deepseek-official 路由缺少 API key",
+      "requiredSemantics": [
+        "通过 -m 参数指定自定义 provider 模型路由",
+        "在 cordis.patch.yml 中禁用 llm-deepseek 插件",
+        "正确配置 reasoningEfforts 格式"
+      ],
+      "latestThreadState": "用户 yu-zhy 已提供完整解决方案：使用 pnpm dsh --profile tui -m your-gateway/deepseek-v4-flash 指定模型，在 ~/.dsh/profiles/tui/cordis.patch.yml 中禁用 llm-deepseek，并修正 reasoningEfforts 配置格式。问题已标记为已解决。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/2170#discussioncomment-18067142",
+          "fact": "用户确认通过 -m 参数指定 provider 模型可正常工作，并提供了禁用 llm-deepseek 的具体配置方法"
+        }
+      ],
+      "piPublicSemantic": "none",
+      "dshPublicSeam": "none",
+      "currentPi2dshGap": "none",
+      "implementationTask": "none",
+      "genericStandardWork": false,
+      "affectedProviders": [],
+      "acceptanceE2E": [],
+      "replyCondition": "问题已由用户自行解决并确认，无需进一步回复",
+      "devCluster": "user-resolved-configuration",
+      "confidence": 0.95,
+      "fullBodyChars": 258,
+      "topLevelCommentCount": 1,
+      "replyCount": 0
+    },
+    {
+      "number": 2354,
+      "verdict": "pi_provider_product_gap",
+      "missingLayer": "pi_provider_product",
+      "actualProblem": "用户请求在 DSH 中添加 AMD TokenFactory 中国区作为新的 API 供应商，并希望获得推理和推理强度选项支持。",
+      "requiredSemantics": [
+        "AMD TokenFactory 中国区 API 的 baseURL 配置",
+        "AMD TokenFactory 中国区模型清单",
+        "AMD TokenFactory 中国区认证方式",
+        "推理和推理强度选项支持"
+      ],
+      "latestThreadState": "用户 MicroHEROX 回复确认自定义供应商无法提供推理和推理强度选项，需要官方支持。没有其他评论或回复。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/2354#discussioncomment-18039336",
+          "fact": "coderstory 询问自定义供应商是否无法添加"
+        },
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/2354#discussioncomment-18039387",
+          "fact": "MicroHEROX 确认自定义供应商缺少推理和推理强度选项，请求官方支持"
+        }
+      ],
+      "piPublicSemantic": "Pi Provider 注册机制支持自定义供应商配置，包括 baseURL、模型清单和认证方式",
+      "dshPublicSeam": "DSH 通过 dsh-llm-pi-ai 的 provider 注册机制暴露 Pi Provider 配置",
+      "currentPi2dshGap": "无 - pi2dsh 已支持 Provider 注册和模型路由，但 AMD TokenFactory 中国区作为新供应商需要新增 Provider 配置",
+      "implementationTask": "在 pi-ai 的 provider 目录中新增 AMD TokenFactory 中国区 provider 配置，包含 baseURL、模型清单、认证方式，并确保推理和推理强度选项正确映射",
+      "genericStandardWork": true,
+      "affectedProviders": [
+        "AMD TokenFactory 中国区"
+      ],
+      "acceptanceE2E": [
+        "配置 AMD TokenFactory 中国区 provider 后，发起模型调用验证请求正确发送到 https://developer.amd.com.cn/radeon/api/v1",
+        "验证推理和推理强度选项在 AMD TokenFactory 中国区 provider 中正常工作",
+        "验证认证流程（包括 OAuth 或 API key）正确工作"
+      ],
+      "replyCondition": "需要确认 AMD TokenFactory 中国区的 API 文档和认证方式，以及推理和推理强度选项的具体实现方式",
+      "devCluster": "provider-gateway-catalog",
+      "confidence": 0.85,
+      "fullBodyChars": 92,
+      "topLevelCommentCount": 1,
+      "replyCount": 1
+    },
+    {
+      "number": 2441,
+      "verdict": "pi_provider_product_gap",
+      "missingLayer": "pi_provider_product",
+      "actualProblem": "用户希望将 TokenFerry 作为 Harness 的 LLM 提供者插件接入，并实现基于会话事件的计费/结算功能，同时确认插件分发流程和创作者变现路线图。",
+      "requiredSemantics": [
+        "OpenAI 兼容网关的 LLM 提供者适配器注册",
+        "会话事件中的 token 计量数据订阅",
+        "插件分发和发布流程",
+        "计费/结算插件的实现模式"
+      ],
+      "latestThreadState": "用户提供了生产环境的实际运行证明，展示了 TokenFerry 网关的多供应商聚合和计费功能，但尚未获得官方对插件接缝和分发流程的确认回复。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/2441#discussioncomment-18040795",
+          "fact": "用户展示了 TokenFerry 生产环境的实际运行，包括多供应商模型聚合、USD 计费响应头和代理收益分成功能。"
+        }
+      ],
+      "piPublicSemantic": "ctx.llm 提供者适配器注册和 session/event 事件订阅",
+      "dshPublicSeam": "Cordis 插件架构中的 ctx.llm 适配器接缝和 session/event 事件系统",
+      "currentPi2dshGap": "TokenFerry 作为特定提供者需要实现自己的适配器，包括计费/结算逻辑和事件订阅处理",
+      "implementationTask": "开发 TokenFerry 的 Harness 插件，实现 ctx.llm 适配器注册和 session/event 事件订阅，处理计费/结算逻辑",
+      "genericStandardWork": true,
+      "affectedProviders": [
+        "TokenFerry"
+      ],
+      "acceptanceE2E": [
+        "注册 TokenFerry 提供者后，通过 Harness 发起模型调用能正确路由到 TokenFerry 网关",
+        "订阅 session/event 事件后，能正确获取 token 计量数据",
+        "计费/结算插件能正确处理 USD 结算和创作者收益分成"
+      ],
+      "replyCondition": "需要确认 DSH 核心的 ctx.llm 适配器接缝和 session/event 事件的具体实现细节，以及插件分发流程",
+      "devCluster": "provider-gateway-billing-integration",
+      "confidence": 0.85,
+      "fullBodyChars": 2888,
+      "topLevelCommentCount": 1,
+      "replyCount": 0
+    },
+    {
+      "number": 2602,
+      "verdict": "pi_provider_product_gap",
+      "missingLayer": "pi_provider_product",
+      "actualProblem": "用户需要接入公司自定义模型，该模型通过网关要求请求头携带key访问，但UI无法配置请求头；同时手动键入的模型无法配置contextWindow，且必须填写虚假的apiKeyEnv才能完成配置。",
+      "requiredSemantics": [
+        "自定义provider配置支持请求头（headers）字段",
+        "自定义provider配置支持contextWindow字段",
+        "自定义provider配置不强制要求apiKeyEnv"
+      ],
+      "latestThreadState": "讨论无评论，无上游修复或重复信息。旧审计认为这是Pi产品层缺陷，DSH的provider路由seam已足够。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/2602",
+          "fact": "用户无法在UI中配置请求头，手动键入模型无法配置contextWindow，且必须填写虚假apiKeyEnv"
+        }
+      ],
+      "piPublicSemantic": "Pi Provider配置schema应支持headers和contextWindow字段，且apiKeyEnv不应为强制必填",
+      "dshPublicSeam": "DSH通过现有provider路由seam透传provider配置",
+      "currentPi2dshGap": "无直接gap；pi2dsh已支持provider注册/配置路由，但Pi Provider产品本身缺少headers和contextWindow配置能力",
+      "implementationTask": "在Pi Provider的自定义provider配置schema中增加headers和contextWindow字段，并放宽apiKeyEnv的必填校验",
+      "genericStandardWork": true,
+      "affectedProviders": [
+        "自定义provider（所有通过Pi Provider注册的自定义模型）"
+      ],
+      "acceptanceE2E": [
+        "配置自定义provider带headers后，DSH发起请求时请求头包含自定义header",
+        "配置自定义provider带contextWindow后，模型上下文大小正确",
+        "不填写apiKeyEnv时，自定义provider配置可正常保存和使用"
+      ],
+      "replyCondition": "Pi Provider产品已实现headers和contextWindow配置能力，且apiKeyEnv不再强制必填",
+      "devCluster": "provider-request-metadata",
+      "confidence": 0.85,
+      "fullBodyChars": 162,
+      "topLevelCommentCount": 0,
+      "replyCount": 0
+    },
+    {
+      "number": 2659,
+      "verdict": "e2e_only",
+      "missingLayer": "test_only",
+      "actualProblem": "用户报告模型输出在12189 tokens后被强制截断，需要确保通过pi2dsh路由时模型输出完整不被截断",
+      "requiredSemantics": [
+        "模型输出完整性保证",
+        "maxTokens配置正确传递",
+        "流式输出不中断"
+      ],
+      "latestThreadState": "用户提供了会话日志zip文件作为证据，但未提供具体复现步骤或配置信息，无其他评论或回复",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/2659#discussioncomment-18047170",
+          "fact": "用户提供了dsh-session日志文件，包含会话详情"
+        }
+      ],
+      "piPublicSemantic": "none",
+      "dshPublicSeam": "none",
+      "currentPi2dshGap": "none",
+      "implementationTask": "none",
+      "genericStandardWork": false,
+      "affectedProviders": [],
+      "acceptanceE2E": [
+        "通过pi2dsh路由复现12189 tokens输出场景",
+        "验证输出完整不被截断",
+        "验证maxTokens配置正确传递到provider"
+      ],
+      "replyCondition": "需要先分析用户提供的会话日志，确认截断原因后再决定是否需要E2E测试",
+      "devCluster": "provider-output-truncation",
+      "confidence": 0.6,
+      "fullBodyChars": 528,
+      "topLevelCommentCount": 1,
+      "replyCount": 0
+    },
+    {
+      "number": 2668,
+      "verdict": "pi_provider_product_gap",
+      "missingLayer": "pi_provider_product",
+      "actualProblem": "用户需要让 Anthropic 兼容网关使用 Bearer 鉴权而非 x-api-key，且密钥不能明文写入配置文件，同时保持脱敏链路可见。",
+      "requiredSemantics": [
+        "支持通过配置切换鉴权头风格（x-api-key 或 Authorization: Bearer）",
+        "密钥通过环境变量引用，不写入配置文件",
+        "脱敏器能识别并处理 Bearer 鉴权头中的凭据"
+      ],
+      "latestThreadState": "讨论无评论，无上游修复或更新，问题仍处于初始状态。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/2668",
+          "fact": "用户报告 Anthropic 兼容网关使用 Bearer 鉴权时 401，当前只能通过硬编码 headers 解决，但存在密钥明文和脱敏问题。"
+        }
+      ],
+      "piPublicSemantic": "pi-ai 的 anthropic 适配器 createClient 支持通过 authToken 参数发送 Authorization: Bearer 头，但当前 pi2dsh 未暴露此配置。",
+      "dshPublicSeam": "DSH 的 provider profile 配置支持透传自定义字段到 pi-ai，但当前未定义 auth.style 字段的映射。",
+      "currentPi2dshGap": "pi2dsh 未在 provider profile 中提供 auth.style 配置项，无法让用户切换鉴权头风格，且未处理脱敏器对 Bearer 凭据的识别。",
+      "implementationTask": "在 pi2dsh 的 provider profile 配置中增加 auth.style 字段（默认 x-api-key，可选 bearer），当设置为 bearer 时，将 apiKeyEnv 解析的密钥通过 pi-ai 的 authToken 参数传递，并确保脱敏器能识别 Authorization: Bearer 头中的凭据。",
+      "genericStandardWork": true,
+      "affectedProviders": [
+        "所有使用 anthropic-messages 协议的 provider"
+      ],
+      "acceptanceE2E": [
+        "配置 auth.style: bearer 后，请求头为 Authorization: Bearer <key> 而非 x-api-key",
+        "密钥通过 apiKeyEnv 引用，不写入 settings.yaml",
+        "脱敏器能识别并脱敏 Authorization: Bearer 头中的凭据",
+        "Bearer 鉴权网关请求成功，无 401 错误"
+      ],
+      "replyCondition": "需要确认 pi-ai 的 authToken 参数是否已支持，以及 pi2dsh 的配置透传机制是否允许新增 auth.style 字段。",
+      "devCluster": "provider-auth-header-style",
+      "confidence": 0.85,
+      "fullBodyChars": 1583,
+      "topLevelCommentCount": 0,
+      "replyCount": 0
+    },
+    {
+      "number": 2670,
+      "verdict": "candidate_error",
+      "missingLayer": "none",
+      "actualProblem": "用户报告任务运行中输出突然停止并产生大量令人费解的乱码内容，疑似模型输出异常或系统内部错误。",
+      "requiredSemantics": [],
+      "latestThreadState": "仅有一条评论'绷'，无有效技术信息。讨论内容为大量乱码和内部错误信息，无法确定具体问题。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/2670#discussioncomment-18047411",
+          "fact": "唯一评论为'绷'，无技术细节。"
+        }
+      ],
+      "piPublicSemantic": "none",
+      "dshPublicSeam": "none",
+      "currentPi2dshGap": "none",
+      "implementationTask": "none",
+      "genericStandardWork": false,
+      "affectedProviders": [],
+      "acceptanceE2E": [],
+      "replyCondition": "需要用户提供更多具体信息（如使用的模型、配置、复现步骤、日志等）才能确定问题。",
+      "devCluster": "insufficient-information",
+      "confidence": 0.95,
+      "fullBodyChars": 33127,
+      "topLevelCommentCount": 1,
+      "replyCount": 0
+    },
+    {
+      "number": 2820,
+      "verdict": "dsh_upstream",
+      "missingLayer": "dsh_core",
+      "actualProblem": "用户需要修复 DeepSeek 官方提供方流式工具调用时，后续参数分片携带空字符串 function.name 覆盖已收到的有效工具名称，导致最终执行空名称工具并报错 unknown tool \"\"。",
+      "requiredSemantics": [
+        "流式工具调用分片处理时，空字符串名称不应覆盖已收到的有效名称",
+        "同一工具调用索引内，首个非空名称应被保留",
+        "整个调用始终无有效名称时保留空字符串回退行为"
+      ],
+      "latestThreadState": "讨论无评论，用户已提供完整根因分析、修复方案、回归测试和验证结果，等待确认后提交 PR。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/2820",
+          "fact": "用户指出问题位于 packages/llm/llm-deepseek/src/translate.ts，当前代码接受所有非 undefined 名称包括空字符串，导致覆盖有效名称"
+        },
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/2820",
+          "fact": "用户提供修复方案：只在分片携带非空名称时更新工具调用状态，并附回归测试和验证结果"
+        }
+      ],
+      "piPublicSemantic": "none",
+      "dshPublicSeam": "packages/llm/llm-deepseek/src/translate.ts 中的流式工具调用转换逻辑",
+      "currentPi2dshGap": "none",
+      "implementationTask": "none",
+      "genericStandardWork": false,
+      "affectedProviders": [
+        "deepseek-official"
+      ],
+      "acceptanceE2E": [
+        "DeepSeek 流式工具调用后续分片携带 name:'' 时，最终工具调用保留首个有效名称",
+        "现有防御性测试（始终无 ID 或名称）仍通过并保留空字符串回退",
+        "真实 DeepSeek 工具调用成功执行，无 unknown tool 错误"
+      ],
+      "replyCondition": "用户已提供完整修复方案和验证结果，等待确认后提交 PR。此问题属于 DSH 核心 llm 包逻辑，pi2dsh 无法通过插件修复。",
+      "devCluster": "provider-tool-stream-identity",
+      "confidence": 0.95,
+      "fullBodyChars": 2902,
+      "topLevelCommentCount": 0,
+      "replyCount": 0
+    },
+    {
+      "number": 2822,
+      "verdict": "pi2dsh_standard_gap",
+      "missingLayer": "pi2dsh_host_abi",
+      "actualProblem": "用户需要让 openai-responses 路由在自定义第三方网关（拒绝下划线 header 名）上正常工作，但当前 pi2dsh 的 compat 配置面无法关闭 session_id 请求头，导致所有自定义网关请求返回 400。",
+      "requiredSemantics": [
+        "compat 配置需支持 sessionAffinityFormat 字段（openai | openai-nosession | openrouter）",
+        "provider 级和模型级均可配置 sessionAffinityFormat",
+        "解析优先级：模型级 compat → provider 级 compat → catalog 条目 → pi-ai 自动检测",
+        "openai-nosession 省略 session_id 头，保留 x-client-request-id",
+        "未配置时维持 pi-ai 自动检测行为"
+      ],
+      "latestThreadState": "评论确认当前 master 上问题依然存在：adapter.ts:325 原样透传 sessionId，config.ts:188 的 compatProfile schema 只暴露 thinkingFormat 和 supportsReasoningEffort，没有 sessionAffinityFormat 字段。评论者认可提出的解决方案与现有结构一致。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/2822#discussioncomment-18057210",
+          "fact": "评论确认 adapter.ts:325 原样透传 sessionId，config.ts:188 的 compatProfile schema 缺少 sessionAffinityFormat 字段，问题在当前 master 上依然成立"
+        }
+      ],
+      "piPublicSemantic": "pi-ai 的 SessionAffinityFormat 类型（openai | openai-nosession | openrouter）和 OpenAIResponsesCompat 的 sessionAffinityFormat 配置项",
+      "dshPublicSeam": "PiAiCompatProfile 类型和 compatProfile schema 是 pi2dsh 暴露给用户的配置面",
+      "currentPi2dshGap": "PiAiCompatProfile 和 compatProfile schema 未包含 sessionAffinityFormat 字段，导致该 pi-ai 公共配置项无法通过 pi2dsh 配置面表达",
+      "implementationTask": "在 PiAiCompatProfile 类型和 compatProfile schema 中添加 sessionAffinityFormat 字段，并在 resolveModelCompat 中透传该配置到 pi-ai 的 OpenAIResponsesCompat",
+      "genericStandardWork": true,
+      "affectedProviders": [
+        "所有使用 openai-responses 路由的 provider"
+      ],
+      "acceptanceE2E": [
+        "配置 compat.sessionAffinityFormat: openai-nosession 后，请求不包含 session_id 头",
+        "配置 compat.sessionAffinityFormat: openai 后，请求包含 session_id 头",
+        "未配置时维持 pi-ai 自动检测行为",
+        "模型级配置覆盖 provider 级配置",
+        "对拒绝下划线 header 的网关，配置 openai-nosession 后请求返回 200"
+      ],
+      "replyCondition": "在实现并验证 sessionAffinityFormat 配置透传后回复",
+      "devCluster": "provider-request-metadata",
+      "confidence": 0.95,
+      "fullBodyChars": 3132,
+      "topLevelCommentCount": 1,
+      "replyCount": 0
+    },
+    {
+      "number": 2823,
+      "verdict": "dsh_upstream",
+      "missingLayer": "dsh_core",
+      "actualProblem": "用户通过第三方OpenAI兼容代理网关接入DeepSeek API时，所有工具调用失败报unknown tool \"\"，因为代理网关将缺失字段序列化为null，而DSH核心translate.ts使用!== undefined判断导致null覆盖有效值",
+      "requiredSemantics": [
+        "流式tool_calls分片解析需同时处理undefined和null作为字段缺失",
+        "后续分片不应覆盖已建立的callId和name",
+        "保持与官方API直连行为的完全兼容"
+      ],
+      "latestThreadState": "无评论，仅原始bug报告。报告明确指出问题在DSH核心packages/llm/llm-deepseek/src/translate.ts第159-160行，并提供了精确的修复方案（!= null替代!== undefined）",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/2823",
+          "fact": "报告指出DSH核心translate.ts使用!== undefined判断，导致代理网关的null值覆盖有效工具名称"
+        },
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/2823",
+          "fact": "报告提供了精确修复方案：将!== undefined改为!= null，并验证了兼容性"
+        }
+      ],
+      "piPublicSemantic": "none",
+      "dshPublicSeam": "DSH核心llm-deepseek包的translate.ts是官方API响应解析器，属于DSH核心实现",
+      "currentPi2dshGap": "none",
+      "implementationTask": "none",
+      "genericStandardWork": false,
+      "affectedProviders": [],
+      "acceptanceE2E": [],
+      "replyCondition": "此问题明确指向DSH核心代码缺陷，pi2dsh无法通过Provider传输层修复DSH核心解析逻辑。除非DSH上游修复此问题，否则不应回复",
+      "devCluster": "dsh-core-tool-stream-null-handling",
+      "confidence": 0.95,
+      "fullBodyChars": 3081,
+      "topLevelCommentCount": 0,
+      "replyCount": 0
+    },
+    {
+      "number": 2849,
+      "verdict": "dsh_upstream",
+      "missingLayer": "dsh_core",
+      "actualProblem": "用户需要模型选择器显示新发布的 GLM-5.3 和 GLM-5.2-highspeed 模型，当前因 @earendil-works/pi-ai 依赖版本过旧（^0.82.1）导致目录缺失。",
+      "requiredSemantics": [
+        "升级 @earendil-works/pi-ai 依赖到 0.84.x",
+        "确保模型目录包含 GLM-5.3 和 GLM-5.2-highspeed",
+        "保持模型选择器由 provider catalog 驱动"
+      ],
+      "latestThreadState": "评论确认 master 分支仍使用 ^0.82.1，由于 0.x caret 规则不会自动升级到 0.84。建议直接提升最低版本到 ^0.84.2 并更新 lockfile，同时列出升级后的测试要求。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/2849#discussioncomment-18054025",
+          "fact": "确认 master 仍使用 ^0.82.1，0.x caret 不会升级到 0.84，建议提升到 ^0.84.2 并更新 lockfile"
+        }
+      ],
+      "piPublicSemantic": "none",
+      "dshPublicSeam": "dsh-llm-pi-ai 包的 package.json 依赖声明",
+      "currentPi2dshGap": "none",
+      "implementationTask": "none",
+      "genericStandardWork": false,
+      "affectedProviders": [],
+      "acceptanceE2E": [],
+      "replyCondition": "无需回复，这是 DSH 核心依赖升级问题，不属于 pi2dsh 职责范围",
+      "devCluster": "dsh-core-dependency-bump",
+      "confidence": 0.95,
+      "fullBodyChars": 885,
+      "topLevelCommentCount": 1,
+      "replyCount": 0
+    },
+    {
+      "number": 2855,
+      "verdict": "dsh_upstream",
+      "missingLayer": "dsh_core",
+      "actualProblem": "用户需要修复 DSH 核心 BlockAssembler 在处理大型工具调用流式分块时的缺陷：无条件覆盖 toolCallId 和 block-end 短路丢弃累积的 name/id，导致所有后续工具调用报 unknown tool \"\" 错误，会话永久失效。",
+      "requiredSemantics": [
+        "tool-call-delta 的 id 捕获必须与 name 一样使用守卫模式（if (chunk.id)）",
+        "assemble() 必须从累积的 partial.* 回填 block-end 中缺失的 name/id/arguments",
+        "完全填充的 block-end 必须原样返回（不回归健康路径）",
+        "修复必须防止空 id/name 污染最终 block，避免会话历史无法加载"
+      ],
+      "latestThreadState": "argszero 在评论中确认 rc.7 仍存在两个缺陷，并指出这是第 7 个相关报告（#1713→#2090→#2169→#2343→#2540→#2855）。评论确认了完整的三层修复方案：translate.ts 守卫、assembler.ts id 捕获守卫、assembler.ts block-end 回填，并建议在 #2540 上发布完整修复方案。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/2855#discussioncomment-18053343",
+          "fact": "argszero 确认 rc.7 仍存在两个缺陷，并指出这是第 7 个相关报告，确认了三层修复方案的正确性"
+        }
+      ],
+      "piPublicSemantic": "none",
+      "dshPublicSeam": "BlockAssembler 是 DSH 核心 llm 包的公共解析组件，其行为由 DSH 核心代码控制",
+      "currentPi2dshGap": "none - 这是 DSH 核心解析逻辑缺陷，pi2dsh 无法通过 Provider 传输层修复",
+      "implementationTask": "none - 修复属于 DSH 核心仓库，需要修改 assembler.ts 的 id 捕获守卫和 block-end 回填逻辑",
+      "genericStandardWork": false,
+      "affectedProviders": [],
+      "acceptanceE2E": [],
+      "replyCondition": "当 DSH 核心仓库修复了 BlockAssembler 的这两个缺陷，或用户明确要求 pi2dsh 提供替代方案时才需要回复",
+      "devCluster": "dsh-core-block-assembler-tool-stream",
+      "confidence": 0.95,
+      "fullBodyChars": 5498,
+      "topLevelCommentCount": 1,
+      "replyCount": 0
+    },
+    {
+      "number": 2859,
+      "verdict": "dsh_upstream",
+      "missingLayer": "dsh_core",
+      "actualProblem": "DeepSeek adapter 将空/空 SSE 工具调用 id 翻译为空 block.callId，导致工具执行失败、会话历史加载失败及上游 tool_call_id 校验拒绝。",
+      "requiredSemantics": [
+        "adapter 在源头规范化身份：为一次响应创建稳定 salt，并按 wire choice/tool index 生成非空且跨响应唯一的 call id",
+        "通用 assembler 只做防腐，不替 provider 猜身份：忽略空的 delta id/name；权威 block-end 若仍是空 id 或空 name，应以 MALFORMED_RESPONSE 结束",
+        "call-index 这种无 salt 的跨轮兜底不安全，两轮都可能生成相同 id。合成值必须在一次响应内稳定、跨响应唯一，并随原始 chunks 一起记录，保证 replay 得到同一身份",
+        "工具名全程缺失时不能发明名称，应在 dispatch/persistence 之前失败",
+        "历史坏日志需要单独的离线修复器：先停止 Web/Agent 写入并备份，按一次 assistant tool-call 与对应 tool/result 建立映射，同时重写成唯一 id，然后跑 Session replay/invariant 验证再替换原文件"
+      ],
+      "latestThreadState": "评论确认当前 master 仍保留三条空值路径：DeepSeek adapter 的 CallId(block.callId ?? '')、pi-ai toolcall_end 直接采用 event.toolCall.id，以及通用 BlockAssembler 无条件用 delta 的空 id 覆盖已有值。根因判断成立。评论建议收紧修复职责：每个 adapter 在源头规范化身份，通用 assembler 只做防腐，call-index 无 salt 兜底不安全，工具名缺失时不能发明名称，历史坏日志需要离线修复器。回归应覆盖直连与 pi-ai 两条 adapter。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/2859#discussioncomment-18054016",
+          "fact": "评论确认当前 master 仍保留三条空值路径，根因判断成立"
+        },
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/2859#discussioncomment-18054016",
+          "fact": "评论建议每个 adapter 在源头规范化身份，通用 assembler 只做防腐，call-index 无 salt 兜底不安全"
+        },
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/2859#discussioncomment-18054016",
+          "fact": "评论建议历史坏日志需要单独的离线修复器，不能直接热改 node_modules/lib"
+        }
+      ],
+      "piPublicSemantic": "none",
+      "dshPublicSeam": "none",
+      "currentPi2dshGap": "none",
+      "implementationTask": "none",
+      "genericStandardWork": false,
+      "affectedProviders": [],
+      "acceptanceE2E": [],
+      "replyCondition": "必须确认 DSH 核心 adapter/assembler 已修复空 id 翻译问题，或用户明确接受使用 pi2dsh 作为替代方案",
+      "devCluster": "dsh-core-tool-stream-identity",
+      "confidence": 0.95,
+      "fullBodyChars": 6886,
+      "topLevelCommentCount": 1,
+      "replyCount": 0
+    },
+    {
+      "number": 2884,
+      "verdict": "pi_provider_product_gap",
+      "missingLayer": "pi_provider_product",
+      "actualProblem": "用户需要将 Agent 作为 24×7 后台服务运行，核心痛点是：1) 多个并行请求打穿单 key 的 RPM 配额导致 429 'Allocated quota exceeded' 被当作终态错误，整个 agent 轮次失败；2) 需要多 API key 池化轮转来提升有效 RPM；3) 需要配额感知的 key 选择策略（区分 RPM 超限和配额耗尽）；4) 需要 per-key 用量和切换原因的可观测性。",
+      "requiredSemantics": [
+        "多 key 池化与轮转（round-robin 或配额感知）",
+        "429 'Allocated quota exceeded' 的识别与重试（区分 RPM 超限和配额耗尽）",
+        "per-key 用量指标和切换原因（429/预算耗尽/随机轮转）的可观测性",
+        "配置驱动的 key 池热重载"
+      ],
+      "latestThreadState": "评论确认：1) szkkcool 明确表示需求来自实际 429 错误，方案是配置驱动的本地轮转代理，支持 round-robin 和 429 自动切换；2) NovaRouteAI 指出纯 round-robin 不够，需要配额感知（跟踪每个 key 的剩余预算和错误率）和 per-key 决策的可观测性；3) szkkcool 承认当前方案对 RPM 超限和配额耗尽同等对待是浪费信息，认可配额感知和 telemetry 方向；4) 关于 pi-ai 依赖的讨论已澄清为历史遗留技术债务，不影响本 RFC 的核心需求。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/2884#discussioncomment-18081576",
+          "fact": "szkkcool 确认需求来自实际 429 错误，方案是配置驱动的本地轮转代理，round-robin 轮换 key，429 自动切换，配置文件热重载"
+        },
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/2884#discussioncomment-18109353",
+          "fact": "NovaRouteAI 指出 round-robin 不够，需要配额感知（跟踪剩余 RPM、失败率），并区分'因 429 切换'和'因预算接近耗尽切换'，建议暴露 per-key 决策到 telemetry"
+        },
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/2884#discussioncomment-18131972",
+          "fact": "szkkcool 承认纯 round-robin 不够精细，RPM 超限和配额耗尽应区别对待，认可配额感知和 telemetry 方向，但当前方案未实现"
+        }
+      ],
+      "piPublicSemantic": "Pi Provider 的 transport 层支持自定义 baseURL 和 Authorization 头，Provider 可以拥有自己的 transport 实现（pi2dsh 0.17 已映射）。但 Pi 本身没有内置多 key 池化/轮转的公共语义。",
+      "dshPublicSeam": "DSH 的 provider 配置支持 baseURL 指向本地代理，apiKeyEnv 和 Authorization 头可被代理忽略。DSH 的 retryPolicy 支持自定义 retryableCodes 和 backoff 参数。",
+      "currentPi2dshGap": "pi2dsh 当前只映射单个 provider 路由和单 key 认证，没有实现多 key 池化、轮转策略、配额感知选择或 per-key 用量指标。这些是 Provider 产品行为，不是 Host ABI 语义。",
+      "implementationTask": "在 pi2dsh 的 Provider 层实现 keyPool 配置支持：1) 接受 keys 数组；2) 实现 round-robin 和配额感知两种轮转策略；3) 识别 429 'Allocated quota exceeded' 并触发 key 切换重试；4) 暴露 per-key 用量和切换原因的可观测性指标；5) 支持配置热重载。",
+      "genericStandardWork": true,
+      "affectedProviders": [
+        "all conforming providers with multi-key support"
+      ],
+      "acceptanceE2E": [
+        "配置 3 个 key 的 keyPool，模拟第一个 key 返回 429 'Allocated quota exceeded'，验证请求自动切换到第二个 key 并成功完成",
+        "验证 round-robin 策略下请求均匀分布到所有 key",
+        "验证配额感知策略下，接近预算耗尽的 key 被跳过，优先使用有余量的 key",
+        "验证 per-key 用量指标（请求数、429 次数、切换原因）可通过 telemetry 接口查询",
+        "验证修改 keyPool 配置文件后无需重启即可生效"
+      ],
+      "replyCondition": "在 pi2dsh 实现 keyPool 功能并通过上述 E2E 验证后，可以回复该讨论说明实现方案和验证结果。",
+      "devCluster": "provider-key-pool-rotation",
+      "confidence": 0.85,
+      "fullBodyChars": 10190,
+      "topLevelCommentCount": 3,
+      "replyCount": 6
+    },
+    {
+      "number": 2893,
+      "verdict": "candidate_error",
+      "missingLayer": "none",
+      "actualProblem": "用户询问是否应禁用某些系统插件来阻止模型过度思考，这是一个关于模型推理行为控制的问题，而非具体的插件或适配器问题。",
+      "requiredSemantics": [],
+      "latestThreadState": "讨论无评论，无回答，问题保持开放状态。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/2893",
+          "fact": "讨论标题为'Overthingking on any model'，正文询问是否应禁用系统插件来阻止过度思考，无评论或回答。"
+        }
+      ],
+      "piPublicSemantic": "none",
+      "dshPublicSeam": "none",
+      "currentPi2dshGap": "none",
+      "implementationTask": "none",
+      "genericStandardWork": false,
+      "affectedProviders": [],
+      "acceptanceE2E": [],
+      "replyCondition": "在回复前需确认用户是否在询问模型推理参数配置（如 reasoning effort）而非系统插件，或提供更具体的上下文。",
+      "devCluster": "insufficient-information",
+      "confidence": 0.9,
+      "fullBodyChars": 68,
+      "topLevelCommentCount": 0,
+      "replyCount": 0
+    },
+    {
+      "number": 2894,
+      "verdict": "ready_reply",
+      "missingLayer": "none",
+      "actualProblem": "用户需要阿里云Qwen模型在DSH中正常工作，原帖报告了三个兼容性问题：Responses并行工具调用名称错误、Chat Completions拒绝developer角色、Anthropic空签名问题。",
+      "requiredSemantics": [
+        "OpenAI Chat Completions transport with correct role handling",
+        "Tool call name/argument correlation in parallel calls",
+        "Anthropic thinking block signature handling"
+      ],
+      "latestThreadState": "weijiafu14评论提供了真实E2E验证的替代路径：使用原版pi-provider-alibaba的OpenAI Chat Completions transport，经pi2dsh注册为DSH原生route。该路径已通过真实Plan订阅验证，模型正确发出工具调用、保留tool name/callId、消费tool result，且不再发送被拒绝的developer role。评论明确说明此路径避开Responses和Anthropic两条故障路径，不声称修复底层adapter。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/2894#discussioncomment-18104528",
+          "fact": "真实E2E验证：pi-provider-alibaba + pi2dsh路径成功，模型正确发出工具调用、保留tool name/callId、消费tool result，请求不再带developer role"
+        }
+      ],
+      "piPublicSemantic": "pi-provider-alibaba拥有自己的OpenAI Chat Completions transport，正确处理角色和工具调用",
+      "dshPublicSeam": "pi2dsh将Provider注册为DSH原生route，支持模型路由和工具调用",
+      "currentPi2dshGap": "none",
+      "implementationTask": "none",
+      "genericStandardWork": false,
+      "affectedProviders": [
+        "pi-provider-alibaba"
+      ],
+      "acceptanceE2E": [
+        "使用pi-provider-alibaba + pi2dsh路径，模型能正确发出工具调用并保留tool name/callId",
+        "请求不包含developer role",
+        "模型能消费tool result并完成第二次模型请求"
+      ],
+      "replyCondition": "评论已提供真实E2E验证的替代路径，用户的实际需求（阿里云Qwen在DSH中正常工作）已被满足",
+      "devCluster": "aliyun-qwen-compat-alternate-route",
+      "confidence": 0.95,
+      "fullBodyChars": 5514,
+      "topLevelCommentCount": 1,
+      "replyCount": 0
+    },
+    {
+      "number": 3023,
+      "verdict": "candidate_error",
+      "missingLayer": "none",
+      "actualProblem": "用户报告使用 DeepSeek 模型时，/init 命令能完成但其他对话总是显示 Connection error，需要诊断具体失败原因",
+      "requiredSemantics": [
+        "错误诊断能力",
+        "请求/响应日志记录",
+        "流式响应错误处理"
+      ],
+      "latestThreadState": "仅有一个评论建议用户检查终端日志、启用调试模式、测试无工具调用的普通提示词来缩小问题范围，没有提供具体错误信息或解决方案",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3023#discussioncomment-18069425",
+          "fact": "评论建议用户检查日志、测试无工具调用场景来定位 Connection error 的具体阶段"
+        }
+      ],
+      "piPublicSemantic": "none",
+      "dshPublicSeam": "none",
+      "currentPi2dshGap": "none",
+      "implementationTask": "none",
+      "genericStandardWork": false,
+      "affectedProviders": [],
+      "acceptanceE2E": [],
+      "replyCondition": "需要用户提供更多信息（日志、错误堆栈、是否工具调用导致）才能确定具体问题",
+      "devCluster": "insufficient-information",
+      "confidence": 0.85,
+      "fullBodyChars": 283,
+      "topLevelCommentCount": 1,
+      "replyCount": 0
+    },
+    {
+      "number": 3090,
+      "verdict": "pi2dsh_standard_gap",
+      "missingLayer": "pi2dsh_host_abi",
+      "actualProblem": "用户通过 OpenAI 兼容网关（New-API、opencode.ai）使用 DeepSeek 模型时，流式工具调用因网关在参数增量块中填充空字符串或 null 的 id/name 而丢失身份，导致工具分发失败（UNKNOWN_TOOL）。",
+      "requiredSemantics": [
+        "流式工具调用组装时，空字符串和 null 的 id/name 必须视为缺失字段，不覆盖已组装的身份",
+        "工具调用的身份（id/name）必须在整个流式过程中保持稳定，直到参数组装完成",
+        "对 OpenAI 兼容网关的占位符变体（空字符串、null、字段省略）统一处理"
+      ],
+      "latestThreadState": "原始报告确认 New-API 网关使用空字符串占位符；评论确认 opencode.ai 网关使用 null 占位符；joe1chief 提供了最小修复实现（仅接受非空字符串作为 name 更新），并验证了 30/30 测试通过、100% 覆盖率、所有仓库门禁通过。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3090",
+          "fact": "New-API 网关在参数增量块中填充空字符串 id/name，覆盖已组装身份"
+        },
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3090#discussioncomment-18064611",
+          "fact": "opencode.ai 网关使用 null 占位符，同样覆盖身份；建议同时忽略 null、undefined、空字符串"
+        },
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3090#discussioncomment-18064799",
+          "fact": "joe1chief 提供最小修复：仅接受非空字符串作为 name 更新，测试通过且仓库门禁全绿"
+        }
+      ],
+      "piPublicSemantic": "OpenAI 兼容流式工具调用协议：id/name 仅在首个增量块中出现，后续参数增量块应省略或使用占位符，但不得覆盖已组装的身份",
+      "dshPublicSeam": "translate.ts 中的工具调用组装逻辑，处理流式增量块的字段合并",
+      "currentPi2dshGap": "translate.ts 将任何存在的字段（包括空字符串和 null）视为权威，导致占位符覆盖已组装的身份",
+      "implementationTask": "修改 translate.ts 中的工具调用身份组装逻辑，仅接受非空字符串作为 id/name 更新；添加覆盖空字符串、null、字段省略三种变体的回归测试",
+      "genericStandardWork": true,
+      "affectedProviders": [
+        "所有 OpenAI 兼容网关（New-API、opencode.ai 等）"
+      ],
+      "acceptanceE2E": [
+        "使用模拟网关发送空字符串 id/name 增量块，验证工具调用身份正确组装",
+        "使用模拟网关发送 null id/name 增量块，验证工具调用身份正确组装",
+        "使用模拟网关发送省略 id/name 的增量块，验证工具调用身份正确组装",
+        "验证工具调用能正常分发，不出现 UNKNOWN_TOOL 错误"
+      ],
+      "replyCondition": "确认 pi2dsh 的 translate.ts 仍存在此问题，且没有其他适配器已修复",
+      "devCluster": "provider-tool-stream-identity",
+      "confidence": 0.95,
+      "fullBodyChars": 1906,
+      "topLevelCommentCount": 2,
+      "replyCount": 0
+    },
+    {
+      "number": 3112,
+      "verdict": "pi2dsh_standard_gap",
+      "missingLayer": "pi2dsh_host_abi",
+      "actualProblem": "用户需要 LLM API 返回 TCP 读取错误（如 \"read tcp ... is not valid JSON\"）时，DSH 会话能够自动重试而不是直接终止。当前 classifyPiAiError 将此类错误误分类为不可重试的 PI_AI_ERROR，导致会话终止。",
+      "requiredSemantics": [
+        "TCP 读取错误（read tcp 模式）必须被识别为可重试的传输错误",
+        "错误分类必须基于标准传输错误语义，而非特定错误消息模式",
+        "会话在遇到可重试错误时应自动重试而非终止"
+      ],
+      "latestThreadState": "用户报告了 read tcp 错误被误分类为 PI_AI_ERROR 的问题，并提供了修复建议（在 TRANSPORT 正则中添加 read\\s+tcp）。一个评论提供了修复脚本，但未提及上游修复或官方回应。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3112",
+          "fact": "用户报告 read tcp 错误被误分类为 PI_AI_ERROR，导致会话终止而非重试"
+        },
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3112#discussioncomment-18132653",
+          "fact": "评论提供了修复脚本，但未提及官方修复或上游变更"
+        }
+      ],
+      "piPublicSemantic": "Pi 的 classifyPiAiError 函数应识别所有标准传输错误（包括 TCP 读取错误）为 TRANSPORT 类型，这些错误应可重试",
+      "dshPublicSeam": "DSH 的 retryPolicy 配置支持 retryableCodes，TRANSPORT 是标准可重试错误码",
+      "currentPi2dshGap": "classifyPiAiError 的 TRANSPORT 正则未匹配 read tcp 模式，导致 TCP 读取错误被误分类为不可重试的 PI_AI_ERROR",
+      "implementationTask": "扩展 classifyPiAiError 的 TRANSPORT 正则，添加 read\\s+tcp 模式匹配，确保所有标准 TCP 读取错误被正确分类为可重试的 TRANSPORT 错误",
+      "genericStandardWork": true,
+      "affectedProviders": [
+        "all conforming providers"
+      ],
+      "acceptanceE2E": [
+        "模拟 read tcp 错误消息，验证 classifyPiAiError 返回 TRANSPORT",
+        "验证包含 read tcp 错误的会话能够自动重试而非终止",
+        "验证其他标准传输错误（network, connection, socket, fetch, ECONN*）仍被正确分类"
+      ],
+      "replyCondition": "在 pi2dsh 中实现 read tcp 错误分类修复，并通过测试验证后回复",
+      "devCluster": "provider-error-classification",
+      "confidence": 0.95,
+      "fullBodyChars": 1156,
+      "topLevelCommentCount": 1,
+      "replyCount": 0
+    },
+    {
+      "number": 3128,
+      "verdict": "pi_provider_product_gap",
+      "missingLayer": "pi_provider_product",
+      "actualProblem": "用户通过 dsh-llm-pi-ai 接入 OpenAI 兼容网关（如火山方舟）时，429/TPM 限流响应中的 Retry-After 头未被读取和传递，导致外层 dsh-llm-retry 使用固定指数退避而非服务器建议的等待时间，重试必然失败并耗尽预算。",
+      "requiredSemantics": [
+        "读取 429 响应中的 Retry-After 或 retry-after-ms 头",
+        "将服务器建议的延迟时间传递到 failure.providerRetryAfterMs",
+        "外层 dsh-llm-retry 优先使用 providerRetryAfterMs 而非本地指数退避"
+      ],
+      "latestThreadState": "仅有一条评论询问该讨论是否应发布在此处，无其他回复或维护者确认。问题在 rc.7 中仍存在。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3128#discussioncomment-18109424",
+          "fact": "用户询问 llm-pi-ai 插件的讨论是否应发布在此处，未获回复。"
+        }
+      ],
+      "piPublicSemantic": "pi-ai 的 provider-retry.js 中 getRetryDelayMs 已原生支持 retry-after / retry-after-ms 头，但 dsh-llm-pi-ai 的 profileOptions 硬编码 maxRetries: 0 禁用了此能力。",
+      "dshPublicSeam": "dsh-llm-retry 的 failure.providerRetryAfterMs 字段，官方 dsh-llm-deepseek 适配器已正确填充此字段。",
+      "currentPi2dshGap": "dsh-llm-pi-ai 在错误传播时丢弃原始错误对象（含 headers），无法读取 Retry-After 头并填充 providerRetryAfterMs。",
+      "implementationTask": "在 dsh-llm-pi-ai 的错误处理路径中，从原始错误对象提取 Retry-After 或 retry-after-ms 头，解析为毫秒并填充到 failure.providerRetryAfterMs。",
+      "genericStandardWork": true,
+      "affectedProviders": [
+        "all OpenAI-compatible providers via llm-pi-ai"
+      ],
+      "acceptanceE2E": [
+        "模拟 429 + Retry-After: 30 的响应，验证 failure.providerRetryAfterMs 为 30000",
+        "模拟 429 + retry-after-ms: 1500 的响应，验证 failure.providerRetryAfterMs 为 1500",
+        "验证外层 dsh-llm-retry 使用 providerRetryAfterMs 而非指数退避",
+        "验证 llm/retry 事件中 delayMs 等于服务器建议值"
+      ],
+      "replyCondition": "需确认 dsh-llm-pi-ai 的错误传播路径中是否可访问原始错误对象（含 headers），以及 pi-ai 的 AssistantMessage 类型是否可扩展。",
+      "devCluster": "provider-retry-after-propagation",
+      "confidence": 0.85,
+      "fullBodyChars": 13674,
+      "topLevelCommentCount": 1,
+      "replyCount": 0
+    },
+    {
+      "number": 3157,
+      "verdict": "pi_provider_product_gap",
+      "missingLayer": "pi_provider_product",
+      "actualProblem": "用户需要为本地 LLM（Ollama 等）配置超过默认 5 分钟的超时时间，但当前配置无法生效，且存在多个超时层（adapter idle timeout、Undici dispatcher timeout、Shell plugin timeout）导致难以定位实际超时来源。",
+      "requiredSemantics": [
+        "provider 路由级超时配置（streamIdleTimeoutMs/timeoutMs）正确传递到 pi-ai 适配器",
+        "Undici HTTP dispatcher 的 bodyTimeout/headersTimeout 与适配器超时配置同步",
+        "超时取消来源的明确日志标识（adapter idle / shell plugin / upstream stream closed）",
+        "新会话中配置变更生效，避免旧会话保留旧超时绑定"
+      ],
+      "latestThreadState": "评论确认 settings.yaml 顶层 timeout 无效，需在 provider 路由配置 streamIdleTimeoutMs。用户发现即使配置后仍出现 'terminated' 错误，Mcbest06 定位到 Undici dispatcher 默认 300000ms 超时是根因，并提供了修改 adapter.ts 和 openai-completions.js 的补丁。ylwl1997 指出 Shell plugin 的 120s 超时从工具调用创建时开始计时，且 aborted turns 不保留日志。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3157#discussioncomment-18101073",
+          "fact": "ylwl1997 确认 streamIdleTimeoutMs 默认 300000，需在 provider 路由配置，且需新会话生效"
+        },
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3157#discussioncomment-18134960",
+          "fact": "Mcbest06 定位 Undici dispatcher 默认 300000ms 超时是 'terminated' 错误根因，提供 dispatcher 超时同步补丁"
+        },
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3157#discussioncomment-18111799",
+          "fact": "njcray2 发现 Shell plugin 120s 超时从工具调用创建时开始计时，且 aborted turns 无日志"
+        }
+      ],
+      "piPublicSemantic": "pi-ai 的 streamSimple() 支持 streamIdleTimeoutMs 和 timeoutMs 参数，但底层 OpenAI SDK 使用 Undici 默认 dispatcher 超时",
+      "dshPublicSeam": "llm-pi-ai provider 路由配置支持 streamIdleTimeoutMs/timeoutMs，通过 profileOptions() 传递到 pi-ai",
+      "currentPi2dshGap": "pi2dsh 已正确传递 provider 路由超时配置，但 pi-ai 的 OpenAI SDK 底层 Undici dispatcher 未同步超时设置，导致配置超过 300000ms 时连接被强制终止",
+      "implementationTask": "在 pi-ai 的 openai-completions.js 中为 OpenAI 客户端注入自定义 fetch 函数，使用与 streamIdleTimeoutMs 匹配的 Undici Agent dispatcher（bodyTimeout/headersTimeout），并缓存 dispatcher 实例避免重复创建",
+      "genericStandardWork": true,
+      "affectedProviders": [
+        "ollama",
+        "lm-studio",
+        "所有使用 OpenAI 兼容接口的本地 LLM provider"
+      ],
+      "acceptanceE2E": [
+        "配置 streamIdleTimeoutMs: 1200000 后，发起超过 5 分钟的本地 LLM 流式请求不报 'terminated' 错误",
+        "Undici dispatcher 的 bodyTimeout/headersTimeout 与配置的 streamIdleTimeoutMs 一致",
+        "超时取消时日志明确标识取消来源（adapter idle / shell plugin / upstream stream closed）",
+        "新会话中配置变更生效，旧会话保持旧超时绑定"
+      ],
+      "replyCondition": "pi-ai 已实现 dispatcher 超时同步，且通过 E2E 验证超过 5 分钟的本地 LLM 请求不再被 Undici 强制终止",
+      "devCluster": "provider-http-timeout-sync",
+      "confidence": 0.85,
+      "fullBodyChars": 295,
+      "topLevelCommentCount": 8,
+      "replyCount": 1
+    },
+    {
+      "number": 3169,
+      "verdict": "dsh_upstream",
+      "missingLayer": "dsh_core",
+      "actualProblem": "用户用中文与dsh聊天，但模型的回答和思考（思维链）全是英文，希望解决此问题。",
+      "requiredSemantics": [
+        "系统提示词（system prompt）语言控制",
+        "模型推理语言控制",
+        "持久化语言偏好设置"
+      ],
+      "latestThreadState": "评论指出根因是默认system prompt/persona为英文，模型跟随其语言。解决方案包括：配置级修改persona、安装dsh-zh插件、会话级指令。有用户反馈插件安装后思维链仍为英文。另一评论指出rc.7中persona默认为空，固定Harness身份和工具提示为英文，直接DeepSeek适配器传递reasoning_content和content为独立块，Web渲染但不翻译。建议覆盖现有system-prompt行设置config.persona，而非插入新服务。还有建议在~/.dsh目录创建AGENTS.md设置全局指令。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3169#discussioncomment-18068583",
+          "fact": "根因是默认system prompt/persona为英文，模型跟随其语言；提供配置级、插件、会话级三种解决方案"
+        },
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3169#discussioncomment-18080045",
+          "fact": "用户反馈安装dsh-zh插件后思维链仍为英文，需额外指示"
+        },
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3169#discussioncomment-18082578",
+          "fact": "rc.7中persona默认为空，固定Harness身份和工具提示为英文；建议覆盖现有system-prompt行而非插入新服务"
+        },
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3169#discussioncomment-18086586",
+          "fact": "建议在~/.dsh目录创建AGENTS.md设置全局中文指令"
+        }
+      ],
+      "piPublicSemantic": "none",
+      "dshPublicSeam": "dsh-system-prompt服务的config.persona配置项",
+      "currentPi2dshGap": "none",
+      "implementationTask": "none",
+      "genericStandardWork": false,
+      "affectedProviders": [],
+      "acceptanceE2E": [],
+      "replyCondition": "问题已由dsh核心配置解决，无需pi2dsh介入",
+      "devCluster": "dsh-core-language-configuration",
+      "confidence": 0.95,
+      "fullBodyChars": 330,
+      "topLevelCommentCount": 4,
+      "replyCount": 1
+    },
+    {
+      "number": 3283,
+      "verdict": "pi_provider_product_gap",
+      "missingLayer": "pi_provider_product",
+      "actualProblem": "用户需要将CLI编码代理（agy/Codex/Claude Code）安全包装为纯LLM provider，防止内部自主工具调用，并实现跨provider回退路由",
+      "requiredSemantics": [
+        "CLI进程安全包装（反自主标志、进程组kill、超时控制）",
+        "错误分类映射到DSH标准错误类型",
+        "跨provider回退路由链"
+      ],
+      "latestThreadState": "讨论无评论，用户分享本地验证结果并询问维护者关于跨provider回退、sandbox组合和官方CLI适配器计划",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3283",
+          "fact": "用户验证agy --mode plan --sandbox --disable-slash-commands可提供纯LLM姿态"
+        },
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3283",
+          "fact": "用户询问providerRetryPolicy之外的跨provider回退机制"
+        }
+      ],
+      "piPublicSemantic": "none",
+      "dshPublicSeam": "providerRetryPolicy（同provider重试）",
+      "currentPi2dshGap": "none",
+      "implementationTask": "开发CLI编码代理适配器包，实现安全包装（反自主标志、进程管理、错误分类）和跨provider回退插件",
+      "genericStandardWork": true,
+      "affectedProviders": [
+        "agy",
+        "codex",
+        "claude-code"
+      ],
+      "acceptanceE2E": [
+        "使用agy --mode plan --sandbox包装为provider，验证无内部工具调用",
+        "验证进程组kill在超时时正确终止所有子进程",
+        "验证错误分类正确映射到RATE_LIMIT/AUTH/INVALID_REQUEST/TIMEOUT/SERVER",
+        "验证跨provider回退在provider失败时正确路由到备用provider"
+      ],
+      "replyCondition": "需要确认DSH核心是否支持跨provider回退，或需要开发自定义插件",
+      "devCluster": "cli-agent-provider-safety",
+      "confidence": 0.85,
+      "fullBodyChars": 2213,
+      "topLevelCommentCount": 0,
+      "replyCount": 0
+    },
+    {
+      "number": 3284,
+      "verdict": "dsh_upstream",
+      "missingLayer": "dsh_core",
+      "actualProblem": "用户希望DSH核心UI提供多模态模型标记按钮和思考等级点选列表，以简化模型接入和思考等级切换流程",
+      "requiredSemantics": [
+        "DSH核心UI支持多模态模型标记",
+        "DSH核心UI支持思考等级点选配置"
+      ],
+      "latestThreadState": "用户提出功能建议并说明官方暂不接受PR，希望后续版本加入；无其他评论或回复",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3284#discussioncomment-18075325",
+          "fact": "用户说明官方暂不接受PR，希望后续版本加入"
+        }
+      ],
+      "piPublicSemantic": "none",
+      "dshPublicSeam": "DSH核心模型配置UI（需新增多模态标记和思考等级选择功能）",
+      "currentPi2dshGap": "none",
+      "implementationTask": "none",
+      "genericStandardWork": false,
+      "affectedProviders": [],
+      "acceptanceE2E": [],
+      "replyCondition": "仅当DSH核心UI已支持多模态标记和思考等级选择，或用户明确接受通过pi2dsh配置替代UI操作时方可回复",
+      "devCluster": "dsh-core-ui-feature-request",
+      "confidence": 0.95,
+      "fullBodyChars": 228,
+      "topLevelCommentCount": 1,
+      "replyCount": 0
+    },
+    {
+      "number": 3335,
+      "verdict": "pi_provider_product_gap",
+      "missingLayer": "pi_provider_product",
+      "actualProblem": "用户需要让 dsh-llm-pi-ai 适配器能够配置 supportsDeveloperRole 选项，以兼容拒绝 role: developer 的 OpenAI 兼容网关（如阿里云百炼/DashScope），当前该配置项未暴露在 PiAiCompatProfile 中，导致无法通过设置解决兼容性问题。",
+      "requiredSemantics": [
+        "PiAiCompatProfile 需要暴露 supportsDeveloperRole 配置项",
+        "配置项需要透传到 pi-ai 的 model.compat.supportsDeveloperRole",
+        "pi-ai 已支持 model.compat.supportsDeveloperRole 的合并逻辑，无需上游修改",
+        "配置 supportsDeveloperRole: false 时，请求应使用 role: system 而非 role: developer"
+      ],
+      "latestThreadState": "讨论无评论，用户提供了详细的证据表证明 role: developer 是唯一阻塞点，并提出了具体的代码修改方案。用户还提到已有一个独立插件作为 workaround，如果该配置项可用，插件可以缩减为模型目录或完全移除。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3335",
+          "fact": "用户提供了详细的证据表，证明 role: developer 是唯一阻塞点，其他所有 pi-ai 默认发送的字段都被 Bailian 接受"
+        },
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3335",
+          "fact": "用户提出了具体的代码修改方案，包括在 PiAiCompatProfile 接口和 config.ts 的 schema 中添加 supportsDeveloperRole 字段"
+        },
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3335",
+          "fact": "用户提到 pi-ai 已支持 model.compat.supportsDeveloperRole 的合并逻辑，无需上游修改"
+        }
+      ],
+      "piPublicSemantic": "pi-ai 的 model.compat.supportsDeveloperRole 字段，用于控制是否使用 role: developer 而非 role: system",
+      "dshPublicSeam": "dsh-llm-pi-ai 的 PiAiCompatProfile 接口和 config.ts 中的 schema 定义",
+      "currentPi2dshGap": "PiAiCompatProfile 只暴露了 thinkingFormat 和 supportsReasoningEffort 两个字段，未暴露 supportsDeveloperRole，导致无法配置",
+      "implementationTask": "在 dsh-llm-pi-ai 的 catalog.ts 中向 PiAiCompatProfile 接口添加 supportsDeveloperRole?: boolean 字段，并在 config.ts 的 schema 中添加对应字段，然后透传到 pi-ai 的 model.compat",
+      "genericStandardWork": true,
+      "affectedProviders": [
+        "all conforming providers"
+      ],
+      "acceptanceE2E": [
+        "配置 supportsDeveloperRole: false 后，对 Bailian 的请求使用 role: system 而非 role: developer",
+        "配置 supportsDeveloperRole: false 后，对 Bailian 的请求成功返回 200",
+        "未配置 supportsDeveloperRole 时，行为与当前一致（使用 baseURL 自动检测）",
+        "配置 supportsDeveloperRole: true 时，对支持 developer role 的网关（如 OpenAI）行为不变"
+      ],
+      "replyCondition": "确认 dsh-llm-pi-ai 的 PiAiCompatProfile 确实未暴露 supportsDeveloperRole，且 pi-ai 已支持该字段的合并逻辑",
+      "devCluster": "provider-compat-profile-config-gap",
+      "confidence": 0.95,
+      "fullBodyChars": 3321,
+      "topLevelCommentCount": 0,
+      "replyCount": 0
+    },
+    {
+      "number": 3338,
+      "verdict": "dsh_upstream",
+      "missingLayer": "dsh_core",
+      "actualProblem": "用户需要网关/中继 API 返回的 429 insufficient_quota（瞬时限流）被正确分类为可重试的 RATE_LIMIT，而不是被误判为终态 QUOTA 导致整个回合失败；同时需要处理 TPM 类限流的长时等待策略。",
+      "requiredSemantics": [
+        "httpErrorCode 分类器必须优先处理 429 状态码，再处理文本匹配",
+        "QUOTA 分类必须区分账户余额耗尽（终态）和速率配额（瞬时）",
+        "402 状态码应映射为 QUOTA",
+        "支持基于 Retry-After 的长时等待/暂停策略，而非仅计数重试"
+      ],
+      "latestThreadState": "评论确认根因正确，并指出：1) 部署级修复（retryableCodes 加 QUOTA）已生效；2) classifyPiAiError 已重排 429 检查顺序；3) 残留问题：TPM 类限流恢复时间不可预测，需要长时等待/暂停机制而非计数重试。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3338#discussioncomment-18095113",
+          "fact": "确认 httpErrorCode 和 classifyPiAiError 的文本分类先于 429 检查，QUOTA 不在 DEFAULT_RETRYABLE_CODES；提出分层分类方案（T0 枚举、T1 状态码、T2 散文、T3 兜底）"
+        },
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3338#discussioncomment-18101156",
+          "fact": "确认已按建议部署修复（retryableCodes 加 QUOTA、重排 classifyPiAiError），但 TPM 限流恢复时间不可预测，需要长时等待/暂停机制"
+        }
+      ],
+      "piPublicSemantic": "none",
+      "dshPublicSeam": "httpErrorCode() 分类器、DEFAULT_RETRYABLE_CODES、retryPolicy 配置",
+      "currentPi2dshGap": "none",
+      "implementationTask": "none",
+      "genericStandardWork": false,
+      "affectedProviders": [],
+      "acceptanceE2E": [],
+      "replyCondition": "DSH 核心已修复分类器顺序和 QUOTA 语义，或提供长时等待机制",
+      "devCluster": "dsh-core-error-classification",
+      "confidence": 0.95,
+      "fullBodyChars": 1491,
+      "topLevelCommentCount": 2,
+      "replyCount": 0
+    },
+    {
+      "number": 3342,
+      "verdict": "e2e_only",
+      "missingLayer": "test_only",
+      "actualProblem": "用户自定义模型提供商 agnes-2.5-pro 时，调用 write 或 code 工具总是失败，错误显示工具调用协议不兼容（edit 不能直接调用、import/export 语法错误），需要官方支持或修复自定义提供商下的工具调用。",
+      "requiredSemantics": [
+        "工具调用协议兼容性：write/edit 工具应能通过 run_code 间接调用",
+        "代码执行环境：支持 import/export 模块语法",
+        "模型提供商自定义配置：agnes-2.5-pro 的 API 端点、认证、模型路由"
+      ],
+      "latestThreadState": "讨论无任何评论或回复，仅有用户初始问题描述和错误截图。旧审计标记为 e2e_only，但无新证据。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3342",
+          "fact": "用户报告自定义 agnes-2.5-pro 提供商时 write/code 工具调用失败，错误显示 edit 工具不能直接调用，且 import/export 语法错误"
+        }
+      ],
+      "piPublicSemantic": "Pi Provider 支持自定义模型提供商注册，包括工具 schema 和流式工具调用协议",
+      "dshPublicSeam": "DSH 支持自定义模型提供商配置，但工具调用协议需与 DSH 原生解析器兼容",
+      "currentPi2dshGap": "无明确 gap，pi2dsh 已支持 Provider 自定义工具 schema 和流式工具调用，但 agnes-2.5-pro 的真实 wire 协议未验证",
+      "implementationTask": "捕获 agnes-2.5-pro 的真实工具调用 wire 格式，验证 pi2dsh 的 Provider transport 能否正确映射 write/code 工具调用协议",
+      "genericStandardWork": true,
+      "affectedProviders": [
+        "agnes-2.5-pro"
+      ],
+      "acceptanceE2E": [
+        "使用 agnes-2.5-pro 真实 API 调用 write 工具，验证 edit 通过 run_code 间接调用成功",
+        "验证 code 工具执行支持 import/export 模块语法",
+        "确认工具调用 ID、名称、参数在 DSH 和 agnes 之间正确映射"
+      ],
+      "replyCondition": "必须先用真实 agnes-2.5-pro API 捕获工具调用 wire 格式，确认 pi2dsh 的 Provider transport 能正确映射后再回复",
+      "devCluster": "provider-tool-wire-compat",
+      "confidence": 0.85,
+      "fullBodyChars": 588,
+      "topLevelCommentCount": 0,
+      "replyCount": 0
+    },
+    {
+      "number": 3362,
+      "verdict": "e2e_only",
+      "missingLayer": "test_only",
+      "actualProblem": "用户切换模型到外源后，长时间运行任务仍消耗官方 DeepSeek token，疑似模型切换逻辑未生效或路由错误，导致官方 token 被大量消耗。",
+      "requiredSemantics": [
+        "模型切换后所有请求必须路由到外源服务",
+        "官方 DeepSeek usage 不应增长",
+        "请求头和元数据必须证明实际路由到外源"
+      ],
+      "latestThreadState": "用户确认在会话中切换了模型为外源模型，但未提供外源服务名称、路由日志或 usage 截图。评论仅确认切换行为，无进一步技术细节或上游修复。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3362#discussioncomment-18077922",
+          "fact": "用户确认在会话中切换了模型为外源模型"
+        },
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3362#discussioncomment-18077972",
+          "fact": "评论者确认切换行为，但无技术细节"
+        }
+      ],
+      "piPublicSemantic": "Pi Provider 模型切换后，后续请求应使用新 Provider 的 transport 和 endpoint",
+      "dshPublicSeam": "DSH 模型切换后，请求路由应基于当前会话的模型配置",
+      "currentPi2dshGap": "无已知 gap；pi2dsh 已支持显式外源路由，但需验证实际切换后的请求路由",
+      "implementationTask": "创建 E2E 测试：切换模型到外源后，运行长任务，验证所有请求头/元数据指向外源，官方 usage 不增长",
+      "genericStandardWork": true,
+      "affectedProviders": [
+        "all conforming providers"
+      ],
+      "acceptanceE2E": [
+        "切换模型到命名外源后，运行 1 小时任务",
+        "捕获所有请求头，确认均指向外源 endpoint",
+        "官方 DeepSeek usage 不增长",
+        "控制组（不切换）显示官方 usage 增长"
+      ],
+      "replyCondition": "需要用户提供外源服务名称、路由日志或 usage 截图，或完成上述 E2E 测试",
+      "devCluster": "provider-request-routing-verification",
+      "confidence": 0.85,
+      "fullBodyChars": 212,
+      "topLevelCommentCount": 1,
+      "replyCount": 1
+    },
+    {
+      "number": 3363,
+      "verdict": "pi_provider_product_gap",
+      "missingLayer": "pi_provider_product",
+      "actualProblem": "用户需要让 llm-pi-ai 适配器在 OpenAI 兼容网关（如阿里云 MaaS compatible-mode）上正确发送 system 角色和 max_tokens 字段，避免 400 错误，且无需编写自定义插件。",
+      "requiredSemantics": [
+        "supportsDeveloperRole 配置项，控制是否使用 developer 角色",
+        "maxTokensField 配置项，选择 max_tokens 或 max_completion_tokens",
+        "路由级默认值和模型级覆盖的解析顺序",
+        "openai-completions 协议门控"
+      ],
+      "latestThreadState": "讨论无评论，无上游修复或重复证据。旧审计判定为 e2e_only，但当前内容显示 PiAiCompatProfile 是 DSH 核心包内部类型，pi2dsh 无法修改。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3363",
+          "fact": "PiAiCompatProfile 仅暴露 thinkingFormat 和 supportsReasoningEffort，缺少 supportsDeveloperRole 和 maxTokensField"
+        },
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3363",
+          "fact": "pi-ai 的 getCompat() 已支持这两个字段，但 dsh 适配器未透传"
+        },
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3363",
+          "fact": "阿里云 MaaS compatible-mode 拒绝 developer 角色，返回 400"
+        }
+      ],
+      "piPublicSemantic": "pi-ai 的 getCompat() 支持 model.compat.supportsDeveloperRole 和 model.compat.maxTokensField，用于覆盖 URL 检测结果",
+      "dshPublicSeam": "PiAiCompatProfile 是 llm-pi-ai 包的公开配置类型，但当前仅暴露两个字段",
+      "currentPi2dshGap": "pi2dsh 无法修改 DSH 核心包的 PiAiCompatProfile schema 或解析逻辑，但可以通过 provider-owned Pi transport 完全接管协议，规范化 system 角色和 max_tokens 字段",
+      "implementationTask": "开发一个 provider-owned Pi transport，针对 OpenAI 兼容网关（如阿里云 MaaS）规范化请求：将 developer 角色转换为 system，将 max_completion_tokens 转换为 max_tokens，并支持配置开关",
+      "genericStandardWork": true,
+      "affectedProviders": [
+        "阿里云 MaaS compatible-mode",
+        "所有拒绝 developer 角色的 OpenAI 兼容网关"
+      ],
+      "acceptanceE2E": [
+        "配置阿里云 MaaS compatible-mode 网关，使用 provider-owned Pi transport",
+        "发送包含 system 角色的请求，验证网关接受且无 400 错误",
+        "发送包含 max_tokens 的请求，验证网关正确解析",
+        "验证配置开关可切换 developer/system 角色和 max_tokens/max_completion_tokens 字段"
+      ],
+      "replyCondition": "已有 provider-owned Pi transport 实现并验证可处理阿里云 MaaS compatible-mode 的请求，或讨论中出现新的证据表明 DSH 核心已支持这些字段",
+      "devCluster": "provider-request-metadata-normalization",
+      "confidence": 0.85,
+      "fullBodyChars": 2812,
+      "topLevelCommentCount": 0,
+      "replyCount": 0
+    },
+    {
+      "number": 3372,
+      "verdict": "ready_reply",
+      "missingLayer": "none",
+      "actualProblem": "用户报告 llm-pi-ai 配置 schema 丢弃 supportsDeveloperRole: false，导致 SGLang/Qwen 收到 developer role 返回 400，希望修复该配置边界。",
+      "requiredSemantics": [
+        "supportsDeveloperRole 配置字段在 schema 中保留",
+        "model/route compat 合并时保留 false 值",
+        "reasoning model 请求使用 system role 而非 developer role"
+      ],
+      "latestThreadState": "评论确认 dsh-v0.1.0-rc.8 已修复该问题，commit 884f7b9c41f292b1715c79399eb8aec04843df4d 增加了 supportsDeveloperRole 支持，用户使用 dsh-v0.1.1-rc.2 正常。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3372#discussioncomment-18133746",
+          "fact": "评论确认 dsh-v0.1.0-rc.8 已修复，commit 884f7b9c41f292b1715c79399eb8aec04843df4d 增加了该功能，用户使用 dsh-v0.1.1-rc.2 正常。"
+        }
+      ],
+      "piPublicSemantic": "none",
+      "dshPublicSeam": "none",
+      "currentPi2dshGap": "none",
+      "implementationTask": "none",
+      "genericStandardWork": false,
+      "affectedProviders": [],
+      "acceptanceE2E": [],
+      "replyCondition": "确认上游已修复，无需 pi2dsh 介入。",
+      "devCluster": "upstream-resolved",
+      "confidence": 0.95,
+      "fullBodyChars": 2608,
+      "topLevelCommentCount": 1,
+      "replyCount": 0
+    },
+    {
+      "number": 3374,
+      "verdict": "e2e_only",
+      "missingLayer": "test_only",
+      "actualProblem": "用户需要 DeepSeek 推理模型（如 deepseek-v4-flash）在流式工具调用时能正确传递 name/id，避免因 null 值覆盖首个 delta 导致所有工具调用失败。",
+      "requiredSemantics": [
+        "流式工具调用时 name/id 为 null 时不应覆盖首个 delta",
+        "工具调用 name 必须正确传递给执行器",
+        "推理模型下工具调用必须成功完成"
+      ],
+      "latestThreadState": "讨论无评论，无上游修复证据，问题仍存在于 DSH 核心 llm-deepseek 适配器 translate.ts 中。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3374",
+          "fact": "问题定位在 DSH 核心 llm-deepseek 包的 translate.ts 第 159-160 行，使用 !== undefined 守卫导致 null 值覆盖首个 delta"
+        }
+      ],
+      "piPublicSemantic": "none",
+      "dshPublicSeam": "none",
+      "currentPi2dshGap": "none",
+      "implementationTask": "none",
+      "genericStandardWork": false,
+      "affectedProviders": [],
+      "acceptanceE2E": [
+        "配置 DeepSeek 推理模型（如 deepseek-v4-flash）",
+        "发起包含工具调用的请求",
+        "验证工具调用 name 正确传递且执行成功"
+      ],
+      "replyCondition": "需要先完成真实 DeepSeek 推理模型下的工具调用 E2E 验证，确认 Pi transport 能正确规范化流式工具调用",
+      "devCluster": "provider-tool-stream",
+      "confidence": 0.7,
+      "fullBodyChars": 374,
+      "topLevelCommentCount": 0,
+      "replyCount": 0
+    },
+    {
+      "number": 3379,
+      "verdict": "pi_provider_product_gap",
+      "missingLayer": "pi_provider_product",
+      "actualProblem": "用户需要让火山方舟（Ark）网关接受系统提示词，但 pi-ai 在模型声明 reasoningEfforts 时默认使用 developer 角色，方舟只接受 system/assistant/user/tool，导致 400 错误。用户需要无需修改 node_modules 即可配置此行为。",
+      "requiredSemantics": [
+        "supportsDeveloperRole 兼容位必须可配置",
+        "系统提示词必须以 system 角色发送到方舟",
+        "reasoningEfforts 声明不应隐式改变系统提示词角色",
+        "配置必须持久化且不依赖 node_modules 补丁"
+      ],
+      "latestThreadState": "评论确认 rc.7 配置面缺少 supportsDeveloperRole 开关，thinkingFormat 和 supportsReasoningEffort 是独立控制。评论建议暴露 supportsDeveloperRole 或添加正确的内置检测器，并提供了社区手册。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3379#discussioncomment-18080744",
+          "fact": "评论确认 rc.7 配置面缺少 supportsDeveloperRole，thinkingFormat 和 supportsReasoningEffort 是独立控制，建议暴露 supportsDeveloperRole 或添加内置检测器"
+        }
+      ],
+      "piPublicSemantic": "pi-ai 的 detectCompat() 根据 provider/baseUrl 决定 supportsDeveloperRole，但该值不可通过配置覆盖",
+      "dshPublicSeam": "dsh-llm-pi-ai 的 compatProfile 配置项只开放 thinkingFormat 和 supportsReasoningEffort，没有 supportsDeveloperRole",
+      "currentPi2dshGap": "pi2dsh 无法通过配置覆盖 pi-ai 的 supportsDeveloperRole 检测结果，用户必须修改 node_modules",
+      "implementationTask": "在 pi2dsh 的 provider 配置中增加 supportsDeveloperRole 布尔开关，在创建 Pi 模型时覆盖 compat 值，确保系统提示词使用 system 角色",
+      "genericStandardWork": true,
+      "affectedProviders": [
+        "所有 OpenAI 兼容且不支持 developer 角色的提供商"
+      ],
+      "acceptanceE2E": [
+        "配置 supportsDeveloperRole: false 后，方舟请求中系统提示词角色为 system",
+        "配置 supportsDeveloperRole: false 后，方舟请求成功返回 200",
+        "配置 supportsDeveloperRole: true 时，系统提示词角色为 developer",
+        "不配置该选项时，行为与 pi-ai 默认检测一致"
+      ],
+      "replyCondition": "pi2dsh 已实现 supportsDeveloperRole 配置覆盖，且通过方舟真实调用验证",
+      "devCluster": "provider-role-compat-config",
+      "confidence": 0.85,
+      "fullBodyChars": 5799,
+      "topLevelCommentCount": 1,
+      "replyCount": 0
+    },
+    {
+      "number": 3384,
+      "verdict": "dsh_upstream",
+      "missingLayer": "dsh_core",
+      "actualProblem": "用户需要修复 llm-deepseek 包中流式工具调用时 name/id 为 null 导致工具名被覆盖为空字符串的问题，确保通过 OpenAI 兼容网关（如 OpenCode、LiteLLM、OneAPI）的工具调用能正确工作。",
+      "requiredSemantics": [
+        "流式工具调用 delta 中 name/id 为 null 时不应覆盖已捕获的有效值",
+        "工具调用名称和 ID 的完整性保护",
+        "对 OpenAI 兼容 SSE 格式的容错处理"
+      ],
+      "latestThreadState": "讨论无评论，仅包含原始问题描述和用户提供的修复补丁（分支 fix/llm-deepseek-null-tool-delta），补丁已通过 31/31 单元测试。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3384",
+          "fact": "用户报告 llm-deepseek 的 translate.ts 中 null 值覆盖有效工具名，导致 unknown tool 错误，并提供修复补丁"
+        }
+      ],
+      "piPublicSemantic": "none",
+      "dshPublicSeam": "llm-deepseek 包的 translate.ts 是 DSH 核心实现，负责流式工具调用拼接",
+      "currentPi2dshGap": "none",
+      "implementationTask": "none",
+      "genericStandardWork": false,
+      "affectedProviders": [],
+      "acceptanceE2E": [],
+      "replyCondition": "该问题完全属于 DSH 核心 llm-deepseek 包的内部实现缺陷，pi2dsh 无法通过 Provider 层修复，应引导用户向 DSH 上游提交补丁",
+      "devCluster": "dsh-core-tool-stream-null-delta",
+      "confidence": 0.95,
+      "fullBodyChars": 1421,
+      "topLevelCommentCount": 0,
+      "replyCount": 0
+    },
+    {
+      "number": 3387,
+      "verdict": "candidate_error",
+      "missingLayer": "none",
+      "actualProblem": "用户希望为每个 MCP 服务器配置 OAuth loopback 回调路径，以支持预注册的 redirect URI，但该讨论已被维护者关闭，并指向另一个讨论（#2017）。",
+      "requiredSemantics": [
+        "OAuth loopback 回调路径可配置",
+        "回调监听器验证配置的路径",
+        "保持默认回调路径"
+      ],
+      "latestThreadState": "维护者 gyuho 已关闭此讨论，并指向 https://github.com/deepseek-ai/deepseek-harness/discussions/2017，表明此问题已在其他地方处理或重复。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3387#discussioncomment-18079221",
+          "fact": "维护者关闭讨论，指向 #2017，表明此问题已重复或已在上游处理。"
+        }
+      ],
+      "piPublicSemantic": "none",
+      "dshPublicSeam": "none",
+      "currentPi2dshGap": "none",
+      "implementationTask": "none",
+      "genericStandardWork": false,
+      "affectedProviders": [],
+      "acceptanceE2E": [],
+      "replyCondition": "讨论已被维护者关闭并指向另一个讨论，无需回复。",
+      "devCluster": "duplicate-upstream-closed",
+      "confidence": 0.95,
+      "fullBodyChars": 5547,
+      "topLevelCommentCount": 1,
+      "replyCount": 0
+    },
+    {
+      "number": 3394,
+      "verdict": "pi_provider_product_gap",
+      "missingLayer": "pi_provider_product",
+      "actualProblem": "用户使用自定义 OpenAI 兼容网关（如百炼 compatible-mode）时，推理模型无法选择思考强度，且带 effort 的请求因 pi-ai 默认探测为支持 developer 角色而返回 400。用户需要一种方式让网关显式声明不支持 developer 角色，从而回退到 system 角色并启用思考强度选择。",
+      "requiredSemantics": [
+        "支持在配置中显式声明网关是否支持 developer 角色",
+        "当网关不支持 developer 角色时，推理请求使用 system 角色发送",
+        "思考强度（reasoning effort）选择器在配置后可用",
+        "配置解析顺序：模型 → 路由 → catalog 条目 → URL 探测"
+      ],
+      "latestThreadState": "讨论无评论，用户提供了完整参考实现（fork 分支 feat/llm-pi-ai-supports-developer-role，commit 78a4dfd4a7），包含 PiAiCompatProfile 新增 supportsDeveloperRole 字段、配置解析逻辑、测试和文档。用户明确表示这是 AI 代写的参考实现，欢迎批评建议，并愿意调整设计或放弃方案。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3394",
+          "fact": "用户报告百炼 compatible-mode 网关不支持 developer 角色，导致推理模型无法选择思考强度且请求 400"
+        },
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3394",
+          "fact": "用户提供了完整参考实现：PiAiCompatProfile 新增 supportsDeveloperRole 字段，配置后思考强度可选且请求以 system 角色发送"
+        },
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3394",
+          "fact": "用户验证：vitest 59/59 通过，百炼推理模型档位可选、请求 200（developer → 400 对照）"
+        }
+      ],
+      "piPublicSemantic": "Pi Provider 可以拥有自己的 transport，完全控制请求/响应的 wire format，包括角色映射（developer → system）和 reasoning effort 参数传递",
+      "dshPublicSeam": "DSH 的 Provider 注册机制允许自定义 transport 接管特定网关的协议处理，绕过内置适配器的 compat 配置限制",
+      "currentPi2dshGap": "pi2dsh 0.17 已支持 Provider-owned Pi transports，但尚未提供针对此场景的现成 transport 实现。需要创建一个通用的 OpenAI 兼容 transport，支持显式声明 developer 角色支持情况，并在不支持时自动回退到 system 角色。",
+      "implementationTask": "创建一个通用的 OpenAI 兼容 Pi transport，支持配置 supportsDeveloperRole 开关，当设为 false 时将所有 developer 角色消息转换为 system 角色，并确保 reasoning effort 参数正确传递。该 transport 应作为 pi2dsh 的标准组件，可被任何自定义 OpenAI 兼容网关复用。",
+      "genericStandardWork": true,
+      "affectedProviders": [
+        "所有自定义 OpenAI 兼容网关（如百炼 compatible-mode、其他只支持 system 角色的网关）"
+      ],
+      "acceptanceE2E": [
+        "配置百炼 compatible-mode 网关，设置 supportsDeveloperRole: false",
+        "验证推理模型思考强度选择器可用",
+        "发起带 effort 的请求，确认请求体使用 system 角色而非 developer",
+        "确认请求返回 200 而非 400",
+        "验证配置 supportsDeveloperRole: true 时行为不变（使用 developer 角色）"
+      ],
+      "replyCondition": "在 pi2dsh 中实现并验证了支持 supportsDeveloperRole 配置的通用 OpenAI 兼容 transport，且通过百炼 compatible-mode 网关的 E2E 测试",
+      "devCluster": "provider-role-compat-transport",
+      "confidence": 0.8,
+      "fullBodyChars": 5988,
+      "topLevelCommentCount": 0,
+      "replyCount": 0
+    },
+    {
+      "number": 3407,
+      "verdict": "dsh_upstream",
+      "missingLayer": "dsh_core",
+      "actualProblem": "第三方 OpenAI 兼容 provider 返回 server_error/overload 文本错误时，pi-ai 适配器将其分类为 PI_AI_ERROR 而非 SERVER，导致 llm-retry 不重试，用户请求立即失败",
+      "requiredSemantics": [
+        "server_error 文本标记应分类为 SERVER 错误码",
+        "SERVER 错误码应触发默认重试策略",
+        "错误分类应保留原始错误上下文而非仅扁平化文本"
+      ],
+      "latestThreadState": "GCSimba 在 master 上复现并提供了窄补丁（fork commit 736420c），将 server_error 映射到 SERVER 并添加回归测试；denial123789 提供了操作手册，确认 rc.8 默认重试为 5 次而非 2 次，并说明 PI_AI_ERROR 加入重试白名单不安全",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3407#discussioncomment-18085045",
+          "fact": "GCSimba 复现问题并提供 fork 补丁，将 server_error 映射到 SERVER 错误码"
+        },
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3407#discussioncomment-18086248",
+          "fact": "denial123789 确认 rc.8 默认重试 5 次，PI_AI_ERROR 加入重试白名单不安全"
+        }
+      ],
+      "piPublicSemantic": "none",
+      "dshPublicSeam": "classifyPiAiError 是 DSH 核心 llm-pi-ai 包的内部实现，llm-retry 策略在 DSH 核心 retry-policy.ts 中定义",
+      "currentPi2dshGap": "none",
+      "implementationTask": "none",
+      "genericStandardWork": false,
+      "affectedProviders": [],
+      "acceptanceE2E": [],
+      "replyCondition": "DSH 上游合并修复 classifyPiAiError 的补丁，或用户接受 fork 补丁作为解决方案",
+      "devCluster": "dsh-core-error-classification",
+      "confidence": 0.95,
+      "fullBodyChars": 1318,
+      "topLevelCommentCount": 2,
+      "replyCount": 0
+    },
+    {
+      "number": 3493,
+      "verdict": "ready_reply",
+      "missingLayer": "none",
+      "actualProblem": "用户询问 dsh --profile headless 是否支持类似 oh-my-pi 的 --thinking max 参数来配置 reasoningEfforts",
+      "requiredSemantics": [
+        "headless 模式下按调用指定 reasoning effort",
+        "reasoningEfforts 模型元数据与 provider 配置的区分",
+        "共享 DSH_HOME 时 Web 与 headless 的默认值一致性"
+      ],
+      "latestThreadState": "denial123789 的评论确认 rc.8 headless 解析器没有 per-invocation --thinking 标志，但解释了现有机制：模型声明 reasoningEfforts 级别，provider profile 的 reasoning 字段设置部署默认值，Web 选择会持久化到 settings.yaml 供 headless 复用，并提供 --patch overlay 方案用于隔离自动化。评论还警告不同 adapter 家族字段名不同，需从请求头和 wire 请求验证实际值。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3493#discussioncomment-18087227",
+          "fact": "rc.8 headless 无 per-invocation --thinking 标志，但可通过共享 settings.yaml 或 --patch overlay 实现等效功能"
+        }
+      ],
+      "piPublicSemantic": "none",
+      "dshPublicSeam": "none",
+      "currentPi2dshGap": "none",
+      "implementationTask": "none",
+      "genericStandardWork": false,
+      "affectedProviders": [],
+      "acceptanceE2E": [],
+      "replyCondition": "评论已完整回答用户问题，说明现有机制和替代方案，无需 pi2dsh 介入",
+      "devCluster": "headless-reasoning-effort-existing-paths",
+      "confidence": 0.95,
+      "fullBodyChars": 52,
+      "topLevelCommentCount": 1,
+      "replyCount": 0
+    },
+    {
+      "number": 3495,
+      "verdict": "pi_provider_product_gap",
+      "missingLayer": "pi_provider_product",
+      "actualProblem": "用户手动配置Bailian Token Plan自定义提供商时，因缺少推理元数据、developer角色兼容标志和schema验证错误提示，导致推理选择器不显示、developer角色400错误和误导性的API key无效错误。",
+      "requiredSemantics": [
+        "自定义提供商配置时自动继承或可配置推理元数据（reasoningEfforts）",
+        "compatProfile schema支持supportsDeveloperRole字段配置",
+        "schema验证失败时向用户显示明确错误信息",
+        "catalog路由支持models合并模式而非完全替换"
+      ],
+      "latestThreadState": "denial123789确认rc.7中compatProfile仅支持thinkingFormat和supportsReasoningEffort，rc.8已扩展支持supportsDeveloperRole和modelOverrides。建议rc.7用户使用最小catalog路由配置，并提供了版本感知的排障手册。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3495#discussioncomment-18087167",
+          "fact": "rc.7中compatProfile仅支持thinkingFormat和supportsReasoningEffort，rc.8扩展支持supportsDeveloperRole和modelOverrides"
+        }
+      ],
+      "piPublicSemantic": "Pi Provider的compatProfile schema和models替换语义",
+      "dshPublicSeam": "DSH的llm-pi-ai provider配置和catalog路由机制",
+      "currentPi2dshGap": "无直接gap，问题在于Pi Provider产品的配置UX和schema设计",
+      "implementationTask": "在Pi Provider产品中改进自定义提供商配置体验：1) GUI暴露内置catalog路由；2) 扩展compatProfile schema支持supportsDeveloperRole；3) 提供models合并模式；4) schema验证失败时显示明确错误",
+      "genericStandardWork": true,
+      "affectedProviders": [
+        "Bailian Token Plan CN",
+        "所有使用openai-completions API的自定义提供商"
+      ],
+      "acceptanceE2E": [
+        "自定义Bailian提供商配置后推理选择器正常显示",
+        "多轮对话不出现developer角色400错误",
+        "schema验证失败时用户看到明确错误信息而非API key无效",
+        "catalog路由支持添加额外模型而不丢失内置元数据"
+      ],
+      "replyCondition": "确认Pi Provider产品已实现上述改进或提供明确的版本迁移路径",
+      "devCluster": "provider-config-ux-schema",
+      "confidence": 0.9,
+      "fullBodyChars": 7649,
+      "topLevelCommentCount": 1,
+      "replyCount": 0
+    },
+    {
+      "number": 3538,
+      "verdict": "ready_reply",
+      "missingLayer": "none",
+      "actualProblem": "用户使用 opencode go 套餐时部分模型报 API key is invalid 错误，需要临时解决方案来正确配置和使用这些模型。",
+      "requiredSemantics": [
+        "支持按协议分组配置多个 provider 路由",
+        "支持自定义 API 地址和模型列表",
+        "支持共享同一凭证引用",
+        "支持 openai-completions、openai-responses、anthropic-messages 三种协议"
+      ],
+      "latestThreadState": "denial123789 指出 opencode go 套餐混合了三种协议（openai-completions、openai-responses、anthropic-messages），DSH rc.8 的 Fetch available models 不导入 per-model 协议，建议按协议创建三个 provider 路由。simplifyOurLife 确认并提供了具体的三路由配置表（opencode-go-chat、opencode-go-responses、opencode-go-messages）。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3538#discussioncomment-18088846",
+          "fact": "denial123789 指出 opencode go 套餐混合三种协议，DSH rc.8 不导入 per-model 协议，建议按协议创建三个 provider 路由"
+        },
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3538#discussioncomment-18089353",
+          "fact": "simplifyOurLife 确认并提供了三个协议路由的具体配置表"
+        }
+      ],
+      "piPublicSemantic": "none",
+      "dshPublicSeam": "DSH 支持自定义 provider 路由，可配置 api 协议、base URL、凭证引用和模型列表",
+      "currentPi2dshGap": "none",
+      "implementationTask": "none",
+      "genericStandardWork": false,
+      "affectedProviders": [],
+      "acceptanceE2E": [
+        "按协议创建三个 provider 路由后，各协议模型均可正常调用",
+        "共享凭证引用在三个路由中均有效",
+        "模型列表可通过 Fetch available models 获取或手动配置"
+      ],
+      "replyCondition": "用户已确认三路由配置方案可行，问题已解决，无需进一步操作",
+      "devCluster": "provider-protocol-routing",
+      "confidence": 0.95,
+      "fullBodyChars": 434,
+      "topLevelCommentCount": 2,
+      "replyCount": 2
+    },
+    {
+      "number": 3745,
+      "verdict": "ready_reply",
+      "missingLayer": "none",
+      "actualProblem": "用户使用百炼云端API的qwen3.8-max模型，通过harness gateway转发时速度仅7.7 tok/s，而直连DeepSeek官方API为81 tok/s，询问是否遇到相似问题并寻求原因。",
+      "requiredSemantics": [
+        "区分模型档位差异（max档 vs 快速档）",
+        "验证harness转发是否引入额外延迟",
+        "检查qwen3系列默认思考模式对速度的影响"
+      ],
+      "latestThreadState": "PensiveFei已给出完整诊断：qwen3.8-max是百炼max档，本身速度等级与DeepSeek不同；建议直连百炼对比测试；提示检查enable_thinking参数。用户已确认使用百炼API和harness gateway。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3745#discussioncomment-18101873",
+          "fact": "PensiveFei询问部署方式和模型档位，指出max档速度差异正常"
+        },
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3745#discussioncomment-18102422",
+          "fact": "用户确认使用百炼API的qwen3.8-max和harness gateway"
+        },
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3745#discussioncomment-18106848",
+          "fact": "PensiveFei提供直连测试代码，建议检查enable_thinking参数"
+        }
+      ],
+      "piPublicSemantic": "none",
+      "dshPublicSeam": "none",
+      "currentPi2dshGap": "none",
+      "implementationTask": "none",
+      "genericStandardWork": false,
+      "affectedProviders": [],
+      "acceptanceE2E": [],
+      "replyCondition": "已有完整诊断方案，无需进一步调查即可回复",
+      "devCluster": "provider-speed-diagnosis",
+      "confidence": 0.95,
+      "fullBodyChars": 174,
+      "topLevelCommentCount": 3,
+      "replyCount": 0
+    },
+    {
+      "number": 3813,
+      "verdict": "ready_reply",
+      "missingLayer": "none",
+      "actualProblem": "用户需要让 DSH 能够连接 OAuth 保护的 MCP 服务器，当前 dsh-mcp-client 只支持静态 headers，无法处理 OAuth 流程（发现、注册、PKCE、刷新）。",
+      "requiredSemantics": [
+        "OAuth 授权服务器发现",
+        "动态客户端注册",
+        "PKCE 授权码流程",
+        "令牌持久化和刷新",
+        "浏览器回调处理",
+        "MCP 服务器连接和工具发现"
+      ],
+      "latestThreadState": "weijiafu14 的评论提供了完整的解决方案：pi2dsh 运行未修改的 pi-mcp-adapter 包作为 DSH 插件，通过标准 DSH 插件工作流安装，使用 /mcp-auth 命令触发 OAuth 流程。已在真实 Atlassian 服务上验证：授权服务器发现、动态客户端注册、PKCE、浏览器回调、凭证持久化、MCP 重连和 26 个工具发现全部完成。DeepSeek 成功调用 atlassian_atlassianUserInfo 工具，DSH 会话日志包含非错误的 tool/result。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3813#discussioncomment-18114703",
+          "fact": "pi2dsh 运行未修改的 pi-mcp-adapter 作为 DSH 插件，通过标准插件工作流安装，使用 /mcp-auth 命令完成 OAuth 流程"
+        },
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3813#discussioncomment-18114703",
+          "fact": "真实 Atlassian 服务验证成功：授权服务器发现、动态客户端注册、PKCE、浏览器回调、凭证持久化、MCP 重连和 26 个工具发现全部完成"
+        },
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3813#discussioncomment-18114703",
+          "fact": "DeepSeek 成功调用 atlassian_atlassianUserInfo 工具，DSH 会话日志包含非错误的 tool/result"
+        }
+      ],
+      "piPublicSemantic": "pi-mcp-adapter 的 OAuth 能力：授权服务器发现、动态客户端注册、PKCE、令牌持久化和刷新",
+      "dshPublicSeam": "DSH 插件系统：dsh plugin --profile web add 命令安装插件，/mcp-auth 命令触发 OAuth 流程",
+      "currentPi2dshGap": "无 - pi2dsh 已完整映射 pi-mcp-adapter 的 OAuth 能力到 DSH 插件系统",
+      "implementationTask": "无 - 解决方案已实现并验证",
+      "genericStandardWork": true,
+      "affectedProviders": [
+        "pi-mcp-adapter"
+      ],
+      "acceptanceE2E": [
+        "在 DSH 中安装 pi2dsh 和 pi-mcp-adapter 插件",
+        "配置 .mcp.json 声明 OAuth 保护的远程服务器",
+        "运行 /mcp-auth 命令完成 OAuth 流程",
+        "验证工具发现和调用成功",
+        "验证令牌持久化和刷新"
+      ],
+      "replyCondition": "评论已提供完整解决方案并经过真实服务验证，可以直接回复用户",
+      "devCluster": "oauth-mcp-ecosystem-path",
+      "confidence": 0.95,
+      "fullBodyChars": 6529,
+      "topLevelCommentCount": 1,
+      "replyCount": 0
+    },
+    {
+      "number": 3816,
+      "verdict": "dsh_upstream",
+      "missingLayer": "dsh_core",
+      "actualProblem": "用户需要 DSH 的模型发现功能从网关实时拉取模型列表，而不是使用 pi-ai catalog 快照；同时希望同一提供商的不同协议模型能合并管理，避免被拆分成多个 provider。",
+      "requiredSemantics": [
+        "模型发现应支持实时从网关 GET /models 拉取，而非仅返回 catalog 快照",
+        "同一提供商应支持多协议并存，或能将实时拉取结果合并进 catalog 路由",
+        "模型元数据（contextWindow、maxTokens、input 多模态等）应自动获取而非手动填写",
+        "catalog 快照版本应可见，依赖范围应可更新"
+      ],
+      "latestThreadState": "用户报告 dsh 0.1.0-rc.8 中模型发现仅返回 pi-ai catalog 快照，不发起网络请求；手动配置 openai-completions 路由可实时拉取但导致同一提供商被拆成两个 provider。评论确认问题在 RC.2 仍未修复，用户建议自定义路由作为临时方案。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3816#discussioncomment-18118609",
+          "fact": "用户确认订阅的 DSV4f-vision 模型无法使用"
+        },
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3816#discussioncomment-18135041",
+          "fact": "用户确认 RC.2 版本仍未修复此问题，GLM5.3 无法使用"
+        },
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3816#discussioncomment-18135193",
+          "fact": "建议用户手动创建自定义路由作为临时解决方案"
+        }
+      ],
+      "piPublicSemantic": "none",
+      "dshPublicSeam": "dsh-llm-pi-ai 的 discoverModels() 方法，当前对 catalog 内已有提供商直接返回快照，不发起网络请求",
+      "currentPi2dshGap": "none",
+      "implementationTask": "none",
+      "genericStandardWork": false,
+      "affectedProviders": [],
+      "acceptanceE2E": [],
+      "replyCondition": "此问题属于 DSH 核心功能缺陷，需要 DSH 团队修改 discoverModels 逻辑或提供配置选项，pi2dsh 无法独立解决",
+      "devCluster": "dsh-core-model-discovery-catalog-snapshot",
+      "confidence": 0.95,
+      "fullBodyChars": 2744,
+      "topLevelCommentCount": 2,
+      "replyCount": 1
+    },
+    {
+      "number": 3825,
+      "verdict": "pi_provider_product_gap",
+      "missingLayer": "pi_provider_product",
+      "actualProblem": "用户需要 llm-pi-ai 适配器正确映射 pi-ai 已报告的 reasoning token 细分到 TokenUsage.reasoningTokens，使推理 token 计数在 DSH 中可见且不超过 outputTokens。",
+      "requiredSemantics": [
+        "pi-ai 的 Usage.reasoning 字段应映射到 TokenUsage.reasoningTokens",
+        "reasoningTokens 值必须小于或等于 outputTokens（因为 reasoning 是 output 的子集）",
+        "当 pi-ai 未报告 reasoning 时，reasoningTokens 应保持缺失（undefined）"
+      ],
+      "latestThreadState": "讨论无评论，原始报告完整描述了问题、复现步骤和已测试的修复方案。旧审计确认这是 llm-pi-ai 适配器的字段映射缺失，不是 DSH 核心问题。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3825",
+          "fact": "pi-ai 的 Usage.reasoning 字段在 openai-completions 中已填充，但 llm-pi-ai 的 mapUsage 仅映射四个字段，遗漏 reasoningTokens"
+        },
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3825",
+          "fact": "llm-deepseek 适配器已正确映射 reasoningTokens，与 llm-pi-ai 行为不一致"
+        },
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3825",
+          "fact": "用户已测试修复方案：在 mapUsage 中添加 reasoning 映射，reasoningTokens 正确到达且 <= outputTokens"
+        }
+      ],
+      "piPublicSemantic": "pi-ai 的 Usage.reasoning 字段：推理/思考 token 数，是 output 的子集，当 provider 报告时填充",
+      "dshPublicSeam": "TokenUsage.reasoningTokens 字段（dsh-llm/lib/types/types.d.ts:128），llm-deepseek 已正确映射",
+      "currentPi2dshGap": "llm-pi-ai 的 mapUsage 函数未映射 pi-ai 的 Usage.reasoning 到 TokenUsage.reasoningTokens，导致推理 token 细分丢失",
+      "implementationTask": "在 dsh-llm-pi-ai 的 mapUsage 函数中添加 reasoning 字段映射：当 usage.reasoning 存在时，映射为 reasoningTokens，并确保值不超过 outputTokens。同时更新 README 中关于 reasoning token 的错误说明。",
+      "genericStandardWork": true,
+      "affectedProviders": [
+        "llm-pi-ai"
+      ],
+      "acceptanceE2E": [
+        "使用本地 OpenAI 兼容服务器返回 completion_tokens_details.reasoning_tokens",
+        "通过 ctx.llm.stream() 驱动 llm-pi-ai 适配器",
+        "断言 TokenUsage.reasoningTokens 存在且 <= outputTokens",
+        "当 pi-ai 不报告 reasoning 时，断言 reasoningTokens 为 undefined"
+      ],
+      "replyCondition": "llm-pi-ai 适配器已实现 reasoning 字段映射并通过上述 E2E 测试",
+      "devCluster": "provider-reasoning-token-mapping",
+      "confidence": 0.95,
+      "fullBodyChars": 2230,
+      "topLevelCommentCount": 0,
+      "replyCount": 0
+    },
+    {
+      "number": 3917,
+      "verdict": "pi_provider_product_gap",
+      "missingLayer": "pi_provider_product",
+      "actualProblem": "用户希望 DeepSeek Harness 能通过官方 OAuth 流程连接 ChatGPT/OpenAI、Claude/Anthropic 和 Antigravity 账号，使用订阅套餐权益，无需手动配置 API 密钥，并支持断开连接和优雅回退到 API-key 配置。",
+      "requiredSemantics": [
+        "官方 OAuth 授权流程（每个提供商独立实现）",
+        "账号/套餐/能力信息展示",
+        "令牌安全存储与最小权限",
+        "断开连接与撤销访问",
+        "API-key 回退机制"
+      ],
+      "latestThreadState": "讨论无评论，无官方回复，无上游修复或重复标记。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3917",
+          "fact": "讨论请求为 ChatGPT/OpenAI、Claude/Anthropic、Antigravity 添加官方 OAuth 账号连接流程，无评论或回复。"
+        }
+      ],
+      "piPublicSemantic": "Pi Provider 可拥有自己的传输层和凭据管理，包括 OAuth 流程（如 pi-codex-image-gen 已实现 Codex OAuth）。",
+      "dshPublicSeam": "DSH 支持 Provider 注册、凭据管理和模型路由，允许 Provider 自定义认证和传输。",
+      "currentPi2dshGap": "pi2dsh 已支持 Provider 拥有的传输和 OAuth 凭据，但缺少针对 ChatGPT/OpenAI、Claude/Anthropic、Antigravity 的具体 OAuth 集成产品。",
+      "implementationTask": "为每个目标提供商（ChatGPT/OpenAI、Claude/Anthropic、Antigravity）创建 Pi Provider 包，实现官方 OAuth 流程、账号信息展示、令牌管理、断开/撤销和 API-key 回退。",
+      "genericStandardWork": false,
+      "affectedProviders": [
+        "ChatGPT/OpenAI",
+        "Claude/Anthropic",
+        "Antigravity"
+      ],
+      "acceptanceE2E": [
+        "使用 ChatGPT/OpenAI OAuth 连接后，DSH 模型调用成功且账号/套餐信息正确显示",
+        "使用 Claude/Anthropic OAuth 连接后，DSH 模型调用成功且账号/套餐信息正确显示",
+        "使用 Antigravity OAuth 连接后，DSH 模型调用成功且账号/套餐信息正确显示",
+        "断开连接后令牌被撤销且无法继续调用",
+        "OAuth 不可用时回退到 API-key 配置"
+      ],
+      "replyCondition": "在回复前需确认每个目标提供商是否有官方 OAuth API 可用，且 DSH 的 Provider 注册/凭据机制能支持这些流程。",
+      "devCluster": "provider-oauth-account-connect",
+      "confidence": 0.85,
+      "fullBodyChars": 1014,
+      "topLevelCommentCount": 0,
+      "replyCount": 0
+    },
+    {
+      "number": 3949,
+      "verdict": "dsh_upstream",
+      "missingLayer": "dsh_core",
+      "actualProblem": "用户需要让 OpenAI 兼容网关返回的 finish_reason: network_error 被识别为可重试错误，使 turn 自动重试而不是硬失败。",
+      "requiredSemantics": [
+        "llm-pi-ai 的 classifyPiAiError 需要识别 network_error/network-error/network error 变体并归类为 TRANSPORT",
+        "llm-deepseek 的 mapFinishReason 需要将 network_error/network-error 映射为 TRANSPORT 错误码",
+        "TRANSPORT 已在 DEFAULT_RETRYABLE_CODES 中，llm-retry 自动重试"
+      ],
+      "latestThreadState": "作者提供了完整修复（fork 分支 + 测试），并发布了过渡插件 @aiwayds/dsh-llm-net-retry@0.1.0，已在真实 dsh 0.1.0-rc.8 TUI 宿主上验证插件端到端工作。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3949#discussioncomment-18112480",
+          "fact": "插件在真实 dsh TUI 宿主上验证成功，turn 在第三次请求完成，重试链完整记录"
+        }
+      ],
+      "piPublicSemantic": "none",
+      "dshPublicSeam": "llm-pi-ai 的 classifyPiAiError 和 llm-deepseek 的 mapFinishReason 是 DSH 核心适配器代码",
+      "currentPi2dshGap": "none",
+      "implementationTask": "none",
+      "genericStandardWork": false,
+      "affectedProviders": [],
+      "acceptanceE2E": [],
+      "replyCondition": "无需回复，问题已由作者在 DSH 核心代码层面解决（fork 分支 + 插件），Pi 产品无法修改 DSH 核心适配器",
+      "devCluster": "dsh-core-error-classification",
+      "confidence": 0.95,
+      "fullBodyChars": 6658,
+      "topLevelCommentCount": 1,
+      "replyCount": 0
+    },
+    {
+      "number": 3957,
+      "verdict": "dsh_upstream",
+      "missingLayer": "dsh_core",
+      "actualProblem": "用户需要DSH提供实时模型目录刷新策略或命令，避免静态目录过期导致模型ID不可用",
+      "requiredSemantics": [
+        "实时模型目录刷新",
+        "超时/缓存/过期回退策略",
+        "配置作为事实来源"
+      ],
+      "latestThreadState": "无评论，问题保持原始状态，用户已提供手动物化模型ID的验证方案",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3957",
+          "fact": "用户验证手动物化实时模型ID到provider profile可解决目录过期问题"
+        }
+      ],
+      "piPublicSemantic": "none",
+      "dshPublicSeam": "dsh-llm-pi-ai的registerModelDiscovery作为UI候选发现机制",
+      "currentPi2dshGap": "none",
+      "implementationTask": "none",
+      "genericStandardWork": false,
+      "affectedProviders": [],
+      "acceptanceE2E": [],
+      "replyCondition": "DSH核心实现实时目录刷新策略或命令",
+      "devCluster": "dsh-core-catalog-refresh",
+      "confidence": 0.95,
+      "fullBodyChars": 1789,
+      "topLevelCommentCount": 0,
+      "replyCount": 0
+    },
+    {
+      "number": 3958,
+      "verdict": "e2e_only",
+      "missingLayer": "test_only",
+      "actualProblem": "用户希望更新llm-pi-ai适配器以支持opencode go的新模型，当前无法使用这些模型。",
+      "requiredSemantics": [
+        "新模型ID在DSH模型目录中可被识别和列出",
+        "新模型ID可通过llm-pi-ai适配器成功发起请求",
+        "新模型ID的请求/响应兼容性验证"
+      ],
+      "latestThreadState": "仅有一个用户附议，无维护者回复，无上游修复或重复讨论的证据。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/3958#discussioncomment-18113619",
+          "fact": "用户附议，表示同样需要更新适配器以支持新模型。"
+        }
+      ],
+      "piPublicSemantic": "none",
+      "dshPublicSeam": "DSH模型目录和llm-pi-ai适配器的模型路由机制",
+      "currentPi2dshGap": "none",
+      "implementationTask": "验证新模型ID在DSH中通过llm-pi-ai适配器的可用性，包括模型目录列出和实际请求。",
+      "genericStandardWork": true,
+      "affectedProviders": [
+        "llm-pi-ai"
+      ],
+      "acceptanceE2E": [
+        "配置新模型ID后，dsh --models能列出该模型",
+        "使用新模型ID发起请求能成功返回响应",
+        "请求/响应格式与现有模型兼容"
+      ],
+      "replyCondition": "需要先确认新模型ID在DSH中的实际可用性，通过E2E测试验证后再回复。",
+      "devCluster": "provider-model-catalog-update",
+      "confidence": 0.8,
+      "fullBodyChars": 18,
+      "topLevelCommentCount": 1,
+      "replyCount": 0
+    },
+    {
+      "number": 4190,
+      "verdict": "ready_reply",
+      "missingLayer": "none",
+      "actualProblem": "headless 运行使用 openai-codex OAuth 路由时，进程在完成后滞留 5 分钟，因为 pi-ai 的 session WebSocket 缓存未被清理。",
+      "requiredSemantics": [
+        "pi-ai 的 cleanupSessionResources(sessionId) 在 Agent 生命周期结束时被调用",
+        "Codex session WebSocket 缓存和 idle timer 在 Agent 销毁时被同步清理",
+        "Agent-scope 的清理逻辑在并发 listener 卸载时仍然存活"
+      ],
+      "latestThreadState": "Jstn-1g 提供了参考修复 commit 和 branch，实现了 Agent-scope 的 session 资源清理，验证了 268/268 测试通过，100% 覆盖率，并提供了确定性回归测试。",
+      "sourceEvidence": [
+        {
+          "url": "https://github.com/deepseek-ai/deepseek-harness/discussions/4190#discussioncomment-18129953",
+          "fact": "Jstn-1g 提供了参考修复，在 Agent scope 中安装 cleanupSessionResources 调用，同步清理 5 分钟 idle timer 和 WebSocket 缓存，验证了完整测试套件通过。"
+        }
+      ],
+      "piPublicSemantic": "pi-ai 提供 cleanupSessionResources(sessionId) 公共 API 用于清理 session 资源",
+      "dshPublicSeam": "Agent 生命周期结束时的 scope teardown 钩子",
+      "currentPi2dshGap": "none - 参考修复已实现并验证",
+      "implementationTask": "none - 参考修复已提供并验证",
+      "genericStandardWork": false,
+      "affectedProviders": [
+        "openai-codex"
+      ],
+      "acceptanceE2E": [
+        "headless 运行使用 openai-codex OAuth 路由后，进程在 <10 秒内退出",
+        "确定性回归测试通过（无账号依赖）",
+        "268/268 llm-pi-ai 测试通过"
+      ],
+      "replyCondition": "参考修复已由社区成员验证并提交，无需 pi2dsh 额外工作",
+      "devCluster": "agent-session-resource-cleanup",
+      "confidence": 0.95,
+      "fullBodyChars": 2020,
+      "topLevelCommentCount": 1,
+      "replyCount": 0
+    }
+  ]
+}

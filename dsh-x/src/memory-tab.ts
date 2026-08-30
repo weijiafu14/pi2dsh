@@ -26,6 +26,7 @@ interface MemoryStateView {
   standing: string[]
   standingBudget: { entries: number, maxEntries: number, chars: number, maxChars: number }
   projects: Record<string, MemoryEntry[]>
+  currentProject?: string | null
 }
 
 interface SidebarTabScope { sessionId: string }
@@ -116,7 +117,7 @@ function MemoryPanelBody({ session, active }: { session: string, active: boolean
     let live = true
     const pull = async () => {
       try {
-        const response = await fetch('/dsh-x/memory-state')
+        const response = await fetch(`/dsh-x/memory-state?session=${encodeURIComponent(session)}`)
         if (!live) return
         if (!response.ok) {
           setFailed(true)
@@ -159,8 +160,16 @@ function MemoryPanelBody({ session, active }: { session: string, active: boolean
 
   const total = state.global.length + state.user.length
     + Object.values(state.projects).reduce((sum, entries) => sum + entries.length, 0)
+  // The project you are working in comes FIRST, named as such; other
+  // projects, then cross-project groups, follow.
+  const current = state.currentProject ?? undefined
   const groups: Array<[string, MemoryEntry[]]> = [
-    ...Object.entries(state.projects).map(([name, entries]): [string, MemoryEntry[]] => [`Project · ${name}`, entries]),
+    ...(current !== undefined && state.projects[current] !== undefined
+      ? [[`This project · ${current}`, state.projects[current]] as [string, MemoryEntry[]]]
+      : []),
+    ...Object.entries(state.projects)
+      .filter(([name]) => name !== current)
+      .map(([name, entries]): [string, MemoryEntry[]] => [`Project · ${name}`, entries]),
     ['Global', state.global],
     ['About you', state.user],
   ]

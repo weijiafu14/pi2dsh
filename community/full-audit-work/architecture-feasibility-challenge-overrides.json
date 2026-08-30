@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "overrides": [
+    {
+      "number": 75,
+      "decision": "revise",
+      "originalVerdict": "multi_product_composition",
+      "verdict": "multi_product_composition",
+      "owner": "composition",
+      "engineeringCluster": "session_import_search",
+      "sharedCapabilities": ["session_persistence", "remote_channels", "web_client"],
+      "recommendedProducts": ["remote-pi", "pi2dsh"],
+      "solution": "组合 pi2dsh 的 DSH 持久会话只读投影与 remote-pi 类远程客户端：远程列出会话、按会话打开历史并继续当前会话。只读浏览不需要原生会话写入，也不能用网页搜索包代替。",
+      "blocker": "现有远程产品尚未在 pi2dsh 上完成 DSH 多会话目录与历史打开 E2E；不是 DSH 原生写入接缝问题。",
+      "evidenceNeeded": "远程客户端连接 DSH，列出至少三个持久会话，打开各自历史且不串会话；选择一个会话继续对话，重启后仍可访问。",
+      "cost": "m",
+      "confidence": 0.95,
+      "challengeReason": "原帖只要求像 Codex 一样远程翻看既有历史；第一遍产品组合方向正确，但错误推荐了 Web Search 产品。",
+      "manualOverride": true
+    }
+  ]
+}

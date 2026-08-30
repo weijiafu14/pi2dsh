@@ -3,10 +3,15 @@
 **One install that turns a stock [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) into a batteries-included agent workstation.**
 
 ```sh
-dsh plugin --profile <your-profile> add dsh-work-x
+dsh plugin --profile web add dsh-work-x dsh-better-sidebar
 ```
 
-Restart `dsh` (plugins mount at startup). That is the entire setup: the suite
+Restart `dsh` (plugins mount at startup). One line, two packages: the suite,
+and the sidebar its Memory/Tasks/MCP workbench tabs live in — the sidebar IS
+the primary form of the suite's product UI. (Headless/CLI profiles can drop
+`dsh-better-sidebar`; DSH has no way yet for one plugin to auto-install a
+companion — [proposed upstream](https://github.com/deepseek-ai/deepseek-harness/discussions/4543) —
+which is the only reason this is two names instead of one.) That is the entire setup: the suite
 carries the [pi2dsh](https://github.com/weijiafu14/pi2dsh) engine and six
 capability packages, versions pinned to combinations that have been verified
 end to end on a real DSH loop — never "should work", always "was watched
@@ -59,34 +64,43 @@ subagents natively (click through to steer or stop them), and dsh-work-x adds an
 **MCP tab** there — this session's servers grouped by layer (project /
 global), with per-project enable/disable. A machine-wide view of the same
 servers lives in **Settings → MCP** and works with or without the sidebar.
-With the sidebar installed, **Memory** and **Tasks** tabs appear there too —
+With the sidebar installed, **Memory** and **Jobs** tabs appear there too —
 the same panels in workbench form. Without
 `dsh-better-sidebar` everything still runs — Settings → Memory and the tasks
 chip carry the same functionality. (DSH has no way yet for one plugin to declare a companion bundle —
 [we've proposed one](https://github.com/deepseek-ai/deepseek-harness/discussions/4543) —
 so the install command names both.)
 
-## Memory page & tasks chip
+## Memory & background tasks
 
-No floating-button clutter: the side-chat dot stays the only floating piece.
+**Primary form — the sidebar.** With the one-line install above, the right
+sidebar (VSCode-style, per session) carries the suite's workbench tabs: open
+the **＋** next to the tab strip and add **Memory** or **Jobs** — they sit
+beside Files, Terminal, Source Control, and stay while you chat.
 
-- **Settings → Memory** — everything the agent durably remembers, grouped by
-  project / global / about-you, with search; the *Pinned rules* section
-  manages standing instructions injected into every turn (pin, unpin, hard
-  budget shown). The writes run `pi-hermes-memory`'s own `/memory-pin`
-  command, so the store's single-writer anti-injection design holds; the
-  memory list itself is read-only by design — edits and deletions go through
-  the agent's memory tools so store and search index never drift.
-- **Tasks chip** — while background jobs run, a small clickable chip joins
-  the host's own status row beside the composer ("1 task running"). Click it
-  for each job's status, live output while it still runs, and a one-click
-  kill (the package's own `/kill`). No jobs, no chip.
+- **Memory tab** — *This project*'s memories first (named as such), then
+  other projects, global, and about-you groups, with search. The *Pinned
+  rules* section manages standing instructions injected into every turn:
+  pin from the input, unpin per entry, hard budget shown. Writes run
+  `pi-hermes-memory`'s own `/memory-pin` command, so the store's
+  single-writer anti-injection design holds; the memory list itself is
+  read-only by design — edits and deletions go through the agent's memory
+  tools so store and search index never drift.
+- **Jobs tab** — each background job's status, runtime and bytes; *show
+  output* streams a job's output while it is still running; *Kill* runs the
+  package's own `/kill`.
 
-Both were verified by the automated regression end to end on a clean install:
-the Memory page shows a fact that exists only in the plugin's store, a pin
-round-trips through STANDING.md and back out, and the chip's kill provably
-ends a 180-second job early — asserted from the store files and the task
-snapshots on disk, not from page text.
+**Without the sidebar** (headless-leaning installs) the same functionality
+stays reachable: **Settings → Memory** is the full memory page, and while
+jobs run a small clickable **"N tasks running" chip** joins the host's own
+status row under the composer — click for the same panel; no jobs, no chip.
+The side-chat dot stays the only floating piece either way.
+
+Verified by the automated regression end to end on clean installs: the
+memory surfaces show a fact that exists only in the plugin's store, a pin
+round-trips through STANDING.md and back out, and the kill provably ends a
+180-second job early — asserted from the store files and task snapshots on
+disk, not from page text.
 
 ## Configuration
 

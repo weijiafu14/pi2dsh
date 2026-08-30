@@ -951,3 +951,24 @@ per-chunk 成本随累积长度上升（0.081→0.493ms）；64KB 参数≈1.6s 
 | 666 | 两件事拆开：文案骗人 + 重试机制其实存在只是没开放配置 | 见下 |
 
 上游报账（不发，攒着）：body 字段透传缺失（消费者 #3761/#599）。
+
+## 产品形态整改（2026-08-30，用户两轮拍板后定稿）
+
+用户毙掉三圆点堆叠 → 立"web 交互视觉皆测试对象"标准 → 再拍板"sidebar 是主形态、
+项目记忆进项目"。最终形态：
+- **主形态 = dsh-better-sidebar 右侧栏**：Memory / Jobs 标签（+ 菜单添加；Tasks 名与 sidebar 内建子代理页撞名——E2E 抓到后改名 Jobs），
+  Memory 面板"This project · <名>"置顶本项目记忆；安装主命令一行装两包
+  （dsh plugin --profile web add dsh-work-x dsh-better-sidebar）。
+  "装一个自动带起另一个"实测走不通：宿主 client 发现只认直接安装的包根
+  （typert loader 同款"subpath rows 永不贡献"注释实锤），缺口即上游提案 #4543。
+- **stock 兜底**：Settings → Memory 完整管理页（pin 写经引擎新增"空 session=
+  任一挂载会话"通用路由）；任务 = composer 状态行可点小字条 + 面板。
+- 右下角仅存用户亲定的侧聊圆点。
+- 假绿抓获：整卡 textContent 无空格拼接使 \brunning\b 永假（02/03 截图字节
+  相同实锤）；徽章独立标记后复跑真实 killed 画面。
+- 驱动坑沉淀：悬浮菜单被 shot() 的泊停鼠标关闭——菜单项须"同一口气"拿坐标
+  直接点；sidebar 标签在 + 菜单里而非常驻标签条。
+- sidebar 实测三连图（76-78）：标签条 Files|Memory|Jobs 并排，Jobs 内任务卡
+  running+Kill；驱动坑再 +2：加号是 SVG 无文本节点（文本定位全灭，锚定最右
+  标签题探测右侧偏移）、heredoc 替换假成功一次（编辑标记没匹配却打印成功，
+  此后改用 Edit 精确替换）。

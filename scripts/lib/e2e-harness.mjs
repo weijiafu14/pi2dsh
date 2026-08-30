@@ -85,6 +85,9 @@ export function createE2eHarness({ dshRoot, directDshBin, dshBin, dshCwd }) {
             // README of examples/persistent-memory tells users the same thing
             // (approve-builds better-sqlite3).
             "  'better-sqlite3': true",
+            // dsh-better-sidebar's terminal tab needs node-pty built; same
+            // approve-builds story as the CLI install docs already give.
+            "  'node-pty': true",
           ]
           const pnpmStore = directDshBin === undefined
             ? join(dshRoot, 'node_modules', '.pnpm')

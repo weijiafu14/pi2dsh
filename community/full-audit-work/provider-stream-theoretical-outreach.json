@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "auditedAt": "2026-08-25",
+  "basis": {
+    "providerPackage": "pi-provider-litellm",
+    "providerPackageVersionObserved": "2.2.1",
+    "piAiSnapshot": "0.84.1",
+    "pi2dshVersion": "0.17.1",
+    "sourceChain": [
+      "pi-provider-litellm createProvider + openAICompletionsApi",
+      "Pi openai-completions ensureToolCallBlock indexed accumulation and truthy id/name updates",
+      "pi2dsh providerCarriesTransport + llm.registerAdapter projection",
+      "pi2dsh piEventsToDshChunks final identity projection"
+    ]
+  },
+  "drafts": [
+    {
+      "number": 2820,
+      "body": "这个问题可以尝试绕开 `dsh-llm-deepseek` 的流式拼接器：让一个自带 transport 的 Pi Provider 负责 OpenAI-compatible SSE，再由 `pi2dsh` 把它注册成 DSH 原生模型 route。现成可试的是 `pi-provider-litellm`：\n\n```sh\ndsh plugin --profile web add pi2dsh\ndsh plugin --profile web add pi-provider-litellm\nexport LITELLM_BASE_URL=\"<你的 OpenAI-compatible 服务根地址>\"\nexport LITELLM_API_KEY=\"<你的 key>\"\n# 重启 dsh，再从模型选择器选择该 route\n```\n\n我对代码链做了逐段核对：该包通过 Pi 的 `createProvider + openAICompletionsApi` 自己接收 SSE；Pi 按 `tool_calls[].index` 保存同一个调用，并且只有在 `id/name` 为非空值时才更新，所以后续的 `name: \"\"` 不会覆盖首个有效名称。`pi2dsh` 检测到包带 `streamSimple` 后通过 DSH 的 `llm.registerAdapter` 注册 route，最终的非空 name/id 再进入 DSH 工具执行。\n\n这条链在源码语义上能避开原帖指出的覆盖代码；我没有你的具体 DeepSeek 订阅/端点，尚未替你跑账号级 E2E。你如果愿意试一下，把脱敏后的错误和模型 ID 发到 https://github.com/weijiafu14/pi2dsh/issues ，我会沿真实端点继续解决。"
+    },
+    {
+      "number": 2823,
+      "body": "这个 `null` 覆盖问题可以尝试用 provider-owned transport 绕开，而不是继续经过会把 `null !== undefined` 当更新的 DSH adapter。安装 `pi-provider-litellm` 后，请求与 SSE 由 Pi 的 OpenAI-compatible transport 处理，再由 `pi2dsh` 注册成 DSH 原生 route：\n\n```sh\ndsh plugin --profile web add pi2dsh\ndsh plugin --profile web add pi-provider-litellm\nexport LITELLM_BASE_URL=\"https://opencode.ai/zen/go\"   # 或你的代理根地址\nexport LITELLM_API_KEY=\"<你的 key>\"\n# 重启 dsh，选择 LiteLLM route 下的模型\n```\n\n源码链已经核对：`pi-provider-litellm` 使用 Pi 标准 `openAICompletionsApi`；解析器按 tool-call index 合并分片，只有 truthy 的 `id/name` 才写入 block，后续 `id:null, name:null` 不会覆盖首包值。`pi2dsh` 只把这个 transport 包装成 DSH `llm.registerAdapter` route，不会再把响应送回原帖那段 `translate.ts`。\n\n我没有 OpenCode Go 订阅，当前结论是源码级可行、不是该账号端点的实测结论。欢迎直接试；如果仍失败，把脱敏 SSE 形状或错误贴到 https://github.com/weijiafu14/pi2dsh/issues ，我来继续补齐。"
+    },
+    {
+      "number": 2855,
+      "body": "There is a source-level alternate route that avoids both the affected DeepSeek translator and its empty block-end identity. A transport-owning Pi provider such as `pi-provider-litellm` can parse the OpenAI-compatible stream itself, while `pi2dsh` registers that provider as a native DSH LLM route:\n\n```sh\ndsh plugin --profile web add pi2dsh\ndsh plugin --profile web add pi-provider-litellm\nexport LITELLM_BASE_URL=\"<your gateway root URL>\"\nexport LITELLM_API_KEY=\"<your key>\"\n# restart dsh and select the LiteLLM route\n```\n\nI audited the complete source path before suggesting this. `pi-provider-litellm` uses Pi's `createProvider` with `openAICompletionsApi`. Pi accumulates calls by `tool_calls[].index`, appends argument fragments, and only replaces the stored id/name when the incoming value is non-empty. A later `id: \"\"` or `name: null` therefore cannot erase the first valid identity. `pi2dsh` detects the provider's `streamSimple`, wraps it through `llm.registerAdapter`, and carries the finalized identity into DSH's tool block.\n\nI do not have your gateway deployment or subscription, so this is source-audited rather than an account-level E2E claim. If you try it and still reproduce the failure, please post a redacted stream/error at https://github.com/weijiafu14/pi2dsh/issues and I will follow the real response shape through the bridge."
+    },
+    {
+      "number": 3374,
+      "body": "这类“首包有 name/id，续包发 null 后覆盖”的问题，现有 Pi Provider 路线在代码上可以避开。可以让 `pi-provider-litellm` 自己处理 OpenAI-compatible SSE，再由 `pi2dsh` 注册为 DSH 原生模型 route：\n\n```sh\ndsh plugin --profile web add pi2dsh\ndsh plugin --profile web add pi-provider-litellm\nexport LITELLM_BASE_URL=\"<你的网关根地址>\"\nexport LITELLM_API_KEY=\"<你的 key>\"\n# 重启 dsh 并选择对应模型\n```\n\n我已经审过四段实现：Provider 确实自带 `streamSimple`；它调用 Pi 标准 `openAICompletionsApi`；Pi 按 index 合并工具分片，并只接受非空 id/name 更新；pi2dsh 再通过 `llm.registerAdapter` 把最终工具身份送进 DSH。因此续包的 `null` 不会回到原帖指出的 `dsh-llm-deepseek/translate.ts` 覆盖路径。\n\n我没有你使用的具体推理模型订阅/网关部署，所以先作为源码确认的可试方案提供。若实测仍失败，请把脱敏错误、模型 ID 和端点类型发到 https://github.com/weijiafu14/pi2dsh/issues ，我会继续按真实响应修。"
+    },
+    {
+      "number": 3384,
+      "body": "A usable alternate path is to let a transport-owning Pi provider parse the proxy's SSE instead of routing it through the affected `dsh-llm-deepseek` translator. `pi-provider-litellm` can be installed with `pi2dsh` and becomes a normal DSH model route:\n\n```sh\ndsh plugin --profile web add pi2dsh\ndsh plugin --profile web add pi-provider-litellm\nexport LITELLM_BASE_URL=\"<your LiteLLM/OneAPI/OpenAI-compatible gateway root>\"\nexport LITELLM_API_KEY=\"<your key>\"\n# restart dsh and select that route\n```\n\nI checked the implementation before posting: the package owns a `createProvider + openAICompletionsApi` transport; Pi accumulates tool calls by stream index and updates the stored id/name only for non-empty incoming values; `pi2dsh` recognizes `streamSimple`, registers it through DSH `llm.registerAdapter`, and forwards the finalized non-empty tool identity. Thus continuation chunks containing `null` cannot erase the first valid name/id.\n\nI do not have the gateway deployment used in this report, so this is a source-audited compatibility route rather than a live claim for that account. If it still fails on your endpoint, please send the redacted error/stream shape to https://github.com/weijiafu14/pi2dsh/issues and I will trace and fix the concrete incompatibility."
+    }
+  ],
+  "notClaimed": [
+    {
+      "number": 2859,
+      "reason": "The provider supplies no id for the entire call. Pi retains an empty id and pi2dsh currently forwards it; the alternate provider route does not close this case."
+    },
+    {
+      "number": 1149,
+      "reason": "The report demonstrates Codex materializing optional schema fields. Switching stream parsers does not remove those generated values or make DSH escalation validators accept null."
+    },
+    {
+      "number": 3342,
+      "reason": "The screenshot shows PTC/Code Mode dispatch and module-syntax failures, not null/empty SSE identity overwrite. A provider transport is not a demonstrated solution."
+    }
+  ]
+}

@@ -1,0 +1,2808 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-26T07:58:15.235Z",
+  "sourceCount": 350,
+  "classifiedCount": 350,
+  "results": [
+    {
+      "number": 63,
+      "owner": "dsh_core_bug",
+      "rootGap": "Session pinning to top of sidebar is a native DSH UI feature not exposed via any Pi capability",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Request upstream DSH to add session pinning to the native session list UI",
+      "confidence": 0.95
+    },
+    {
+      "number": 112,
+      "owner": "external_dependency",
+      "rootGap": "Third-party model's native vision input modality fails; pi2dsh provides alternate route but cannot fix the external model's API behavior",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Document pi2dsh's vision bridge as the workaround and report the native vision failure to the third-party provider",
+      "confidence": 0.9
+    },
+    {
+      "number": 126,
+      "owner": "workx_product_gap",
+      "rootGap": "Vim/Neovim plugin integration is a product-level feature not provided by the TUI package",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Build a Vim/Neovim plugin in dsh-work-x that wraps the existing pi2dsh TUI",
+      "confidence": 0.85
+    },
+    {
+      "number": 167,
+      "owner": "dsh_core_bug",
+      "rootGap": "Headless mode lacks --resume/--continue and session-id printing; native DSH CLI feature missing",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Request upstream DSH to add --resume/--continue to headless mode",
+      "confidence": 0.95
+    },
+    {
+      "number": 175,
+      "owner": "external_dependency",
+      "rootGap": "DeepSeek API unreachable or invalid key; external service issue not fixable by pi2dsh",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Guide user to verify API key and network connectivity to api.deepseek.com",
+      "confidence": 0.9
+    },
+    {
+      "number": 196,
+      "owner": "dsh_core_bug",
+      "rootGap": "Native @-file selection in DSH Web UI and custom provider reasoning effort UI are missing",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Request upstream DSH to add @-file selection and custom provider reasoning effort configuration",
+      "confidence": 0.9
+    },
+    {
+      "number": 205,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH-native web_fetch lacks proxy support; user explicitly requests fixing the native tool",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Submit the user's fork changes upstream to DSH for native web_fetch proxy support",
+      "confidence": 0.95
+    },
+    {
+      "number": 241,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH-native dual-model logic (plan vs main model) is not implemented",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Request upstream DSH to add dual-model planning support",
+      "confidence": 0.9
+    },
+    {
+      "number": 245,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH native multimodal input rejection when model supports images",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix DSH host-apiproxy prompt image modality check to respect model capabilities",
+      "confidence": 0.9
+    },
+    {
+      "number": 247,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH MCP client lacks total connection/discovery timeout",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Implement connectionTimeoutMs in dsh-mcp-client with single abort signal across discovery pages",
+      "confidence": 0.95
+    },
+    {
+      "number": 264,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH model selection UI hangs without user feedback",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Debug and fix DSH model selection hang in provider_model settings",
+      "confidence": 0.8
+    },
+    {
+      "number": 284,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH goal-mode allows complete while subagents still running",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Add subagent pending check in completionAuthority/GoalService.complete to reject premature completion",
+      "confidence": 0.95
+    },
+    {
+      "number": 299,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH workspace root directory selection and multi-directory support broken",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix DSH workspace root path handling and add multi-directory workspace support",
+      "confidence": 0.85
+    },
+    {
+      "number": 321,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH lacks unified auxiliary model slot mechanism with Vision slot",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Implement auxiliary slot system in DSH core with Vision/Title/Compression slots and auto fallback",
+      "confidence": 0.9
+    },
+    {
+      "number": 332,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH web_search adapter lacks time/source constraints and freshness reranking",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Add allowed_domains, as-of time context, and authority/freshness reranking to dsh-web-search-deepseek adapter",
+      "confidence": 0.9
+    },
+    {
+      "number": 366,
+      "owner": "workx_product_gap",
+      "rootGap": "No automatic flash/pro model switching based on task complexity",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Build a dsh-work-x plugin that routes tasks to flash/pro based on complexity heuristics",
+      "confidence": 0.7
+    },
+    {
+      "number": 421,
+      "owner": "workx_product_gap",
+      "rootGap": "A curated DSH-facing review workflow product (child agent with different model reviewing main agent output) is not packaged as an easy-to-use feature; users must manually set up the review loop.",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Package the existing pi-subagents review capability into a dsh-work-x review-mode plugin with one-command setup and a guided workflow.",
+      "confidence": 0.8
+    },
+    {
+      "number": 427,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH core admission layer rejects image blocks before skills can run for text-only models, breaking the native paste flow.",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix the DSH host-apiproxy admission check to allow image blocks to reach skills for text-only models, or add a configurable inputModalities override.",
+      "confidence": 0.95
+    },
+    {
+      "number": 444,
+      "owner": "external_dependency",
+      "rootGap": "DSH's bundled pi-ai catalog is stale; the fix requires bumping the upstream @earendil-works/pi-ai dependency, which is an external package update.",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Bump @earendil-works/pi-ai to >=0.84.1 in DSH's dependency tree and document the catalog refresh.",
+      "confidence": 0.9
+    },
+    {
+      "number": 455,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH native subagent inheritance uses creation-time default model instead of session's live model selection, causing credential resolution failures for third-party providers.",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix dsh-subagent's resolveChildAgentOptions to inherit the parent's live session-selected provider/model rather than creation-time defaults.",
+      "confidence": 0.95
+    },
+    {
+      "number": 456,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH core admission layer rejects pasted images for text-only models, preventing the native paste-to-describe flow from working.",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix the DSH host-apiproxy admission check to allow image blocks to reach skills for text-only models, or add a configurable inputModalities override.",
+      "confidence": 0.95
+    },
+    {
+      "number": 472,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH llm-pi-ai settings schema drops most pi-ai compat fields (supportsDeveloperRole, maxTokensField, supportsStore) for hand-declared providers, breaking custom routes.",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Expand the llm-pi-ai compat schema to accept all OpenAICompletionsCompat fields and pass them through to pi-ai.",
+      "confidence": 0.95
+    },
+    {
+      "number": 473,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH llm-pi-ai settings schema drops most pi-ai compat fields (supportsDeveloperRole, maxTokensField, supportsStore) for hand-declared providers, breaking custom routes.",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Expand the llm-pi-ai compat schema to accept all OpenAICompletionsCompat fields and pass them through to pi-ai.",
+      "confidence": 0.95
+    },
+    {
+      "number": 474,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH hardcodes text-only inputModalities in the DeepSeek adapter and rejects image attachments before skills can process them, blocking the vision-proxy workflow.",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Add a configurable inputModalities override in the DeepSeek adapter and allow image attachments to reach skills for text-only models.",
+      "confidence": 0.95
+    },
+    {
+      "number": 546,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH native steer injection timing and default agent presets (Codex/Claude Code) remain unfixed",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Patch DSH native steer injection timing and add default agent presets",
+      "confidence": 0.9
+    },
+    {
+      "number": 551,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH-native llm-pi-ai compat forwarding of supportsDeveloperRole remains unfixed",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Patch DSH llm-pi-ai resolveModelCompat to forward supportsDeveloperRole",
+      "confidence": 0.95
+    },
+    {
+      "number": 561,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH host admission gate rejects attachments when inputModalities excludes image",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Patch DSH host apiproxy to add AllowImageInputWhenUnsupported setting",
+      "confidence": 0.95
+    },
+    {
+      "number": 562,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH-native notification dedup, sandbox recursive-delete blocking, and progress API remain unfixed",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Patch DSH native subagent notification dedup, sandbox delete blocking, and list_agents progress API",
+      "confidence": 0.9
+    },
+    {
+      "number": 586,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH-native UI notification for child confirmation prompts remains unfixed",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Patch DSH native UI notification system to alert main session about child confirmations",
+      "confidence": 0.95
+    },
+    {
+      "number": 588,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH host admission logic (MODEL_DOES_NOT_SUPPORT_IMAGES) remains unfixed",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Patch DSH host admission gate to allow text placeholder with attachment reference",
+      "confidence": 0.95
+    },
+    {
+      "number": 590,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH-native main-session status display remains unfixed",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Patch DSH native main-session UI status logic to show waiting state",
+      "confidence": 0.95
+    },
+    {
+      "number": 599,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH-native llm-pi-ai metadata forwarding of sessionId as user_id remains unfixed",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Patch DSH llm-pi-ai adapter to forward sessionId as metadata.user_id and OpenAI user field",
+      "confidence": 0.95
+    },
+    {
+      "number": 634,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH settings page shows API key as read-only when provided by environment, preventing manual override",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix DSH settings page to allow manual API key override even when env var is set",
+      "confidence": 0.9
+    },
+    {
+      "number": 636,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH native provider adapter sends 'developer' role that third-party API rejects",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix DSH provider adapter to map developer role to system role for OpenAI-compatible APIs",
+      "confidence": 0.85
+    },
+    {
+      "number": 666,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH lacks configurable retry mechanism for third-party API failures",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Add configurable retry policy to DSH provider layer",
+      "confidence": 0.9
+    },
+    {
+      "number": 668,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH hardcodes retry count to 2, user needs configurable higher retry count",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Make retry count configurable in DSH settings",
+      "confidence": 0.95
+    },
+    {
+      "number": 684,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH agent loop wakes parent agent for each late subagent report after final answer",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix DSH agent loop to suppress confirmation turns after parent has delivered final answer",
+      "confidence": 0.9
+    },
+    {
+      "number": 691,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH channel routing selects wrong provider despite user selection",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix DSH channel routing to respect user-selected provider",
+      "confidence": 0.85
+    },
+    {
+      "number": 762,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH harness forbids multimodal input for current model",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix DSH multimodal input handling to allow image understanding",
+      "confidence": 0.8
+    },
+    {
+      "number": 766,
+      "owner": "workx_product_gap",
+      "rootGap": "No conversation anchor navigation UI like DeepSeek web's right-side outline",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Build a session outline/navigation panel as a DSH product plugin",
+      "confidence": 0.75
+    },
+    {
+      "number": 779,
+      "owner": "dsh_core_bug",
+      "rootGap": "Native DSH web_search tool is hardcoded to DeepSeek's search API and cannot work with other models",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix the native web_search tool implementation in DSH core to support configurable model backends",
+      "confidence": 0.9
+    },
+    {
+      "number": 780,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH's llm-pi-ai adapter lacks configurable OpenAICompletionsCompat switches for hand-declared routes",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Merge the user's branch to add compat switches to DSH's llm-pi-ai route configuration",
+      "confidence": 0.95
+    },
+    {
+      "number": 784,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH model switching between custom providers fails after using a multimodal model",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix DSH's native model selector and provider switching logic for custom multimodal models",
+      "confidence": 0.85
+    },
+    {
+      "number": 805,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH Web GUI tool call arguments are uniformly overwritten to {\"input\": \"\"} causing all required-param tools to fail",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix DSH's tool-call argument serialization bug in the Web GUI provider path",
+      "confidence": 0.95
+    },
+    {
+      "number": 807,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH replay state mismatch when max-tokens truncates tool-call blocks, causing INVALID_REPLAY_STATE errors",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix BlockAssembler and dsh-llm-pi-ai to sync or drop replay state on max-tokens truncation",
+      "confidence": 0.95
+    },
+    {
+      "number": 811,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH settings page marks DEEPSEEK_API_KEY as read-only, preventing users from adding new DeepSeek providers",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Remove the read-only restriction on DEEPSEEK_API_KEY in DSH's native settings page",
+      "confidence": 0.9
+    },
+    {
+      "number": 843,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH Web GUI lacks a reasoningEfforts editor for custom OpenAI-compatible provider models",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Add reasoningEfforts field to DSH's custom provider model editor and discovered model view",
+      "confidence": 0.95
+    },
+    {
+      "number": 876,
+      "owner": "not_addressable",
+      "rootGap": "User is showcasing their own dsh-vision plugin, not requesting a solution",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Acknowledge the plugin showcase without marketing pi2dsh as a replacement",
+      "confidence": 0.9
+    },
+    {
+      "number": 881,
+      "owner": "not_addressable",
+      "rootGap": "User is showcasing their own plugin, not requesting a solution",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "No action; acknowledge the plugin as complementary without marketing pi2dsh as a replacement",
+      "confidence": 0.95
+    },
+    {
+      "number": 889,
+      "owner": "not_addressable",
+      "rootGap": "User is showcasing their own plugin, not requesting a solution",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "No action; acknowledge the plugin as complementary without marketing pi2dsh as a replacement",
+      "confidence": 0.95
+    },
+    {
+      "number": 893,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH hard gating blocks MCP tool results before model calls",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "File a DSH core issue to allow MCP tool results to bypass hard gating when rules require pre-model vision processing",
+      "confidence": 0.9
+    },
+    {
+      "number": 931,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH-native provider adapter's tool-call handling is broken for v4 flash",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Report the adapter defect to DSH core with reproduction steps; pi2dsh alternate route is not a fix",
+      "confidence": 0.85
+    },
+    {
+      "number": 940,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH settings.yaml parsing and web-search model selection logic cannot be modified externally",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Request DSH core support for web-search model configuration in settings.yaml and default-to-current-model behavior",
+      "confidence": 0.9
+    },
+    {
+      "number": 941,
+      "owner": "dsh_core_bug",
+      "rootGap": "Workspace-scoped MCP configuration and runtime state require DSH core architecture changes",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "File a DSH core RFC for workspace-scoped configuration and runtime plane for MCP and project services",
+      "confidence": 0.9
+    },
+    {
+      "number": 947,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH core tool schema serialization omits required properties for custom gateways",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Report the tool schema serialization bug to DSH core with the custom gateway reproduction case",
+      "confidence": 0.85
+    },
+    {
+      "number": 967,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH session persistence and adapter serialization preserve lone surrogates causing API 400s",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "File a DSH core bug to sanitize lone surrogates in session history and adapter serialization",
+      "confidence": 0.95
+    },
+    {
+      "number": 987,
+      "owner": "workx_product_gap",
+      "rootGap": "DSH Web file browser and terminal UI surfaces",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Build a DSH Web plugin providing file browsing and terminal panels",
+      "confidence": 0.85
+    },
+    {
+      "number": 990,
+      "owner": "external_dependency",
+      "rootGap": "Ollama Cloud provider API integration with context/reasoning strength support",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Implement Ollama Cloud provider adapter in pi2dsh provider_model",
+      "confidence": 0.9
+    },
+    {
+      "number": 993,
+      "owner": "not_addressable",
+      "rootGap": "Full multi-model expert collaboration architecture with routing, compression, and risk controls",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Do not market; this is a broad research vision beyond current scope",
+      "confidence": 0.95
+    },
+    {
+      "number": 999,
+      "owner": "dsh_core_bug",
+      "rootGap": "Native environment isolation for agents (venv-like)",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Request upstream DSH environment isolation feature",
+      "confidence": 0.9
+    },
+    {
+      "number": 1011,
+      "owner": "dsh_core_bug",
+      "rootGap": "Read-only API key field in DSH Web settings UI",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Report and track DSH Web settings UI bug upstream",
+      "confidence": 0.95
+    },
+    {
+      "number": 1021,
+      "owner": "workx_product_gap",
+      "rootGap": "Desktop client application for DSH",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Build a desktop wrapper product around DSH Web/TUI",
+      "confidence": 0.8
+    },
+    {
+      "number": 1029,
+      "owner": "dsh_core_bug",
+      "rootGap": "Input modality auto-detection/inference in DSH core",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Request upstream DSH capability auto-detection fix",
+      "confidence": 0.95
+    },
+    {
+      "number": 1039,
+      "owner": "dsh_core_bug",
+      "rootGap": "URL-based session restoration in DSH Web",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Request upstream DSH Web URL session handling feature",
+      "confidence": 0.9
+    },
+    {
+      "number": 1042,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH Web lacks one-click rollback of code/conversation; pi2dsh history tools cannot substitute for native rollback mechanism",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Implement native rollback in DSH core with selective code/conversation revert capability",
+      "confidence": 0.9
+    },
+    {
+      "number": 1056,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH subagent protocol lacks delivery ordering between settlement notice and report relays",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix DSH subagent delivery ordering to drain relays before settlement notice",
+      "confidence": 0.95
+    },
+    {
+      "number": 1058,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH native UI lacks thinking strength control for local llama-server models",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Add thinking strength UI option for local models in DSH provider settings",
+      "confidence": 0.85
+    },
+    {
+      "number": 1062,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH workspace root title derivation fails for drive roots and busyEnter steer lacks true interruption",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix workspace title fallback for drive roots and implement abort-based steer interruption in DSH core",
+      "confidence": 0.9
+    },
+    {
+      "number": 1063,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH native provider compatibility does not support tokenhub API keys",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Add tokenhub provider support to DSH native provider system",
+      "confidence": 0.8
+    },
+    {
+      "number": 1065,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH Web markdown renderer lacks Mermaid diagram rendering in fenced code blocks",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Implement Mermaid rendering in DSH Web markdown renderer with streaming and theme support",
+      "confidence": 0.9
+    },
+    {
+      "number": 1070,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH native UI lacks thinking level settings for third-party models and cache hit optimization",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Add third-party model thinking level UI and improve cache hit logic in DSH core",
+      "confidence": 0.85
+    },
+    {
+      "number": 1077,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH core retry logic gives up after two failed connection attempts to OpenCode Go models",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Enhance DSH core retry mechanism with configurable attempts and backoff for model connections",
+      "confidence": 0.9
+    },
+    {
+      "number": 1078,
+      "owner": "dsh_core_bug",
+      "rootGap": "Native web_search provider is statically configured and does not follow per-agent routed model provider",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix DSH core to make web_search provider selection follow the routed model provider",
+      "confidence": 0.9
+    },
+    {
+      "number": 1099,
+      "owner": "not_addressable",
+      "rootGap": "Vague connection issue without sufficient details to diagnose",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Request more details from user before attempting any solution",
+      "confidence": 0.8
+    },
+    {
+      "number": 1100,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH core model-selection layer ignores AgentOptions.model and overrides explicit subagent model selection",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix DSH core model-selection.ts to respect AgentOptions.model in selectionFor",
+      "confidence": 0.95
+    },
+    {
+      "number": 1105,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH core selectionFor ignores AgentOptions.model and unconditionally overrides explicit model in agent/request waterfall",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix DSH core model-selection to include AgentOptions.model in selection tiers",
+      "confidence": 0.95
+    },
+    {
+      "number": 1113,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH core reserves web_search tool name causing conflict with OpenCode Go provider",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix DSH core tool name reservation to avoid conflicts with external providers",
+      "confidence": 0.85
+    },
+    {
+      "number": 1116,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH core output token limit truncation and continuation mechanism causing subagents to get stuck",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix DSH core token limit handling and continuation for subagents",
+      "confidence": 0.9
+    },
+    {
+      "number": 1118,
+      "owner": "not_addressable",
+      "rootGap": "Vague Zhipu model connection issue without sufficient details",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Request more details from user before attempting any solution",
+      "confidence": 0.8
+    },
+    {
+      "number": 1148,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH core API configuration UI does not allow changing API settings",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix DSH core configuration UI to allow API setting changes",
+      "confidence": 0.85
+    },
+    {
+      "number": 1166,
+      "owner": "external_dependency",
+      "rootGap": "Model/provider-imposed output token limit that pi2dsh cannot lift",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Document provider-specific token limit configuration options for users",
+      "confidence": 0.95
+    },
+    {
+      "number": 1172,
+      "owner": "workx_product_gap",
+      "rootGap": "Curated expert-panel workflow UI/configuration layer on top of existing subagent capability",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Build an expert-panel preset in dsh-work-x using pi-subagents",
+      "confidence": 0.85
+    },
+    {
+      "number": 1190,
+      "owner": "dsh_core_bug",
+      "rootGap": "Headless runner tears down before continuable background subagents settle",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Patch DSH headless runner to await pending subagent settlement",
+      "confidence": 0.95
+    },
+    {
+      "number": 1198,
+      "owner": "external_dependency",
+      "rootGap": "Model via pi-ai routing emits thinking as text in tool loops",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Report upstream to pi-ai/DeepSeek routing for thinking-channel stability",
+      "confidence": 0.9
+    },
+    {
+      "number": 1202,
+      "owner": "dsh_core_bug",
+      "rootGap": "Failed subagents remain in non-terminal ready state with no UI dismiss action",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix DSH Web UI state rendering and add dismiss action for failed subagents",
+      "confidence": 0.95
+    },
+    {
+      "number": 1208,
+      "owner": "external_dependency",
+      "rootGap": "OpenCode Go subscription model does not expose reasoning channel",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Document limitation and recommend providers with reasoning support",
+      "confidence": 0.9
+    },
+    {
+      "number": 1215,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH core sandbox no-op, effort inheritance, and error passthrough fixes",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Apply upstream patches for sandbox no-op and effort inheritance",
+      "confidence": 0.9
+    },
+    {
+      "number": 1237,
+      "owner": "dsh_core_bug",
+      "rootGap": "Archive button ambiguity and missing recycle bin in DSH session management",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix DSH archive/delete UI and add recycle bin feature",
+      "confidence": 0.9
+    },
+    {
+      "number": 1239,
+      "owner": "dsh_core_bug",
+      "rootGap": "Native dsh-mcp-client async tool registration has no readiness signal on the SDK wire, causing first-turn tool absence",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Add a readiness notification/event to the DSH SDK wire that fires after MCP tool registration settles",
+      "confidence": 0.9
+    },
+    {
+      "number": 1240,
+      "owner": "dsh_core_bug",
+      "rootGap": "Official python/sdk-runtime/package.json missing @deepseek-ai/dsh-mcp-client dependency, breaking MCP mounting on bundled carriers",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Add the missing dependency line to python/sdk-runtime/package.json and rebuild the official wheel",
+      "confidence": 0.95
+    },
+    {
+      "number": 1246,
+      "owner": "workx_product_gap",
+      "rootGap": "No 'set current path as workspace' button or default-to-launch-directory behavior in DSH Web UI",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Build a DSH Web UI plugin that adds a 'use current path' button to the workspace selector",
+      "confidence": 0.8
+    },
+    {
+      "number": 1249,
+      "owner": "dsh_core_bug",
+      "rootGap": "Native dsh-mcp-client EPIPE handling crashes the entire DSH host process on MCP disconnect",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix native EPIPE handling in dsh-mcp-client to isolate MCP disconnects from the host process",
+      "confidence": 0.95
+    },
+    {
+      "number": 1259,
+      "owner": "dsh_core_bug",
+      "rootGap": "Native subagent-to-main-agent message mechanism fails with 'Edit failed' when subagents report back",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix the native subagent message delivery and Web UI display path in DSH core",
+      "confidence": 0.9
+    },
+    {
+      "number": 1264,
+      "owner": "dsh_core_bug",
+      "rootGap": "Failed image messages stay in session history and block switching to text-only models",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix native agent-loop to roll back failed user messages and allow model switching after errors",
+      "confidence": 0.95
+    },
+    {
+      "number": 1273,
+      "owner": "workx_product_gap",
+      "rootGap": "No session ID display or copy functionality in the native Web UI sidebar or header",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Build a DSH Web UI plugin that adds session ID display and copy buttons to the sidebar",
+      "confidence": 0.85
+    },
+    {
+      "number": 1277,
+      "owner": "dsh_core_bug",
+      "rootGap": "Native input-modality gate rejects direct image input even when vision plugins are available",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix native DSH input admission to allow image drops when vision-capable plugins are installed",
+      "confidence": 0.9
+    },
+    {
+      "number": 1283,
+      "owner": "missing_pi_package",
+      "rootGap": "No installable Pi capability implements conversation/code rewind or revoke for DSH sessions",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Build a Pi plugin that uses DSH surface replacement ops to implement rewind/revoke for conversation turns and file changes",
+      "confidence": 0.85
+    },
+    {
+      "number": 1290,
+      "owner": "external_dependency",
+      "rootGap": "The DeepSeek Protocol Doctor is a standalone diagnostic tool, not a DSH provider route or core fix",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Keep as external diagnostic tool; do not integrate into pi2dsh as it addresses protocol debugging outside DSH",
+      "confidence": 0.9
+    },
+    {
+      "number": 1294,
+      "owner": "missing_pi_package",
+      "rootGap": "No installable Pi capability implements edit-and-re-run for the last user message in DSH sessions",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Build a Pi plugin using DSH surface replacement ops to shadow old turns and re-run corrected messages",
+      "confidence": 0.85
+    },
+    {
+      "number": 1296,
+      "owner": "dsh_core_bug",
+      "rootGap": "Native DSH admission layer rejects image input for text-only models, blocking the primary use case",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix the native DSH modality gate to allow image attachment delegation for text-only models",
+      "confidence": 0.8
+    },
+    {
+      "number": 1298,
+      "owner": "external_dependency",
+      "rootGap": "The shared plugin is a third-party Exa search provider, not a pi2dsh capability or native DSH fix",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Keep as external plugin; do not integrate into pi2dsh as it addresses a third-party provider's key requirement",
+      "confidence": 0.9
+    },
+    {
+      "number": 1309,
+      "owner": "workx_product_gap",
+      "rootGap": "DSH-native custom provider settings page lacks a reasoning-effort control",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Add a reasoning-effort setting to the DSH custom provider settings page in dsh-work-x",
+      "confidence": 0.85
+    },
+    {
+      "number": 1312,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH-native subagent dispatch UI lacks model selection and pwsh sandbox grantWrite is broken",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix the native DSH subagent model selection UI and pwsh sandbox grantWrite bug",
+      "confidence": 0.9
+    },
+    {
+      "number": 1320,
+      "owner": "not_addressable",
+      "rootGap": "The user is sharing two DSH-native plugins, not requesting pi2dsh capability changes",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Acknowledge the shared plugins; no pi2dsh action needed",
+      "confidence": 0.95
+    },
+    {
+      "number": 1322,
+      "owner": "not_addressable",
+      "rootGap": "User is sharing a DSH-native vision plugin, not requesting pi2dsh capability",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Acknowledge the plugin share; no pi2dsh action needed",
+      "confidence": 0.95
+    },
+    {
+      "number": 1327,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH-native input detection timing blocks plugin hooks for vision models",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "File upstream DSH issue for plugin hook timing in input detection",
+      "confidence": 0.9
+    },
+    {
+      "number": 1347,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH-native MCP workspace directory propagation missing for multi-workspace web",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "File upstream DSH issue for MCP workspace root propagation",
+      "confidence": 0.95
+    },
+    {
+      "number": 1354,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH-native multimodal input handling fails for supported models",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "File upstream DSH issue for multimodal model input handling",
+      "confidence": 0.9
+    },
+    {
+      "number": 1358,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH-native subagent config inheritance broken (falls back to default provider)",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "File upstream DSH issue for subagent config inheritance",
+      "confidence": 0.95
+    },
+    {
+      "number": 1369,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH-native subagent tool lacks per-call provider/model selection",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "File upstream DSH feature request for dynamic subagent routing",
+      "confidence": 0.9
+    },
+    {
+      "number": 1378,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH-native attachment blocking prevents tool-based vision workflows",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "File upstream DSH issue to allow attachments for text-only models",
+      "confidence": 0.95
+    },
+    {
+      "number": 1429,
+      "owner": "missing_pi_package",
+      "rootGap": "No mature pi2dsh package imports foreign agent sessions into DSH",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Build a pi2dsh session import package based on dsh-import-agents",
+      "confidence": 0.8
+    },
+    {
+      "number": 1439,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH native Models page performance and select-models UI for large catalogs (e.g., OpenRouter) is slow and lacks curation",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Optimize the DSH Models page rendering and add model-list curation/selection improvements in the core UI",
+      "confidence": 0.9
+    },
+    {
+      "number": 1446,
+      "owner": "dsh_core_bug",
+      "rootGap": "Native DSH web-fetch SSRF defense (lookup-based address validation) is unimplemented",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Implement the lookup-based SSRF guard in the native DSH web-fetch primitive",
+      "confidence": 0.95
+    },
+    {
+      "number": 1480,
+      "owner": "not_addressable",
+      "rootGap": "dsh-gateway is a community plugin showcase integrating CLIProxyAPI; not a Pi capability pi2dsh should replace or deliver",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Do not market pi2dsh as a replacement for this community showcase; leave it as an external project",
+      "confidence": 0.85
+    },
+    {
+      "number": 1491,
+      "owner": "dsh_public_seam_gap",
+      "rootGap": "DSH lacks a public slot for third-party provider editors in the Models page (settings.models.provider-editor)",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Request upstream DSH to expose a provider-editor slot in the Models settings UI",
+      "confidence": 0.9
+    },
+    {
+      "number": 1493,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH-native subagent providers (e.g., dsh-subagent-codex) lack durable session attribution/observability envelopes",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Enhance DSH subagent bridge to persist session_ref, attribution, and idle timeout in the parent Session",
+      "confidence": 0.9
+    },
+    {
+      "number": 1502,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH Models page lacks fork-provider feature to add a second account for the same vendor",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Implement the fork-provider second-account UI in the DSH core Models page",
+      "confidence": 0.95
+    },
+    {
+      "number": 1510,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH custom provider model fetching lacks select-all; no custom data directory setting",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Add select-all to custom provider model fetch and a custom data directory setting in DSH core",
+      "confidence": 0.9
+    },
+    {
+      "number": 1518,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH session persistence lacks a session doctor and versioned migration pipeline for corrupt/unreadable logs",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Implement offline session doctor and versioned migration commands in DSH core persistence",
+      "confidence": 0.95
+    },
+    {
+      "number": 1552,
+      "owner": "missing_pi_package",
+      "rootGap": "News aggregation, sitemap discovery, and trending topics are not available as first-class DSH tools in any Pi package",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Build a Pi package that wraps Search1API or similar APIs to expose news, sitemap, and trending tools alongside existing web search",
+      "confidence": 0.85
+    },
+    {
+      "number": 1604,
+      "owner": "not_addressable",
+      "rootGap": "The request is a design discussion/study about measuring tool exposure, not a feature request for pi2dsh",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Do not build; the user published a standalone calculator and is seeking ecosystem discussion, not a pi2dsh implementation",
+      "confidence": 0.9
+    },
+    {
+      "number": 1612,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH core rejects non-image file attachments in chat; only image upload is supported",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "File an upstream DSH issue to support arbitrary file attachments in the chat interface",
+      "confidence": 0.8
+    },
+    {
+      "number": 1621,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH core rejects images for text-only models with MODEL_DOES_NOT_SUPPORT_IMAGES; no allowImagePlaceholder switch exists",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Advocate for merging the reference implementation into DSH core or maintain a fork with the allowImagePlaceholder feature",
+      "confidence": 0.9
+    },
+    {
+      "number": 1651,
+      "owner": "dsh_core_bug",
+      "rootGap": "History API paginates by message count, not byte size, causing multi-megabyte responses",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Share the reference implementation with DSH maintainers and request byte-budget pagination in core",
+      "confidence": 0.95
+    },
+    {
+      "number": 1683,
+      "owner": "workx_product_gap",
+      "rootGap": "No desktop app or clickable terminal app (like Warp) exists for DSH; only TUI is available",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Build a desktop app wrapper (Electron/Tauri) and a clickable terminal UI as a DSH product plugin",
+      "confidence": 0.8
+    },
+    {
+      "number": 1690,
+      "owner": "dsh_core_bug",
+      "rootGap": "Grep tool times out on large workspaces with no indexing, budgets, or progress feedback",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Request DSH core to add optional workspace indexing and configurable timeouts/budgets for the grep tool",
+      "confidence": 0.85
+    },
+    {
+      "number": 1703,
+      "owner": "dsh_core_bug",
+      "rootGap": "pi-ai replay state validation fails after truncated output + continue, blocking conversation",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix the toPiReplayState logic in DSH's llm-pi-ai package to handle stopReason length correctly",
+      "confidence": 0.95
+    },
+    {
+      "number": 1745,
+      "owner": "pi2dsh_abi_gap",
+      "rootGap": "Codex thread/start execution policy (approvalPolicy, sandbox) not exposed as deployment config in pi-subagents",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Add threadPolicy config to pi-subagents Codex provider and forward to thread/start",
+      "confidence": 0.9
+    },
+    {
+      "number": 1754,
+      "owner": "dsh_core_bug",
+      "rootGap": "Native DSH Web UI lacks MCP add-entry configuration surface",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Request upstream DSH Web UI to add MCP configuration entry point",
+      "confidence": 0.85
+    },
+    {
+      "number": 1757,
+      "owner": "dsh_core_bug",
+      "rootGap": "Native dsh-mcp-client uses legacy MCP protocol and needs SDK v2 migration",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Upstream dsh-mcp-client to migrate to SDK v2 with versionNegotiation",
+      "confidence": 0.9
+    },
+    {
+      "number": 1759,
+      "owner": "dsh_core_bug",
+      "rootGap": "Native DSH PTC mode stop button does not stop child processes/agents",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix native PTC stop mechanism to cascade stop to child agents",
+      "confidence": 0.85
+    },
+    {
+      "number": 1761,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH core lacks URL Scheme support for auto-adding models/API keys",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Request upstream DSH to implement URL Scheme handling",
+      "confidence": 0.8
+    },
+    {
+      "number": 1765,
+      "owner": "dsh_core_bug",
+      "rootGap": "Native multimodal model glm-4.6v cannot recognize images in DSH",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix native multimodal input modality support in DSH core",
+      "confidence": 0.85
+    },
+    {
+      "number": 1771,
+      "owner": "dsh_core_bug",
+      "rootGap": "dsh-llm-pi-ai replay.ts null-pointer crash and compat config silent drop",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Apply upstream fix for replay.ts optional chaining and full compat passthrough",
+      "confidence": 0.9
+    },
+    {
+      "number": 1786,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH Web add-model form lacks auto-detection of context length and max output tokens",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Request upstream DSH Web to auto-fill model metadata from config.json",
+      "confidence": 0.8
+    },
+    {
+      "number": 1795,
+      "owner": "workx_product_gap",
+      "rootGap": "First-class workspace-less chat session type with Work/Chat segmentation in the DSH sidebar and a 'no workspace' option in the workspace picker",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Build a DSH product plugin that adds a Work/Chat tab pair and a 'no workspace' picker entry, leveraging the existing session.create API that already supports workspace-less sessions",
+      "confidence": 0.9
+    },
+    {
+      "number": 1850,
+      "owner": "dsh_core_bug",
+      "rootGap": "dsh-llm-deepseek's serializeAssistant omits reasoning_content when tool_calls exist but reasoning is empty, causing DeepSeek API 400 errors",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix the native dsh-llm-deepseek adapter to always include reasoning_content (even empty) when tool_calls are present",
+      "confidence": 0.95
+    },
+    {
+      "number": 1880,
+      "owner": "missing_pi_package",
+      "rootGap": "A game-dev role subagent pipeline with planner/reviewer/executor presets and workflow matching jayhe-dsh-gamemaker",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Create a Pi package that provides game-dev role subagent presets and workflow, building on the generic subagent machinery from @tintinweb/pi-subagents",
+      "confidence": 0.85
+    },
+    {
+      "number": 1882,
+      "owner": "dsh_public_seam_gap",
+      "rootGap": "Tool-specific model routing config (imageModel field) and automatic routing of tool calls to different models based on tool type",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Request upstream DSH support for tool-specific model routing in settings.yaml and agent execution flow",
+      "confidence": 0.9
+    },
+    {
+      "number": 1885,
+      "owner": "workx_product_gap",
+      "rootGap": "Send-image button and paste/drag UI in the DSH web composer for image attachments",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Build a DSH product plugin that adds a send-image button and paste/drag handler to the web composer, using the existing vision bridge for image understanding",
+      "confidence": 0.85
+    },
+    {
+      "number": 1887,
+      "owner": "external_dependency",
+      "rootGap": "Local OCR with table structure extraction using macOS Vision Framework",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Create a Pi package that wraps macOS Vision Framework for local OCR and table extraction, or integrate with an existing macOS vision library",
+      "confidence": 0.8
+    },
+    {
+      "number": 1907,
+      "owner": "workx_product_gap",
+      "rootGap": "Answer-first TUI presentation with quiet successful tool calls, failure visibility, and private thinking state",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Build a DSH product plugin that provides a TUI with answer-first output and compact failure lines, building on existing TUI infrastructure",
+      "confidence": 0.85
+    },
+    {
+      "number": 1908,
+      "owner": "workx_product_gap",
+      "rootGap": "VS Code sidebar embedding of the DSH web UI with service auto-management and status indicators",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Build a DSH product plugin that provides a VS Code extension embedding the DSH web UI in the sidebar with service management",
+      "confidence": 0.9
+    },
+    {
+      "number": 1911,
+      "owner": "dsh_core_bug",
+      "rootGap": "Native DSH workspace browser lacks session pin-to-top persistence, RPC, and UI; author explicitly states it cannot ship as a plugin because it touches core persistence schema and RPC protocol.",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Upstream the fork's pin-conversations feature into DSH core or add an official extension point for session-row actions/ordering.",
+      "confidence": 0.95
+    },
+    {
+      "number": 1917,
+      "owner": "not_addressable",
+      "rootGap": "Waterball pet is a third-party showcase visualization with no functional gap in pi2dsh; it is an optional cosmetic plugin, not a missing capability.",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Do not market; leave as community showcase and optionally link from awesome-dsh-plugin.",
+      "confidence": 0.9
+    },
+    {
+      "number": 1925,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH system config is read-only in the UI and requires PowerShell workaround; user cannot configure API key through normal settings path.",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix DSH core config editor to allow API key configuration without read-only restriction.",
+      "confidence": 0.85
+    },
+    {
+      "number": 1926,
+      "owner": "workx_product_gap",
+      "rootGap": "Right-docked web terminal exists as a plugin but requires dsh-client-ui-layout right-dock API; pi2dsh ABI can carry it, but no curated product integration exists.",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Package dsh-web-shell as a first-class work-x web product feature with layout integration.",
+      "confidence": 0.8
+    },
+    {
+      "number": 1927,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH core blocks switching to non-vision models when session contains images; downgradeUnsupportedImages exists but is not used in model selection.",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix DSH core model-switching logic to allow switching with image downgrade and UI warning.",
+      "confidence": 0.95
+    },
+    {
+      "number": 1986,
+      "owner": "dsh_core_bug",
+      "rootGap": "Same core issue: DSH rejects switching to text-only models in image-containing sessions despite existing downgradeUnsupportedImages mechanism.",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Implement model-switch image downgrade in DSH core with confirmation dialog.",
+      "confidence": 0.95
+    },
+    {
+      "number": 1990,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH Web UI session context menu lacks Delete action; only rename/fork/archive exist, and manual file deletion is unsafe.",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Add Delete session action with confirmation to DSH Web UI session context menu.",
+      "confidence": 0.95
+    },
+    {
+      "number": 1991,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH Web UI has no archived-session view or restore action; archiveSession exists but no unarchive API or UI.",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Add unarchive API and archived-session list/restore UI to DSH Web.",
+      "confidence": 0.95
+    },
+    {
+      "number": 1996,
+      "owner": "workx_product_gap",
+      "rootGap": "No delete-session feature in pi2dsh's session management UI or API",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Add a delete-session action to pi2dsh's session manager product layer",
+      "confidence": 0.85
+    },
+    {
+      "number": 1999,
+      "owner": "dsh_core_bug",
+      "rootGap": "FTS5 tokenizer hardcoded to unicode61 in DSH's session-query-sqlite package",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Patch DSH's session-query-sqlite to support configurable tokenizer and extension loading",
+      "confidence": 0.95
+    },
+    {
+      "number": 2005,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH web admission layer rejects images for text-only models without store-and-annotate fallback",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Add imageFallback config to DSH's web admission layer to store and annotate images instead of rejecting",
+      "confidence": 0.9
+    },
+    {
+      "number": 2006,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH's resolveChildAgentOptions uses stale parent.options snapshot, not live model selection",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix DSH's child-agent.ts to resolve provider/model from live selection rather than immutable snapshot",
+      "confidence": 0.95
+    },
+    {
+      "number": 2025,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH's mcp-client extractText() hardcodes resource content discard",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Patch DSH's mcp-client tools.ts to inline resource.text in extractText()",
+      "confidence": 0.95
+    },
+    {
+      "number": 2048,
+      "owner": "not_addressable",
+      "rootGap": "MiniMax multimodal suite (video, TTS, music) is a separate plugin's feature set, not pi2dsh's scope",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Do not market pi2dsh as a replacement for dsh-mmx-bridge; keep as complementary",
+      "confidence": 0.9
+    },
+    {
+      "number": 2053,
+      "owner": "dsh_public_seam_gap",
+      "rootGap": "No documented DSH-native authoritative effective-model-resolution service for plugin authors",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Request DSH to expose a documented effective model resolution service or contract for plugins",
+      "confidence": 0.85
+    },
+    {
+      "number": 2069,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH web-search UI doesn't display billing model on result cards or expose model field in settings",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Patch DSH's web-search-deepseek and ui-settings-plugins to surface actual model in cards and settings",
+      "confidence": 0.9
+    },
+    {
+      "number": 2076,
+      "owner": "workx_product_gap",
+      "rootGap": "No archive management panel (browse/reopen/unarchive/delete/search) in DSH WebUI; dsh-archive-manager is a third-party plugin, not integrated into pi2dsh's product surface.",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Integrate dsh-archive-manager as a built-in panel in dsh-work-x's WebUI, or provide a first-party equivalent.",
+      "confidence": 0.85
+    },
+    {
+      "number": 2115,
+      "owner": "external_dependency",
+      "rootGap": "Published Python runtime wheel missing @deepseek-ai/dsh-mcp-client in its dependency closure.",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Rebuild and republish the deepseek-harness-runtime-bin wheel with the MCP client included.",
+      "confidence": 0.95
+    },
+    {
+      "number": 2132,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH-native subagent reply queue ordering delays replies until main thread ends; user wants immediate insertion.",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix DSH core subagent queue to deliver replies promptly instead of queuing until main completion.",
+      "confidence": 0.9
+    },
+    {
+      "number": 2135,
+      "owner": "dsh_core_bug",
+      "rootGap": "dsh-acp rejects non-empty mcpServers in session/new, breaking ACP clients like Paseo.",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Patch dsh-acp to accept and ignore mcpServers with a warning, or add a config option.",
+      "confidence": 0.95
+    },
+    {
+      "number": 2145,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH-native subagent reply queue design places replies in user message queue; user questions if this is a bug or intentional.",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Clarify and fix DSH core subagent queue design to avoid mixing with user messages.",
+      "confidence": 0.85
+    },
+    {
+      "number": 2170,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH credential service requires DEEPSEEK_API_KEY even when using liteLLM proxy; user cannot disable direct DeepSeek connection.",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix DSH credential service to allow provider routes without requiring deepseek-official API key.",
+      "confidence": 0.9
+    },
+    {
+      "number": 2382,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH's llm-pi-ai adapter lacks serviceTier option and uses provider-neutral streamSimple() path, preventing OpenAI Fast mode.",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Add serviceTier support to DSH's llm-pi-ai adapter schema and request path.",
+      "confidence": 0.95
+    },
+    {
+      "number": 2383,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH's llm-pi-ai adapter cannot configure or forward OpenAI Responses service_tier; feature request for Fast mode support.",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Implement serviceTier option in DSH's llm-pi-ai adapter with validation and forwarding.",
+      "confidence": 0.95
+    },
+    {
+      "number": 2387,
+      "owner": "missing_pi_package",
+      "rootGap": "No pi2dsh package provides SVG-to-video animation conversion (SVG input to MP4/PNG sequence output)",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Build a pi2dsh capability package that wraps SVG rendering + ffmpeg to produce animated video from SVG input",
+      "confidence": 0.85
+    },
+    {
+      "number": 2391,
+      "owner": "workx_product_gap",
+      "rootGap": "No DSH product feature exports sessions to Markdown/JSON/HTML formats",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Create a dsh-work-x plugin providing session export commands using existing session data seams",
+      "confidence": 0.9
+    },
+    {
+      "number": 2395,
+      "owner": "workx_product_gap",
+      "rootGap": "No web UI file browser pane for remote workspace file viewing",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Develop a dsh-work-x web plugin that adds a read-only file pane route to the DSH web UI",
+      "confidence": 0.9
+    },
+    {
+      "number": 2407,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH agent loop cannot inject assistant-role prefill messages; PreStepDecision only supports UserMessage[]",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Patch DSH core agent-loop to allow assistant-role message injection in pre-step decisions",
+      "confidence": 0.95
+    },
+    {
+      "number": 2411,
+      "owner": "workx_product_gap",
+      "rootGap": "No VS Code sidebar integration for DSH",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Create a dsh-work-x VS Code extension plugin that connects to DSH sessions and streams responses",
+      "confidence": 0.9
+    },
+    {
+      "number": 2412,
+      "owner": "workx_product_gap",
+      "rootGap": "No Windows desktop shell packaging for DSH web UI",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Build a dsh-work-x Windows desktop wrapper that bundles the DSH web UI with installer and updates",
+      "confidence": 0.9
+    },
+    {
+      "number": 2416,
+      "owner": "missing_pi_package",
+      "rootGap": "No pi2dsh package renders Markdown/JSON into self-contained HTML artifacts (documents/cards/dashboards/galleries)",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Create a pi2dsh capability package that converts Markdown/JSON to styled self-contained HTML using templates",
+      "confidence": 0.85
+    },
+    {
+      "number": 2424,
+      "owner": "dsh_public_seam_gap",
+      "rootGap": "DSH lacks a stable client-plugin seam for rendering MCP Apps (iframe/AppBridge) inside the web UI",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Request upstream DSH support for a client-plugin mount point to host MCP Apps in the web UI",
+      "confidence": 0.9
+    },
+    {
+      "number": 2431,
+      "owner": "dsh_public_seam_gap",
+      "rootGap": "Standard ASR/TTS/avatar-media capability seams are not defined in DSH core; downstream plugins must re-implement registries.",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Propose and implement the ASR/TTS/avatar-media Service Definitions in DSH core, then port dsh-flowact-avatar providers to them.",
+      "confidence": 0.9
+    },
+    {
+      "number": 2434,
+      "owner": "dsh_core_bug",
+      "rootGap": "Headless runner cannot name or resume sessions; session ID is minted internally and not exposed to the user.",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Add a --session-id flag and resume capability to the headless runner in DSH core.",
+      "confidence": 0.95
+    },
+    {
+      "number": 2441,
+      "owner": "missing_pi_package",
+      "rootGap": "No billing/clearing package exists for DSH; TokenFerry needs a plugin to meter session events and register as an LLM provider.",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Build a TokenFerry DSH plugin that registers as an LLM provider and subscribes to session events for token metering.",
+      "confidence": 0.85
+    },
+    {
+      "number": 2444,
+      "owner": "workx_product_gap",
+      "rootGap": "No first-party backup/restore product feature exists for DSH user data; the community plugin dsh-backup covers it but is not curated.",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Integrate dsh-backup as a first-party DSH product feature with Settings panel and GitHub sync.",
+      "confidence": 0.8
+    },
+    {
+      "number": 2447,
+      "owner": "missing_pi_package",
+      "rootGap": "No weak-network adaptation package exists for DSH; the community plugin dsh-plugin-weaknet-adaptor covers it but is not curated.",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Curate and publish dsh-plugin-weaknet-adaptor as a first-party DSH capability package.",
+      "confidence": 0.8
+    },
+    {
+      "number": 2448,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH core lacks in-place regenerate and a rewind event hook for session rollback; external state plugins cannot sync.",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Implement in-place regenerate and broadcast a session/rewind event on fork/truncate in DSH core.",
+      "confidence": 0.95
+    },
+    {
+      "number": 2453,
+      "owner": "external_dependency",
+      "rootGap": "Ollama's experimental web_search endpoint is not yet stable or universally available; DSH web search works with other providers.",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Wait for Ollama to stabilize the web_search endpoint, then add first-party support in DSH.",
+      "confidence": 0.7
+    },
+    {
+      "number": 2455,
+      "owner": "missing_pi_package",
+      "rootGap": "No first-party video generation package exists for DSH; the community plugin weshop-dsh-plugin covers image and video but is not curated.",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Curate and publish weshop-dsh-plugin as a first-party DSH capability package for image and video generation.",
+      "confidence": 0.8
+    },
+    {
+      "number": 2458,
+      "owner": "not_addressable",
+      "rootGap": "This is a showcase of a third-party Electron wrapper for DSH, not a feature request for pi2dsh or DSH itself.",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Do not market pi2dsh here; this is a community project showcase.",
+      "confidence": 0.95
+    },
+    {
+      "number": 2462,
+      "owner": "missing_pi_package",
+      "rootGap": "A Pi capability package that provides a global upload button and configurable vision model picker with fallback chain for DSH sessions.",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Build a pi2dsh capability package that implements the global upload button and vision model picker using the existing Pi ABI.",
+      "confidence": 0.85
+    },
+    {
+      "number": 2466,
+      "owner": "dsh_core_bug",
+      "rootGap": "The DSH core AgentHandle.dispose() API lacks a keepInbox option; the agent-loop teardown always clears queued inbox items.",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Upstream DSH must incorporate the proposed AgentHandle.dispose(options) API change; pi2dsh cannot work around this core lifecycle behavior.",
+      "confidence": 0.95
+    },
+    {
+      "number": 2474,
+      "owner": "dsh_core_bug",
+      "rootGap": "The DSH core Workspace model, sandbox write allowlist, and sessionResolveOptions are single-path; multi-root project support is missing.",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Upstream DSH must add Workspace.extraPaths and multi-root sandbox/tool support; pi2dsh cannot deliver this core data model change.",
+      "confidence": 0.95
+    },
+    {
+      "number": 2487,
+      "owner": "missing_pi_package",
+      "rootGap": "A Pi capability package that provides persistent multi-agent team rooms with message bus, shared task board, approval-gated handoffs, and shared timeline.",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Build a pi2dsh capability package implementing team rooms on top of the existing durable subagent ABI.",
+      "confidence": 0.85
+    },
+    {
+      "number": 2492,
+      "owner": "missing_pi_package",
+      "rootGap": "A Pi capability package that provides unified checkpoint/rewind with workspace snapshots, session forks, and config restore.",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Build a pi2dsh capability package implementing checkpoint/rewind using the existing session and workspace ABI.",
+      "confidence": 0.85
+    },
+    {
+      "number": 2494,
+      "owner": "workx_product_gap",
+      "rootGap": "A DSH product plugin that adds a management console UI for the official DSH MCP client, while keeping the official client as the only bridge.",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Develop a dsh-work-x plugin that provides the MCP management console UI on top of the official DSH MCP client.",
+      "confidence": 0.8
+    },
+    {
+      "number": 2498,
+      "owner": "missing_pi_package",
+      "rootGap": "A Pi capability package that provides drag-and-drop file path insertion into the DSH web composer.",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Build a pi2dsh capability package implementing the drag-and-drop file path insertion feature for the web composer.",
+      "confidence": 0.85
+    },
+    {
+      "number": 2500,
+      "owner": "missing_pi_package",
+      "rootGap": "No verified Pi capability delivers a live header clock plugin for DSH",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Build a Pi capability package that provides a live header clock plugin for DSH",
+      "confidence": 0.85
+    },
+    {
+      "number": 2515,
+      "owner": "missing_pi_package",
+      "rootGap": "No verified Pi capability delivers soulful companion plugins (cat, task garden, 2.5D worlds)",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Build a Pi capability package that provides soulful companion plugins for DSH",
+      "confidence": 0.85
+    },
+    {
+      "number": 2516,
+      "owner": "missing_pi_package",
+      "rootGap": "No verified Pi capability delivers terminal-style input history with snippets, templates, and insights",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Build a Pi capability package that provides composer input history and smart input layer for DSH",
+      "confidence": 0.85
+    },
+    {
+      "number": 2518,
+      "owner": "missing_pi_package",
+      "rootGap": "No verified Pi capability delivers first-principles prompt injection and forked adversarial review bundle",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Build a Pi capability package that provides task modes with first-principles and adversarial review",
+      "confidence": 0.85
+    },
+    {
+      "number": 2525,
+      "owner": "missing_pi_package",
+      "rootGap": "No verified Pi capability delivers runtime output style switching with output.render.* presentation protocol",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Build a Pi capability package that provides runtime output style switching and renderer protocol",
+      "confidence": 0.85
+    },
+    {
+      "number": 2528,
+      "owner": "missing_pi_package",
+      "rootGap": "No verified Pi capability delivers chime and attach-files plugins",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Build a Pi capability package that provides chime and attach-files plugins for DSH",
+      "confidence": 0.85
+    },
+    {
+      "number": 2532,
+      "owner": "missing_pi_package",
+      "rootGap": "No verified Pi capability delivers cross-device session sync with git mirror and keep-both conflict resolution",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Build a Pi capability package that provides cross-device session sync for DSH",
+      "confidence": 0.85
+    },
+    {
+      "number": 2538,
+      "owner": "missing_pi_package",
+      "rootGap": "No verified Pi capability delivers session pinning with boards, tags, views, and /goto navigation",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Build a Pi capability package that provides session pinning and navigator for DSH",
+      "confidence": 0.85
+    },
+    {
+      "number": 2539,
+      "owner": "missing_pi_package",
+      "rootGap": "The 11-vendor x 13-parameter mapping table and deterministic JSON repair pipeline are not delivered as a Pi capability package.",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Build a Pi capability package implementing the vendor parameter translation table and deterministic JSON repair pipeline.",
+      "confidence": 0.9
+    },
+    {
+      "number": 2556,
+      "owner": "workx_product_gap",
+      "rootGap": "A Tauri 2 desktop launcher with auto-detection and lightweight packaging is not delivered as a DSH product client.",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Develop a Tauri 2 desktop launcher as a DSH product client that auto-detects and launches the dsh web service.",
+      "confidence": 0.85
+    },
+    {
+      "number": 2558,
+      "owner": "missing_pi_package",
+      "rootGap": "The unified image generation router with config-driven engine routing, health-aware fallback, and per-session quota accounting is not delivered as a Pi capability.",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Build a Pi capability package implementing the unified image generation router with engine routing, fallback, and quota accounting.",
+      "confidence": 0.9
+    },
+    {
+      "number": 2563,
+      "owner": "workx_product_gap",
+      "rootGap": "The attachment upload button plugin for the DSH web composer is not delivered as a DSH product client feature.",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Develop a DSH web product plugin that adds the attachment upload button to the composer.",
+      "confidence": 0.8
+    },
+    {
+      "number": 2565,
+      "owner": "not_addressable",
+      "rootGap": "The post is a showcase of a specific community plugin with humorous intent, not a request for an alternate implementation.",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Do not market there; the post is a showcase, not a request for an alternate implementation.",
+      "confidence": 0.95
+    },
+    {
+      "number": 2588,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH's native 128-tool limit for MCP servers and lack of lazy loading/tool search/filtering mechanisms.",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix DSH's native MCP tool limit and add lazy loading/tool search/filtering mechanisms in the DSH core.",
+      "confidence": 0.9
+    },
+    {
+      "number": 2601,
+      "owner": "external_dependency",
+      "rootGap": "WeChat Channels (视频号) content scraping requires platform-specific access restrictions and APIs not available through pi2dsh.",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Wait for or integrate with an external WeChat Channels API or service that provides authorized content access.",
+      "confidence": 0.85
+    },
+    {
+      "number": 2634,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH's native thinking chain rendering produces duplicate fragments; pi2dsh cannot fix the model output or DSH's rendering.",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix DSH's native thinking chain rendering to handle duplicate fragments from model output.",
+      "confidence": 0.9
+    },
+    {
+      "number": 2639,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH native subagent policy binding is fixed at creation time; no re-resolution on new activations",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Implement the RFC's execution-instance policy resolver in DSH core",
+      "confidence": 0.95
+    },
+    {
+      "number": 2655,
+      "owner": "external_dependency",
+      "rootGap": "Serena requires an active project selection before tool calls",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Document that users must select a project in Serena before using MCP tools",
+      "confidence": 0.9
+    },
+    {
+      "number": 2659,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH core truncation logic may be cutting model output at 12189 tokens",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Investigate and fix DSH core maxTokens/streaming truncation bug",
+      "confidence": 0.7
+    },
+    {
+      "number": 2668,
+      "owner": "pi2dsh_abi_gap",
+      "rootGap": "pi-ai anthropic adapter lacks a Bearer auth style switch",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Add auth.style=bearer support to pi-ai's anthropic adapter",
+      "confidence": 0.95
+    },
+    {
+      "number": 2670,
+      "owner": "external_dependency",
+      "rootGap": "Model itself is producing corrupted/garbage output",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Report the model output corruption to the model provider",
+      "confidence": 0.8
+    },
+    {
+      "number": 2672,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH native subagent model inheritance uses creation-time options, not live session model",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Apply the provided patch to fix resolveChildAgentOptions to use live session model",
+      "confidence": 0.95
+    },
+    {
+      "number": 2674,
+      "owner": "dsh_core_bug",
+      "rootGap": "llm-deepseek translate layer wipes valid tool-call id/name, corrupting session history",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Apply the fork's fix to llm-deepseek translate and assembler sticky-id guards",
+      "confidence": 0.95
+    },
+    {
+      "number": 2682,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH native subagent result delivery fails on TRANSPORT errors, parent hangs",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix DSH core subagent result propagation to deliver failures as tool/result",
+      "confidence": 0.9
+    },
+    {
+      "number": 2684,
+      "owner": "dsh_core_bug",
+      "rootGap": "Native composer imageMediaType() validates only browser-declared MIME, rejecting valid PNGs exposed as image/bmp from Windows clipboard",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix the native composer to inspect image bytes rather than trusting file.type MIME declaration",
+      "confidence": 0.95
+    },
+    {
+      "number": 2695,
+      "owner": "dsh_core_bug",
+      "rootGap": "Native llm-deepseek translate layer mishandles empty function.name from upstream, causing session-level context pollution",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix the native adapter to handle empty function.name gracefully and prevent session pollution",
+      "confidence": 0.95
+    },
+    {
+      "number": 2697,
+      "owner": "dsh_core_bug",
+      "rootGap": "Native DSH modality-switch defect prevents switching from multimodal back to text mode",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix the native modality-switch toggle in DSH core",
+      "confidence": 0.9
+    },
+    {
+      "number": 2708,
+      "owner": "dsh_public_seam_gap",
+      "rootGap": "No deferred registration surface for out-of-repo plugins to write durable session events visible in native log/export/replay",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Add a registration surface in DSH core for out-of-repo session event types",
+      "confidence": 0.95
+    },
+    {
+      "number": 2719,
+      "owner": "dsh_core_bug",
+      "rootGap": "Native DSH custom-model configuration UI cannot toggle thinking mode or configure context for third-party models",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix the native model-configuration UI to support reasoning-effort toggles for custom models",
+      "confidence": 0.9
+    },
+    {
+      "number": 2738,
+      "owner": "dsh_core_bug",
+      "rootGap": "Native DSH background subagent return messages are queued rather than steered to the main agent",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Change native subagent return-message routing to steering type",
+      "confidence": 0.95
+    },
+    {
+      "number": 2767,
+      "owner": "dsh_core_bug",
+      "rootGap": "Windows minimal-mode is broken in native DSH UI",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix the Windows minimal-mode defect in DSH core",
+      "confidence": 0.9
+    },
+    {
+      "number": 2782,
+      "owner": "dsh_core_bug",
+      "rootGap": "Native gateway rejects image parts for text-only models with no opt-in fallback to export images as text paths",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Implement imageExportOnTextOnly opt-in fallback in the native apiproxy gateway",
+      "confidence": 0.95
+    },
+    {
+      "number": 2803,
+      "owner": "missing_pi_package",
+      "rootGap": "OOMOL-specific Connections panel and credential flow are not delivered by pi-mcp-adapter; a distinct OOMOL integration package is needed.",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Build a dedicated dsh-oomol package that implements the OOMOL MCP client and Connections panel using pi2dsh's MCP adapter seams.",
+      "confidence": 0.85
+    },
+    {
+      "number": 2804,
+      "owner": "dsh_core_bug",
+      "rootGap": "PiAiCompatProfile whitelist and config schema in DSH's llm-pi-ai filter out cacheControlFormat, preventing Anthropic prompt cache via OpenAI-compatible gateways.",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Patch DSH's llm-pi-ai catalog.ts and config.ts to expose and pass through cacheControlFormat.",
+      "confidence": 0.95
+    },
+    {
+      "number": 2807,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH's native MCP plugin UI is too simple; user wants tool list details and manual reload in the native entry.",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Enhance DSH's native MCP plugin UI to show tool lists with details and add a manual reload button.",
+      "confidence": 0.9
+    },
+    {
+      "number": 2812,
+      "owner": "missing_pi_package",
+      "rootGap": "No Cursor ACP provider package exists that registers Cursor subscription models as native DSH LLM routes with DSH-owned Tool Scheduler.",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Build a dsh-cursor-acp package that implements the Cursor ACP provider using pi2dsh's provider registration seams.",
+      "confidence": 0.8
+    },
+    {
+      "number": 2822,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH's llm-pi-ai adapter always sends session_id header on openai-responses routes, breaking gateways that reject underscore headers.",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Patch DSH's llm-pi-ai adapter to expose sessionAffinityFormat in PiAiCompatProfile and config schema.",
+      "confidence": 0.95
+    },
+    {
+      "number": 2844,
+      "owner": "missing_pi_package",
+      "rootGap": "The conversation folding UI plugin is third-party and not bundled or verified by pi2dsh; it only covers folding, not other UI areas.",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Package and verify @khalilhsu/dsh-ui-conversation-folded as a supported Pi UI plugin for pi2dsh surfaces.",
+      "confidence": 0.75
+    },
+    {
+      "number": 2847,
+      "owner": "missing_pi_package",
+      "rootGap": "No package exists that reuses local Codex CLI/Claude Code OAuth tokens as DSH provider credentials without API keys.",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Build a dsh-llm-local-token package that implements OAuth token borrowing using pi2dsh's credential and provider seams.",
+      "confidence": 0.8
+    },
+    {
+      "number": 2884,
+      "owner": "not_addressable",
+      "rootGap": "RFC proposes a 24×7 background service with sandbox awareness and self-evolution, which is a broad architectural vision beyond pi2dsh's scope.",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Do not market pi2dsh as a solution for this RFC; it's a DSH core architecture proposal, not a plugin gap.",
+      "confidence": 0.9
+    },
+    {
+      "number": 2887,
+      "owner": "workx_product_gap",
+      "rootGap": "File upload UI, document parsing (PDF/DOCX/XLSX), and local OCR in DSH Web",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Build a dsh-work-x file attachment plugin with upload, parsing, and OCR capabilities",
+      "confidence": 0.85
+    },
+    {
+      "number": 2892,
+      "owner": "dsh_core_bug",
+      "rootGap": "Input-box file/image upload and custom-model multimodal configuration in DSH core UI",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Request DSH core to add file upload to input box and multimodal support in custom model config",
+      "confidence": 0.9
+    },
+    {
+      "number": 2904,
+      "owner": "dsh_core_bug",
+      "rootGap": "Native subagent runtime inherits stale creation-time model options instead of live session selection",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix the DSH subagent inheritance bug to use live model selection",
+      "confidence": 0.95
+    },
+    {
+      "number": 2911,
+      "owner": "dsh_core_bug",
+      "rootGap": "Refusal messages don't name image-capable models and lack one-click switching in DSH Web UI",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Enhance DSH Web to show candidate models in refusal messages and add one-click switch",
+      "confidence": 0.9
+    },
+    {
+      "number": 2916,
+      "owner": "dsh_core_bug",
+      "rootGap": "dsh-llm-deepseek adapter overwrites tool_calls with null id/name from streaming deltas",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix null-handling in translate.ts to use incremental merge semantics for tool_calls",
+      "confidence": 0.95
+    },
+    {
+      "number": 2918,
+      "owner": "not_addressable",
+      "rootGap": "Visual canvas with hundreds of nodes, queues, and scheduled triggers is a distinct community plugin feature",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Do not market pi2dsh there; it's a separate community project's feature set",
+      "confidence": 0.8
+    },
+    {
+      "number": 2936,
+      "owner": "dsh_public_seam_gap",
+      "rootGap": "Generic Web settings editor for configurable providers with schema fallback and image-model-ref",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Request DSH core to expose a public schema-fallback editor for third-party providers",
+      "confidence": 0.85
+    },
+    {
+      "number": 2943,
+      "owner": "external_dependency",
+      "rootGap": "Native local model import support in DSH for arbitrary model files",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Wait for DSH to add local model import or use external local model gateways",
+      "confidence": 0.8
+    },
+    {
+      "number": 2970,
+      "owner": "dsh_public_seam_gap",
+      "rootGap": "DSH workflow agent() options do not expose a per-child reasoningEffort override seam",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Request upstream DSH to add reasoningEffort to workflow agent() options and thread it through ChildStartRequest to SubagentStartRequest.agentOptions",
+      "confidence": 0.9
+    },
+    {
+      "number": 2984,
+      "owner": "workx_product_gap",
+      "rootGap": "No DSH product feature for cross-preset session migration with fixed-schema handoff summaries",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Build a dsh-work-x plugin that orchestrates session.history → summary → session.create under target preset → goal.create flow",
+      "confidence": 0.85
+    },
+    {
+      "number": 2995,
+      "owner": "dsh_public_seam_gap",
+      "rootGap": "No agent-side channel in DSH adapters to persist images and emit ImageBlock in assistant content",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Request upstream DSH to add an agent-side image emission channel to adapter GenerateOptions and wire assistant ImageBlock rendering",
+      "confidence": 0.9
+    },
+    {
+      "number": 2996,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH-native send_message tool schema lacks child-to-parent direction and actionable error guidance",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix the send_message tool schema in DSH core to be scope-aware and name report as the child-to-parent channel",
+      "confidence": 0.95
+    },
+    {
+      "number": 3001,
+      "owner": "workx_product_gap",
+      "rootGap": "No DSH product feature for file drag-in and document reading (xlsx/docx/pptx/pdf)",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Build a dsh-work-x file pane plugin that handles drag-in and parses office documents into workspace-accessible text",
+      "confidence": 0.8
+    },
+    {
+      "number": 3016,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH native session loader only repairs torn tail, not seq gaps or bad frames in session.jsonl.zstd",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix the DSH session loader to detect and repair seq gaps and bad frames with backup before apply",
+      "confidence": 0.95
+    },
+    {
+      "number": 3023,
+      "owner": "external_dependency",
+      "rootGap": "Native DSH connection errors require diagnosing user's network/provider configuration",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Provide a diagnostic guide and configuration checker for common connection error causes",
+      "confidence": 0.7
+    },
+    {
+      "number": 3024,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH session_projcache.json never garbage-collects settled subagent projections",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Implement automatic GC of settled subagent projections in DSH core with configurable retention policy",
+      "confidence": 0.95
+    },
+    {
+      "number": 3026,
+      "owner": "missing_pi_package",
+      "rootGap": "No Pi package implements dynamic model projection for hot-switching between vision and text models in DSH sessions.",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Build a Pi package that intercepts model routing and projects image blocks to text annotations when switching to text-only models.",
+      "confidence": 0.85
+    },
+    {
+      "number": 3063,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH-native dsh-mcp-client lacks OAuth lifecycle API and inactivity-based long-running timeout semantics.",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Extend dsh-mcp-client with OAuth lifecycle methods and inactivity-based timeout mode in DSH core.",
+      "confidence": 0.9
+    },
+    {
+      "number": 3103,
+      "owner": "dsh_public_seam_gap",
+      "rootGap": "DSH SDK protocol lacks session/create options for mounting agent presets per session.",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Add preset mounting options to the SDK session/create protocol in DSH core.",
+      "confidence": 0.9
+    },
+    {
+      "number": 3104,
+      "owner": "dsh_public_seam_gap",
+      "rootGap": "DSH SDK protocol lacks server-to-client request/response for user questions.",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Add userQuestion/ask and userQuestion/answer methods to the SDK wire protocol in DSH core.",
+      "confidence": 0.9
+    },
+    {
+      "number": 3105,
+      "owner": "dsh_public_seam_gap",
+      "rootGap": "DSH SDK protocol lacks artifact list/read methods for session workspace files.",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Add artifact/list and artifact/read methods to the SDK wire protocol in DSH core.",
+      "confidence": 0.9
+    },
+    {
+      "number": 3121,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH core workspace listing/recovery after restart is unreliable.",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix DSH core workspace persistence and recovery to reliably restore workspaces after restart.",
+      "confidence": 0.85
+    },
+    {
+      "number": 3125,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH Web UI lacks model test button, font size control, chat width flexibility, notifications, diff view, and message jump.",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Implement the requested Web UI features in DSH core Web interface.",
+      "confidence": 0.9
+    },
+    {
+      "number": 3126,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH AgentLoop only allowlists error|aborted failure kinds, causing incorrect assistant message assembly for other failure kinds.",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix AgentLoop failure-kind handling to properly route all failure kinds without assembling assistant messages.",
+      "confidence": 0.95
+    },
+    {
+      "number": 3127,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH native model form lacks multimodal option support in UI settings",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "File a DSH core issue to add multimodal option to the model settings form",
+      "confidence": 0.95
+    },
+    {
+      "number": 3147,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH model picker lacks filtering and bulk selection controls",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Submit the fork's implementation as a DSH core PR for model picker enhancement",
+      "confidence": 0.95
+    },
+    {
+      "number": 3157,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH native timeout for local LLM requests is fixed at 5 minutes",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Request DSH core to make request timeout configurable per provider",
+      "confidence": 0.9
+    },
+    {
+      "number": 3159,
+      "owner": "dsh_core_bug",
+      "rootGap": "Five generic DSH architecture gaps: system prompt placement, retry classification, provider profile schema, etc.",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "File separate DSH core issues for each of the five generic gaps",
+      "confidence": 0.9
+    },
+    {
+      "number": 3162,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH Settings nav lacks icon customization and official archived-sessions management page",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Request DSH core to add icon field to settings.section and build archived-sessions management page",
+      "confidence": 0.95
+    },
+    {
+      "number": 3169,
+      "owner": "external_dependency",
+      "rootGap": "Model responds in English despite Chinese input; model behavior issue",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Advise user to adjust model system prompt or select a Chinese-optimized model",
+      "confidence": 0.95
+    },
+    {
+      "number": 3175,
+      "owner": "workx_product_gap",
+      "rootGap": "Cross-session reference chip injection plugin exists but is not integrated into DSH product",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Package the plugin as a DSH product feature or document its installation",
+      "confidence": 0.8
+    },
+    {
+      "number": 3180,
+      "owner": "workx_product_gap",
+      "rootGap": "Bilingual reasoning-effort settings plugin exists but is not part of DSH product",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Promote the plugin as an official DSH product extension",
+      "confidence": 0.8
+    },
+    {
+      "number": 3187,
+      "owner": "missing_pi_package",
+      "rootGap": "No Pi package provides git-based session backup/rollback with automatic rollback on harness crash",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Build a Pi package that wraps DSH session/settings files in a git repo with commit hooks and crash-recovery rollback",
+      "confidence": 0.85
+    },
+    {
+      "number": 3199,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH core lacks a global single-model enforcement mode across all chats",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Request DSH core to add a global model lock setting that overrides per-chat model selection",
+      "confidence": 0.9
+    },
+    {
+      "number": 3200,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH-native discovery.ts short-circuits catalog-backed routes and cannot discover Copilot models live",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Patch DSH discovery.ts to allow live model discovery for Copilot when /models provides full capabilities",
+      "confidence": 0.95
+    },
+    {
+      "number": 3208,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH Web composer lacks configurable idle Enter behavior (send vs newline)",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Merge the existing fork commit that adds enterMode setting to DSH Web UI",
+      "confidence": 0.95
+    },
+    {
+      "number": 3225,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH core lacks a unified llm.appIdentity config point affecting all providers including deepseek-official",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Implement llm.appIdentity in DSH core LlmRuntime and wire all adapters to read from it",
+      "confidence": 0.9
+    },
+    {
+      "number": 3246,
+      "owner": "workx_product_gap",
+      "rootGap": "No DSH product plugin provides a model-config management UI for llm-pi-ai endpoints",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Create a dsh-work-x plugin that wraps llm-pi-ai config editing with a Web UI settings page",
+      "confidence": 0.8
+    },
+    {
+      "number": 3260,
+      "owner": "dsh_core_bug",
+      "rootGap": "dsh-llm-deepseek stream accumulator overwrites tool-call id/name with explicit null from continuation deltas",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix dsh-llm-deepseek translate() to skip null values when accumulating tool_calls deltas",
+      "confidence": 0.95
+    },
+    {
+      "number": 3267,
+      "owner": "dsh_public_seam_gap",
+      "rootGap": "DSH core session list lacks an archive entry point that external plugins can hook into",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Request DSH core to expose an archive-session API and UI extension point for plugins",
+      "confidence": 0.85
+    },
+    {
+      "number": 3270,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH core model discovery normalization drops inputModalities and contextWindow metadata from OpenAI-compatible /v1/models responses",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Patch DSH core discovery normalization to preserve inputModalities and contextWindow from provider metadata",
+      "confidence": 0.9
+    },
+    {
+      "number": 3281,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH core streamed tool-call assembler in dsh-llm-deepseek translate() clobbers name/callId with empty continuation deltas",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix translate() guards to reject empty id/name values in continuation deltas",
+      "confidence": 0.95
+    },
+    {
+      "number": 3282,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH core agent-preset mounting is coupled to web frontend; headless/TUI never call agentPresets.mount()",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Move agent-preset mounting into core agent factory setup hook so headless/TUI apply personas",
+      "confidence": 0.9
+    },
+    {
+      "number": 3283,
+      "owner": "dsh_public_seam_gap",
+      "rootGap": "DSH lacks a public cross-provider fallback routing hook and first-party CLI adapter packages; user asks for blessed pattern",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Add a documented cross-provider fallback hook in dsh-llm and publish official CLI adapter packages",
+      "confidence": 0.8
+    },
+    {
+      "number": 3284,
+      "owner": "workx_product_gap",
+      "rootGap": "DSH settings UI lacks buttons to manually mark models as multimodal and select thinking levels",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Build a DSH product plugin that adds multimodal/thinking-level toggles to the model configuration UI",
+      "confidence": 0.85
+    },
+    {
+      "number": 3299,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH core streaming tool-call aggregation accepts empty name fragments from third-party backends causing agent loops",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Patch llm-deepseek translate.ts to skip tool-call blocks with empty/blank names at block close",
+      "confidence": 0.95
+    },
+    {
+      "number": 3304,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH core sends full tool schema every turn and lacks lazy tool loading, prefix-stable caching, and context compaction",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Implement lazy tool loading and context compaction in DSH core request builder",
+      "confidence": 0.85
+    },
+    {
+      "number": 3305,
+      "owner": "dsh_core_bug",
+      "rootGap": "Duplicate of 3304 — DSH core prompt-cache misses and tool-schema overhead remain unfixed",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Implement lazy tool loading and context compaction in DSH core request builder",
+      "confidence": 0.85
+    },
+    {
+      "number": 3314,
+      "owner": "dsh_public_seam_gap",
+      "rootGap": "ACP plugin does not expose model catalog via standard session configOptions contract",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Upstream DSH must implement session configOptions in the ACP plugin",
+      "confidence": 0.9
+    },
+    {
+      "number": 3315,
+      "owner": "dsh_core_bug",
+      "rootGap": "dsh-llm-deepseek adapter JSON.stringify produces invalid surrogate escapes",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix adapter serialization to sanitize lone surrogates",
+      "confidence": 0.95
+    },
+    {
+      "number": 3330,
+      "owner": "dsh_core_bug",
+      "rootGap": "Native DSH provider adapter reasoning effort handling for opencode-go unverified",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Verify and fix DSH adapter reasoning effort mapping for opencode-go",
+      "confidence": 0.7
+    },
+    {
+      "number": 3338,
+      "owner": "dsh_core_bug",
+      "rootGap": "429 insufficient_quota misclassified as terminal QUOTA in dsh-llm-deepseek",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix httpErrorCode to prioritize 429 as RATE_LIMIT",
+      "confidence": 0.95
+    },
+    {
+      "number": 3342,
+      "owner": "external_dependency",
+      "rootGap": "agnes-2.5-pro model tool protocol incompatibility (edit vs run_code)",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Wait for model provider to fix tool protocol or use compatible model",
+      "confidence": 0.8
+    },
+    {
+      "number": 3344,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH core lacks archived session visibility, unarchive RPC, delete RPC",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Upstream DSH must add workspace unarchive/delete RPCs",
+      "confidence": 0.95
+    },
+    {
+      "number": 3377,
+      "owner": "dsh_core_bug",
+      "rootGap": "Subagent model selection uses stale parent snapshot instead of current UI selection",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix DSH subagent continuation to use live model selection",
+      "confidence": 0.95
+    },
+    {
+      "number": 3387,
+      "owner": "dsh_public_seam_gap",
+      "rootGap": "MCP client lacks per-server OAuth callback path configuration",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Upstream DSH must add callbackPath to OAuthConfig",
+      "confidence": 0.9
+    },
+    {
+      "number": 3439,
+      "owner": "dsh_public_seam_gap",
+      "rootGap": "MCP stdio child processes have no code-side channel to learn the calling session's agent/team identity; DSH's MCP client does not expose this seam.",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Request upstream DSH to add session identity metadata to MCP tools/call requests or child process environment.",
+      "confidence": 0.85
+    },
+    {
+      "number": 3517,
+      "owner": "dsh_core_bug",
+      "rootGap": "dsh-tui's /v1/responses request construction (full history resend, retry/backoff, SSE lifecycle) is broken and needs native fix.",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "File a DSH core bug report for dsh-tui's request construction and retry/SSE handling.",
+      "confidence": 0.9
+    },
+    {
+      "number": 3546,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH workspace session unarchive and permanent delete capabilities are missing from the native UI and registry.",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Request upstream DSH to add unarchiveSession and deleteSession RPCs and UI controls.",
+      "confidence": 0.95
+    },
+    {
+      "number": 3552,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH-native subagent inheritance reads frozen agent.options.provider instead of live model selection, causing stale provider billing.",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "File a DSH core bug to make subagent provider inheritance read the live ModelSelectionRef.",
+      "confidence": 0.95
+    },
+    {
+      "number": 3561,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH Web GUI deadlocks when switching an image-bearing session to a text-only model; missing removeImages RPC and schema strips reason field.",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Request upstream DSH to implement session.removeImages RPC and preserve model-unavailable reason in schema.",
+      "confidence": 0.95
+    },
+    {
+      "number": 3566,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH native model discovery and Settings UI drop reasoningEfforts from GET /v1/models responses.",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "File a DSH core bug to preserve reasoningEfforts in LlmDiscoveredModel and Settings adoption path.",
+      "confidence": 0.9
+    },
+    {
+      "number": 3568,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH-native dsh-mcp-client's streaming argument reassembly is broken, causing empty parameters and infinite loops.",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "File a DSH core bug for dsh-mcp-client's argumentsDelta reassembly logic.",
+      "confidence": 0.95
+    },
+    {
+      "number": 3575,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH Web Models settings page lacks API key field and curated layout for registerConfigurableProviders routes.",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Request upstream DSH to add generic API key support and provider-id sorting for configurable providers.",
+      "confidence": 0.9
+    },
+    {
+      "number": 3594,
+      "owner": "dsh_core_bug",
+      "rootGap": "Native DSH session title persistence after restart is broken",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix DSH session title storage/restore logic in the core session manager",
+      "confidence": 0.95
+    },
+    {
+      "number": 3609,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH native GenerateOptions lacks tool_choice and text tool-call parsing for OpenAI-compatible adapters",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Add tool_choice support and text tool-call fallback parsing to DSH core agent-loop",
+      "confidence": 0.9
+    },
+    {
+      "number": 3612,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH native custom model settings UI lacks thinking-mode option",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Add thinking-mode configuration to DSH native model settings page",
+      "confidence": 0.9
+    },
+    {
+      "number": 3643,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH native modality mismatch detection and fork-with-strip for image history are missing",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Implement modality mismatch warning and image-stripping fork in DSH core session handling",
+      "confidence": 0.85
+    },
+    {
+      "number": 3695,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH DeepSeek adapter persists and replays malformed tool-call arguments causing permanent session brick",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix serialize/assembler to validate and sanitize tool-call arguments before persistence",
+      "confidence": 0.95
+    },
+    {
+      "number": 3696,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH native credential write/read chain (settings.mutate, credentials.set, LEGAL_API_KEY) is unreliable",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix DSH settings.mutate failure handling and credential normalization in core",
+      "confidence": 0.95
+    },
+    {
+      "number": 3713,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH MCP client schema rejects undefined env values and union error message omits failing key",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix MCP client env schema to accept undefined and improve union error reporting",
+      "confidence": 0.95
+    },
+    {
+      "number": 3726,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH native long-session history fetch fails preventing model editing display",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix DSH history loading for long sessions in core session retrieval",
+      "confidence": 0.9
+    },
+    {
+      "number": 3734,
+      "owner": "external_dependency",
+      "rootGap": "npm dist-tags.latest for @deepseek-ai/dsh-subagent-* points to an empty 0.0.1-rc.1 package instead of the complete 0.1.0-rc.8",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Publish a corrected dist-tags.latest to npm for the affected packages",
+      "confidence": 0.95
+    },
+    {
+      "number": 3738,
+      "owner": "missing_pi_package",
+      "rootGap": "No Pi package provides video/audio/document parsing and chat history viewing equivalent to the Look Look plugin",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Build a Pi package that extends the vision bridge to handle video, audio, documents, and chat history",
+      "confidence": 0.85
+    },
+    {
+      "number": 3739,
+      "owner": "missing_pi_package",
+      "rootGap": "No Pi package replicates the Baidu Qianfan plugin's rate limiter, .env.qianfan config, and thinking mode handling",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Create a Pi package that implements the Qianfan-specific rate limiter, config file, and thinking mode features",
+      "confidence": 0.8
+    },
+    {
+      "number": 3745,
+      "owner": "external_dependency",
+      "rootGap": "Qwen provider's token generation speed is inherently slower than DeepSeek's",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Document the provider-side speed difference and suggest users choose faster providers when needed",
+      "confidence": 0.95
+    },
+    {
+      "number": 3752,
+      "owner": "pi2dsh_abi_gap",
+      "rootGap": "pi-ai adapter migration from 0.82.1 to 0.84.2 requires catalog drift handling, new StopReason states, and deferred handles",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Update the pi2dsh engine to handle pi-ai 0.84.2 catalog drift and new lifecycle states",
+      "confidence": 0.9
+    },
+    {
+      "number": 3761,
+      "owner": "pi2dsh_abi_gap",
+      "rootGap": "No route-level extraBody injection support for arbitrary fields like 'user' or 'prompt_cache_key'",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Add extraBody support to the PiAiProviderProfile in the pi2dsh engine",
+      "confidence": 0.9
+    },
+    {
+      "number": 3766,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH Web plugin list displays all MCP connections as 'mcp-client' instead of server names",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix the DSH Web plugin list to display MCP server names and connection status",
+      "confidence": 0.95
+    },
+    {
+      "number": 3768,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH Web plugin list displays all MCP connections as 'mcp-client' instead of server names",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix the DSH Web plugin list to display MCP server names and connection status",
+      "confidence": 0.95
+    },
+    {
+      "number": 3788,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH native cache hit behavior with the user's provider remains broken; pi2dsh does not fix DSH core caching logic.",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Report the cache miss issue to DSH core with provider details and request a fix in DSH's native caching logic.",
+      "confidence": 0.9
+    },
+    {
+      "number": 3830,
+      "owner": "external_dependency",
+      "rootGap": "The v4-flash-vision model's Think-stage infinite loop is a provider/model issue, not fixable by pi2dsh.",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Report the infinite loop to the model provider and consider using a different model or disabling thinking mode as a workaround.",
+      "confidence": 0.95
+    },
+    {
+      "number": 3832,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH's dsh-llm-deepseek adapter hasImages check throws when switching to text-only model with image history; no fallback path exists.",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix the dsh-llm-deepseek adapter to omit or convert historical images when switching to a text-only model.",
+      "confidence": 0.95
+    },
+    {
+      "number": 3855,
+      "owner": "missing_pi_package",
+      "rootGap": "No verified Pi capability imports arbitrary file types into DSH sessions.",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Build a Pi capability package that reads arbitrary file types and injects their content into DSH sessions.",
+      "confidence": 0.8
+    },
+    {
+      "number": 3857,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH core history replay drops reasoning_content field, causing 400 errors with DeepSeek thinking mode.",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix DSH's history replay logic to preserve reasoning_content in assistant messages with tool_calls.",
+      "confidence": 0.95
+    },
+    {
+      "number": 3863,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH native composer upload functionality remains broken; the vision bridge does not fix the upload button.",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix the DSH composer's file/image upload button in the Web core.",
+      "confidence": 0.9
+    },
+    {
+      "number": 3869,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH native web_search cost amplification issues: queries fan-out, no call-level budget, missing fetch capability.",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix DSH's web_search tool to add schema visibility, call-level budget, and bundle dsh-web-fetch-http.",
+      "confidence": 0.95
+    },
+    {
+      "number": 3893,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH settings.yaml parser silently drops llm-pi-ai providers when API type and baseURL are missing.",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix DSH's settings.yaml parser to validate and report missing API type/baseURL instead of silently dropping providers.",
+      "confidence": 0.95
+    },
+    {
+      "number": 3923,
+      "owner": "dsh_core_bug",
+      "rootGap": "The native dsh-llm-pi-ai adapter's O(n²) tool_call argument reparse remains unfixed; pi2dsh only offers an alternate route.",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Fix the O(n²) reparse in dsh-llm-pi-ai by incrementally parsing deltas instead of re-parsing the full accumulated string per chunk.",
+      "confidence": 0.95
+    },
+    {
+      "number": 3934,
+      "owner": "dsh_core_bug",
+      "rootGap": "The native DSH adapter registration bug ('registration.adapter.prepare Call is not a function') remains unfixed; pi2dsh only offers an alternate provider path.",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Fix the DSH core adapter registration defect in the native plugin loader.",
+      "confidence": 0.9
+    },
+    {
+      "number": 3949,
+      "owner": "dsh_core_bug",
+      "rootGap": "The native llm-pi-ai/llm-deepseek retry classification bug for 'network_error' finish_reason remains unfixed; pi2dsh only offers an alternate provider route.",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Apply the tested fix from the fork to classify network_error as TRANSPORT in both adapters.",
+      "confidence": 0.95
+    },
+    {
+      "number": 3955,
+      "owner": "dsh_core_bug",
+      "rootGap": "The native llm-deepseek translator bug where empty-name deltas overwrite valid tool names remains unfixed; pi2dsh only offers an alternate provider route.",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Fix the translator to only update tool name when the delta name is non-empty.",
+      "confidence": 0.95
+    },
+    {
+      "number": 3965,
+      "owner": "dsh_core_bug",
+      "rootGap": "The native DSH model-add UI lacks an image-support toggle for any provider; pi2dsh does not repair this UI gap.",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Add an image-support toggle to the DSH model-add UI.",
+      "confidence": 0.85
+    },
+    {
+      "number": 3971,
+      "owner": "dsh_core_bug",
+      "rootGap": "The native CustomProviderCard UI bug (missing read-only env guard, locked key input, half-failed creation) remains unfixed; pi2dsh only offers an alternate provider route.",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Apply the tested fix to CustomProviderCard to reuse ProviderEditor's read-only env guard pattern.",
+      "confidence": 0.95
+    },
+    {
+      "number": 3984,
+      "owner": "dsh_core_bug",
+      "rootGap": "The native @deepseek-ai/dsh-mcp-client activeServerNames lifecycle leak remains unfixed; pi-mcp-adapter does not repair the native plugin's registry.",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Fix the lifecycle cleanup in dsh-mcp-client to remove serverName entries when sessions close.",
+      "confidence": 0.95
+    },
+    {
+      "number": 3987,
+      "owner": "dsh_core_bug",
+      "rootGap": "The native DSH subagent tool still inherits the parent's preset; Pi subagents are a separate mechanism, not a repair of the native tool's schema.",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Add an optional preset parameter to the native subagent tool schema and implement child composition with the specified preset.",
+      "confidence": 0.9
+    },
+    {
+      "number": 3991,
+      "owner": "dsh_core_bug",
+      "rootGap": "Native dsh-mcp-client lacks an SSE transport option; pi-mcp-adapter is an alternate runtime and does not modify the core transport.",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Add an 'sse' transport option to dsh-mcp-client using SSEClientTransport, or upstream the fork's changes.",
+      "confidence": 0.95
+    },
+    {
+      "number": 3997,
+      "owner": "dsh_core_bug",
+      "rootGap": "Native dsh-mcp-client does not pass authProvider through to StreamableHTTPClientTransport; pi-mcp-adapter is an alternate runtime and does not modify the core transport layer.",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Add authProvider passthrough to dsh-mcp-client's createTransport, wiring tokens()/saveTokens() to ctx.credentials and ctx.authorization.",
+      "confidence": 0.95
+    },
+    {
+      "number": 3998,
+      "owner": "dsh_core_bug",
+      "rootGap": "Native dsh-mcp-client does not populate tool/result.meta with images and ui_url, and the generic tool card does not render them; pi-mcp-adapter cannot modify DSH's native UI rendering or presentationMeta filling.",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Cherry-pick the provided branch to implement presentationMeta projection in dsh-mcp-client and rendering in dsh-client-ui-tool.",
+      "confidence": 0.95
+    },
+    {
+      "number": 4006,
+      "owner": "dsh_core_bug",
+      "rootGap": "llm-pi-ai's toRecord fails to store rotated OAuth grants due to assertJsonValue rejecting undefined; pi2dsh does not repair the native credential store defect.",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix llm-pi-ai's toRecord to omit undefined fields before storing, or relax assertJsonValue to allow undefined.",
+      "confidence": 0.95
+    },
+    {
+      "number": 4020,
+      "owner": "dsh_core_bug",
+      "rootGap": "Native tool-cordis uses a process-global single-instance registry that throws on duplicate ids when different cordis-family presets mount it; pi-subagents does not repair DSH's native cordis preset mounting or registry conflicts.",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix tool-cordis's inspect registry to be per-session or per-preset instead of process-global.",
+      "confidence": 0.95
+    },
+    {
+      "number": 4025,
+      "owner": "dsh_core_bug",
+      "rootGap": "Native dsh-mcp-client has a scope mismatch in activeServerNames lifecycle management; pi-mcp-adapter does not repair the native scope mismatch or cleanup timing.",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Fix the scope mismatch in dsh-mcp-client's activeServerNames registration to be per-session rather than per-root.",
+      "confidence": 0.95
+    },
+    {
+      "number": 4033,
+      "owner": "dsh_core_bug",
+      "rootGap": "Native session.selectModel hard-blocks switching to non-vision models when images are in context; pi2dsh does not modify DSH's native model-switching guard logic.",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Modify DSH's request-build to mask image blocks in the projection when the target model lacks vision, with a warning instead of a hard block.",
+      "confidence": 0.95
+    },
+    {
+      "number": 4034,
+      "owner": "dsh_core_bug",
+      "rootGap": "Native session-title generation uses thinking models for openai-completions endpoints, polluting titles with reasoning chains; pi2dsh does not fix DSH's native title generation logic or normalizeSessionTitle.",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Add thinking-disabling for session-title purpose in the openai-completions path and strip reasoning prefixes in normalizeSessionTitle.",
+      "confidence": 0.95
+    },
+    {
+      "number": 4042,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH's bundled pi-ai dependency is pinned to ^0.82.1, preventing newer model catalogs from reaching users",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Upstream DSH must bump @earendil-works/pi-ai to ^0.84.2 or later to include GLM-5.3 in the built-in catalog",
+      "confidence": 0.95
+    },
+    {
+      "number": 4044,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH Web settings page lacks input modality fields for custom models, blocking multimodal usage",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Upstream DSH must add inputModalities/input fields to the Web settings model editor form",
+      "confidence": 0.95
+    },
+    {
+      "number": 4049,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH adapter selection keys on owned_by metadata, crashing on combo models from OpenCodex",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Upstream DSH must fix adapter selection to use the configured route rather than owned_by metadata",
+      "confidence": 0.95
+    },
+    {
+      "number": 4062,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH SSE parser overwrites valid tool_call id/name with empty strings from third-party providers",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Upstream DSH must add empty-string guards in the SSE tool_calls delta parser",
+      "confidence": 0.95
+    },
+    {
+      "number": 4065,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH subagents inherit stale creation-time model seed instead of live route after model switch",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Upstream DSH must make subagent delegation read the live session model selection at spawn time",
+      "confidence": 0.95
+    },
+    {
+      "number": 4071,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH Settings editor lacks per-model reasoningEfforts field and live catalog fetch for known providers",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Upstream DSH must add reasoningEfforts to the model editor and consult live endpoints for catalog routes",
+      "confidence": 0.95
+    },
+    {
+      "number": 4077,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH subagents inherit agent.options stamped at creation, causing silent cross-provider divergence after model switch",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Upstream DSH must make resolveChildAgentOptions use the live per-session model selection instead of stale options",
+      "confidence": 0.95
+    },
+    {
+      "number": 4111,
+      "owner": "dsh_core_bug",
+      "rootGap": "DSH Settings lacks UI toggle switches for plugin enable/disable and built-in keyless search providers",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Upstream DSH must add plugin management UI to Settings and bundle keyless search providers like DuckDuckGo",
+      "confidence": 0.95
+    },
+    {
+      "number": 4113,
+      "owner": "workx_product_gap",
+      "rootGap": "Auto-discovery scan UI in native Settings/Provider menu for local inference servers",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Build a DSH product plugin that adds a local-server discovery panel to the settings UI, probing standard ports and populating provider configs",
+      "confidence": 0.85
+    },
+    {
+      "number": 4158,
+      "owner": "dsh_core_bug",
+      "rootGap": "Native DSH spawn route inheritance splices provider from parent and model from global default, causing UNKNOWN_MODEL",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Patch DSH core spawn parser to inherit provider+model as a pair from parent session when child doesn't specify explicit route",
+      "confidence": 0.95
+    },
+    {
+      "number": 4161,
+      "owner": "dsh_core_bug",
+      "rootGap": "Native DSH web_search tool hardcodes DeepSeek provider and API key, bypassing user's selected model",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Patch DSH core web tool to make searchProvider configurable and follow agent-default-model or current selection",
+      "confidence": 0.95
+    },
+    {
+      "number": 4169,
+      "owner": "missing_pi_package",
+      "rootGap": "No import/migration tool for legacy DSH v0.1.0 session history into fresh install",
+      "canWeBuildWithoutDshCore": true,
+      "recommendedAction": "Build a Pi package that reads legacy session backup format and imports into DSH's current storage schema",
+      "confidence": 0.8
+    },
+    {
+      "number": 4174,
+      "owner": "dsh_core_bug",
+      "rootGap": "Native DSH subagent delivery hardwired to FIFO followup; no opt-in steering ('next-step') for parent-to-child sends",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Patch DSH core subagent continuation to expose delivery mode selection (FIFO vs steering) in send_message and GUI prompt",
+      "confidence": 0.95
+    },
+    {
+      "number": 4190,
+      "owner": "dsh_core_bug",
+      "rootGap": "pi-ai session WebSocket cache never cleaned up on headless session end, causing 5-minute process linger",
+      "canWeBuildWithoutDshCore": false,
+      "recommendedAction": "Patch dsh-llm-pi-ai to call cleanupSessionResources(sessionId) when session/agent finishes",
+      "confidence": 0.95
+    }
+  ]
+}

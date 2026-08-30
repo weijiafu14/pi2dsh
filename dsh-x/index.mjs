@@ -68,8 +68,16 @@ async function readStanding(path) {
   }
 }
 
-async function memoryState() {
+async function memoryState(currentCwd) {
   const agentDir = agentDirOf()
+  // Mirror the package's own project detection (detectProject): the project
+  // name is the workspace directory's basename; home and root mean none.
+  let currentProject = null
+  if (typeof currentCwd === 'string' && currentCwd.length > 0) {
+    const resolved = currentCwd.replace(/\/+$/u, '')
+    const base = resolved.split('/').pop() ?? ''
+    if (resolved !== homedir() && resolved !== '' && base !== '' && base !== '.' && base !== '..') currentProject = base
+  }
   // The package's default global dir is <agentRoot>/pi-hermes-memory/ (its
   // index.ts `defaultGlobalDir`); project memories live under the agent
   // root's projects-memory/. Read-only over both.
@@ -86,6 +94,7 @@ async function memoryState() {
     standing,
     standingBudget: { entries: standing.length, maxEntries: 20, chars: standing.join('\n').length, maxChars: 2000 },
     projects,
+    currentProject,
   }
 }
 
@@ -181,7 +190,8 @@ function registerSuiteRoutes(ctx) {
         }
         try {
           if (url.pathname === '/dsh-x/memory-state' && (method === 'GET' || method === 'HEAD')) {
-            return json(200, await memoryState())
+            const session = url.searchParams.get('session') ?? ''
+            return json(200, await memoryState(session === '' ? undefined : sessionCwd(session)))
           }
           if (url.pathname === '/dsh-x/tasks-state' && (method === 'GET' || method === 'HEAD')) {
             const cwd = sessionCwd(url.searchParams.get('session') ?? '')

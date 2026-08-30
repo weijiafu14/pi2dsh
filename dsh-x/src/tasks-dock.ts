@@ -221,7 +221,7 @@ export function TasksChip({ sessionId }: { sessionId?: string }): ReactNode {
 
 /** The same list as a sidebar tab (needs the optional dsh-better-sidebar). */
 function TasksSidebarTab({ scope, visible }: { scope: SidebarTabScope, visible: boolean }): ReactNode {
-  return createElement('div', { style: ui.tabRoot, 'data-dsh-x': 'tasks-tab' },
+  return createElement('div', { style: ui.tabRoot, 'data-dsh-x': 'tasks-tab', 'data-session': scope.sessionId ?? '(none)' },
     createElement(TasksListBody, { session: scope.sessionId ?? '', active: visible }),
   )
 }
@@ -231,7 +231,10 @@ export function registerTasksSeats(ctx: TasksUiContext): void {
   ctx.inject(['betterSidebar'], (scope) => {
     scope.betterSidebar?.registerTab({
       id: 'dsh-work-x:tasks',
-      title: 'Tasks',
+      // Not "Tasks": the sidebar's own built-in Tasks page (subagents) owns
+      // that name in the "+" menu, and a colliding title made ours
+      // unreachable (2026-08-30, caught by the sidebar E2E).
+      title: 'Jobs',
       component: TasksSidebarTab,
     })
   })

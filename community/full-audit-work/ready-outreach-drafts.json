@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "source": "ready-live.json live eligibility check",
+  "drafts": [
+    {
+      "number": 45,
+      "body": "现在这条路已经能直接用了：社区的 `@deepseek-harness-tui/dsh-tui` 提供纯终端界面，SSH 到 Linux 主机后即可使用，不需要把 Agent 内核另写一遍。\n\n如果还希望把 Pi 生态的 MCP、子代理等插件带进这个 TUI，可以按 DSH 的标准插件方式安装：\n\n```sh\ndsh plugin --profile dsh-tui add @deepseek-harness-tui/dsh-tui\ndsh plugin --profile dsh-tui add pi2dsh\n```\n\n我在 stock npm DSH + stock dsh-TUI 上跑过双 Agent、真实模型回合和 Pi 插件管理界面；没有 fork TUI 或 DSH。项目和完整复现步骤：https://github.com/weijiafu14/pi2dsh#walkthrough-advanced-mcp-in-your-terminal"
+    },
+    {
+      "number": 48,
+      "body": "现在已经有可用的终端路线了：`@deepseek-harness-tui/dsh-tui` 负责 CLI/TUI 壳；如果还想在里面使用 Pi 生态插件，再装一层 `pi2dsh`：\n\n```sh\ndsh plugin --profile dsh-tui add @deepseek-harness-tui/dsh-tui\ndsh plugin --profile dsh-tui add pi2dsh\n```\n\n我们已经在原版 npm DSH 与 dsh-TUI 上跑通真实模型、多 Agent 和插件命令/工具，不需要浏览器。复现：https://github.com/weijiafu14/pi2dsh#walkthrough-advanced-mcp-in-your-terminal"
+    },
+    {
+      "number": 102,
+      "body": "现在社区已经有完整 TUI：`@deepseek-harness-tui/dsh-tui`。如果只要终端壳，安装它即可；如果还需要 Pi 生态里的 MCP、子代理、记忆等插件，再加 `pi2dsh`：\n\n```sh\ndsh plugin --profile dsh-tui add @deepseek-harness-tui/dsh-tui\ndsh plugin --profile dsh-tui add pi2dsh\n```\n\n两者在 stock npm 环境的真实模型回合已经跑通，使用的是 DSH 官方 plugin 命令，不需要源码构建：https://github.com/weijiafu14/pi2dsh#walkthrough-advanced-mcp-in-your-terminal"
+    },
+    {
+      "number": 303,
+      "body": "低配 VPS / 纯 SSH 的场景现在可以走 `@deepseek-harness-tui/dsh-tui`，不用启动 Web 界面。想把 Pi 生态插件一并带进 TUI，再安装 `pi2dsh`：\n\n```sh\ndsh plugin --profile dsh-tui add @deepseek-harness-tui/dsh-tui\ndsh plugin --profile dsh-tui add pi2dsh\n```\n\n我们用 npm 原版 DSH、原版 dsh-TUI 跑过真实模型、两个独立 Agent 以及插件的命令和工具链；没有另造 Agent loop。步骤和证据：https://github.com/weijiafu14/pi2dsh#walkthrough-advanced-mcp-in-your-terminal"
+    },
+    {
+      "number": 364,
+      "body": "现在有现成 TUI 路线：`@deepseek-harness-tui/dsh-tui`。如果希望终端里继续使用 Pi 生态插件，可以组合 `pi2dsh`：\n\n```sh\ndsh plugin --profile dsh-tui add @deepseek-harness-tui/dsh-tui\ndsh plugin --profile dsh-tui add pi2dsh\n```\n\n已经在 stock npm DSH + dsh-TUI 上完成真实模型与多 Agent 验证，不需要改 DSH/TUI 源码：https://github.com/weijiafu14/pi2dsh#walkthrough-advanced-mcp-in-your-terminal"
+    },
+    {
+      "number": 383,
+      "body": "这个拆分很准确：要引用原始会话，`dsh-tool-session-query` 是 DSH 原生且最直接的路线；如果需求是把历史会话里的稳定事实沉淀成可跨会话检索的长期记忆，则可以补一条 Pi 生态路线。\n\n`pi-hermes-memory` 已经通过 `pi2dsh` 在真实 DSH loop 上验证：进程 A 写入记忆，完全退出后由进程 B 从磁盘检索回来。安装仍然只用 DSH 插件命令：\n\n```sh\ndsh plugin --profile web add pi2dsh\ndsh plugin --profile web add pi-hermes-memory\n```\n\n它适合“以后还要复用的事实”，而 `session-query` 继续负责逐条查原会话，两者可以并存。项目：https://github.com/weijiafu14/pi2dsh"
+    },
+    {
+      "number": 611,
+      "body": "除了设置页里的内置 provider，还可以把 Pi 生态的 provider 插件作为 DSH 原生模型路由使用。`pi2dsh` 会把插件声明的模型目录、OAuth/凭证与请求传输映射进 DSH，不需要把模型协议重新写一遍。\n\n安装方式就是标准 DSH plugin 流程：\n\n```sh\ndsh plugin --profile web add pi2dsh\ndsh plugin --profile web add <Pi-provider-包名>\n```\n\n目前仓库里已有阿里云 Token Plan 的真实目录、工具回合、重启验证，以及 ChatGPT/Codex OAuth 登录后进入 DSH 模型选择器并真实调用的闭环。项目与已验证清单：https://github.com/weijiafu14/pi2dsh#what-actually-works-today"
+    },
+    {
+      "number": 842,
+      "body": "这个需求现在已经有社区实现：`@deepseek-harness-tui/dsh-tui` 提供纯终端 surface，不要求启动 Web UI。若还要在 TUI 里使用 Pi 生态的 MCP、子代理等能力，可以组合 `pi2dsh`：\n\n```sh\ndsh plugin --profile dsh-tui add @deepseek-harness-tui/dsh-tui\ndsh plugin --profile dsh-tui add pi2dsh\n```\n\n我们已经用 stock npm DSH + stock dsh-TUI 跑通两个独立 Agent、真实模型回合、插件命令、工具与全屏管理面，没有改 TUI 或 DSH 源码。复现步骤：https://github.com/weijiafu14/pi2dsh#walkthrough-advanced-mcp-in-your-terminal"
+    },
+    {
+      "number": 1145,
+      "body": "这段对官方搜索链路的理解是对的：`dsh-web-search-deepseek` 最终走 DeepSeek 服务端的原生 web-search tool。\n\n另一个适合补进对照表的路线是“搜索能力不绑定主模型 provider”：Pi 生态的 `@juicesharp/rpiv-web-tools` 通过 `pi2dsh` 可作为普通 DSH 工具运行，真实网络搜索与抓取链路已经跑通。安装：\n\n```sh\ndsh plugin --profile web add pi2dsh\ndsh plugin --profile web add @juicesharp/rpiv-web-tools\n```\n\n这样主模型使用哪个 provider 与搜索工具使用哪个搜索后端可以分开。项目：https://github.com/weijiafu14/pi2dsh"
+    },
+    {
+      "number": 1711,
+      "body": "This matrix is useful. One additional migration dimension is the extension ecosystem: after moving instructions, skills, MCP and hooks, users still tend to miss search, memory, subagents and vision packages from their previous setup.\n\n`pi2dsh` lets DSH load published Pi packages through the normal DSH plugin workflow, without converting or patching each package:\n\n```sh\ndsh plugin --profile web add pi2dsh\ndsh plugin --profile web add <pi-package>\n```\n\nThe repository now includes real DSH-loop examples for vision, Codex image generation/editing, side conversations, MCP, subagents, provider routes and cross-process memory. It may be useful as an “ecosystem migration” entry in the guide alongside the asset-level matrix: https://github.com/weijiafu14/pi2dsh"
+    },
+    {
+      "number": 2261,
+      "body": "There is now a community terminal surface, `@deepseek-harness-tui/dsh-tui`, built on DSH's composable services. For users who also want the Pi plugin ecosystem in that terminal, it composes with `pi2dsh` through DSH's regular plugin workflow:\n\n```sh\ndsh plugin --profile dsh-tui add @deepseek-harness-tui/dsh-tui\ndsh plugin --profile dsh-tui add pi2dsh\n```\n\nWe verified the stock npm DSH + stock dsh-TUI stack with two independent Agents, real model turns, plugin commands/tools and a full-screen Pi manager — no DSH or TUI fork. Reproduction and architecture notes: https://github.com/weijiafu14/pi2dsh#walkthrough-advanced-mcp-in-your-terminal"
+    },
+    {
+      "number": 2881,
+      "body": "我们在做 Pi 插件到 DSH 的交互桥时采用的是同一条原则：**问题属于 session，不属于全局任务队列**。Pi 插件调用 `select / confirm / input / deviceCode` 时，`pi2dsh` 把它映射成 DSH 原生 `userQuestions`；等待只挂起当前 Agent，其他 Agent 仍可继续。\n\n另外有两个容易漏的闭环已经实际踩过：\n\n1. Pi 对话框尾参是 `{ signal, timeout }`，不是裸 `AbortSignal`；必须把取消/超时传到 DSH 问答服务，否则 OAuth 自动回调成功后备用输入框仍会挂着。\n2. 回答、超时和另一条竞速路径完成时，都应把同一问题 resolve 为取消语义并撤掉界面，不能留一个孤儿卡片。\n\n这套映射已经在 Web 和 dsh-TUI 的 OAuth/问答流程跑过。实现与能力契约：https://github.com/weijiafu14/pi2dsh/blob/main/docs/capabilities/interaction.md"
+    },
+    {
+      "number": 2883,
+      "body": "Our implementation rule in the Pi-to-DSH bridge is: **a question belongs to one session, not to the global work queue**. Pi `select / confirm / input / deviceCode` calls are mapped to DSH's native `userQuestions`; only that Agent waits while other Agents remain runnable.\n\nTwo details mattered in practice:\n\n1. Pi dialog cancellation arrives as `{ signal, timeout }`, not merely a raw `AbortSignal`; dropping that wrapper leaves the fallback input visible after an OAuth callback has already won the race.\n2. Answer, timeout, cancellation, and a competing completion path must all resolve the same pending question and remove its UI, so no orphan card survives.\n\nWe exercised this path in both Web and dsh-TUI OAuth/question flows. The mapping contract is documented here: https://github.com/weijiafu14/pi2dsh/blob/main/docs/capabilities/interaction.md"
+    },
+    {
+      "number": 3668,
+      "body": "补一个已经跑通的工程样本：Pi 生态的 `pi-hermes-memory` 通过 `pi2dsh` 可以直接挂到 DSH。我们做的验证不是同进程 mock，而是进程 A 写入一条用户事实并退出，进程 B 全新启动后从磁盘检索回同一事实。\n\n```sh\ndsh plugin --profile web add pi2dsh\ndsh plugin --profile web add pi-hermes-memory\n```\n\n它把“显式写入/检索的长期事实”从会话日志中独立出来，适合作为你讨论的存储层路线的一个可运行工程样本；插件仍然保持 Pi 原包，DSH 只通过兼容层获得工具、命令和生命周期。实现与验证清单：https://github.com/weijiafu14/pi2dsh#what-actually-works-today"
+    },
+    {
+      "number": 3728,
+      "body": "这个 L6/阶段二现在可以先用一个现成工程样本落 MVP：Pi 生态的 `pi-hermes-memory` 已经通过 `pi2dsh` 在真实 DSH loop 上跑通跨进程记忆——一个进程写入，完全退出后另一个新进程仍能从磁盘检索回来。\n\n```sh\ndsh plugin --profile web add pi2dsh\ndsh plugin --profile web add pi-hermes-memory\n```\n\n这样可以先把“跨会话持久存储 + 主动检索”接进 Harness，再在其上实验你提到的经验评估与策略固化。项目和已验证能力表：https://github.com/weijiafu14/pi2dsh#what-actually-works-today"
+    },
+    {
+      "number": 3961,
+      "body": "如果不想让搜索能力绑定主模型 provider，可以试 Pi 生态的 `@juicesharp/rpiv-web-tools`，通过 `pi2dsh` 作为普通 DSH 工具挂载。我们已经跑过真实网络搜索和页面抓取链路。\n\n```sh\ndsh plugin --profile web add pi2dsh\ndsh plugin --profile web add @juicesharp/rpiv-web-tools\n```\n\n这样模型 provider 与搜索后端是两条独立配置，切换主模型不需要跟着换搜索实现。项目：https://github.com/weijiafu14/pi2dsh"
+    }
+  ],
+  "skippedAfterReview": [
+    { "number": 803, "reason": "原帖已有直接提示词解法，pi2dsh 不能增加实际价值" },
+    { "number": 2545, "reason": "作者是在分享 Cloudflare Tunnel，用产品回复会劫持他人项目" },
+    { "number": 2692, "reason": "属于 DSH 权限升级误用；pi-approval-guardian 不会覆盖宿主拒绝，不能冒充解法" },
+    { "number": 2882, "reason": "远程安全开放讨论已有完整安全回复，pi2dsh 不提供远程中继，不能冒充解法" }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "overrides": [
+    {
+      "number": 218,
+      "status": "no_alternate",
+      "engineeringCluster": "memory_learning",
+      "sharedCapabilities": ["memory"],
+      "recommendedProducts": ["pi-hermes-memory"],
+      "practicalOutcome": "确认 DSH 官方未来是否内置 Memory，以及选择显式工具还是自动抽取策略",
+      "preservedSemantics": "pi-hermes-memory 可作为当前第三方长期记忆选项",
+      "lostSemantics": "任何第三方产品都不能替官方回答未来路线、默认内置与策略选择",
+      "solution": "可以在回帖中提供 pi-hermes-memory 的当前替代方案，但对原帖的官方 roadmap 问题没有可交付替代。",
+      "evidenceNeeded": "none",
+      "cost": "xs",
+      "confidence": 0.98,
+      "manualOverride": true
+    }
+  ]
+}
