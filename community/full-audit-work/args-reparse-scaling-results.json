@@ -1,0 +1,35 @@
+{
+  "results": [
+    {
+      "chunks": 100,
+      "payloadChars": 2034,
+      "ms": 24,
+      "msPerChunk": 0.244,
+      "argsParsedOk": true
+    },
+    {
+      "chunks": 400,
+      "payloadChars": 8034,
+      "ms": 40,
+      "msPerChunk": 0.099,
+      "argsParsedOk": true
+    },
+    {
+      "chunks": 1600,
+      "payloadChars": 32034,
+      "ms": 475,
+      "msPerChunk": 0.297,
+      "argsParsedOk": true
+    },
+    {
+      "chunks": 3200,
+      "payloadChars": 64034,
+      "ms": 1631,
+      "msPerChunk": 0.51,
+      "argsParsedOk": true
+    }
+  ],
+  "chunkRatio": 32,
+  "timeRatio": 67.96,
+  "growth": "super-linear (quadratic signature)"
+}
