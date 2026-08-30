@@ -1,0 +1,27 @@
+{
+  "capturedAt": "run-local",
+  "results": {
+    "stockWithMalformedTool": {
+      "turnFailed": true,
+      "modelAnswered": false,
+      "errorExcerpt": "\n\ndsh: INVALID_REQUEST: Invalid schema for function 'weather_probe': schema must be a JSON Schema of 'type: \"object\"', got 'type: null'.\n\nError: Command failed: node --import tsx/esm /Users/developer/projj/workspace/deepseek-harness/apps/cli/src/bin.ts --profile headless What is 2+2? Answer with just the number.\ndsh: INVALID_REQUEST: Invalid schema for function 'weather_probe': schema must be a JSON Schema of 'type: \"object\"', got 'type: null'.\n",
+      "namesCulpritTool": true
+    },
+    "control": {
+      "modelAnswered": true
+    },
+    "bridgeOnlyMalformedPackage": {
+      "bootRefused": true,
+      "modelAnswered": false,
+      "refusedLoudly": true,
+      "namesCulpritPackage": true,
+      "logExcerpt": "[pi2dsh engine] preparing 1 Pi package(s): pi-malformed-probe\n[pi2dsh host] failed to mount pi-malformed-probe: every Pi extension entry failed to load:\n- bad.js: Pi tool parameters must use an object-root TypeBox schema\nError: dsh: plugin tree failed to load: failed to apply loader entry include (cordis:include): failed to apply loader entry pi2dsh (pi2dsh): pi2dsh host mounted no packages; first failure: pi-malformed-probe: every Pi extension entry failed to load:"
+    },
+    "bridgeMalformedBesideHealthy": {
+      "bootRefused": false,
+      "modelAnswered": true,
+      "malformedEntryNamed": true,
+      "logExcerpt": "[pi2dsh engine] preparing 1 Pi package(s): pi-malformed-probe\n[pi2dsh] loaded pi-malformed-probe: 1 tools, 0 commands, 0 skill roots (host anchor)\n[pi2dsh] loaded pi-malformed-probe: 1 tools, 0 commands, 0 skill roots\n[pi2dsh] extension entry failed and was skipped (matching Pi's per-extension error isolation): bad.js: Pi tool parameters must use an object-root TypeBox schema\n[pi2dsh] extension entry failed and was skipped (matching Pi's per-extension error isolation): bad.js: Pi tool parameters must use an object-root TypeBox schema"
+    }
+  }
+}
