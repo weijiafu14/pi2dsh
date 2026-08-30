@@ -206,11 +206,11 @@ it work. **This is the list to trust.**
 | [`@ff-labs/pi-fff`](https://www.npmjs.com/package/@ff-labs/pi-fff) + [`pi-lens`](https://www.npmjs.com/package/pi-lens) | Code navigation for the model: `ffgrep` content search finds a marker that exists in exactly one file, and `lsp_diagnostics` reports a planted TS2322 through a real local `typescript-language-server` — both asserted from the tools’ own results in the session log | CLI + web | [`code-navigation`](examples/code-navigation/) |
 | [`pi-vision-tool`](https://www.npmjs.com/package/pi-vision-tool) | Tool registration through a JSON-Schema shape DSH had to convert (`anyOf` → `oneOf`) | CLI + web | — |
 | [`pi-approval-guardian`](https://www.npmjs.com/package/pi-approval-guardian) | Every tool call reviewed by a second model before execution; allow and deny both observed | CLI (bare env) | — |
-| [`pi-hermes-memory`](https://www.npmjs.com/package/pi-hermes-memory) | Cross-session memory: written in one process, read back in a second, fresh one | CLI | — |
+| [`pi-hermes-memory`](https://www.npmjs.com/package/pi-hermes-memory) | Cross-session memory end to end: `memory_add` in one session, recalled in a second, fresh one (the codeword existed nowhere else); five tools, ten `/memory-*` commands, system-prompt memory injection | CLI | [`persistent-memory`](examples/persistent-memory/) |
 
-Examples for the last three are still to be written; per this project's own
-rule they get re-verified from scratch before an example lands, so the table
-says plainly which have one today.
+Examples for the two remaining rows are still to be written; per this
+project's own rule they get re-verified from scratch before an example lands,
+so the table says plainly which have one today.
 
 ### Level 2 — mounts and its surface answers a probe
 
@@ -467,6 +467,7 @@ in one has actually been executed against a real DSH loop before landing.
 | [`code-navigation`](examples/code-navigation/) | Give the model real code-navigation tools — fuzzy content search and language-server diagnostics on a bundled sample project, CLI and web |
 | [`tui-mcp`](examples/tui-mcp/) | Keep dsh-TUI's native `/mcp`, add the Pi ecosystem manager as `/pi-mcp`, and exercise its complete host-influenced MCP surface through DSH runtimes |
 | [`mcp-at-scale`](examples/mcp-at-scale/) | A real 51-tool MCP server behind the adapter's two meta-tools: bounded tool surface, lazy discovery at scale, and a timeout budget that cuts a ~120 s tool to seconds — CLI and web |
+| [`persistent-memory`](examples/persistent-memory/) | pi-hermes-memory across two real sessions: save a fact in one, recall it in a fresh one — with the build-approval step (`better-sqlite3`) the install actually needs |
 | [`subagents`](examples/subagents/) | The model runs a small team: delegate, background, steer mid-run, collect, resume with memory, stop for real, manage via `/pi-agents`, reopen across restarts |
 | [`pi-tui-ecosystem`](examples/pi-tui-ecosystem/) | Run the unmodified Pi MCP manager and Pi subagent flow in `@xmoon76/dsh-pi-tui`; native `/login` and Pi OAuth providers coexist without duplicate commands |
 

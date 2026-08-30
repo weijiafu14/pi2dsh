@@ -170,9 +170,9 @@ DSH 模型运行时的 sampling、取消与会话重启。完整证据矩阵：
 | [`@ff-labs/pi-fff`](https://www.npmjs.com/package/@ff-labs/pi-fff) + [`pi-lens`](https://www.npmjs.com/package/pi-lens) | 给模型真正的代码导航工具：`ffgrep` 内容搜索找到只存在于一个文件里的标记串，`lsp_diagnostics` 经真实的本地 `typescript-language-server` 报出植入的 TS2322 —— 两条都从会话日志里工具自己的结果断言 | CLI + Web | [`code-navigation`](examples/code-navigation/) |
 | [`pi-vision-tool`](https://www.npmjs.com/package/pi-vision-tool) | 工具注册，且带一个 DSH 需要转换的 JSON Schema 形状（`anyOf` → `oneOf`） | CLI + Web | — |
 | [`pi-approval-guardian`](https://www.npmjs.com/package/pi-approval-guardian) | 每次工具调用先由第二个模型审批；放行与拒绝两条路都看到了 | CLI（裸环境） | — |
-| [`pi-hermes-memory`](https://www.npmjs.com/package/pi-hermes-memory) | 跨会话记忆：一个进程写入，另一个全新进程读回 | CLI | — |
+| [`pi-hermes-memory`](https://www.npmjs.com/package/pi-hermes-memory) | 跨会话记忆端到端：会话一 `memory_add` 写入，全新会话召回（代号不存在于任何其它输入）；五个工具、十条 `/memory-*` 命令、系统提示记忆注入 | CLI | [`persistent-memory`](examples/persistent-memory/) |
 
-后三个的示例还没写。按本项目自己的规矩，补示例前必须重新端到端验证一遍，所以
+前两个的示例还没写。按本项目自己的规矩，补示例前必须重新端到端验证一遍，所以
 这张表如实标出今天谁有示例。
 
 ### 第二级——能挂载，且注册面能被探针调起来
@@ -388,6 +388,7 @@ loop 上实际跑过才会进来。
 | [`code-navigation`](examples/code-navigation/) | 给模型真正的代码导航工具——在自带样例工程上跑模糊内容搜索与语言服务器诊断，CLI 与 Web 双端 |
 | [`tui-mcp`](examples/tui-mcp/) | 保留 dsh-TUI 原生 `/mcp`，把 Pi 生态管理面作为 `/pi-mcp` 加进来，并让完整的宿主相关 MCP 功能面穿过 DSH 运行时 |
 | [`mcp-at-scale`](examples/mcp-at-scale/) | 真实 51 工具 MCP 服务器藏在 adapter 两个元工具后面：工具面有界、规模化懒发现、超时预算把 ~120 秒工具砍到秒级——CLI 与 Web 双端 |
+| [`persistent-memory`](examples/persistent-memory/) | pi-hermes-memory 跨两个真会话：一处存事实、全新会话召回——含安装真正需要的构建审批步骤（`better-sqlite3`） |
 | [`subagents`](examples/subagents/) | 模型自己带小团队：派单、后台、中途转向、收结果、带记忆续命、真停得住、`/pi-agents` 管理、跨重启重开 |
 
 ## 其它工具

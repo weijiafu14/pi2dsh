@@ -51,6 +51,8 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { promisify } from 'node:util'
 
+import { stageSuiteTarball } from './lib/suite-tarball.mjs'
+
 const execFile = promisify(execFileCallback)
 const projectRoot = resolve(new URL('..', import.meta.url).pathname)
 const dshRoot = process.env.PI2DSH_DSH_ROOT === undefined
@@ -196,6 +198,11 @@ async function makeHome(scratch, extraEnv = {}) {
           'allowBuilds:',
           "  '@google/genai': false",
           '  protobufjs: false',
+          // pi-hermes-memory needs its native store actually built — unlike
+          // the two above, declaring-without-running would break the plugin.
+          // README of examples/persistent-memory tells users the same thing
+          // (approve-builds better-sqlite3).
+          "  'better-sqlite3': true",
         ]
         const pnpmStore = directDshBin === undefined
           ? join(dshRoot, 'node_modules', '.pnpm')
@@ -697,6 +704,80 @@ async function runVisionBridge() {
 }
 
 // ---------------------------------------------------------------------------
+// examples/persistent-memory — pi-hermes-memory across two REAL sessions
+// ---------------------------------------------------------------------------
+async function runPersistentMemory() {
+  if (apiKey === undefined || apiKey.length === 0) {
+    results.persistentMemory = { status: 'skipped', reason: 'DEEPSEEK_API_KEY not set' }
+    return
+  }
+  const scratch = await mkdtemp(join(tmpdir(), 'pi2dsh-ex-memory-'))
+  try {
+    const { home, env, runDsh } = await makeHome(scratch)
+    const installed = await runDsh(['plugin', '--profile', 'headless', 'add', engineSpec])
+    const installedMemory = await runDsh(['plugin', '--profile', 'headless', 'add', 'pi-hermes-memory'])
+    await useJsonlSessions(home, 'headless')
+
+    // The falsifiable design: the codeword exists ONLY in session A's user
+    // message. A fresh home means session B can answer it only if the plugin
+    // really persisted it — there is no other channel.
+    const CODEWORD = 'ZEPHYR-7741'
+    const runA = await runDsh(['--profile', 'headless',
+      `Remember this durable project fact for future sessions: my project codename is ${CODEWORD}. `
+      + 'Save it to persistent memory now, then confirm in one short sentence.'])
+    const runB = await runDsh(['--profile', 'headless',
+      'What is my project codename? Answer with just the codename. '
+      + 'If you genuinely have no memory of one, answer NO-MEMORY.'])
+
+    const files = (await filesBelow(join(home, 'sessions'))).filter(path => path.endsWith('/session.jsonl')).sort()
+    assert.equal(files.length, 2, `expected two session logs, found ${files.length}:\n  ${files.join('\n  ')}`)
+    const load = async file => (await readFile(file, 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line))
+    const logs = [await load(files[0]), await load(files[1])]
+    // Identify B as the session whose user message does NOT carry the codeword.
+    const userText = records => records
+      .filter(record => record.type === 'user/message')
+      .flatMap(record => Array.isArray(record.data?.content) ? record.data.content : [])
+      .map(block => String(block.text ?? '')).join('\n')
+    const aIndex = logs.findIndex(records => userText(records).includes(CODEWORD))
+    assert(aIndex !== -1, 'no session carries the memorize prompt at all')
+    const a = logs[aIndex]
+    const b = logs[1 - aIndex]
+    assert(!userText(b).includes(CODEWORD), 'both sessions carry the codeword in user input — the design is broken')
+
+    // Session A: the plugin's own write tool ran and did not error.
+    const writes = a.filter(record => record.type === 'tool/call' && /^memory_(add|replace)$/u.test(String(record.data?.name ?? '')))
+    assert(writes.length > 0, `session A never called the memory write tool:\n${JSON.stringify(a.filter(r => r.type === 'tool/call').map(r => r.data?.name))}`)
+    for (const call of writes) {
+      const result = a.find(record => record.type === 'tool/result'
+        && (record.data?.message?.content ?? []).some(block => block.toolCallId === call.data.callId))
+      const block = (result?.data?.message?.content ?? []).find(item => item.toolCallId === call.data.callId)
+      assert(block?.isError !== true, `memory write failed: ${JSON.stringify(block?.content).slice(0, 300)}`)
+    }
+
+    // Session B: the recall really happened, and the codeword's only possible
+    // source is the plugin's store (injection or memory tool result).
+    const bAnswer = b
+      .filter(record => record.type === 'assistant/message')
+      .flatMap(record => record.data?.message?.content ?? [])
+      .filter(block => block.type === 'text').map(block => String(block.text ?? '')).join('\n')
+    assert(bAnswer.includes(CODEWORD),
+      `session B did not recall the codename; it said: ${bAnswer.slice(0, 300) || runB.stdout.slice(-300)}`)
+
+    const captured = `${installed.stdout}${installed.stderr}${installedMemory.stdout}${installedMemory.stderr}${runA.stdout}${runA.stderr}${runB.stdout}${runB.stderr}`
+    assert(!captured.includes(apiKey), 'credential appeared in captured test artifacts')
+
+    results.persistentMemory = {
+      status: 'passed',
+      engine: await installedEngineVersion(home, 'headless'),
+      wroteVia: writes.map(call => call.data.name),
+      recalledAcrossSessions: true,
+    }
+  } finally {
+    await rm(scratch, { recursive: true, force: true })
+  }
+}
+
+// ---------------------------------------------------------------------------
 // examples/side-conversation — the web surface, driven exactly as a user does
 // ---------------------------------------------------------------------------
 async function runSideConversation() {
@@ -712,7 +793,7 @@ async function runSideConversation() {
   let web
   try {
     const { home, env, runDsh } = await makeHome(scratch)
-    const tarball = await stageSuiteTarball(scratch, env)
+    const tarball = await stageSuiteTarball(projectRoot, engineSpec, scratch, env)
     await runDsh(['plugin', '--profile', 'web', 'add', tarball])
     await useJsonlSessions(home, 'web')
 
@@ -992,7 +1073,7 @@ async function runPresentationSurfaces() {
     // Web presentation is the dsh-work-x suite's (2026-08-27): the engine
     // alone projects nothing into the browser, so the example installs the
     // suite and adds the status-line package on top.
-    const tarball = await stageSuiteTarball(scratch, env)
+    const tarball = await stageSuiteTarball(projectRoot, engineSpec, scratch, env)
     await runDsh(['plugin', '--profile', 'web', 'add', tarball])
     await runDsh(['plugin', '--profile', 'web', 'add', 'pi-powerline-footer'])
     await useJsonlSessions(home, 'web')
@@ -1317,23 +1398,6 @@ function authedUrl(url, webLog) {
   return token === null ? url : `${url}/?token=${token[1]}`
 }
 
-async function stageSuiteTarball(scratch, env) {
-  const suiteDir = join(scratch, 'dsh-x')
-  await mkdir(suiteDir, { recursive: true })
-  const manifest = JSON.parse(await readFile(join(projectRoot, 'dsh-x/package.json'), 'utf8'))
-  // A dependency value is a version/range/file: URL — never "name@version"
-  // (that spelling is only valid on an install command line).
-  manifest.dependencies.pi2dsh = engineSpec.startsWith('pi2dsh@') ? engineSpec.slice('pi2dsh@'.length) : engineSpec
-  await writeFile(join(suiteDir, 'package.json'), JSON.stringify(manifest, null, 2))
-  await writeFile(join(suiteDir, 'cordis.patch.yml'), await readFile(join(projectRoot, 'dsh-x/cordis.patch.yml'), 'utf8'))
-  await writeFile(join(suiteDir, 'index.mjs'), await readFile(join(projectRoot, 'dsh-x/index.mjs'), 'utf8'))
-  // The suite's browser half — its prepack guard refuses to pack without it
-  // (a user would get a suite whose product UI silently never loads).
-  await writeFile(join(suiteDir, 'client.js'), await readFile(join(projectRoot, 'dsh-x/client.js'), 'utf8'))
-  await writeFile(join(suiteDir, 'README.md'), await readFile(join(projectRoot, 'dsh-x/README.md'), 'utf8'))
-  const packOut = await execFile('npm', ['pack', '--json', '--pack-destination', scratch], { cwd: suiteDir, env, timeout: 120_000 })
-  return join(scratch, JSON.parse(packOut.stdout)[0].filename)
-}
 
 async function runDshX() {
   const playwrightFrom = process.env.PLAYWRIGHT_FROM ?? join(dshRoot, 'apps/web')
@@ -1341,7 +1405,7 @@ async function runDshX() {
   let web
   try {
     const { home, env, runDsh } = await makeHome(scratch)
-    const tarball = await stageSuiteTarball(scratch, env)
+    const tarball = await stageSuiteTarball(projectRoot, engineSpec, scratch, env)
     // The ONLY install a dsh-x user runs.
     await runDsh(['plugin', '--profile', 'web', 'add', tarball])
     // Side-chat's durable assertions read the session log; the host renders
@@ -1908,6 +1972,7 @@ const SCENARIOS = [
   ['gateway-compat', runGatewayCompat, 'gatewayCompat'],
   ['alibaba-token-plan', runAlibabaTokenPlan, 'alibabaTokenPlan'],
   ['vision-bridge', runVisionBridge, 'visionBridge'],
+  ['persistent-memory', runPersistentMemory, 'persistentMemory'],
   ['side-conversation', runSideConversation, 'sideConversation'],
   ['vision-bridge-web', runVisionBridgeWeb, 'visionBridgeWeb'],
   ['custom-gateways', runCustomGateways, 'customGateways'],
