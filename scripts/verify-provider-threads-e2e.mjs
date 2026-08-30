@@ -17,6 +17,8 @@
 //   encoding       #2670  Chinese output round-trips with no mojibake
 //   token-limit    #1166  a declared tiny maxTokens is sent on the wire and
 //                         the truncated stop is surfaced, not crashed on
+//   cross-provider-history #1146  a session started on one provider route
+//                         resumes on another; the mixed history is accepted
 //
 // Usage:
 //   DEEPSEEK_API_KEY=… node scripts/verify-provider-threads-e2e.mjs [outfile]
@@ -389,6 +391,47 @@ try {
       assert.equal(turnEnd.data?.reason?.kind, 'max-tokens',
         `the truncation was not surfaced as max-tokens: ${JSON.stringify(turnEnd.data?.reason)}`)
       return { thread: 1166, maxTokensSent: request.maxTokensValue, chars: text.length, turnEndReason: turnEnd.data.reason.kind, cliExitNonzero: run.exitFailed === true }
+    },
+  })
+
+  // ---- #1146: history born on one route resumes on another ----------------
+  await runCase('cross-provider-history', {
+    prompt: 'Reply with exactly: FIRST_TURN_OK',
+    check: async ({ records, ws }) => {
+      assert.match(assistantText(records), /FIRST_TURN_OK/u, 'the first turn did not complete')
+      const sessionRecord = records.find(record => record.type === 'session')
+      assert(typeof sessionRecord?.id === 'string' && sessionRecord.id.length > 0, 'no session id recorded')
+      // Second half: same session, resumed on the OTHER provider route. The
+      // history now contains assistant messages attributed to thread-probe;
+      // the resumed turn sends that mixed history to thread-probe-tiny's
+      // route (same upstream, different declared provider) — the #1146
+      // failure mode is the backend rejecting such a request with 400.
+      await harness.useDefaultModel(home, 'thread-probe-tiny', 'deepseek-chat')
+      const before = (await readRecorded()).length
+      const resumed = await runDsh(['--profile', 'headless', '--resume', sessionRecord.id, 'Reply with exactly: SECOND_TURN_OK'], { cwd: ws })
+      const requests = (await readRecorded()).slice(before).filter(entry => entry.roles !== null)
+      assert(requests.length > 0, 'the resumed turn sent no completion request')
+      const files = await sessionFiles(home)
+      const resumedRecords = []
+      for (const file of files) {
+        const rows = (await readFile(file, 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line))
+        if (rows.some(row => row.type === 'session' && row.id === sessionRecord.id)) resumedRecords.push(...rows)
+      }
+      const text = resumedRecords
+        .filter(record => record.type === 'assistant/message')
+        .flatMap(record => record.data?.message?.content ?? [])
+        .filter(block => block.type === 'text').map(block => String(block.text ?? '')).join('\n')
+      assert.match(text, /SECOND_TURN_OK/u,
+        `the resumed cross-provider turn did not complete:\n${String(resumed.stdout).slice(-400)}`)
+      const historyRoles = requests[requests.length - 1].roles
+      assert(historyRoles.includes('assistant'), 'the resumed request carried no prior assistant history — nothing cross-provider was actually replayed')
+      return {
+        thread: 1146,
+        sessionId: sessionRecord.id,
+        firstProvider: 'thread-probe',
+        resumedProvider: 'thread-probe-tiny',
+        resumedRequestRoles: historyRoles,
+      }
     },
   })
 } finally {

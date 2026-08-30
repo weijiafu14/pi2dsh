@@ -186,3 +186,31 @@ export function createE2eHarness({ dshRoot, directDshBin, dshBin, dshCwd }) {
 
   return { makeHome, useJsonlSessions, useDefaultModel, sessionRecords }
 }
+
+/** Seed an existing Codex login into a throwaway DSH home without copying any
+ * unrelated Codex settings. The temporary home is removed by its scenario. */
+export async function seedCodexLogin(home, authFile) {
+  const source = JSON.parse(await readFile(resolve(authFile), 'utf8'))
+  const tokens = source.tokens
+  assert(tokens && typeof tokens === 'object', 'Codex auth file has no tokens object')
+  assert.equal(typeof tokens.access_token, 'string', 'Codex auth file has no access_token')
+  assert.equal(typeof tokens.refresh_token, 'string', 'Codex auth file has no refresh_token')
+  assert.equal(typeof tokens.account_id, 'string', 'Codex auth file has no account_id')
+  const encoded = tokens.access_token.split('.')[1]
+  assert(encoded, 'Codex access token is not a JWT')
+  const payload = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf8'))
+  assert.equal(typeof payload.exp, 'number', 'Codex access token has no numeric exp claim')
+  const directory = join(home, 'pi2dsh', 'agent')
+  const target = join(directory, 'auth.json')
+  await mkdir(directory, { recursive: true, mode: 0o700 })
+  await writeFile(target, `${JSON.stringify({
+    'openai-codex': {
+      type: 'oauth',
+      access: tokens.access_token,
+      refresh: tokens.refresh_token,
+      expires: payload.exp * 1000,
+      accountId: tokens.account_id,
+    },
+  })}\n`, { mode: 0o600 })
+  await chmod(target, 0o600)
+}

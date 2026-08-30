@@ -1,0 +1,29 @@
+{
+  "meta": {
+    "when": "2026-08-30T08:34:07.495Z",
+    "cli": {
+      "spec": "@deepseek-ai/dsh@0.1.1-rc.2",
+      "installed": "0.1.1-rc.2"
+    },
+    "engine": {
+      "spec": "file:<working-tree>",
+      "installed": "0.23.0"
+    },
+    "model": "openai-codex/gpt-5.6-sol"
+  },
+  "verdict": {
+    "thread": 1149,
+    "toolName": "write",
+    "callId": "call_DankJoDcjkk8G2cmZRCUJX59|fc_079c2d1899833b7c016a93eb04ae4c87d1b7dbab8bb9dd1bd1",
+    "argKeys": [
+      "file_path",
+      "content"
+    ],
+    "materializedOptionalKeys": [],
+    "optionalParamsForced": false,
+    "writeSucceeded": true,
+    "fileOnDisk": true,
+    "turnEndReason": "completed",
+    "stdoutTail": "] preparing 1 Pi package(s): pi-noop-fixture\n[pi2dsh] loaded pi-noop-fixture: 0 tools, 0 commands, 0 skill roots (host anchor)\n[pi2dsh] loaded pi-noop-fixture: 0 tools, 0 commands, 0 skill roots\nDONE\n"
+  }
+}
