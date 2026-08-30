@@ -40,8 +40,21 @@ createServer((req, res) => {
       try { parsed = JSON.parse(raw.toString('utf8') || '{}') } catch { parsed = {} }
       const messages = Array.isArray(parsed.messages) ? parsed.messages : undefined
 
+      // Request headers, with every credential-bearing value replaced by a
+      // presence bit before anything touches disk. Names are the point: they
+      // are what a gateway operator sees, and what identity/attribution
+      // questions are actually about.
+      const recordedHeaders = {}
+      for (const [name, value] of Object.entries(req.headers)) {
+        const lower = name.toLowerCase()
+        recordedHeaders[lower] = /^(authorization|proxy-authorization|api-key|apikey|x-api-key|cookie)$/u.test(lower)
+          ? '<redacted>'
+          : String(value)
+      }
+
       appendFileSync(LOG, `${JSON.stringify({
         url: req.url,
+        headers: recordedHeaders,
         model: parsed.model,
         // supportsDeveloperRole: `system` here means the plugin's flag won.
         roles: messages?.map(message => message.role) ?? null,

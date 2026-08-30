@@ -1,0 +1,55 @@
+{
+ "what": "Outgoing wire identity/attribution on a custom llm-pi-ai route (stock dsh 0.1.1-rc.2 + pi2dsh 0.23.0), captured by the example recording proxy. Credential-bearing header values are redacted before they touch disk.",
+ "when": "2026-08-30T15:01:13.878Z",
+ "requests": 2,
+ "headers": {
+  "host": "127.0.0.1:4601",
+  "connection": "keep-alive",
+  "accept": "application/json",
+  "x-stainless-retry-count": "0",
+  "x-stainless-lang": "js",
+  "x-stainless-package-version": "6.26.0",
+  "x-stainless-os": "MacOS",
+  "x-stainless-arch": "arm64",
+  "x-stainless-runtime": "node",
+  "x-stainless-runtime-version": "v22.22.0",
+  "authorization": "<redacted>",
+  "user-agent": "deepseek-harness/0.1.1-rc.2 (+https://github.com/deepseek-ai/deepseek-harness)",
+  "content-type": "application/json",
+  "accept-language": "*",
+  "sec-fetch-mode": "cors",
+  "accept-encoding": "gzip, deflate",
+  "content-length": "32830"
+ },
+ "bodyKeys": [
+  [
+   "max_tokens",
+   "messages",
+   "model",
+   "stream",
+   "stream_options",
+   "tools"
+  ],
+  [
+   "max_tokens",
+   "messages",
+   "model",
+   "stream",
+   "stream_options"
+  ]
+ ],
+ "findings": {
+  "userAgent": "deepseek-harness/0.1.1-rc.2 (+https://github.com/deepseek-ai/deepseek-harness)",
+  "anonymousIdentityHeader": null,
+  "userFieldInBody": "absent",
+  "platformHeaders": [
+   "x-stainless-retry-count",
+   "x-stainless-lang",
+   "x-stainless-package-version",
+   "x-stainless-os",
+   "x-stainless-arch",
+   "x-stainless-runtime",
+   "x-stainless-runtime-version"
+  ]
+ }
+}
