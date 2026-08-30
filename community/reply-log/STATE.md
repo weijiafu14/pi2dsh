@@ -629,3 +629,29 @@ CODEX_AUTH_FILE 已由用户供出（~/.codex/auth.json），#1149/codex-image �
 
 毙：#3387（维护者已关闭指向 #2017，而 #2017 已有我们两条实质回复含 Atlassian OAuth
 全链实测——子场景已覆盖，第三条是噪音）；#695（纯截图配置求助帖，信息不足）。
+
+## 批次 17（2026-08-30，记忆矿脉：pi-hermes-memory 端到端验证后首扫 memory_learning 簇）
+
+前置：pi-hermes-memory@0.9.7 真机 E2E（examples/persistent-memory，双会话代号
+实验：代号只存在于会话 A 输入、B 召回，B 的唯一来源=插件存储；断言 memory_add
+非错 + B 用户输入零泄漏）+ 包源码核证三实锤（trigram tokenizer + 1–2 字 CJK
+LIKE 兜底、/memory-pin 命令态结构性防模型写入、project 作用域目录隔离）。
+逐条现场重取评论后回 8、毙 2。
+
+| # | 性质 | 依据 | 评论链接 |
+|---|---|---|---|
+| 795 | 首回 | 多租户拆两档真隔离（project 作用域源码核证 / DSH_HOME 实例级）；明写"服务端多租户+REST API"插件面给不了、project 半边只核了源码 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/795#discussioncomment-18204884) |
+| 1456 | 首回（同行数据点） | jieba 作者帖：告知 hermes 正是他表里"trigram+LIKE 45% 精确"那行的生产样本（schema 源码坐标），他的 benchmark 受益面比他列的更广；明写我们验的是召回链路不是中文检索质量 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/1456#discussioncomment-18204885) |
+| 1787 | 增量回 | AgentExperience 作者：给"今天就在 DSH 上跑着的经验循环"当对照基线；点明分层互补（facts/lessons vs strategy deltas）；明写没跑过他的库 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/1787#discussioncomment-18204886) |
+| 2736 | 首回（强匹配） | 哨兵纠偏 = /memory-pin 三点全中（每轮注入/硬预算/命令态防模型写入，引源码注释原话）；明写 pin 本身没单独实测、"当下打断"DSH 原生就有 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/2736#discussioncomment-18204889) |
+| 2783 | 增量回 | 楼上答了压缩半边，补"跨会话记忆"半边的已实测选项；明写与楼上 dsh-memory-meow 不做对比 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/2783#discussioncomment-18204890) |
+| 3764 | 首回（设计对照） | 自指记忆构想：逐块对照已跑实现（基础结构=session_search 有/被动唤醒=注入非问句标签/自涌现图=没有），送一条成本封顶实测教训；明写他的新增量没有实现可验 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/3764#discussioncomment-18204892) |
+| 3898 | 首回（盟友帖） | Hermes 式技能循环作者：原版 hermes 就在 DSH 跑通的对照 + 确认他写 $DSH_HOME/skills 比 hermes 内部技能更原生 + 送"模型永远写不到的层"设计经验 | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/3898#discussioncomment-18204894) |
+| 3937 | 首回（技术数据点） | SessionPersistence RFC 的 open question 正中我方实证：事件词表 fail-closed 且失败单元=整个会话（SessionFormatUnsupportedError）、append 无 ignorable 口子、指向 #2708 提案互证；明写我们不做持久化后端、只给 field notes | [c](https://github.com/deepseek-ai/deepseek-harness/discussions/3937#discussioncomment-18204897) |
+
+毙：#1881（作者自家 RFC 且已发布 npm 全家桶、楼内已有互补讨论——再回就是纯竞品
+推销）；#3202（argszero 已给 rc.7 源码级完整答案含 trigram 集成坐标，我方无增量）。
+
+矿脉纪律沉淀：回帖前 npm pack 拿包源码核证每条技术断言——本批就地纠正了一条
+错误记忆（hermes 并非 unicode61，已是 trigram+LIKE，#1456 的回帖角度因此整个
+反转：从"同病相怜"变成"你表里那行的生产样本"）。
