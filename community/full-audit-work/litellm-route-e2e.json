@@ -1,0 +1,21 @@
+{
+  "meta": {
+    "when": "2026-08-30T08:51:27.837Z",
+    "cli": {
+      "spec": "@deepseek-ai/dsh@0.1.1-rc.2"
+    },
+    "engine": {
+      "spec": "pi2dsh@0.23.0",
+      "installed": "0.23.0"
+    },
+    "litellm": "uvx litellm[proxy], local, upstream api.deepseek.com"
+  },
+  "verdict": {
+    "thread": 2170,
+    "turnCompleted": true,
+    "dshEnvHadDeepseekKey": false,
+    "dshSideCredential": "liteLLM virtual master key only",
+    "upstreamKeyLocation": "liteLLM config file (scratch, 0600) only",
+    "turnEndReason": "completed"
+  }
+}
