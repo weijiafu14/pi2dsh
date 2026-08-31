@@ -972,3 +972,21 @@ per-chunk 成本随累积长度上升（0.081→0.493ms）；64KB 参数≈1.6s 
   running+Kill；驱动坑再 +2：加号是 SVG 无文本节点（文本定位全灭，锚定最右
   标签题探测右侧偏移）、heredoc 替换假成功一次（编辑标记没匹配却打印成功，
   此后改用 Edit 精确替换）。
+
+## DSH 0.1.2-alpha.2 对总账（2026-08-31）
+
+npm 首次带 `alpha` tag（latest 仍 rc.2）；268 commits over alpha.1。四类分账：
+
+- **采纳我们的**：ignorable 信封移除被回退，官方注释明写为"仓外自带事件类型
+  的插件"保留（=我们；#2708/#5011 半采纳）。写侧 Session.append 仍无
+  ignorable 参数——#5011 跟进稿（谢 + 点写侧）**待用户拍板后发**。
+- **口径要跟的**：官方 adapter 部分模型开视觉输入（伴生路由对其冗余无害）；
+  20MiB 请求图片预算；插件清单按 preset 分组。
+- **预检结论**：契约 332 绿 + singlepath（npm alpha.2 CLI）全绿；代际差异
+  两条新收（agent-loop 需 sessionProjections、dsh-pi-tui ≤0.3.5 整包不可
+  加载）已进 CLAUDE.md 预检段与 conformance/audit 文档。
+- **回帖增量候选（待挑）**：#4482（图片预算相关）、#3768（插件清单）、
+  多模态簇口径更新（官方 vision opt-in 后措辞要改）。
+
+上游报账追加：dsh-pi-tui 作者侧 alpha 不兼容（settingsNamespace 移除 +
+peers 止步 rc.1）——这是别人仓库的事，只在我们文档记生态状态，不代发。

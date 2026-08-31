@@ -1,9 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import AgentRegistry, { assembleContextFor } from '@deepseek-ai/dsh-agent'
-import AgentLoop from '@deepseek-ai/dsh-agent-loop'
 import LlmRuntime from '@deepseek-ai/dsh-llm'
-import { CallId } from './lib/dsh-compat.js'
+import { CallId, mountAgentLoop } from './lib/dsh-compat.js'
 import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
@@ -44,7 +43,7 @@ async function buildRuntime(): Promise<Context> {
   await ctx.plugin(ToolRuntime)
   await ctx.plugin(LlmRuntime as never, {} as never)
   await ctx.plugin(AgentRegistry)
-  await ctx.plugin(AgentLoop as never, {} as never)
+  await mountAgentLoop(ctx)
   return ctx
 }
 

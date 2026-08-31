@@ -31,14 +31,13 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import LlmRuntime from '@deepseek-ai/dsh-llm'
-import { CallId } from './lib/dsh-compat.js'
+import { CallId, mountAgentLoop } from './lib/dsh-compat.js'
 import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
 import CommandRuntime from '@deepseek-ai/dsh-commands'
 import SkillRegistry from '@deepseek-ai/dsh-skill'
 import AgentRegistry, { assembleContextFor } from '@deepseek-ai/dsh-agent'
-import AgentLoop from '@deepseek-ai/dsh-agent-loop'
 import { apply } from '../src/engine.js'
 import { getSharedChildExtensionCatalog, runtimeInternals } from '../src/runtime.js'
 
@@ -154,7 +153,7 @@ async function buildRuntime(root: string, config: Record<string, unknown> = {}):
   await ctx.plugin(SkillRegistry)
   await ctx.plugin(LlmRuntime as never, {} as never)
   await ctx.plugin(AgentRegistry)
-  await ctx.plugin(AgentLoop as never, {} as never)
+  await mountAgentLoop(ctx)
   ;(ctx as unknown as { baseUrl: string }).baseUrl = `file://${root}/cordis.yml`
   await apply(ctx, config as never)
   await delay(25)

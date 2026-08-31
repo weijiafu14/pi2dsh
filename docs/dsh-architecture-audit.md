@@ -86,6 +86,16 @@ goal/plan/job 也不等于验证 DSH 的同名 subsystem。这些结论应作为
   `community/seam-evidence/46-arch001-open-clone.png`）。提案形状：namespaced
   注册 + 注册期声明 surface 姿态 + 声明包持有 decoder，保持 fail-closed 语义、
   只把边界从"仓内成员资格"挪到"注册"。
+- **0.1.2-alpha.2 跟进（2026-08-31，半采纳）**：上游**回退了 ignorable 信封
+  语义的移除**，理由原话 "retained for a repository-external plugin that
+  appends its own event types"——指的就是本桥这类消费者，#2708/#5011 的诉求
+  被读侧承认。实证（`git show dsh-v0.1.2-alpha.2:packages/core/session/src/index.ts`）：
+  ① seed/信封校验重新接受 `ignorable` 键，SQLite schema 19→20 保留该列，
+  官方注释明写 "removable only after a replacement supports the current
+  third-party plugin"；② **`Session.append()` 的活跃写入路径仍然没有
+  ignorable 参数**——写通道还是闭的，缺口分级不变（读侧前向兼容有了，
+  仓外事件的合法写入面还没有）。跟进动作：在 #5011 里报读侧回退已见、
+  写侧仍缺（等用户拍板后发）。
 
 ### DSH-ARCH-002：模型 compat schema 丢字段（rc.8 已修复）
 

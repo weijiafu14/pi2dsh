@@ -91,6 +91,38 @@ tools 管线、prepareCall、sessions、webServer、client slots 等）实证存
 等级：契约级双代全绿 + alpha 真机 smoke 与登录卡场景已过；**全量 examples 回归
 在 alpha 线尚不可做**（alpha 未上 npm，用户装不到的路不测），上游发 npm 后立即补。
 
+## 0.1.2-alpha.2 冲击审计（2026-08-31，npm `alpha` tag 已发布）
+
+上游 0.1.2-alpha.2（268 commits over alpha.1；npm `latest` 仍为 0.1.1-rc.2）。
+机制级代际差异权威仍在 CLAUDE.md 预检段，本节只记架构层结论：
+
+**上游采纳我们的诉求（半采纳）**：
+
+- **ignorable 信封语义的移除被回退**，官方注释原话 "retained for a
+  repository-external plugin that appends its own event types"——`DSH-ARCH-001`
+  的读侧前向兼容因我们（#2708/#5011 的真实消费者）而保留，SQLite schema 19→20
+  留列并明写"有替代面前不许删"。**写通道仍闭**（`Session.append()` 无 ignorable
+  参数，源码实证），缺口分级不变；细节在 audit 文档 ARCH-001 的 alpha.2 段。
+
+**上游原生化、口径要跟的**：
+
+- deepseek-official adapter 对部分模型开 `inputModalities: [text, image]`
+  （Flash/Pro 仍 text-only）——官方目录自带视觉输入后，伴生路由（visionCompanions）
+  对这些路由从"必需"变"冗余但无害"；文本模型仍靠伴生，机制不动、教学口径不吹。
+- 20MiB `maxRequestImageBytes` 请求级图片预算 + oldest-first 占位卸载——与桥的
+  附件分支正交，但断言不得再假设"历史图片永在请求里"。
+- 插件清单按 preset 分组（plugin-inventory）；published dependency policy 明文化
+  （Client 包只许 Cordis peer）——我们的 client 产物本就符合，写进契约防回退。
+
+**装置与预检简化**：
+
+- prerelease dist-tags 正确路由，alpha 首次可从 npm 直装——预检装置从"源码
+  worktree 构建 + link: 全家"简化为"npm 装 alpha tag"；alpha.1 段"全量 examples
+  回归待 npm"的欠账自本版起可还。
+- `ctx.remote`/RemoteError 收敛与 session projection registry 属上游内部整备，
+  桥无消费面；singlepath E2E 在 npm alpha.2 CLI 上双 Agent 23/23 全绿实证承重
+  seam 存活。
+
 ## 已由上游修复的历史缺口
 
 | ID | 原问题 | 当前结论 |

@@ -569,6 +569,31 @@ pnpm verify:release   # verify + 全部 examples（装 npm 上刚发的那版）
   `/login` 在旧代根本没被碰过，而它才是两代用户当下唯一的登录入口。
   姿势：`ONLY=<example> PI2DSH_DSH_BIN=<该代 CLI> PI2DSH_DSH_CWD=<该代
   CLI 目录> node scripts/verify-examples-e2e.mjs <另存的证据文件>`。
+  **0.1.2-alpha.2 预检已过（2026-08-31，npm `alpha` tag）**：上游把
+  prerelease dist-tags 发上 npm（`latest` 仍 rc.2、`alpha`=0.1.2-alpha.2），
+  预检装置从"源码 worktree 构建 + link: 全家"简化为 npm 直装；但
+  minimumReleaseAge 对刚发的 alpha 同样拦，且 build 前置的 deps-check 内嵌
+  `pnpm install` 不吃环境变量——worktree 的 pnpm-workspace.yaml 里加
+  `minimumReleaseAge: 0` 才是有效开关。实证代际差异（契约 332 绿 + npm
+  alpha.2 CLI singlepath 双 Agent 23/23 真模型轮全绿）：① agent-loop 的
+  inject 新增 `sessionProjections`，由新拆包
+  `@deepseek-ai/dsh-session-projection`（agent-loop 的 peer）提供——fixture
+  组合 agent-loop 前必须先组合它，`tests/lib/dsh-compat.ts` 的
+  `mountAgentLoop` 按插件自己的 inject 声明做能力探测（不探版本号；预检
+  worktree 需补装该包 devDep，rc 树不装也不会走到那条 import）；
+  ② ignorable 信封语义的移除被**回退**，官方注释明写为"仓外自带事件类型的
+  插件"保留（=我们，#2708/#5011 半采纳；SQLite schema 19→20 留列），但
+  `Session.append()` 写侧仍无 ignorable 参数——ARCH-001 分级不变，细节在
+  audit 文档；③ deepseek-official adapter 对部分模型开
+  `inputModalities:[text,image]`（Flash/Pro 仍 text-only）——官方目录部分
+  自带视觉输入，伴生路由机制不动、对这些路由变冗余但无害；④ 请求级
+  20MiB `maxRequestImageBytes` 图片预算，超限最老图片换占位——断言不得
+  假设历史图片永在请求里；⑤ 生态注意：`@xmoon76/dsh-pi-tui` ≤0.3.5 在
+  alpha.2 **整包不可加载**（import 的 `settingsNamespace` 被该线 dsh-settings
+  移除；其 peers 止步 ^0.1.1-rc.1）——真机上该终端挂不上、其原生 /login
+  不存在，桥按平名注册 /login 是正确形态；契约里两条模拟 dsh-pi-tui 的
+  login 测试在该代动态 skip（原因写在 engine.spec.ts 探针注释）。
+  peers `^0.1.2-alpha.1` 已覆盖 alpha.2（同元组 prerelease），未动。
 - profile 的组合安装是 CLI 私有流程：改完 profile 配置要重装时重跑
   `dsh plugin add`，别直接在 profile 目录裸跑 pnpm install。
 - 独立目录装 CLI 时 pnpm 11 的坑：minimumReleaseAge 用
