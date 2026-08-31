@@ -164,7 +164,12 @@ export function createE2eHarness({ dshRoot, directDshBin, dshBin, dshCwd }) {
         {
           cwd: cwd ?? dshCwd,
           env,
-          timeout: timeout ?? 300_000,
+          // 600s, not 300: with a cold pnpm store and the bounded pool's six
+          // installs sharing a slow proxy, one profile install measured 92s
+          // SOLO — under contention 300s truncated installs into blank
+          // "Command failed" errors across the board (2026-08-31, right
+          // after a store prune).
+          timeout: timeout ?? 600_000,
           maxBuffer: 16 * 1024 * 1024,
         },
       )

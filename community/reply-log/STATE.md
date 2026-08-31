@@ -1016,3 +1016,17 @@ dsh-better-sidebar 作者按代分发：latest 0.17.1 服务 rc 线，0.18.0-alp
 （codeword 入 Memory 标签、Jobs 任务卡 running+Kill），截图亲眼核过
 （seam-evidence/79、80），形态与 rc 线一致。README 安装文案对 alpha 用户
 需注明 sidebar 装 @0.18.0-alpha.0——待发版时一并处理。
+
+## 0.24.0 / dsh-work-x 0.4.0 发版闭环（2026-08-31 深夜）
+
+npm 已发（独立凭证文件通道，weijf14-gmail）。发版回归按铁律走 npm CLI
+（本地 checkout 停在 codex/agent-setup-contributors 实验分支，raw-pnpm 行为
+与 stock rc.2 不同，弃用）：
+- rc.2 线：examples 14+1（dshX 并行模型轮抖动，单跑复绿）+ step-seams 全绿
+  + pi-tui 生态 23/23 全绿，引擎回读 0.24.0；
+- alpha.2 线：examples 15 过 0 失败，引擎回读 0.24.0。
+装置再修两条：runDsh 安装超时 300→600s（store prune 后冷启并发装 92s/条
+实测）；发现"packages: [.] 让 rc.2 CLI 的 add 也需要 -w"——重试链路两代
+通用，非 alpha 专属。
+用户结论：三代（rc.8/rc.2/alpha.2）单产物直接用；alpha 配 sidebar 装
+@0.18.0-alpha.0（README 已注明）。
