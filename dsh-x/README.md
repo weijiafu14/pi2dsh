@@ -71,6 +71,10 @@ chip carry the same functionality. (DSH has no way yet for one plugin to declare
 [we've proposed one](https://github.com/deepseek-ai/deepseek-harness/discussions/4543) —
 so the install command names both.)
 
+> **On the DSH `0.1.2-alpha` line?** The sidebar ships per DSH generation:
+> install `dsh-better-sidebar@0.18.0-alpha.0` there (its latest tag serves the
+> rc lines). dsh-work-x itself is one build for every supported generation.
+
 ## Memory & background tasks
 
 **Primary form — the sidebar.** With the one-line install above, the right
