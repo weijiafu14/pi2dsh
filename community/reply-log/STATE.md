@@ -1007,3 +1007,12 @@ useSession 标准件钩子）→ stage 信标死 → 全部浮动件被门关死
 `-w`/packages 字段（alpha.1 已记，examples 装置本轮才踩全）。
 
 装置修复合集见 CLAUDE.md 预检段⑥-⑨与装置坑合集条。
+
+## sidebar 主形态 alpha.2 组合验证（2026-08-31 续 2）
+
+dsh-better-sidebar 作者按代分发：latest 0.17.1 服务 rc 线，0.18.0-alpha.0
+（08-30 发）peers 全钉 ^0.1.2-alpha.2。我们的 Memory/Jobs 标签在
+「alpha.2 CLI + sidebar 0.18.0-alpha.0 + 工作树套件」组合上 E2E 三连 PASS
+（codeword 入 Memory 标签、Jobs 任务卡 running+Kill），截图亲眼核过
+（seam-evidence/79、80），形态与 rc 线一致。README 安装文案对 alpha 用户
+需注明 sidebar 装 @0.18.0-alpha.0——待发版时一并处理。
