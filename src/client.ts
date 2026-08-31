@@ -126,10 +126,29 @@ interface PiImageToolViewProps {
   toolName: string
   block: PiToolCallBlock
   sessionId?: string
+  useSession?: (selector: (snapshot: { sessionId?: string }) => unknown) => unknown
 }
 
 /** Services this half needs before it can take a seat. */
 export const inject = ['slots', 'inputTriggers']
+
+/**
+ * The session a slot occupant belongs to, on either generation. The rc lines
+ * hand session-scoped occupants a `sessionId` prop; the 0.1.2 line passes
+ * seats empty props (`renderSlot("conversation.session.header.utilities",
+ * {})` — read from the alpha.2 bundles on 2026-08-31) and provides identity
+ * through the standard kit's `useSession` selector hook instead (the
+ * renderer's own 'session' contribution). Both faces are read here; the
+ * conditional hook call is generation-stable — within one runtime the same
+ * branch always runs, so React's hook order never changes between renders.
+ */
+export function useSeatSession(props: { sessionId?: string, useSession?: (selector: (snapshot: { sessionId?: string }) => unknown) => unknown }): string {
+  const viaHook = typeof props.useSession === 'function'
+    ? props.useSession(snapshot => snapshot.sessionId)
+    : undefined
+  if (typeof props.sessionId === 'string' && props.sessionId !== '') return props.sessionId
+  return typeof viaHook === 'string' ? viaHook : ''
+}
 
 const POLL_MS = 1000
 const EMPTY: BrowserState = { threads: [], surfaces: [], entries: [] }
@@ -470,7 +489,10 @@ function firstArgumentSummary(raw: string): string {
 }
 
 /** Browser row shared by the explicitly supported Pi image tools. */
-function PiImageToolView({ toolName, block, sessionId }: PiImageToolViewProps) {
+function PiImageToolView(props: PiImageToolViewProps) {
+  const { toolName, block } = props
+  const seatSession = useSeatSession(props)
+  const sessionId = seatSession === '' ? undefined : seatSession
   const [expanded, setExpanded] = useState(true)
   const settled = block.kind === 'tool-result'
   const argsRaw = settled ? block.call?.argsRaw ?? '' : block.argsRaw ?? ''
@@ -591,12 +613,13 @@ export function useOnStage(useSessions: SessionsHook): string {
 /** Invisible occupant of a conversation-scoped seat; its mounted lifetime is
  *  the evidence. The hidden marker exists so E2E can assert staging from the
  *  DOM instead of trusting page text. */
-function StageBeacon({ sessionId }: { sessionId?: string }): ReactNode {
+function StageBeacon(props: { sessionId?: string }): ReactNode {
+  const sessionId = useSeatSession(props)
   useEffect(() => {
-    if (typeof sessionId !== 'string' || sessionId === '') return undefined
+    if (sessionId === '') return undefined
     return markStaged(sessionId)
   }, [sessionId])
-  if (typeof sessionId !== 'string' || sessionId === '') return null
+  if (sessionId === '') return null
   return createElement('span', {
     'data-pi2dsh': 'stage', 'data-session': sessionId, style: { display: 'none' },
   })
@@ -929,8 +952,9 @@ function LoginFooter(): ReactNode {
 }
 
 function textSeat(marker: string, valueKeys: readonly SurfaceKey[]) {
-  return function TextSeat({ sessionId }: { sessionId?: string }) {
-    const { surfaces } = useBrowserState(sessionId)
+  return function TextSeat(props: { sessionId?: string }) {
+    const sessionId = useSeatSession(props)
+    const { surfaces } = useBrowserState(sessionId === '' ? undefined : sessionId)
     const values = valueKeys.flatMap(key => valuesFor(surfaces, key))
     if (values.length === 0) return null
     return createElement('div', { 'data-pi2dsh': marker, style: styles.strip },
@@ -950,8 +974,9 @@ function textSeat(marker: string, valueKeys: readonly SurfaceKey[]) {
  * @param props - the session standard kit.
  * @returns the entry strip, or null when the package appended none.
  */
-function EntryStrip({ sessionId }: { sessionId?: string }) {
-  const { entries } = useBrowserState(sessionId)
+function EntryStrip(props: { sessionId?: string }) {
+  const sessionId = useSeatSession(props)
+  const { entries } = useBrowserState(sessionId === '' ? undefined : sessionId)
   if (entries.length === 0) return null
   return createElement('div', { 'data-pi2dsh': 'entries', style: styles.strip },
     ...entries.map(entry => createElement('div',
@@ -973,13 +998,15 @@ function EntryStrip({ sessionId }: { sessionId?: string }) {
  * @returns nothing rendered; this seat exists for the effects.
  */
 function ComposerBridge(
-  { sessionId, useInput, inputActions }: {
+  props: {
     sessionId?: string
     useInput?: <T>(select: (state: { draft: string }) => T) => T
     inputActions?: { setDraft(text: string): void }
   },
 ) {
-  const { draft } = useBrowserState(sessionId)
+  const { useInput, inputActions } = props
+  const sessionId = useSeatSession(props)
+  const { draft } = useBrowserState(sessionId === '' ? undefined : sessionId)
   const live = useInput === undefined ? '' : useInput(state => state.draft)
   const [appliedRev, setAppliedRev] = useState(0)
 

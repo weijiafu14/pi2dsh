@@ -118,7 +118,9 @@ tools 管线、prepareCall、sessions、webServer、client slots 等）实证存
 
 - prerelease dist-tags 正确路由，alpha 首次可从 npm 直装——预检装置从"源码
   worktree 构建 + link: 全家"简化为"npm 装 alpha tag"；alpha.1 段"全量 examples
-  回归待 npm"的欠账自本版起可还。
+  回归待 npm"的欠账**已还（同日）：alpha.2 线全量 15 过 0 失败，rc.2 对照同形**
+  （唯一产品级代际修复：web 座位 sessionId prop → useSession 钩子的标准件
+  迁移，桥的 useSeatSession 双代兼容；细节在 CLAUDE.md 预检段⑥-⑨）。
 - `ctx.remote`/RemoteError 收敛与 session projection registry 属上游内部整备，
   桥无消费面；singlepath E2E 在 npm alpha.2 CLI 上双 Agent 23/23 全绿实证承重
   seam 存活。

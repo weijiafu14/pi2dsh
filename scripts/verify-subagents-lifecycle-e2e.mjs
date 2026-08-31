@@ -109,6 +109,9 @@ const baseEnv = {
   NO_COLOR: '1',
   DSH_TELEMETRY_DISABLED: '1',
   PNPM_CONFIG_MINIMUM_RELEASE_AGE: '0',
+  // Large tarballs (recheck-jar, 21MB) exceed pnpm's default 60s fetch
+  // timeout on a slow pipe; same harness property as the examples E2E.
+  PNPM_CONFIG_FETCH_TIMEOUT: '300000',
   npm_config_registry: 'https://registry.npmjs.org',
 }
 
@@ -220,6 +223,11 @@ try {
       await mkdir(profileRoot, { recursive: true })
       if (!existsSync(join(profileRoot, 'pnpm-workspace.yaml'))) {
         const workspaceLines = [
+          // The 0.1.2 lines' `plugin add` forwards to raw pnpm, which
+          // refuses a workspace file without a packages field; their own
+          // initProfile writes exactly this. The rc lines ignore it.
+          'packages:',
+          '  - .',
           'minimumReleaseAge: 0',
           'allowBuilds:',
           "  '@google/genai': false",
@@ -240,14 +248,17 @@ try {
         }
         await writeFile(join(profileRoot, 'pnpm-workspace.yaml'), `${workspaceLines.join('\n')}\n`)
       }
-      const extra = profile === 'tui' ? ['-w', process.env.PI2DSH_TUI_SPEC ?? '@deepseek-harness-tui/dsh-tui@0.9.0'] : []
+      // -w on every add: the 0.1.2 lines' raw-pnpm passthrough demands it
+      // (ERR_PNPM_ADDING_TO_ROOT without), and the rc lines tolerate it —
+      // the tui profile has shipped the flag on rc for weeks.
+      const extra = profile === 'tui' ? ['-w', process.env.PI2DSH_TUI_SPEC ?? '@deepseek-harness-tui/dsh-tui@0.9.0'] : ['-w']
       const probe = profile === 'headless' ? [PROBE_DIR] : []
       await execFile(dshBin, ['plugin', '--profile', profile, 'add', ...extra, ENGINE_SPEC, SUBAGENTS_SPEC, ...probe], {
         env: baseEnv, timeout: 600_000, maxBuffer: 32 * 1024 * 1024,
       })
     } else if (profile === 'headless' && !existsSync(join(profileRoot, 'node_modules', '@pi2dsh-fixtures', 'subagent-archive-probe'))) {
       // A reused scratch predating the probe: add it in place.
-      await execFile(dshBin, ['plugin', '--profile', profile, 'add', PROBE_DIR], {
+      await execFile(dshBin, ['plugin', '--profile', profile, 'add', '-w', PROBE_DIR], {
         env: baseEnv, timeout: 600_000, maxBuffer: 32 * 1024 * 1024,
       })
     }

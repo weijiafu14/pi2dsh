@@ -26,14 +26,30 @@ const { page, browser, shot, send, UI } = await openApp()
 await page.getByRole('button', { name: UI.newSession }).first().click({ timeout: 60_000 })
 
 const composer = page.getByRole('textbox').last()
+// Real keystrokes only: the 0.1.2 line's composer is a Lexical
+// contenteditable whose suggestion popover follows KEY events — Playwright's
+// fill() injects a synthetic value that leaves the popover closed (the
+// dsh-x probe false-failed exactly this way on alpha.2, while the same
+// prefixes typed by hand listed every command). Clear with select-all +
+// Backspace and wait for real focus first, the same discipline send() uses.
+const freshComposerLine = async () => {
+  await composer.click()
+  await composer.focus()
+  await page.waitForFunction(
+    () => document.activeElement?.getAttribute('role') === 'textbox'
+      || document.activeElement?.tagName === 'TEXTAREA',
+    undefined,
+    { timeout: 10_000 },
+  )
+  await page.keyboard.press('ControlOrMeta+A')
+  await page.keyboard.press('Backspace')
+}
 const mounted = {}
 for (const command of COMMANDS) {
   let found
   const dumps = []
   for (const variant of command.variants) {
-    await composer.click()
-    await composer.focus()
-    await composer.fill('')
+    await freshComposerLine()
     await composer.pressSequentially(variant.prefix, { delay: 25 })
     // The popover lists each command NAME on its own line (no slash): an
     // exact whole-line match, so "btw-tangent" can never satisfy "btw".
@@ -48,14 +64,14 @@ for (const command of COMMANDS) {
     }
     const body = await page.locator('body').innerText().catch(() => '')
     dumps.push(...body.split('\n').filter(line => /agent|mcp|btw|codex|image/iu.test(line)))
-    await composer.fill('')
+    await freshComposerLine()
   }
   if (found === undefined) {
     const body = await page.locator('body').innerText().catch(() => '')
     throw new Error(`dsh-x probe: no spelling of ${command.owner}'s command was offered by the popover (tried ${command.variants.map(v => v.full).join(', ')}); command-ish lines:\n${[...new Set(dumps)].slice(0, 40).join('\n')}\n--- full page text (truncated) ---\n${body.slice(0, 3000)}`)
   }
   mounted[command.owner] = found
-  await composer.fill('')
+  await freshComposerLine()
 }
 await shot('dsh-x-command-popover')
 console.log(`[dsh-x-probe] suite commands offered by the composer popover: ${JSON.stringify(mounted)}`)

@@ -375,7 +375,7 @@ async function runGatewayCompat() {
     }
   } finally {
     endpoint?.kill('SIGTERM')
-    await rm(scratch, { recursive: true, force: true })
+    await removeScratch(scratch, 'scenario cleanup')
   }
 }
 
@@ -459,7 +459,7 @@ async function runAlibabaTokenPlan() {
       persistedCredentialFiles: persistedMatches.length,
     }
   } finally {
-    await rm(scratch, { recursive: true, force: true })
+    await removeScratch(scratch, 'scenario cleanup')
   }
 }
 
@@ -514,7 +514,7 @@ async function runVisionBridge() {
     if (process.env.PI2DSH_KEEP_SCRATCH === '1') {
       console.error(`[examples-e2e] kept vision scratch for diagnosis: ${scratch}`)
     } else {
-      await rm(scratch, { recursive: true, force: true })
+      await removeScratch(scratch, 'scenario cleanup')
     }
   }
 }
@@ -611,7 +611,7 @@ async function runPersistentMemory() {
       storeIsolatedToDshHome: true,
     }
   } finally {
-    await rm(scratch, { recursive: true, force: true })
+    await removeScratch(scratch, 'scenario cleanup')
   }
 }
 
@@ -679,7 +679,7 @@ async function runBackgroundTasks() {
       bgLogsMidRunReads: withTicks.length,
     }
   } finally {
-    await rm(scratch, { recursive: true, force: true })
+    await removeScratch(scratch, 'scenario cleanup')
   }
 }
 
@@ -724,7 +724,7 @@ async function runMemoryTasksWeb() {
     const shots = join(scratch, 'shots')
     await execFile('node', [
       join(projectRoot, 'docs/posting-kit/capture-memory-tasks.mjs'), shots,
-      '--url', authedUrl(url, webLog), '--codeword', CODEWORD,
+      '--url', await authedUrl(url, () => webLog), '--codeword', CODEWORD,
     ], {
       cwd: projectRoot,
       env: { ...env, PLAYWRIGHT_FROM: playwrightFrom },
@@ -845,7 +845,7 @@ async function runSideConversation() {
     // below read the session logs, never the page (the page legitimately
     // shows the answer — in the side surfaces — so page text proves nothing).
     const shots = shotDir ?? join(scratch, 'shots')
-    await execFile('node', [join(projectRoot, 'docs/posting-kit/capture-side-chat.mjs'), shots, '--url', authedUrl(url, webLog)], {
+    await execFile('node', [join(projectRoot, 'docs/posting-kit/capture-side-chat.mjs'), shots, '--url', await authedUrl(url, () => webLog)], {
       cwd: projectRoot,
       env: { ...env, PLAYWRIGHT_FROM: playwrightFrom },
       timeout: 300_000,
@@ -886,7 +886,7 @@ async function runSideConversation() {
     }
   } finally {
     web?.kill('SIGTERM')
-    await rm(scratch, { recursive: true, force: true })
+    await removeScratch(scratch, 'scenario cleanup')
   }
 }
 
@@ -939,7 +939,7 @@ async function runVisionBridgeWeb() {
     await stat(image)
     const shots = shotDir ?? join(scratch, 'shots')
     await execFile('node', [
-      join(projectRoot, 'docs/posting-kit/capture-vision.mjs'), shots, '--url', authedUrl(url, webLog), '--image', image,
+      join(projectRoot, 'docs/posting-kit/capture-vision.mjs'), shots, '--url', await authedUrl(url, () => webLog), '--image', image,
     ], {
       cwd: projectRoot,
       env: { ...env, PLAYWRIGHT_FROM: playwrightFrom },
@@ -961,7 +961,7 @@ async function runVisionBridgeWeb() {
     }
   } finally {
     web?.kill('SIGTERM')
-    await rm(scratch, { recursive: true, force: true })
+    await removeScratch(scratch, 'scenario cleanup')
   }
 }
 
@@ -1073,7 +1073,7 @@ async function runCustomGateways() {
       requestedThroughGateway: true,
     }
   } finally {
-    await rm(scratch, { recursive: true, force: true })
+    await removeScratch(scratch, 'scenario cleanup')
   }
 }
 
@@ -1125,7 +1125,7 @@ async function runPresentationSurfaces() {
     // The capture script IS the assertion: each seat has to hold the string the
     // Pi package supplied, checked inside that seat rather than in page text.
     const shots = shotDir ?? join(scratch, 'shots')
-    await execFile('node', [join(projectRoot, 'docs/posting-kit/capture-surfaces.mjs'), shots, '--url', authedUrl(url, webLog)], {
+    await execFile('node', [join(projectRoot, 'docs/posting-kit/capture-surfaces.mjs'), shots, '--url', await authedUrl(url, () => webLog)], {
       cwd: projectRoot,
       env: { ...env, PLAYWRIGHT_FROM: playwrightFrom },
       timeout: 300_000,
@@ -1136,7 +1136,7 @@ async function runPresentationSurfaces() {
     results.presentationSurfaces = { status: 'passed', engine: await installedEngineVersion(home, 'web', 'dsh-work-x'), install: 'dsh-work-x suite + pi-powerline-footer', screenshots: captured.sort() }
   } finally {
     web?.kill('SIGTERM')
-    await rm(scratch, { recursive: true, force: true })
+    await removeScratch(scratch, 'scenario cleanup')
   }
 }
 
@@ -1221,7 +1221,7 @@ async function runSubscriptionLogin() {
     }
   } finally {
     web?.kill('SIGTERM')
-    await rm(scratch, { recursive: true, force: true })
+    await removeScratch(scratch, 'scenario cleanup')
   }
 }
 
@@ -1252,7 +1252,7 @@ async function runCodexImageGen() {
     assert.equal(evidence.status, 'passed')
     results.codexImageGen = evidence
   } finally {
-    await rm(scratch, { recursive: true, force: true })
+    await removeScratch(scratch, 'scenario cleanup')
   }
 }
 
@@ -1334,7 +1334,7 @@ async function runTuiMcp() {
       ],
     }
   } finally {
-    await rm(scratch, { recursive: true, force: true })
+    await removeScratch(scratch, 'scenario cleanup')
   }
 }
 
@@ -1417,9 +1417,28 @@ async function runSubagents() {
  * @param webLog - captured server stdout+stderr so far.
  * @returns the url for the capture's page.goto().
  */
-function authedUrl(url, webLog) {
-  const token = /[?&]token=([A-Za-z0-9_-]+)/u.exec(webLog)
-  return token === null ? url : `${url}/?token=${token[1]}`
+async function authedUrl(url, webLog) {
+  // A string snapshot races the server: the 401 gate answers readiness
+  // probes BEFORE the token line reaches the log, and a capture launched in
+  // that gap opens the bare origin and stalls on the auth wall ("New
+  // session" never appears — dsh-x, 2026-08-31). Callers pass a getter over
+  // their growing log; when the server is actually gated the token MUST
+  // appear, so its absence is a loud failure, never a silent tokenless url.
+  const read = typeof webLog === 'function' ? webLog : () => webLog
+  const gated = await fetch(url).then(response => response.status === 401).catch(() => false)
+  // 90s, not less: under a parallel full run the token line can trail the
+  // 401 gate by well over 30s (mcp-at-scale-web false-failed at 30s on
+  // 2026-08-31 while passing solo).
+  const deadline = Date.now() + (gated ? 90_000 : 0)
+  for (;;) {
+    const token = /[?&]token=([A-Za-z0-9_-]+)/u.exec(read())
+    if (token !== null) return `${url}/?token=${token[1]}`
+    if (Date.now() > deadline) {
+      if (gated) throw new Error('dsh web answers 401 (launch-token gate) but printed no ?token= url in its log')
+      return url
+    }
+    await new Promise(done => setTimeout(done, 500))
+  }
 }
 
 
@@ -1467,7 +1486,7 @@ async function runWorkXMemoryTasks() {
     const shots = join(scratch, 'shots')
     await execFile('node', [
       join(projectRoot, 'docs/posting-kit/capture-workx-memory-tasks.mjs'), shots,
-      '--url', authedUrl(url, webLog), '--codeword', CODEWORD, '--pin', PIN,
+      '--url', await authedUrl(url, () => webLog), '--codeword', CODEWORD, '--pin', PIN,
     ], {
       cwd: projectRoot,
       env: { ...env, PLAYWRIGHT_FROM: playwrightFrom, CAPTURE_WORKSPACE: workspace },
@@ -1578,7 +1597,7 @@ async function runDshX() {
     assert(!/failed to mount/u.test(webLog), `a suite member failed to mount:\n${webLog.split('\n').filter(line => /failed to mount/u.test(line)).join('\n')}`)
 
     // The falsifiable web check: each member's command offered by the popover.
-    const probe = await execFile('node', [join(projectRoot, 'scripts/dsh-x-web-probe.mjs'), join(scratch, 'shots'), '--url', authedUrl(url, webLog)], {
+    const probe = await execFile('node', [join(projectRoot, 'scripts/dsh-x-web-probe.mjs'), join(scratch, 'shots'), '--url', await authedUrl(url, () => webLog)], {
       cwd: projectRoot,
       env: { ...env, PLAYWRIGHT_FROM: playwrightFrom },
       timeout: 600_000,
@@ -1629,7 +1648,7 @@ async function runDshX() {
     }
   } finally {
     web?.kill('SIGTERM')
-    await rm(scratch, { recursive: true, force: true })
+    await removeScratch(scratch, 'scenario cleanup')
   }
 }
 
@@ -1654,6 +1673,10 @@ async function runDshX() {
  * @param label - scenario name for the diagnostic.
  */
 async function removeScratch(scratch, label) {
+  if (process.env.PI2DSH_KEEP_SCRATCH === '1') {
+    console.error(`[examples-e2e] ${label}: kept scratch for diagnosis: ${scratch}`)
+    return
+  }
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
       await rm(scratch, { recursive: true, force: true })
@@ -1853,7 +1876,7 @@ async function runCodeNavigationWeb() {
 
     const shots = shotDir ?? join(scratch, 'shots')
     await execFile('node', [
-      join(projectRoot, 'docs/posting-kit/capture-codenav.mjs'), shots, '--url', authedUrl(url, webLog),
+      join(projectRoot, 'docs/posting-kit/capture-codenav.mjs'), shots, '--url', await authedUrl(url, () => webLog),
     ], {
       cwd: projectRoot,
       // The isolated HOME belongs to the dsh server process (pi-lens caches);
@@ -2041,7 +2064,12 @@ async function runMcpAtScaleWeb() {
   let web
   try {
     const { home, env, missionDir, installLog } = await prepareMcpAtScale(scratch, 'web')
-    const port = Number(process.env.MCPSCALE_PORT ?? 5191)
+    // 5192, NOT 5191: memory-tasks-web owns 5191, and a shared default under
+    // the bounded pool put both servers live at once — this scenario's 401
+    // readiness probe and token wait then read the OTHER scenario's server
+    // (whose log holds the token), failing loud with "printed no ?token="
+    // while passing solo (2026-08-31; same lesson as dsh-x's 5193 note).
+    const port = Number(process.env.MCPSCALE_PORT ?? 5192)
     web = spawnWeb(port, env)
     let webLog = ''
     web.stdout.on('data', chunk => { webLog += String(chunk) })
@@ -2063,7 +2091,7 @@ async function runMcpAtScaleWeb() {
 
     const shots = shotDir ?? join(scratch, 'shots')
     await execFile('node', [
-      join(projectRoot, 'docs/posting-kit/capture-mcp-scale.mjs'), shots, '--url', authedUrl(url, webLog),
+      join(projectRoot, 'docs/posting-kit/capture-mcp-scale.mjs'), shots, '--url', await authedUrl(url, () => webLog),
     ], {
       cwd: projectRoot,
       env: { ...env, ...(process.env.HOME === undefined ? {} : { HOME: process.env.HOME }), PLAYWRIGHT_FROM: playwrightFrom, CAPTURE_WORKSPACE: missionDir },
@@ -2130,18 +2158,29 @@ if (selected.length === 0) {
 // Run them together. Each scenario owns a throwaway DSH_HOME and its own port,
 // so nothing is shared but wall-clock — and serially this is minutes of npm
 // installs and browser boots repeated one after another, which is how a full
-// regression turns into a thing people skip.
+// regression turns into a thing people skip. Parallel, but BOUNDED: fully
+// unbounded, ~20 scenarios' pnpm installs all funnel through the machine's
+// local proxy at once and connections start dying with empty reads — 14
+// scenarios false-failed that way on 2026-08-31 while every single rerun
+// passed. A small pool keeps the wall-clock win without the stampede.
+const concurrency = Math.max(1, Number(process.env.PI2DSH_E2E_CONCURRENCY ?? 6) || 6)
 const failures = []
-await Promise.all(selected.map(async ([name, run, key]) => {
-  try {
-    await run()
-    console.log(`[examples-e2e] ${name}: ${results[key]?.status ?? 'passed'}${
-      results[key]?.reason === undefined ? '' : ` — ${results[key].reason}`}`)
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    results[key] = { status: 'failed', error: message }
-    failures.push(`${name}: ${message}`)
-    console.error(`[examples-e2e] ${name}: FAILED — ${message}`)
+const queue = [...selected]
+await Promise.all(Array.from({ length: Math.min(concurrency, queue.length) }, async () => {
+  for (;;) {
+    const next = queue.shift()
+    if (next === undefined) return
+    const [name, run, key] = next
+    try {
+      await run()
+      console.log(`[examples-e2e] ${name}: ${results[key]?.status ?? 'passed'}${
+        results[key]?.reason === undefined ? '' : ` — ${results[key].reason}`}`)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      results[key] = { status: 'failed', error: message }
+      failures.push(`${name}: ${message}`)
+      console.error(`[examples-e2e] ${name}: FAILED — ${message}`)
+    }
   }
 }))
 
