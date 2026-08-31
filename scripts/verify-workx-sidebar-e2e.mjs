@@ -38,7 +38,9 @@ try {
   const { home, env, runDsh } = await makeHome(scratch)
   const tarball = await stageSuiteTarball(projectRoot, engineSpec, scratch, env)
   await runDsh(['plugin', '--profile', 'web', 'add', tarball])
-  await runDsh(['plugin', '--profile', 'web', 'add', 'dsh-better-sidebar'])
+  // The community sidebar ships per-generation: latest serves the rc lines,
+  // 0.18.0-alpha.x pins ^0.1.2-alpha.2 peers. Override to test the alpha pair.
+  await runDsh(['plugin', '--profile', 'web', 'add', process.env.PI2DSH_SIDEBAR_SPEC ?? 'dsh-better-sidebar'])
   await useJsonlSessions(home, 'web')
   const workspace = join(scratch, 'workspace')
   await mkdir(workspace, { recursive: true })
@@ -63,8 +65,22 @@ try {
     if (Date.now() > deadline) throw new Error(`dsh web never came up:\n${webLog}`)
     await new Promise(done => setTimeout(done, 500))
   }
-  const token = /[?&]token=([A-Za-z0-9_-]+)/u.exec(webLog)
-  const authed = token === null ? url : `${url}/?token=${token[1]}`
+  // Same discipline as the examples harness's authedUrl: the 401 gate
+  // answers readiness BEFORE the token line reaches the log, and a capture
+  // launched in that gap opens the bare origin and stalls on the auth wall.
+  // When the server is gated the token MUST appear; its absence fails loud.
+  const gated = await fetch(url).then(response => response.status === 401).catch(() => false)
+  const tokenDeadline = Date.now() + (gated ? 90_000 : 0)
+  let authed = url
+  for (;;) {
+    const token = /[?&]token=([A-Za-z0-9_-]+)/u.exec(webLog)
+    if (token !== null) { authed = `${url}/?token=${token[1]}`; break }
+    if (Date.now() > tokenDeadline) {
+      if (gated) throw new Error('dsh web answers 401 (launch-token gate) but printed no ?token= url in its log')
+      break
+    }
+    await new Promise(done => setTimeout(done, 500))
+  }
 
   const CODEWORD = `BOREAL-${Math.floor(1000 + Math.random() * 9000)}`
   const shots = join(scratch, 'shots')
@@ -88,5 +104,19 @@ try {
 } finally {
   web?.kill('SIGTERM')
   if (process.env.PI2DSH_KEEP_SCRATCH === '1') console.error(`kept scratch: ${scratch}`)
-  else await rm(scratch, { recursive: true, force: true })
+  else {
+    // Tolerate stragglers: profile children keep writing into the home for a
+    // beat after the server dies, and a concurrent write turns rm into
+    // ENOTEMPTY — which crashed a PASSED run after its evidence was written
+    // (2026-08-31). Same discipline as the examples harness's removeScratch.
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      try {
+        await rm(scratch, { recursive: true, force: true })
+        break
+      } catch (error) {
+        if (attempt === 3) console.error(`[workx-sidebar] scratch cleanup left ${scratch}: ${String(error)}`)
+        else await new Promise(done => setTimeout(done, 700))
+      }
+    }
+  }
 }
