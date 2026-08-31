@@ -14,7 +14,7 @@ import { Context } from '@deepseek-ai/cordis'
 import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
-import { CallId } from './lib/dsh-compat.js'
+import { CallId, mountAgentLoop } from './lib/dsh-compat.js'
 import CommandRuntime from '@deepseek-ai/dsh-commands'
 import SkillRegistry from '@deepseek-ai/dsh-skill'
 import { applyPiPackage } from '../src/runtime.js'
@@ -66,10 +66,9 @@ describe('createAgentSession child tools on a real DSH composition', () => {
     // scope's visibility resolver answers.
     const { default: LlmRuntime } = await import('@deepseek-ai/dsh-llm')
     const { default: AgentRegistry } = await import('@deepseek-ai/dsh-agent')
-    const { default: AgentLoop } = await import('@deepseek-ai/dsh-agent-loop')
     await ctx.plugin(LlmRuntime as never, {} as never)
     await ctx.plugin(AgentRegistry as never, {} as never)
-    await ctx.plugin(AgentLoop as never, {} as never)
+    await mountAgentLoop(ctx)
 
     // Two real global tools: one on the child's allowlist, one not.
     const globalTool = (name: string) => ({

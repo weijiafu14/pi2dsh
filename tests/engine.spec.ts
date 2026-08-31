@@ -10,7 +10,7 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { LlmAdapter, type StreamChunk } from '@deepseek-ai/dsh-llm'
-import { CallId, registerFixtureAnswerer } from './lib/dsh-compat.js'
+import { CallId, mountAgentLoop, registerFixtureAnswerer } from './lib/dsh-compat.js'
 import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
@@ -299,6 +299,15 @@ describe('engine mounting on a real DSH composition', () => {
   // native `login` without that service is a different feature wearing the
   // same name (dsh-TUI 0.9's credential-status view on a stock composition);
   // dropping the fallback there deletes the user's only Pi OAuth entry point.
+  //
+  // The gate reads the terminal host package's own LOCAL_COMMANDS export, so
+  // the emulated dsh-pi-tui surface only exists where that package loads. On
+  // 0.1.2-alpha.2 it does not (dsh-pi-tui 0.3.5 imports `settingsNamespace`,
+  // which that line's dsh-settings removed; its peers stop at ^0.1.1-rc.1) —
+  // there the real plugin cannot mount either, no native /login exists, and
+  // the bridge's plain /login registration is the correct real-world shape.
+  // Skip reason on such lines: the emulated state is impossible there.
+  const piTuiHostLoads = import('@xmoon76/dsh-pi-tui').then(() => true, () => false)
   const piTuiFixture = () => ({
     api: () => ({ apiVersion: 1, capabilities: new Set(['unstable.surface.handle']) }),
     register: () => ({ replace() {}, dispose() {} }),
@@ -336,13 +345,15 @@ describe('engine mounting on a real DSH composition', () => {
     return typedCtx.commands.list(agent).map(command => command.name)
   }
 
-  it('keeps a reachable Pi OAuth login (as /pi-login) when the terminal owns /login but no authorization service is composed', async () => {
+  it('keeps a reachable Pi OAuth login (as /pi-login) when the terminal owns /login but no authorization service is composed', async (test) => {
+    if (!await piTuiHostLoads) test.skip()
     const names = await loginCommandNames(false)
     expect(names).toContain('pi-login')
     expect(names).not.toContain('login')
   })
 
-  it('skips the fallback entirely when the native /login is authorization-backed', async () => {
+  it('skips the fallback entirely when the native /login is authorization-backed', async (test) => {
+    if (!await piTuiHostLoads) test.skip()
     const names = await loginCommandNames(true)
     expect(names).not.toContain('pi-login')
     expect(names).not.toContain('login')
@@ -845,10 +856,9 @@ describe('engine mounting on a real DSH composition', () => {
     // scenario runs on a REAL registry-published agent, not a hand-rolled one.
     const { default: LlmRuntime } = await import('@deepseek-ai/dsh-llm')
     const { default: AgentRegistry } = await import('@deepseek-ai/dsh-agent')
-    const { default: AgentLoop } = await import('@deepseek-ai/dsh-agent-loop')
     await ctx.plugin(LlmRuntime as never, {} as never)
     await ctx.plugin(AgentRegistry as never, {} as never)
-    await ctx.plugin(AgentLoop as never, {} as never)
+    await mountAgentLoop(ctx)
     const { default: UserQuestionService } = await import('@deepseek-ai/dsh-user-questions')
     await ctx.plugin(UserQuestionService as never, {} as never)
     // A hanging provider standing in for a real UI: it never answers on its
