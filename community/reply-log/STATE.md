@@ -990,3 +990,20 @@ npm 首次带 `alpha` tag（latest 仍 rc.2）；268 commits over alpha.1。四�
 
 上游报账追加：dsh-pi-tui 作者侧 alpha 不兼容（settingsNamespace 移除 +
 peers 止步 rc.1）——这是别人仓库的事，只在我们文档记生态状态，不代发。
+
+## alpha.2 全量回归还账（2026-08-31 续）
+
+alpha.1 段承诺"上游发 npm 后立即补"的全量 examples 回归已还：**alpha.2 线
+15 过 0 失败**（npm alpha.2 CLI + 工作树引擎；4 skip + 1 partial 均为缺外部
+凭证的既有形状），rc.2 线同日对照同形全绿（community/examples-e2e-alpha2.json
+/ examples-e2e-rc2-recheck.json）。
+
+产品级修复（双代验证过）：alpha.2 web 座位不再传 sessionId prop（改
+useSession 标准件钩子）→ stage 信标死 → 全部浮动件被门关死；useSeatSession
+双代兼容落 src/client.ts + dsh-x TasksChip。
+
+上游候选（攒着待拍板挑）：① 草稿态提交斜杠命令在隐形会话执行（页面留草稿、
+会话不上台不进列表，真机复现）；② alpha `dsh plugin add` 裸 pnpm 转发需
+`-w`/packages 字段（alpha.1 已记，examples 装置本轮才踩全）。
+
+装置修复合集见 CLAUDE.md 预检段⑥-⑨与装置坑合集条。

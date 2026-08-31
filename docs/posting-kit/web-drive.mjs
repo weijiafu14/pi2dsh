@@ -158,6 +158,13 @@ export async function openApp() {
     )
   }
 
+  // Browser-side failures (a client module throwing at load, a slot seat
+  // erroring) are invisible in the capture's own output without these; every
+  // driver shares openApp, so every capture inherits the diagnostics.
+  page.on('console', message => {
+    if (message.type() === 'error') console.error('page console error:', message.text().slice(0, 500))
+  })
+  page.on('pageerror', error => console.error('page exception:', String(error).slice(0, 500)))
   await page.goto(baseUrl, { waitUntil: 'domcontentloaded' })
   await dismissNotice(page)
   // A DSH home that has never been opened also has no WORKSPACE, and until one
@@ -167,21 +174,32 @@ export async function openApp() {
   // adopt a directory through the host's own workspace.create RPC, which is
   // exactly what the picker calls.
   const workspacePath = process.env.CAPTURE_WORKSPACE ?? process.cwd()
-  const adopted = await page.evaluate(async path => {
-    const response = await fetch('/api/workspace.create', {
+  // Two generations, two spellings of the same RPC. The rc lines route
+  // `/api/workspace.create` (dot). The 0.1.2 lines' typert gateway claims
+  // canonical `<namespace>/<method>` endpoints under `/api` and rejects an
+  // envelope whose `method` differs from the endpoint — so the same call is
+  // POST `/api/workspace/create` with `method: 'workspace/create'`. Probe by
+  // response, not by version: the wrong spelling 404s, the right one answers
+  // 200 (wrapping even refusals, so the body is always logged).
+  const attemptAdoption = (endpoint, method, payload) => page.evaluate(async ({ endpoint, method, payload }) => {
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         type: 'client-request',
         rpcId: 'capture-workspace',
-        method: 'workspace.create',
-        payload: { path },
+        method,
+        payload,
       }),
     })
     return { status: response.status, body: (await response.text()).slice(0, 300) }
-  }, workspacePath).catch(error => ({ status: 0, body: String(error) }))
-  // Always logged: this transport answers 200 for refusals too, wrapping the
-  // error in the response body, so the status alone says nothing.
+  }, { endpoint, method, payload }).catch(error => ({ status: 0, body: String(error) }))
+  // The 0.1.2 gateway wraps the business request twice, in its own words
+  // (both messages observed 2026-08-31): the payload carries "exactly one
+  // plain-object args field", and args' fields must match the method
+  // descriptor — workspace/create is `create(request)`, so args.request.
+  let adopted = await attemptAdoption('/api/workspace/create', 'workspace/create', { args: { request: { path: workspacePath } } })
+  if (adopted.status === 404) adopted = await attemptAdoption('/api/workspace.create', 'workspace.create', { path: workspacePath })
   console.log(`capture: workspace.create → ${adopted.status} ${adopted.body}`)
   await page.reload({ waitUntil: 'domcontentloaded' })
   await dismissNotice(page)

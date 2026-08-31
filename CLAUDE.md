@@ -594,6 +594,33 @@ pnpm verify:release   # verify + 全部 examples（装 npm 上刚发的那版）
   不存在，桥按平名注册 /login 是正确形态；契约里两条模拟 dsh-pi-tui 的
   login 测试在该代动态 skip（原因写在 engine.spec.ts 探针注释）。
   peers `^0.1.2-alpha.1` 已覆盖 alpha.2（同元组 prerelease），未动。
+  **alpha.2 真机半边（同日，全量 examples 15 过 0 失败，与 rc.2 对照同形）**：
+  ⑥ **web 座位不再传 sessionId prop**——alpha.2 的 `renderSlot("conversation.
+  session.header.utilities", {})` 等会话座位全传空 props（bundle 实读），
+  会话身份改由标准件的 `useSession` 选择器钩子提供；后果=stage 信标拿不到
+  会话号 → useOnStage 永空 → 全部浮动件被门关死（surfaces/dshX 连环失败的
+  真因）。修法=`src/client.ts` 的 `useSeatSession(props)` 双代兼容（prop
+  优先、钩子兜底；分支按代恒定不破 hook 顺序），全部吃 sessionId 标准件的
+  组件（信标/TextSeat/EntryStrip/ComposerBridge/PiImageToolView/TasksChip）
+  已接。⑦ **草稿态提交斜杠命令=隐形会话**（真机实锤）：命令在新会话执行但
+  页面留在草稿、会话不上台、不进侧栏列表——浮动件不显示是我们 stage 规则的
+  正确行为；capture 必须先发真消息把会话推上台再跑命令（上游候选报告）。
+  ⑧ typert 网关 RPC wire：端点=`/api/<namespace>/<method>`（斜杠，rc 线的
+  `.` 形不被认领），envelope `method` 必须等于端点字符串，payload 形状
+  `{ args: { <方法形参名>: ... } }`（如 workspace/create 是
+  `args.request.path`）——web-drive 工作区采纳已双路径。⑨ lexical composer
+  对 Playwright `fill()` 合成值不开建议弹层，只认真键序——探针清空一律
+  select-all+Backspace（dsh-x 探针假失败教训）。装置坑合集：examples 装置
+  的 profile 预写 workspace 文件必须带 `packages: [.]`（alpha 裸 pnpm add
+  否则报 packages field missing，且只有 registry 包受害、file: 不走那条路
+  ——引擎装得上、社区包全挂的迷惑形状）；overrides 版本必须从 CLI 树读
+  （硬编码 rc.2 在 alpha profile=混装）；`ERR_PNPM_ADDING_TO_ROOT` 按错误
+  形状带 `-w` 重试；pnpm fetch 超时提到 300s（recheck-jar 21MB 实测 89s，
+  默认 60s 必死）；场景并发有界池（默认 6，PI2DSH_E2E_CONCURRENCY）——
+  无界并行把本地代理打爆、14 场景连环假失败；401 门下 authedUrl 必须等出
+  token 否则 fail loud（等 90s；30s 在并行下误伤）；**场景端口一场一个**
+  （5191 曾被 memory-tasks-web 与 mcp-at-scale-web 共用，池内同时活时
+  后者的 401 就绪和 token 全读到别人 server 上）。
 - profile 的组合安装是 CLI 私有流程：改完 profile 配置要重装时重跑
   `dsh plugin add`，别直接在 profile 目录裸跑 pnpm install。
 - 独立目录装 CLI 时 pnpm 11 的坑：minimumReleaseAge 用

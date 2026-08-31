@@ -22,6 +22,16 @@ const { page, browser, shot, send, UI } = await openApp()
 
 await page.getByRole('button', { name: UI.newSession }).first().click({ timeout: 60_000 })
 
+// A real message FIRST, so the conversation is actually on screen before the
+// command runs. On the 0.1.2 line a slash command submitted from the New
+// Session draft executes in a fresh session while the page STAYS on the
+// draft — the session doesn't open, doesn't stage, and doesn't even list in
+// the sidebar (reproduced live 2026-08-31; upstream candidate). Floating
+// surfaces rightly follow the on-stage conversation, so the capture must be
+// in one. The rc lines open the conversation either way; this path is
+// identical for both.
+await send('Say OK and nothing else.')
+
 // `/powerline` shares its prefix with `/powerline-perf`, so Send stays disabled
 // until one is PICKED from the suggestion popover — the documented gesture, and
 // the reason a straight type-and-click hangs here.

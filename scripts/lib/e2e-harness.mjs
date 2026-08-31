@@ -55,6 +55,12 @@ export function createE2eHarness({ dshRoot, directDshBin, dshBin, dshCwd }) {
       // Turning it off here is a property of the harness, not of the product: a
       // user installing tomorrow is past the window anyway.
       PNPM_CONFIG_MINIMUM_RELEASE_AGE: '0',
+      // pnpm's default 60s fetch timeout kills large tarballs on a slow pipe
+      // — recheck-jar (21MB, a dep of pi-mcp-adapter ≥2.31) measured 89s on
+      // 2026-08-31 and failed every install with nothing but "pnpm failed in
+      // profile directory". Harness property: a user's one install can retry,
+      // a 20-scenario regression must not flake on it.
+      PNPM_CONFIG_FETCH_TIMEOUT: '300000',
       ...extraEnv,
     }
     const runDsh = async (args, { cwd, timeout } = {}) => {
@@ -76,6 +82,15 @@ export function createE2eHarness({ dshRoot, directDshBin, dshBin, dshCwd }) {
         await mkdir(profileDir, { recursive: true })
         if (!existsSync(workspaceFile)) {
           const lines = [
+            // The 0.1.2 lines' initProfile writes `packages: [.]` and their
+            // `plugin add` forwards to raw pnpm, which refuses a workspace
+            // file without a packages field ("packages field missing or
+            // empty") — but only for registry specs; file: installs take
+            // another path, which is why the engine add worked while every
+            // community-package add died (2026-08-31). Pre-writing this file
+            // must therefore reproduce that field; the rc lines ignore it.
+            'packages:',
+            '  - .',
             'minimumReleaseAge: 0',
             'allowBuilds:',
             "  '@google/genai': false",
@@ -92,12 +107,21 @@ export function createE2eHarness({ dshRoot, directDshBin, dshBin, dshCwd }) {
           const pnpmStore = directDshBin === undefined
             ? join(dshRoot, 'node_modules', '.pnpm')
             : resolve(directDshBin, '..', '..', '.pnpm')
-          const core = new Set()
+          // name -> version, BOTH read from the CLI tree. The pin version must
+          // be the CLI's own generation: a hardcoded version here quietly pins
+          // an alpha CLI's profiles to rc core — exactly the mixed-generation
+          // install CLAUDE.md's E2E notes call an incident (caught 2026-08-31
+          // when the alpha.2 regression inherited rc.2 pins).
+          const core = new Map()
           if (existsSync(pnpmStore)) {
             for (const entry of await readdir(pnpmStore)) {
-              if (entry.startsWith('@deepseek-ai+dsh')) {
-                core.add(`@deepseek-ai/${entry.slice('@deepseek-ai+'.length).split('@0')[0]}`)
-              }
+              if (!entry.startsWith('@deepseek-ai+dsh')) continue
+              const bare = entry.slice('@deepseek-ai+'.length)
+              const at = bare.indexOf('@')
+              if (at === -1) continue
+              const name = `@deepseek-ai/${bare.slice(0, at)}`
+              const version = bare.slice(at + 1).split(/[_(]/u)[0]
+              if (version !== '') core.set(name, version)
             }
           }
           if (core.size === 0) {
@@ -117,8 +141,9 @@ export function createE2eHarness({ dshRoot, directDshBin, dshBin, dshCwd }) {
                 if (!entry.isDirectory()) continue
                 try {
                   const manifest = JSON.parse(await readFile(join(dir, 'package.json'), 'utf8'))
-                  if (typeof manifest.name === 'string' && manifest.name.startsWith('@deepseek-ai/dsh')) {
-                    core.add(manifest.name)
+                  if (typeof manifest.name === 'string' && manifest.name.startsWith('@deepseek-ai/dsh')
+                    && typeof manifest.version === 'string') {
+                    core.set(manifest.name, manifest.version)
                     continue
                   }
                 } catch { /* not a package dir: descend */ }
@@ -128,14 +153,14 @@ export function createE2eHarness({ dshRoot, directDshBin, dshBin, dshCwd }) {
           }
           if (core.size > 0) {
             lines.push('overrides:')
-            for (const name of [...core].sort()) lines.push(`  "${name}": 0.1.1-rc.2`)
+            for (const name of [...core.keys()].sort()) lines.push(`  "${name}": ${core.get(name)}`)
           }
           await writeFile(workspaceFile, `${lines.join('\n')}\n`)
         }
       }
-      return execFile(
+      const spawnDsh = (dshArgs) => execFile(
         directDshBin === undefined ? 'node' : directDshBin,
-        directDshBin === undefined ? ['--import', 'tsx/esm', dshBin, ...args] : args,
+        directDshBin === undefined ? ['--import', 'tsx/esm', dshBin, ...dshArgs] : dshArgs,
         {
           cwd: cwd ?? dshCwd,
           env,
@@ -143,6 +168,22 @@ export function createE2eHarness({ dshRoot, directDshBin, dshBin, dshCwd }) {
           maxBuffer: 16 * 1024 * 1024,
         },
       )
+      try {
+        return await spawnDsh(args)
+      } catch (error) {
+        // The 0.1.2 lines forward `plugin add` to raw pnpm inside a profile
+        // whose manifest declares `packages: [.]`, and pnpm then demands an
+        // explicit -w (upstream candidate bug, first seen on alpha.1). The rc
+        // lines run their own install flow and never print this. Retry with
+        // the -w the error itself asks for — selected by the error's shape,
+        // never by version sniffing.
+        const output = `${error?.stdout ?? ''}\n${error?.stderr ?? ''}\n${error?.message ?? ''}`
+        const at = args.indexOf('add')
+        if (at !== -1 && !args.includes('-w') && output.includes('ERR_PNPM_ADDING_TO_ROOT')) {
+          return spawnDsh([...args.slice(0, at + 1), '-w', ...args.slice(at + 1)])
+        }
+        throw error
+      }
     }
     return { home, env, runDsh }
   }

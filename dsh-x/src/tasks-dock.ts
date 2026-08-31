@@ -15,6 +15,7 @@
 // escalation and cleanup semantics hold; nothing is reimplemented.
 import { createElement, useEffect, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
+import { useSeatSession } from '../../src/client.js'
 
 interface TaskView {
   id: string
@@ -189,8 +190,9 @@ function TasksListBody({ session, active }: { session: string, active: boolean }
  * The chip in the host's composer status row: present only while tasks
  * exist, click for the panel. Receives the session standard kit.
  */
-export function TasksChip({ sessionId }: { sessionId?: string }): ReactNode {
-  const session = sessionId ?? ''
+export function TasksChip(props: { sessionId?: string }): ReactNode {
+  // Two-generation session identity (see the engine's useSeatSession).
+  const session = useSeatSession(props)
   const [openPanel, setOpenPanel] = useState(false)
   const tasks = useTasks(session, session !== '', undefined)
 
