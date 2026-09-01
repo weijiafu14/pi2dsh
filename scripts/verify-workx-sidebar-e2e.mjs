@@ -38,14 +38,23 @@ try {
   const { home, env, runDsh } = await makeHome(scratch)
   const tarball = await stageSuiteTarball(projectRoot, engineSpec, scratch, env)
   await runDsh(['plugin', '--profile', 'web', 'add', tarball])
-  // The community sidebar ships per-generation: latest serves the rc lines,
-  // 0.18.0-alpha.x pins ^0.1.2-alpha.2 peers. Override to test the alpha pair.
+  // The community sidebar ships per-generation: latest (0.17.1) imports
+  // settingsNamespace, which the alpha line removed from dsh-settings — on an
+  // alpha CLI it is a boot-crashing SyntaxError, not a degraded mount. Its
+  // npm `alpha` tag (0.18.0-alpha.0, peers ^0.1.2-alpha.2) is the pair for
+  // alpha CLIs; pass PI2DSH_SIDEBAR_SPEC=dsh-better-sidebar@alpha there.
   await runDsh(['plugin', '--profile', 'web', 'add', process.env.PI2DSH_SIDEBAR_SPEC ?? 'dsh-better-sidebar'])
   await useJsonlSessions(home, 'web')
   const workspace = join(scratch, 'workspace')
   await mkdir(workspace, { recursive: true })
 
   const port = Number(process.env.WORKX_SB_PORT ?? 5197)
+  // A zombie web server from an earlier run answers the 401 probe with ITS
+  // gate while the fresh spawn dies on EADDRINUSE — the token then never
+  // appears and the wait times out blaming the wrong process. Fail loud
+  // BEFORE spawning instead.
+  const portFree = await fetch(`http://127.0.0.1:${port}`).then(() => false).catch(() => true)
+  if (!portFree) throw new Error(`port ${port} is already serving — kill the leftover dsh web first (lsof -ti :${port} | xargs kill)`)
   web = spawn(
     directDshBin === undefined ? 'node' : directDshBin,
     directDshBin === undefined
@@ -75,8 +84,13 @@ try {
   for (;;) {
     const token = /[?&]token=([A-Za-z0-9_-]+)/u.exec(webLog)
     if (token !== null) { authed = `${url}/?token=${token[1]}`; break }
+    // The HTTP listener answers 401 BEFORE the plugin tree loads — a plugin
+    // that crashes boot (e.g. a sidebar built for the other DSH generation)
+    // leaves a dead process behind a live-looking gate, and a wait that only
+    // watches the log misreports it as "no token printed". Watch the process.
+    if (web.exitCode !== null) throw new Error(`dsh web died after opening its port:\n${webLog.slice(-4000)}`)
     if (Date.now() > tokenDeadline) {
-      if (gated) throw new Error('dsh web answers 401 (launch-token gate) but printed no ?token= url in its log')
+      if (gated) throw new Error(`dsh web answers 401 (launch-token gate) but printed no ?token= url in its log:\n${webLog.slice(-4000)}`)
       break
     }
     await new Promise(done => setTimeout(done, 500))

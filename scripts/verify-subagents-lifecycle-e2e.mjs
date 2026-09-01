@@ -251,7 +251,11 @@ try {
       // -w on every add: the 0.1.2 lines' raw-pnpm passthrough demands it
       // (ERR_PNPM_ADDING_TO_ROOT without), and the rc lines tolerate it —
       // the tui profile has shipped the flag on rc for weeks.
-      const extra = profile === 'tui' ? ['-w', process.env.PI2DSH_TUI_SPEC ?? '@deepseek-harness-tui/dsh-tui@0.9.0'] : ['-w']
+      // TUI spec follows npm latest by default — a hardcoded 0.9.0 pin quietly
+      // mixed an rc-era TUI into alpha profiles (its mount dies, the tmux
+      // session exits, and capture-pane reports 'no server running'). Pin
+      // explicitly via PI2DSH_TUI_SPEC when back-testing an old combination.
+      const extra = profile === 'tui' ? ['-w', process.env.PI2DSH_TUI_SPEC ?? '@deepseek-harness-tui/dsh-tui'] : ['-w']
       const probe = profile === 'headless' ? [PROBE_DIR] : []
       await execFile(dshBin, ['plugin', '--profile', profile, 'add', ...extra, ENGINE_SPEC, SUBAGENTS_SPEC, ...probe], {
         env: baseEnv, timeout: 600_000, maxBuffer: 32 * 1024 * 1024,
@@ -418,7 +422,7 @@ try {
   // Model-compliance failures (the parent grabbing bash/read itself) get ONE
   // retry — they falsify the evidence, not the feature.
   // ======================================================================
-  for (let resumeAttempt = 1; resumeAttempt <= 2; resumeAttempt += 1) {
+  for (let resumeAttempt = 1; resumeAttempt <= 3; resumeAttempt += 1) {
     const CODEWORD = `CODEWORD_${randomBytes(6).toString('hex').toUpperCase()}`
     const secretPath = join(workDir, `secret-${RUN_TAG}-${resumeAttempt}.txt`)
     const recallPath = join(workDir, `recall-${RUN_TAG}-${resumeAttempt}.txt`)
