@@ -621,6 +621,30 @@ pnpm verify:release   # verify + 全部 examples（装 npm 上刚发的那版）
   token 否则 fail loud（等 90s；30s 在并行下误伤）；**场景端口一场一个**
   （5191 曾被 memory-tasks-web 与 mcp-at-scale-web 共用，池内同时活时
   后者的 401 就绪和 token 全读到别人 server 上）。
+  **0.1.2-alpha.3 预检已过（2026-09-01，npm alpha tag）**：逐包 diff 实证
+  ——服务端核心包（agent/session/settings/tools/user-questions/llm/
+  llm-pi-ai）**与 alpha.2 逐字节相同**（仅版本号 bump；契约结论直接
+  沿用 alpha.2 的 332 绿，依据是字节等同不是猜测）；全部变化在 web 壳
+  且纯增量：① conversation 视图选择机制（slots 契约新增 openView/
+  selectView + readConversationViewPreference 按会话记偏好）——未删改
+  我们在用的任何座位/标准件；② web-app 组合新增
+  @deepseek-ai/dsh-session-turn-outline（聊天轮次导航 rail）；③ QueueDock
+  新 loadImage prop。真机：singlepath 双 Agent 23/23 + 真模型轮 PASS
+  （同代无混装断言过）；examples 全量 15 过 0 失败（4 缺凭证 skip、
+  login partial=缺 CODEX_AUTH_FILE，均口径内）+ subagents 生命周期 8/8
+  （装置两修：子装置要显式透传 PI2DSH_DSH_CLI_SPEC 否则回落 latest 测
+  错代；TUI spec 解除 0.9.0 硬钉——rc 代 TUI 混进 alpha profile 直接
+  tmux no server，默认跟 latest、PI2DSH_TUI_SPEC 回测旧代）；work-x
+  sidebar 场景 PASS（Memory/Jobs 两标签截图目检过）。生态连带：
+  **dsh-better-sidebar latest(0.17.1) 在 alpha 线不可装载**——alpha 把
+  `settingsNamespace` 从 dsh-settings 删了（与 dsh-pi-tui≤0.3.5 同一
+  刀），boot 即 SyntaxError；须装其 npm `alpha` tag（0.18.0-alpha.0，
+  peers ^0.1.2-alpha.2 semver 覆盖 alpha.3），装置以
+  PI2DSH_SIDEBAR_SPEC 覆盖。装置新知：web 的 401 门**先于插件树加载**
+  答复——插件 boot 崩溃留下"门活人死"，只盯日志的 token 等待会误报
+  "没打 token"；token 循环必须同时盯 web.exitCode，超时错误带日志尾
+  （verify-workx-sidebar-e2e.mjs 已钉死，另加起服前端口占用守卫防僵尸
+  抢答）。
 - profile 的组合安装是 CLI 私有流程：改完 profile 配置要重装时重跑
   `dsh plugin add`，别直接在 profile 目录裸跑 pnpm install。
 - 独立目录装 CLI 时 pnpm 11 的坑：minimumReleaseAge 用
