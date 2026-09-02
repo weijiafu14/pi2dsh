@@ -37,7 +37,7 @@ const PROBE_EXTENSION = [
   "export default function probe(pi: any) {",
   "  const record: any = ((globalThis as any).__icb ??= {})",
   "  pi.on('before_agent_start', async (event: any) => {",
-  "    record.beforeAgentStart = { prompt: event.prompt, systemPrompt: event.systemPrompt }",
+  "    record.beforeAgentStart = { prompt: event.prompt, systemPrompt: event.systemPrompt, systemPromptOptions: event.systemPromptOptions }",
   "    return {",
   "      systemPrompt: 'OVERRIDDEN BY TEST',",
   "      message: { customType: 'test-bridge', content: 'bridge analysis result', display: true },",
@@ -78,10 +78,17 @@ async function mountedContext() {
   cleanup.push(bundle)
   await mkdir(join(bundle, 'extensions'), { recursive: true })
   await writeFile(join(bundle, 'extensions/probe.ts'), PROBE_EXTENSION)
+  // A second entry whose before_agent_start returns the prompt it RECEIVED
+  // plus a marker: on Pi the chain hands it the previous handler's override.
+  await writeFile(join(bundle, 'extensions/chain.ts'), [
+    'export default function chain(pi: any) {',
+    "  pi.on('before_agent_start', async (event: any) => ({ systemPrompt: event.systemPrompt + ' +CHAINED' }))",
+    '}',
+  ].join('\n'))
   const manifest: GeneratedRuntimeManifest = {
     schemaVersion: 1,
     package: { name: '@pi2dsh-fixtures/input-context-probe', version: '0.0.0', source: 'fixture' },
-    extensions: ['extensions/probe.ts'],
+    extensions: ['extensions/probe.ts', 'extensions/chain.ts'],
     skillDirs: [],
     prompts: [],
   }
@@ -183,7 +190,65 @@ describe('input/context bridge in the real DSH runtime', () => {
     // Pi event on the later pre-step waterfall left this assembly with the
     // base prompt and the override applied to the following turn instead.
     const { assembly } = await driveStep(ctx, typedCtx as never, agent, [hello])
-    expect(renderPrompt(assembly as never)).toContain('OVERRIDDEN BY TEST')
+    // Chained, not last-wins: the second handler saw the first's override.
+    expect(renderPrompt(assembly as never)).toContain('OVERRIDDEN BY TEST +CHAINED')
+  })
+
+  it('carries Pi\'s systemPromptOptions: the session cwd and the instruction files the host loaded', async () => {
+    // Pi hands extensions `systemPromptOptions.contextFiles` (the AGENTS.md /
+    // CLAUDE.md chain it loaded) so they need not re-discover resources.
+    // pi-code's context-imports expands CLAUDE.md `@imports` from exactly this
+    // list; with `{}` it expanded nothing and the model read the file by hand.
+    // DSH records what it loaded as an agent-instructions baseline message
+    // whose identity is the loader configuration — the bridge re-runs the
+    // official loader with that identity.
+    const { ctx, typedCtx, agent } = await mountedContext()
+    const cwd = (agent.session as unknown as { header: { cwd: string } }).header.cwd
+    await writeFile(join(cwd, '.git'), '')
+    await writeFile(join(cwd, 'CLAUDE.md'), '# Probe\n\n@notes/imported.md\n')
+    const session = agent.session as unknown as { append(type: string, data: unknown, opts?: unknown): unknown }
+    session.append('user/message', createUserMessage({
+      content: [{ type: 'text', text: '<system-reminder>workspace instructions</system-reminder>' }],
+      source: {
+        kind: 'agent-instructions', form: 'instructions', baseline: true,
+        baselineIdentity: JSON.stringify({
+          projectRoot: '', projectRootMarkers: ['.git'], maxBytes: 65536, maxSourceBytes: 1048576,
+          instructionFileCandidates: ['AGENTS.md', 'CLAUDE.md'], localInstructionFileCandidates: ['AGENTS.local.md', 'CLAUDE.local.md'],
+        }),
+        changes: [{ action: 'set', scope: '. CLAUDE.md', path: 'CLAUDE.md', digest: 'x' }],
+      } as never,
+    }), { surfaceOp: 'append' })
+    const hello = createUserMessage({ content: [{ type: 'text', text: 'hello' }], source: { kind: 'user' } })
+    await driveStep(ctx, typedCtx as never, agent, [hello])
+    const record = (globalThis as Record<string, unknown>).__icb as {
+      beforeAgentStart?: { systemPromptOptions?: { cwd?: string, contextFiles?: Array<{ path: string, content: string }> } }
+    }
+    const options = record.beforeAgentStart?.systemPromptOptions
+    expect(options?.cwd).toBe(cwd)
+    expect(options?.contextFiles).toEqual(expect.arrayContaining([
+      { path: join(cwd, 'CLAUDE.md'), content: '# Probe\n\n@notes/imported.md\n' },
+    ]))
+  })
+
+  it('recovers contextFiles on the FIRST assembly, before any baseline exists in the log', async () => {
+    // Real DSH order (rc.2/alpha.3 headless, session log): inbox splice →
+    // turn/start → step/start → user/message(agent-instructions) — the
+    // baseline is written AFTER the assembly of the first step. So the first
+    // before_agent_start must discover the files with the loader's defaults
+    // (what the stock profile configures) rather than waiting for the record.
+    const { ctx, typedCtx, agent } = await mountedContext()
+    const cwd = (agent.session as unknown as { header: { cwd: string } }).header.cwd
+    await writeFile(join(cwd, '.git'), '')
+    await writeFile(join(cwd, 'CLAUDE.md'), '# First turn\n')
+    const hello = createUserMessage({ content: [{ type: 'text', text: 'hello' }], source: { kind: 'user' } })
+    await driveStep(ctx, typedCtx as never, agent, [hello])
+    const record = (globalThis as Record<string, unknown>).__icb as {
+      beforeAgentStart?: { systemPromptOptions?: { cwd?: string, contextFiles?: Array<{ path: string, content: string }> } }
+    }
+    expect(record.beforeAgentStart?.systemPromptOptions?.cwd).toBe(cwd)
+    expect(record.beforeAgentStart?.systemPromptOptions?.contextFiles).toEqual(expect.arrayContaining([
+      { path: join(cwd, 'CLAUDE.md'), content: '# First turn\n' },
+    ]))
   })
 
   it("honours Pi's batch rule for terminate: all blocked-and-terminating, or the turn continues", async () => {

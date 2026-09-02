@@ -183,6 +183,29 @@ pi2dsh：通用 Pi Host ABI 兼容层，让 Pi 生态插件原样跑在 DeepSeek
   带着无声漂移跑，不如显式锁死。升级快照是一次显式决策：重盘上游声明
   diff、逐条归类新面、更新规则/文档/vendored 来源 commit，一次做完。
 - 插件自身的 bug（在真 Pi 同版本上同样坏）不 patch，如实归因即为界。
+- **shim 漏一个 Pi 公开导出 = 整包挂不上，且 inspect 的 UNSUPPORTED host-import 就是
+  这种挂载即炸的信号**（2026-09-02 pi-code 事故）：`hasTrustRequiringProjectResources`
+  是 Pi `index.ts` 的公开导出，shim 没有它，ESM 具名导入链接失败让 11 个扩展入口一起死。
+  处置：vendored 同一 commit 的纯逻辑（同 ProjectTrustStore 来源）+ 契约测试 + 规则。
+  判据：inspect 报 `host-import(...)` 为 unsupported 时，先分"懒用"（调用时才缺，走
+  能力缺口分级）与"载入即缺"（具名导入，整包不可用），后者必须补导出。
+- **扩展目录扫描规则以 Pi 为准，不递归**（同日事故）：Pi 对目录项只取一层 `*.ts|*.js`，
+  子目录只认 `index.ts|index.js` 或自带 `pi.extensions` 清单（package-manager.ts
+  `collectAutoExtensionEntries`）；我们旧的 `dir/**/*.ts` 把 pi-code 的 40 个共享模块
+  （`internal/`、`hooks/config.ts`）当入口加载，每个报一次"no default factory"。
+  规则在 src/source.ts，契约测试在 tests/source-analyzer.spec.ts。
+- **`before_agent_start` 三条 Pi 语义（同日实证）**：① `systemPromptOptions` 不是空
+  对象——Pi 给 `cwd` 和 `contextFiles`（宿主已加载的 AGENTS.md/CLAUDE.md 列表），扩展据此
+  展开 `@import`；DSH 把指令文件当 `agent-instructions` 用户消息投递而非系统提示词，
+  桥用官方 `dsh-agent-instructions` 的 `discoverBaselineInstructionFiles` 按 DSH 记录的
+  身份重算同一份文件集（首轮基线消息在 assemble **之后**才落日志，此时用加载器默认配置＝
+  stock profile 的配置）；② 多个 handler 的 `systemPrompt` 返回是**链式**的（后一个看到
+  前一个的结果），"跑完取最后一个"会让只回显输入的 handler 冲掉别人的追加；③ 首轮
+  claim 早于 per-agent 订阅的竞态假设被实跑证伪——查时序先插 trace 再下结论。
+- **`resources_discover` 真触发**：session_start 后按 Pi 语义派发，返回的技能根挂进官方
+  `dsh-skill-filesystem`（每包每根一次，provider 名唯一）；prompt/theme 路径 DSH 无座位，
+  日志报告不挂载。DSH 把技能目录作为 `skill-catalog` 来源的会话消息投递给模型，**不在**
+  request/header 里——断言要读那条消息。
 - 跨目录通道透传字段用白名单，禁止裸展开：DSH 对 reasoning/context 等
   名字有自己的语义（事故：Pi 的 reasoning:false 撞 DSH 的
   reasoning.efforts.length）。
@@ -645,6 +668,16 @@ pnpm verify:release   # verify + 全部 examples（装 npm 上刚发的那版）
   "没打 token"；token 循环必须同时盯 web.exitCode，超时错误带日志尾
   （verify-workx-sidebar-e2e.mjs 已钉死，另加起服前端口占用守卫防僵尸
   抢答）。
+- **pi-code 装置备忘（2026-09-02）**：① 假绿又一例——"@import 的 codeword 出现在回答里"
+  在功能没工作时照样过：模型自己 `read`/`glob` 找到了文件；断言改读 `request/header.system`
+  （展开文本只能从桥进来）。② pi-code 把带 `.claude/` 的项目视为未信任，headless 无对话
+  按它自身语义 fail-closed（真 Pi 一样）——headless 装置预置 `$DSH_HOME/pi2dsh/agent/
+  trust.json`（键必须是 realpath：macOS `/var`→`/private/var`，DSH 的 cwd 是规范路径）是
+  装置属性；web 场景答真对话框。③ rc 线点 New session 即建会话，pi-code 的信任问答立刻
+  弹出盖住输入框（打字全吞、Send 找不到）；alpha 线首条消息才建会话——web 驱动先等对话
+  框再打字，没有再"发后等"。④ 一个只注册 `before_agent_start` 的诊断包在真机上 handlers=0
+  （原因未查，同目录内容改动后 jiti 载入的仍是空 handler 集）——诊断用往 dist 里插
+  console.error 更可靠。
 - profile 的组合安装是 CLI 私有流程：改完 profile 配置要重装时重跑
   `dsh plugin add`，别直接在 profile 目录裸跑 pnpm install。
 - 独立目录装 CLI 时 pnpm 11 的坑：minimumReleaseAge 用

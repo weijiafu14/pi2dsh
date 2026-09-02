@@ -170,6 +170,7 @@ DSH 模型运行时的 sampling、取消与会话重启。完整证据矩阵：
 | [`@ff-labs/pi-fff`](https://www.npmjs.com/package/@ff-labs/pi-fff) + [`pi-lens`](https://www.npmjs.com/package/pi-lens) | 给模型真正的代码导航工具：`ffgrep` 内容搜索找到只存在于一个文件里的标记串，`lsp_diagnostics` 经真实的本地 `typescript-language-server` 报出植入的 TS2322 —— 两条都从会话日志里工具自己的结果断言 | CLI + Web | [`code-navigation`](examples/code-navigation/) |
 | [`pi-vision-tool`](https://www.npmjs.com/package/pi-vision-tool) | 工具注册，且带一个 DSH 需要转换的 JSON Schema 形状（`anyOf` → `oneOf`） | CLI + Web | — |
 | [`pi-approval-guardian`](https://www.npmjs.com/package/pi-approval-guardian) | 每次工具调用先由第二个模型审批；放行与拒绝两条路都看到了 | CLI（裸环境） | — |
+| [`pi-code`](https://www.npmjs.com/package/pi-code) | 仓库里的 Claude Code 配置原样在 DSH 生效：`settings.json` 的 `env` 到达 bash 工具、`PreToolUse` hook 先于命令运行、`CLAUDE.md` 的 `@import` 文本进入请求的系统提示（不是模型自己去读文件）、`.claude/skills` 进入 DSH 技能目录；首个会话在 DSH 原生问答卡里回答 pi-code 的 "Trust this project?" | CLI + Web | [`claude-code-config`](examples/claude-code-config/) |
 | [`pi-hermes-memory`](https://www.npmjs.com/package/pi-hermes-memory) | 跨会话记忆端到端：会话一 `memory_add` 写入，全新会话召回（代号不存在于任何其它输入）；五个工具、十条 `/memory-*` 命令、系统提示记忆注入 | CLI | [`persistent-memory`](examples/persistent-memory/) |
 | [`pi-background-tasks`](https://www.npmjs.com/package/pi-background-tasks) | 后台任务：`bg_run` 起 60 秒长任务，`bg_logs` 在任务**仍在运行时**读到前几行输出（最终行可证明地不在结果里） | CLI | [`background-tasks`](examples/background-tasks/) |
 
@@ -339,8 +340,8 @@ Pi 包能碰到的每一个面，以及它落到 DSH 的什么位置。下面这
 | [会话与侧边对话](docs/capabilities/sessions.md) | 24 | 7 语义一致 · 17 已映射并写明差异 |
 | [模型、provider、凭证](docs/capabilities/models.md) | 15 | 1 语义一致 · 12 已映射并写明差异 · 2 不提供 |
 | [向用户提问与渲染](docs/capabilities/interaction.md) | 24 | 5 语义一致 · 19 已映射并写明差异 |
-| [项目环境与资源](docs/capabilities/environment.md) | 4 | 2 语义一致 · 2 不提供 |
-| **合计** | **111** | **26 语义一致 · 81 已映射并写明差异 · 4 不提供** |
+| [项目环境与资源](docs/capabilities/environment.md) | 4 | 2 语义一致 · 1 已映射并写明差异 · 1 不提供 |
+| **合计** | **111** | **26 语义一致 · 82 已映射并写明差异 · 3 不提供** |
 <!-- capability-table:end -->
 
 另外还有 Pi 三个运行时包（`pi-coding-agent`、`pi-tui`、`pi-ai`）的 **203 个
@@ -389,6 +390,7 @@ loop 上实际跑过才会进来。
 | [`code-navigation`](examples/code-navigation/) | 给模型真正的代码导航工具——在自带样例工程上跑模糊内容搜索与语言服务器诊断，CLI 与 Web 双端 |
 | [`tui-mcp`](examples/tui-mcp/) | 保留 dsh-TUI 原生 `/mcp`，把 Pi 生态管理面作为 `/pi-mcp` 加进来，并让完整的宿主相关 MCP 功能面穿过 DSH 运行时 |
 | [`mcp-at-scale`](examples/mcp-at-scale/) | 真实 51 工具 MCP 服务器藏在 adapter 两个元工具后面：工具面有界、规模化懒发现、超时预算把 ~120 秒工具砍到秒级——CLI 与 Web 双端 |
+| [`claude-code-config`](examples/claude-code-config/) | pi-code 在 DSH 上读取项目的 `.claude/`：信任问答、settings env、PreToolUse hook、CLAUDE.md @import、skills——headless 与 web，两条 DSH 线 |
 | [`persistent-memory`](examples/persistent-memory/) | pi-hermes-memory 跨两个真会话：一处存事实、全新会话召回——含安装真正需要的构建审批步骤（`better-sqlite3`） |
 | [`background-tasks`](examples/background-tasks/) | pi-background-tasks：后台起长任务、任务仍在跑时读它的输出——"实时跟踪"性质从工具自己的结果断言 |
 | [`subagents`](examples/subagents/) | 模型自己带小团队：派单、后台、中途转向、收结果、带记忆续命、真停得住、`/pi-agents` 管理、跨重启重开 |

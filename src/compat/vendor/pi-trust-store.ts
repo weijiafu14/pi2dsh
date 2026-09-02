@@ -4,6 +4,7 @@
 // agentDir already resolves inside the DSH-owned pi2dsh directory, so a package's
 // trust decisions are package-visible state that the DSH host never consumes.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
 import lockfile from 'proper-lockfile'
 import { canonicalizePath, resolvePath } from './pi-paths.js'
@@ -118,6 +119,51 @@ function withTrustFileLock<T>(path: string, fn: () => T): T {
     return fn()
   } finally {
     release()
+  }
+}
+
+// Vendored from the same trust-manager.ts (CONFIG_DIR_NAME is Pi's '.pi').
+// Pi's own resolveProjectTrusted short-circuits on this predicate BEFORE the
+// project_trust event; extensions that gate resources Pi does not look for
+// (pi-code's .claude/ shapes) import it to reproduce that decision.
+const CONFIG_DIR_NAME = '.pi'
+const TRUST_REQUIRING_PROJECT_CONFIG_RESOURCES = [
+  'settings.json',
+  'extensions',
+  'skills',
+  'prompts',
+  'themes',
+  'SYSTEM.md',
+]
+
+/**
+ * Returns true when cwd has project-local resources that must be gated by
+ * project trust: trust-requiring entries under cwd/.pi, or .agents/skills in
+ * cwd or one of its ancestors. Returns false when no such project resources
+ * exist. The user/global ~/.agents/skills directory is always treated as a
+ * trusted user resource and is ignored here, even when cwd is $HOME.
+ */
+export function hasTrustRequiringProjectResources(cwd: string): boolean {
+  const homeDir = canonicalizePath(resolvePath(process.env.HOME || homedir()))
+  const userAgentsSkillsDir = join(homeDir, '.agents', 'skills')
+  let currentDir = canonicalizePath(resolvePath(cwd))
+
+  const configDir = join(currentDir, CONFIG_DIR_NAME)
+  if (TRUST_REQUIRING_PROJECT_CONFIG_RESOURCES.some((entry) => existsSync(join(configDir, entry)))) {
+    return true
+  }
+
+  while (true) {
+    const agentsSkillsDir = join(currentDir, '.agents', 'skills')
+    if (agentsSkillsDir !== userAgentsSkillsDir && existsSync(agentsSkillsDir)) {
+      return true
+    }
+
+    const parentDir = dirname(currentDir)
+    if (parentDir === currentDir) {
+      return false
+    }
+    currentDir = parentDir
   }
 }
 

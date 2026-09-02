@@ -206,6 +206,7 @@ it work. **This is the list to trust.**
 | [`@ff-labs/pi-fff`](https://www.npmjs.com/package/@ff-labs/pi-fff) + [`pi-lens`](https://www.npmjs.com/package/pi-lens) | Code navigation for the model: `ffgrep` content search finds a marker that exists in exactly one file, and `lsp_diagnostics` reports a planted TS2322 through a real local `typescript-language-server` — both asserted from the tools’ own results in the session log | CLI + web | [`code-navigation`](examples/code-navigation/) |
 | [`pi-vision-tool`](https://www.npmjs.com/package/pi-vision-tool) | Tool registration through a JSON-Schema shape DSH had to convert (`anyOf` → `oneOf`) | CLI + web | — |
 | [`pi-approval-guardian`](https://www.npmjs.com/package/pi-approval-guardian) | Every tool call reviewed by a second model before execution; allow and deny both observed | CLI (bare env) | — |
+| [`pi-code`](https://www.npmjs.com/package/pi-code) | A repository's Claude Code configuration on DSH, unmodified: `settings.json` `env` reaches the bash tool, a `PreToolUse` hook runs before it, `CLAUDE.md` `@import` text lands in the request's system prompt (not read by the model), `.claude/skills` enter DSH's skill catalog; the first session answers pi-code's "Trust this project?" in DSH's native question card | CLI + Web | [`claude-code-config`](examples/claude-code-config/) |
 | [`pi-hermes-memory`](https://www.npmjs.com/package/pi-hermes-memory) | Cross-session memory end to end: `memory_add` in one session, recalled in a second, fresh one (the codeword existed nowhere else); five tools, ten `/memory-*` commands, system-prompt memory injection | CLI | [`persistent-memory`](examples/persistent-memory/) |
 | [`pi-background-tasks`](https://www.npmjs.com/package/pi-background-tasks) | Background shell job started with `bg_run`, output read **mid-run** with `bg_logs`: the log result carries early ticks of a still-running 60-second job, with the final tick provably absent | CLI | [`background-tasks`](examples/background-tasks/) |
 
@@ -408,8 +409,8 @@ audit states this boundary explicitly.
 | [Sessions & side conversations](docs/capabilities/sessions.md) | 24 | 7 same semantics · 17 mapped, difference stated |
 | [Models, providers, credentials](docs/capabilities/models.md) | 15 | 1 same semantics · 12 mapped, difference stated · 2 not available |
 | [Asking the user, rendering](docs/capabilities/interaction.md) | 24 | 5 same semantics · 19 mapped, difference stated |
-| [Project environment & resources](docs/capabilities/environment.md) | 4 | 2 same semantics · 2 not available |
-| **Total** | **111** | **26 same semantics · 81 mapped, difference stated · 4 not available** |
+| [Project environment & resources](docs/capabilities/environment.md) | 4 | 2 same semantics · 1 mapped, difference stated · 1 not available |
+| **Total** | **111** | **26 same semantics · 82 mapped, difference stated · 3 not available** |
 <!-- capability-table:end -->
 
 Plus **203 imported symbols** from Pi's three runtime packages
@@ -468,6 +469,7 @@ in one has actually been executed against a real DSH loop before landing.
 | [`code-navigation`](examples/code-navigation/) | Give the model real code-navigation tools — fuzzy content search and language-server diagnostics on a bundled sample project, CLI and web |
 | [`tui-mcp`](examples/tui-mcp/) | Keep dsh-TUI's native `/mcp`, add the Pi ecosystem manager as `/pi-mcp`, and exercise its complete host-influenced MCP surface through DSH runtimes |
 | [`mcp-at-scale`](examples/mcp-at-scale/) | A real 51-tool MCP server behind the adapter's two meta-tools: bounded tool surface, lazy discovery at scale, and a timeout budget that cuts a ~120 s tool to seconds — CLI and web |
+| [`claude-code-config`](examples/claude-code-config/) | pi-code reading a project's `.claude/` on DSH: trust question, settings env, PreToolUse hook, CLAUDE.md @import, skills — headless and web, both DSH lines |
 | [`persistent-memory`](examples/persistent-memory/) | pi-hermes-memory across two real sessions: save a fact in one, recall it in a fresh one — with the build-approval step (`better-sqlite3`) the install actually needs |
 | [`background-tasks`](examples/background-tasks/) | pi-background-tasks: start a long shell job in the background and read its output while it is still running — the live-tracking property asserted from the tool's own results |
 | [`subagents`](examples/subagents/) | The model runs a small team: delegate, background, steer mid-run, collect, resume with memory, stop for real, manage via `/pi-agents`, reopen across restarts |

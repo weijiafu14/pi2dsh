@@ -350,10 +350,10 @@ describe('host-owned capabilities', () => {
         }
       `,
       'bad.ts': `
-        import { ModelRuntime } from '@earendil-works/pi-coding-agent'
+        import { DefaultPackageManager } from '@earendil-works/pi-coding-agent'
         export default function bad() {}
         // Setup-time construction of a host-owned stack: the mount itself fails.
-        new (ModelRuntime as any)()
+        new (DefaultPackageManager as any)()
       `,
     })
     const agent = makeAgent(ctx, root)
@@ -362,7 +362,7 @@ describe('host-owned capabilities', () => {
     // Startup check: the import alone was flagged BEFORE the entry ran.
     const startupNotices = warned.filter(message => message.includes('startup check'))
     expect(startupNotices).toHaveLength(1)
-    expect(startupNotices[0]).toContain('ModelRuntime')
+    expect(startupNotices[0]).toContain('DefaultPackageManager')
 
     // Pi's per-entry isolation: the healthy entry still works.
     const alive = await typed.commands.execute(agent as never, '/cap-alive', [], new AbortController().signal)
@@ -372,7 +372,7 @@ describe('host-owned capabilities', () => {
     const verdicts = warned.filter(message => message.includes('could not start'))
     expect(verdicts).toHaveLength(1)
     expect(verdicts[0]).toContain('pi-cap-probe')
-    expect(verdicts[0]).toContain('new ModelRuntime()')
+    expect(verdicts[0]).toContain('new DefaultPackageManager()')
     expect(verdicts[0]).toContain('dsh plugin remove pi-cap-probe')
   })
 

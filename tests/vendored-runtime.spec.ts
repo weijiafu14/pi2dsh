@@ -9,6 +9,8 @@ import { afterEach, describe, expect, it } from 'vitest'
 import {
   DEFAULT_COMPACTION_SETTINGS,
   ProjectTrustStore,
+  hasTrustRequiringProjectResources,
+  ModelRuntime,
   estimateTokens,
   findCutPoint,
   generateSummary,
@@ -134,6 +136,62 @@ describe('vendored trust store', () => {
     expect(store.get('/tmp/some/project')).toBe(false)
     store.setMany([{ path: '/tmp/some/project', decision: null }])
     expect(store.get('/tmp/some/project')).toBe(true)
+  })
+
+  // Public Pi export (coding-agent index.ts) that pi-code's project-approval
+  // module imports; a missing named export fails ESM linking for every
+  // extension importing that module, so its presence is a load-time contract.
+  it('exports Pi\'s hasTrustRequiringProjectResources predicate with Pi semantics', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'pi2dsh-trust-req-'))
+    cleanup.push(root)
+    const project = join(root, 'project')
+    await mkdir(join(project, 'src'), { recursive: true })
+    expect(hasTrustRequiringProjectResources(project)).toBe(false)
+    // A .claude/ tree alone is NOT a Pi trust-requiring resource (the gap pi-code fills).
+    await mkdir(join(project, '.claude', 'commands'), { recursive: true })
+    expect(hasTrustRequiringProjectResources(project)).toBe(false)
+    // .pi/settings.json under cwd is; so is a project-local .agents/skills in an ancestor.
+    await mkdir(join(project, '.pi'), { recursive: true })
+    await writeFile(join(project, '.pi', 'settings.json'), '{}')
+    expect(hasTrustRequiringProjectResources(project)).toBe(true)
+    await mkdir(join(root, '.agents', 'skills'), { recursive: true })
+    expect(hasTrustRequiringProjectResources(join(project, 'src'))).toBe(true)
+  })
+})
+
+describe('ModelRuntime on the ONE model path', () => {
+  // pi-code's model-complete.ts: `ModelRuntime.create()` once, then
+  // `runtime.completeSimple(model, context, options)` for prompt-over-page
+  // fetches and `type: prompt` hooks. The call must reach the DSH llm bridge
+  // with Pi's exact (model, context, options) triple; nothing may be faked.
+  it('create() yields a runtime whose completeSimple runs through the DSH llm bridge', async () => {
+    const seen: unknown[] = []
+    __setPiAiLlmBridge(((model: unknown, context: unknown, options: unknown) => {
+      seen.push({ model, context, options })
+      return {
+        result: async () => ({ role: 'assistant', stopReason: 'stop', content: [{ type: 'text', text: 'BRIDGED' }], usage: {} }),
+        [Symbol.asyncIterator]() { return { next: async () => ({ done: true, value: undefined }) } },
+      }
+    }) as never)
+    const runtime = await ModelRuntime.create()
+    const model = { provider: 'p', id: 'm' }
+    const context = { systemPrompt: 'sys', messages: [{ role: 'user', content: 'hi', timestamp: 1 }] }
+    const reply = await runtime.completeSimple(model, context, { maxTokens: 1024 }) as { content: Array<{ text: string }> }
+    expect(reply.content[0]?.text).toBe('BRIDGED')
+    expect(seen).toEqual([{ model, context, options: { maxTokens: 1024 } }])
+  })
+
+  it('keeps the directory/credential surface a structured capability error and the constructor private', async () => {
+    const runtime = await ModelRuntime.create()
+    expect(() => (runtime as unknown as { getModels(): unknown }).getModels()).toThrowError(/ctx\.modelRegistry/u)
+    expect(() => (runtime as unknown as { login(): unknown }).login()).toThrowError(/llm settings/u)
+    expect(() => new (ModelRuntime as unknown as new () => unknown)()).toThrowError(/ModelRuntime\.create\(\)/u)
+  })
+
+  it('fails loud without a mounted llm service instead of fabricating a reply', async () => {
+    __setPiAiLlmBridge(undefined)
+    const runtime = await ModelRuntime.create()
+    await expect(runtime.completeSimple({ provider: 'p', id: 'm' }, { messages: [] })).rejects.toThrowError(/needs a DSH llm service/u)
   })
 })
 

@@ -426,6 +426,61 @@ Pi 插件注册工具/命令/ctx.ui.custom/ctx.ui.select
 [`examples/pi-tui-ecosystem`](../examples/pi-tui-ecosystem/)，以及
 [`XMoon/dsh-pi-tui#26`](https://github.com/XMoon/dsh-pi-tui/issues/26)。
 
+## pi-code（Claude Code 配置在 DSH 上照常生效）
+
+场景：一个带 `.claude/` 的仓库——`settings.json` 的 `env` 与 `PreToolUse` hook、
+`CLAUDE.md` 的 `@import`、`.claude/skills`——在 DSH 上被同一份未修改的 `pi-code` 包读取并生效；
+首次进入项目由 DSH 原生问答框回答 "Trust this project?"。
+
+使用的 Pi 架构分支：
+
+- [会话生命周期与项目信任](architecture-mapping-matrix.md#pi-session-lifecycle)
+- [系统提示词装配](architecture-mapping-matrix.md#pi-prompt-system)
+- [工具策略拦截](architecture-mapping-matrix.md#pi-tools-policy)
+- [资源发现](architecture-mapping-matrix.md#pi-resources-discovery)
+- [项目信任](architecture-mapping-matrix.md#pi-project-trust)
+- [指定模型调用（ModelRuntime）](architecture-mapping-matrix.md#pi-model-designated-call)
+- [用户问答](architecture-mapping-matrix.md#pi-ui-questions)
+
+理论对应：
+
+- DSH `user-questions/request`（Yes/No 问答）
+- DSH `system-prompt/assemble` waterfall + 官方 `dsh-agent-instructions` 加载器
+- DSH `tools/pre-execute` / `tools/post-execute`
+- DSH `skills` 注册面 + `dsh-skill-filesystem` provider
+- DSH `llm` 路由（ModelRuntime.completeSimple → 唯一模型路径）
+
+实际五层：
+
+```text
+pi-code 在 session_start 请求项目信任、读 settings.json、注册 hooks、发现 .claude/skills
+→ pi2dsh 把 ctx.ui.confirm 译成原生问答；把 before_agent_start 的 systemPromptOptions
+  补成 { cwd, contextFiles }（用宿主自己的指令加载器重算同一份文件集），链式覆写 systemPrompt；
+  把 resources_discover 返回的技能根挂进 dsh-skill-filesystem
+→ user-questions / system-prompt/assemble / tools/pre-execute / skills 注册面
+→ DSH 权威：请求的 system 段含 @import 展开；技能进入会话技能目录消息；bash 子进程继承 env
+→ 用户结果：不改仓库配置即可在 DSH 上得到 env、hook、@import、skills 四项行为
+```
+
+实际结果（stock `0.1.1-rc.2` 与 `0.1.2-alpha.3`，headless + web，真模型）：
+
+- 项目信任问答：**2 级，可靠翻译**（web 原生对话框回答；headless 无对话按 pi-code 自身语义 fail-closed）。
+- `settings.json` env：**2 级，可靠翻译**（bash 工具结果带值；DSH 子进程环境从 process.env 继承）。
+- `PreToolUse` hook：**1 级，原生承接**（`tools/pre-execute` 上 hook 标记文件落盘）。
+- `CLAUDE.md` `@import`：**2 级，可靠翻译**（展开文本进入 `request/header.system`；证据不接受模型自己 `read` 文件的路径）。
+- `.claude/skills` 动态发现：**2 级，可靠翻译**（技能描述出现在 DSH 技能目录消息）。
+- Pi 提示词模板 / TUI 主题（resources_discover 的另两类）：**4 级，缺失**（DSH 无对应资源面，日志报告不挂载）。
+- 状态条速率限制（`after_provider_response`）：**4 级，缺失**（官方 adapter 不透出响应头）。
+
+结论：本包暴露并修正了桥的四处欠账——`hasTrustRequiringProjectResources` 漏导出（Pi 公开符号）、
+扩展目录扫描规则未对齐 Pi（递归扫到共享模块）、`before_agent_start` 缺 `systemPromptOptions.contextFiles`
+且覆写未链式、`resources_discover` 从不触发；ModelRuntime 由"按设计不支持"改为在唯一模型路径上的真实现。
+均为 pi2dsh 欠账，不涉及 DSH 缺口。
+
+证据：[`examples/claude-code-config`](../examples/claude-code-config/)、
+[`scripts/verify-pi-code-headless-e2e.mjs`](../scripts/verify-pi-code-headless-e2e.mjs)、
+[`scripts/verify-pi-code-web-e2e.mjs`](../scripts/verify-pi-code-web-e2e.mjs)。
+
 ## 继续新增记录时
 
 复制一个插件块，补齐“使用的架构分支、理论对应、实际五层、逐项等级、结论、证据”。

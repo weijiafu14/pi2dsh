@@ -288,7 +288,7 @@ import {
   DEFAULT_COMPACTION_SETTINGS,
   type CompactionSettings,
 } from './vendor/pi-compaction.js'
-import { __getPiAiLlmBridge } from './pi-ai.js'
+import { __getPiAiLlmBridge, complete as piAiComplete, stream as piAiStream } from './pi-ai.js'
 
 export function compact(
   preparation: unknown,
@@ -712,7 +712,7 @@ export class FileSettingsStorage extends InMemorySettingsStorage {}
 // convention that is package-visible state inside the DSH-owned pi2dsh
 // directory. The DSH host never consults this file; ctx.isProjectTrusted
 // stays fail-closed because host trust is a DSH decision.
-export { ProjectTrustStore } from './vendor/pi-trust-store.js'
+export { ProjectTrustStore, hasTrustRequiringProjectResources } from './vendor/pi-trust-store.js'
 
 // The host's installed Pi packages, projected as "default-discovered
 // extensions": each entry is a package's DECLARED pi extension file (absolute,
@@ -834,11 +834,62 @@ export const DefaultPackageManager = hostInfrastructureClass(
   'installing packages is owned by the DSH host and its security gates.',
   'Add or remove plugins with: dsh plugin add/remove <package>.',
 )
-export const ModelRuntime = hostInfrastructureClass(
-  'ModelRuntime',
-  'the model directory is owned by the DSH host llm configuration.',
-  "Configure gateways in the host's llm settings; packages read the directory through ctx.modelRegistry.",
-)
+// ModelRuntime: Pi's configured Models collection (private constructor,
+// `ModelRuntime.create()` factory). Extensions reach for it to run ONE-OFF
+// tool-less completions in-process (pi-code's WebFetch prompt-over-page and
+// its `type: prompt` hooks call `completeSimple`). On DSH the model directory
+// and credentials are the host's, so the calls route through the SAME bridge
+// pi-ai's top-level complete()/stream() use — the ONE model path — and the
+// directory/credential surface (register/login/refresh/getModels…) stays a
+// structured capability error pointing at ctx.modelRegistry and the host's
+// llm settings. Nothing here fabricates a response: without a mounted llm
+// service the bridge itself fails loud.
+const MODEL_RUNTIME_FACTORY = Symbol('pi2dsh.ModelRuntime.create')
+export class ModelRuntime {
+  constructor(token?: unknown) {
+    if (token !== MODEL_RUNTIME_FACTORY) {
+      throw new PiCapabilityError({
+        capability: 'new ModelRuntime()',
+        reason: 'Pi constructs ModelRuntime only through ModelRuntime.create(); the constructor is private.',
+        guidance: 'Call ModelRuntime.create() — on DSH its model calls route through the host llm service.',
+      })
+    }
+  }
+  static async create(_options?: unknown): Promise<ModelRuntime> {
+    return new ModelRuntime(MODEL_RUNTIME_FACTORY)
+  }
+  stream(model: Record<string, unknown>, context: Record<string, unknown>, options?: Record<string, unknown>): unknown {
+    return piAiStream(model, context, options)
+  }
+  complete(model: Record<string, unknown>, context: Record<string, unknown>, options?: Record<string, unknown>): Promise<unknown> {
+    return piAiComplete(model, context, options)
+  }
+  streamSimple(model: Record<string, unknown>, context: Record<string, unknown>, options?: Record<string, unknown>): unknown {
+    return piAiStream(model, context, options)
+  }
+  completeSimple(model: Record<string, unknown>, context: Record<string, unknown>, options?: Record<string, unknown>): Promise<unknown> {
+    return piAiComplete(model, context, options)
+  }
+}
+for (const member of [
+  'getProviders', 'getProvider', 'getModels', 'getModel', 'getAvailable', 'getAvailableSnapshot', 'getError',
+  'checkAuth', 'getAuth', 'refresh', 'login', 'logout', 'setRuntimeApiKey', 'removeRuntimeApiKey', 'listCredentials',
+  'getProviderAuthStatus', 'isUsingOAuth', 'isUsingSubscription', 'hasConfiguredAuth', 'registerProvider',
+  'registerNativeProvider', 'unregisterProvider', 'getRegisteredProviderConfig', 'getRegisteredProviderIds',
+  'getRegisteredNativeProvider', 'getCompatibilityRequestConfig', 'fetchDeferred',
+]) {
+  Object.defineProperty(ModelRuntime.prototype, member, {
+    value: function unavailable(): never {
+      throw new PiCapabilityError({
+        capability: `ModelRuntime.${member}()`,
+        reason: 'the model directory and its credentials are owned by the DSH host llm configuration.',
+        guidance: "Read the directory through ctx.modelRegistry; configure gateways and logins in the host's llm settings.",
+      })
+    },
+    writable: true,
+    configurable: true,
+  })
+}
 
 export class ModelRegistry {
   private models = new Map<string, unknown>()

@@ -1,0 +1,115 @@
+{
+  "generatedAt": "2026-09-02T10:59:29.315Z",
+  "piCode": "1.0.47",
+  "engine": "0.24.0",
+  "headless": {
+    "rc2": {
+      "settingsEnv": {
+        "pass": true,
+        "codeword": "ENVPROBE-4465"
+      },
+      "preToolUseHook": {
+        "pass": true
+      },
+      "claudeMdImportCarrier": [
+        "request/header.system",
+        "request/header.system",
+        "request/header.system"
+      ],
+      "claudeMdImport": {
+        "pass": true,
+        "codeword": "IMPORTPROBE-4868"
+      },
+      "claudeSkillsCarrier": [
+        "{\"kind\":\"skill-catalog\",\"form\":\"catalog\",\"entries\":[{\"name\":\"demo-skill\",\"description\":\"A probe skill that explains the ",
+        "{\"kind\":\"skill-catalog\",\"form\":\"catalog\",\"entries\":[{\"name\":\"demo-skill\",\"description\":\"A probe skill that explains the ",
+        "{\"kind\":\"skill-catalog\",\"form\":\"catalog\",\"entries\":[{\"name\":\"demo-skill\",\"description\":\"A probe skill that explains the "
+      ],
+      "claudeSkillsDiscovered": {
+        "pass": true
+      }
+    },
+    "alpha3": {
+      "settingsEnv": {
+        "pass": true,
+        "codeword": "ENVPROBE-7588"
+      },
+      "preToolUseHook": {
+        "pass": true
+      },
+      "claudeMdImportCarrier": [
+        "request/header.system",
+        "request/header.system",
+        "request/header.system"
+      ],
+      "claudeMdImport": {
+        "pass": true,
+        "codeword": "IMPORTPROBE-7246"
+      },
+      "claudeSkillsCarrier": [
+        "{\"kind\":\"skill-catalog\",\"form\":\"catalog\",\"entries\":[{\"name\":\"demo-skill\",\"description\":\"A probe skill that explains the ",
+        "{\"kind\":\"skill-catalog\",\"form\":\"catalog\",\"entries\":[{\"name\":\"demo-skill\",\"description\":\"A probe skill that explains the ",
+        "{\"kind\":\"skill-catalog\",\"form\":\"catalog\",\"entries\":[{\"name\":\"demo-skill\",\"description\":\"A probe skill that explains the "
+      ],
+      "claudeSkillsDiscovered": {
+        "pass": true
+      }
+    }
+  },
+  "web": {
+    "rc2": {
+      "status": "passed",
+      "piCodeVersion": "1.0.47",
+      "settingsEnv": {
+        "pass": true,
+        "codeword": "ENVPROBE-7023"
+      },
+      "preToolUseHook": {
+        "pass": true
+      },
+      "claudeMdImport": {
+        "pass": true,
+        "codeword": "IMPORTPROBE-3137"
+      },
+      "claudeSkillsDiscovered": {
+        "pass": true
+      },
+      "trustQuestionInLog": false,
+      "sessions": 1,
+      "screenshots": [
+        "01-trust-question.png",
+        "02-env-answered.png",
+        "03-import-answered.png"
+      ]
+    },
+    "alpha3": {
+      "status": "passed",
+      "piCodeVersion": "1.0.47",
+      "settingsEnv": {
+        "pass": true,
+        "codeword": "ENVPROBE-3438"
+      },
+      "preToolUseHook": {
+        "pass": true
+      },
+      "claudeMdImport": {
+        "pass": true,
+        "codeword": "IMPORTPROBE-3611"
+      },
+      "claudeSkillsDiscovered": {
+        "pass": true
+      },
+      "trustQuestionInLog": false,
+      "sessions": 1,
+      "screenshots": [
+        "01-trust-question.png",
+        "02-env-answered.png",
+        "03-import-answered.png"
+      ]
+    }
+  },
+  "dsh": {
+    "rc2": "0.1.1-rc.2",
+    "alpha3": "0.1.2-alpha.3"
+  }
+}

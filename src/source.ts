@@ -1,4 +1,4 @@
-import { access, mkdtemp, readFile, rm, stat } from 'node:fs/promises'
+import { access, mkdtemp, readdir, readFile, rm, stat } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { basename, dirname, isAbsolute, join, resolve } from 'node:path'
 import { glob } from 'tinyglobby'
@@ -88,6 +88,98 @@ async function patternsFor(
   return output
 }
 
+// Pi's extension discovery for a DIRECTORY entry (coding-agent
+// src/core/package-manager.ts resolveExtensionEntries/collectAutoExtensionEntries
+// @6f707eb36064e82af9c1320a7634f4dfad21049b; logic unchanged, minus the
+// .gitignore/.piignore filter): a directory that carries its own
+// package.json `pi.extensions` or an index.ts/index.js IS one entry set;
+// otherwise its direct *.ts/*.js files are entries and each subdirectory
+// contributes only through that same rule. No recursion beyond one level —
+// a package's `internal/` helpers (no index) are shared modules, not entries.
+// The old `dir/**/*.ts` glob loaded every helper as an extension and logged
+// "has no default factory function" for each (pi-code: 40 of 64 files).
+async function resolveExtensionEntries(dir: string): Promise<string[] | null> {
+  const packageJsonPath = join(dir, 'package.json')
+  if (await exists(packageJsonPath)) {
+    try {
+      const manifest = piManifest(JSON.parse(await readFile(packageJsonPath, 'utf8')) as Record<string, unknown>)
+      if (manifest?.extensions !== undefined && manifest.extensions.length > 0) {
+        const entries: string[] = []
+        for (const extPath of manifest.extensions) {
+          const resolved = resolve(dir, extPath)
+          if (await exists(resolved)) entries.push(resolved)
+        }
+        if (entries.length > 0) return entries
+      }
+    } catch {
+      // An unreadable nested manifest falls through to the index rule, as Pi does.
+    }
+  }
+  for (const index of ['index.ts', 'index.js']) {
+    const candidate = join(dir, index)
+    if (await exists(candidate)) return [candidate]
+  }
+  return null
+}
+
+async function collectAutoExtensionEntries(dir: string): Promise<string[]> {
+  if (!await exists(dir)) return []
+  const rootEntries = await resolveExtensionEntries(dir)
+  if (rootEntries !== null) return rootEntries
+  const entries: string[] = []
+  for (const entry of await readdir(dir, { withFileTypes: true })) {
+    if (entry.name.startsWith('.') || entry.name === 'node_modules') continue
+    const fullPath = join(dir, entry.name)
+    let isDir = entry.isDirectory()
+    let isFile = entry.isFile()
+    if (entry.isSymbolicLink()) {
+      try {
+        const info = await stat(fullPath)
+        isDir = info.isDirectory()
+        isFile = info.isFile()
+      } catch {
+        continue
+      }
+    }
+    if (isFile && (entry.name.endsWith('.ts') || entry.name.endsWith('.js'))) entries.push(fullPath)
+    else if (isDir) {
+      const resolved = await resolveExtensionEntries(fullPath)
+      if (resolved !== null) entries.push(...resolved)
+    }
+  }
+  return entries
+}
+
+async function discoverExtensions(rootDir: string, configured: string[] | undefined): Promise<string[]> {
+  // Pi: no manifest → the package's `extensions/` directory under the auto
+  // rule; a manifest → each entry is a file (as is) or a directory (auto rule).
+  // Patterns Pi would not understand (globs, negations) keep the glob path.
+  const entries = configured === undefined ? ['extensions'] : configured
+  const output = new Set<string>()
+  const globPatterns: string[] = []
+  for (const raw of entries) {
+    const pattern = safePattern(raw)
+    if (pattern === undefined) continue
+    if (pattern.startsWith('!') || /[*?[\]{}]/u.test(pattern)) {
+      globPatterns.push(pattern)
+      continue
+    }
+    const absolute = resolve(rootDir, pattern)
+    try {
+      const info = await stat(absolute)
+      if (info.isDirectory()) for (const entry of await collectAutoExtensionEntries(absolute)) output.add(entry)
+      else output.add(absolute)
+    } catch {
+      // Pi skips manifest entries that do not resolve.
+    }
+  }
+  if (globPatterns.length > 0) {
+    const matches = await glob(globPatterns, { cwd: rootDir, absolute: true, onlyFiles: true, dot: false, followSymbolicLinks: false })
+    for (const match of matches) output.add(match)
+  }
+  return [...output].sort()
+}
+
 async function discoverResources(rootDir: string, packageJson: Record<string, unknown>): Promise<ResourceInventory> {
   const manifest = piManifest(packageJson)
   const discover = async (kind: keyof ResourceInventory): Promise<string[]> => {
@@ -102,7 +194,7 @@ async function discoverResources(rootDir: string, packageJson: Record<string, un
     return matches.sort()
   }
   return {
-    extensions: await discover('extensions'),
+    extensions: await discoverExtensions(rootDir, manifest?.extensions),
     skills: await discover('skills'),
     prompts: await discover('prompts'),
     themes: await discover('themes'),

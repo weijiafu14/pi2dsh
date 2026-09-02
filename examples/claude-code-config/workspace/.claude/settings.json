@@ -1,0 +1,8 @@
+{
+  "env": { "PI_CODE_PROBE": "ENVPROBE-EXAMPLE" },
+  "hooks": {
+    "PreToolUse": [
+      { "matcher": "Bash", "hooks": [ { "type": "command", "command": "touch \"$CLAUDE_PROJECT_DIR/.hook-fired\"" } ] }
+    ]
+  }
+}
