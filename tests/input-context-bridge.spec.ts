@@ -64,10 +64,12 @@ const PROBE_EXTENSION = [
   "  pi.registerTool({ name: 'icb_terminating', description: 'blocked, asks to stop', parameters: { type: 'object', properties: {} }, execute: async () => ({ content: [] }) })",
   "  pi.registerTool({ name: 'icb_plain', description: 'blocked, no opinion', parameters: { type: 'object', properties: {} }, execute: async () => ({ content: [] }) })",
   "  pi.on('tool_call', async (event: any) => {",
+  "    ;(record.toolCallInputs ??= {})[event.toolName] = JSON.parse(JSON.stringify(event.input))",
   "    if (event.toolName === 'icb_terminating') return { block: true, reason: 'stop here', terminate: true }",
   "    if (event.toolName === 'icb_plain') return { block: true, reason: 'just blocked' }",
   "    return undefined",
   "  })",
+  "  pi.on('tool_result', async (event: any) => { ;(record.toolResultInputs ??= {})[event.toolName] = JSON.parse(JSON.stringify(event.input)) })",
   "  pi.registerCommand('icb-dup', { description: 'first', handler: async () => { record.command = 'first' } })",
   "  pi.registerCommand('icb-dup', { description: 'second', handler: async () => { record.command = 'second' } })",
   "}",
@@ -249,6 +251,34 @@ describe('input/context bridge in the real DSH runtime', () => {
     expect(record.beforeAgentStart?.systemPromptOptions?.contextFiles).toEqual(expect.arrayContaining([
       { path: join(cwd, 'CLAUDE.md'), content: '# First turn\n' },
     ]))
+  })
+
+  it('shows a host built-in file tool to Pi hooks with Pi\'s argument names, without tripping the mutation guard', async () => {
+    // DSH's read takes `file_path`; Pi's read takes `path`. pi-code's rules read
+    // `event.input.path` on tool_result to attach a path-scoped rule, and its
+    // hooks translate Pi shapes into Claude's tool_input — both saw DSH's shape
+    // and found nothing. The projection must also not read as "the hook mutated
+    // the arguments" (which denies native tools).
+    const { ctx, typedCtx, agent } = await mountedContext()
+    const hostRead = {
+      name: 'read',
+      description: 'host read',
+      parameters: { type: 'object', properties: { file_path: { type: 'string' }, offset: { type: 'number' } } },
+      output: { schema: {}, render: () => [], presentationMeta: () => ({}) },
+      isConcurrencySafe: () => true,
+      execute: async () => ({ content: [{ type: 'text', text: 'host read ran' }] }),
+    }
+    ;(ctx as unknown as { tools: { register(definition: unknown): () => void } }).tools.register(hostRead)
+    const signal = new AbortController().signal
+    const outcome = await typedCtx.tools.execute({
+      signal, callId: CallId('host-read-1'), name: 'read', arguments: { file_path: '/repo/src/probe.ts', offset: 1 }, agent: agent as never,
+    })
+    expect(outcome.isError).toBe(false)
+    const record = (globalThis as Record<string, unknown>).__icb as {
+      toolCallInputs?: Record<string, unknown>, toolResultInputs?: Record<string, unknown>
+    }
+    expect(record.toolCallInputs?.read).toEqual({ path: '/repo/src/probe.ts', offset: 1 })
+    expect(record.toolResultInputs?.read).toEqual({ path: '/repo/src/probe.ts', offset: 1 })
   })
 
   it("honours Pi's batch rule for terminate: all blocked-and-terminating, or the turn continues", async () => {

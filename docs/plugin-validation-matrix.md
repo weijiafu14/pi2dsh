@@ -469,10 +469,16 @@ pi-code 在 session_start 请求项目信任、读 settings.json、注册 hooks�
 - `PreToolUse` hook：**1 级，原生承接**（`tools/pre-execute` 上 hook 标记文件落盘）。
 - `CLAUDE.md` `@import`：**2 级，可靠翻译**（展开文本进入 `request/header.system`；证据不接受模型自己 `read` 文件的路径）。
 - `.claude/skills` 动态发现：**2 级，可靠翻译**（技能描述出现在 DSH 技能目录消息）。
+- `.claude/output-styles` + `outputStyle` 设置：**2 级，可靠翻译**（`## Output Style: <name>` 与正文进入 `request/header.system`；Pi 的 coding-base 标记在 DSH 提示词里不存在，按 pi-code 自己的回退追加而非替换）。
+- `.claude/rules`（未限定）：**2 级，可靠翻译**（规则文本进入 `request/header.system`）。
+- `.claude/rules`（`paths:` 限定）：**2 级，可靠翻译**（附着在匹配文件的 `read` 结果上；依赖桥把宿主内建工具参数投影成 Pi 形状——`file_path`→`path`）。
+- `.mcp.json`（stdio 服务器）：**1 级，原生承接**（pi-code 自有 MCP 客户端持有传输，工具 `probe_ping` 经 DSH 工具注册面调用；服务器是无 SDK 的真实 JSON-RPC 实现）。
+- `.claude/commands`：**1 级，原生承接**（web 用户路径 `/greet` 经 DSH 命令运行时；模型路径经 `slash_command` 工具）。
+- `.claude/agents` + `Task` 子代理：**4 级，缺失**（pi-code 以子进程拉起 Pi CLI，DSH 上解析成宿主自己的 bin，报 `--profile <name> is required`；属 Pi CLI 进程契约，不伪造）。
 - Pi 提示词模板 / TUI 主题（resources_discover 的另两类）：**4 级，缺失**（DSH 无对应资源面，日志报告不挂载）。
 - 状态条速率限制（`after_provider_response`）：**4 级，缺失**（官方 adapter 不透出响应头）。
 
-结论：本包暴露并修正了桥的四处欠账——`hasTrustRequiringProjectResources` 漏导出（Pi 公开符号）、
+结论：本包暴露并修正了桥的五处欠账——宿主内建文件工具参数形状未投影成 Pi 形状（`file_path`/`old_string`/`new_string`/`include` → `path`/`oldText`/`newText`/`glob`，pi-code 的路径限定规则与 hooks 的 Claude 词汇转换都依赖它）、`hasTrustRequiringProjectResources` 漏导出（Pi 公开符号）、
 扩展目录扫描规则未对齐 Pi（递归扫到共享模块）、`before_agent_start` 缺 `systemPromptOptions.contextFiles`
 且覆写未链式、`resources_discover` 从不触发；ModelRuntime 由"按设计不支持"改为在唯一模型路径上的真实现。
 均为 pi2dsh 欠账，不涉及 DSH 缺口。
