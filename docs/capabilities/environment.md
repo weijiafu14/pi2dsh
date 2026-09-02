@@ -9,13 +9,13 @@ in Pi config are translated into official `dsh-mcp-client` entries by
 different case: its own transport, cache, OAuth and resource/prompt behavior
 continues to run, while pi2dsh maps only its public host surfaces into DSH.
 
-**4 upstream-shaped Pi rule rows** — 2 same semantics · 2 not available.
+**4 upstream-shaped Pi rule rows** — 2 same semantics · 1 mapped, difference stated · 1 not available.
 
 | Pi surface | Kind | Status | What it does on DSH |
 |---|---|---|---|
 | [`events`](#events-pi) | `pi.*` | Same semantics | Pi's cross-extension event bus: one shared bus per agent, so every Pi package mounted for the same agent hears every other package's emits — matching Pi's one-bus-per-session loader contract. Different agents have different buses. |
 | [`project_trust`](#project_trust-event) | `event` | Not available | Project trust must remain owned by the DSH host; the handler is accepted but never consulted. |
-| [`resources_discover`](#resources_discover-event) | `event` | Not available | Dynamic resource discovery must be converted into DSH providers; the handler is accepted but never fires. |
+| [`resources_discover`](#resources_discover-event) | `event` | Mapped, difference stated | Fires right after session_start with the session cwd, as in Pi. Returned skillPaths that are directories are mounted into DSH's skills registry through the official filesystem provider (dsh-skill-filesystem), once per root per package, so dynamically discovered skills (a project's .claude/skills) list and load like static package skills. promptPaths and themePaths have no DSH seat and are reported rather than mounted; a single SKILL.md file path (no root) is reported too. |
 | [`isProjectTrusted`](#isprojecttrusted-ctx) | `ctx.*` | Same semantics | Reports the DSH host's own trust decision: true for an agent session's working directory, false for the host anchor and detached contexts. |
 
 ## How each one is built
@@ -38,9 +38,9 @@ Accepted and never consulted. Trust is a host decision in DSH, and letting a pac
 
 ### `resources_discover` <a id="resources_discover-event"></a>
 
-`event` · Not available
+`event` · Mapped, difference stated
 
-Accepted and never fired. Dynamic resource discovery in DSH is a provider registration, which is a different (and official) seam.
+DSH's skills registry is a host service fed by providers; the bridge translates each discovered root into one dsh-skill-filesystem provider instead of re-implementing skill parsing. Pi prompt templates and TUI themes are not DSH resources.
 
 ### `isProjectTrusted` <a id="isprojecttrusted-ctx"></a>
 

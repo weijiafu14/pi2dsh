@@ -2,7 +2,7 @@
 // SharedHostState、模型目录投影、/login 与凭证恢复、伴生路由、命令/工具/
 // 事件桥等多个职责。拆法必须跟着架构走：按 CLAUDE.md 三层结构与 host 级/
 // 包级资源边界切模块，纯搬家不改逻辑；动手前先给出切分方案对齐再执行。
-import { access, mkdir, readFile, writeFile } from 'node:fs/promises'
+import { access, mkdir, readFile, stat, writeFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
 import { EventEmitter } from 'node:events'
@@ -172,6 +172,10 @@ interface RuntimeState {
   extensionsReady: boolean
   /** Agent starts observed while extension entries are still loading. */
   pendingSessionStarts: Map<UnknownRecord, string>
+  /** Skill roots already handed to DSH's skills service through resources_discover. */
+  discoveredSkillRoots: Set<string>
+  /** Count of discovered-root provider mounts, for unique provider names. */
+  discoveredSkillProviders: number
   currentSystemPrompt: string
   messageSource: string
   /** Pi's cross-extension bus: shared by every package instance of one agent
@@ -1880,6 +1884,7 @@ async function startPiSession(
         { type: 'session_start', reason: transitionReason },
         contextFor(ctx, state, agent, signal),
       )
+      await discoverPiResources(ctx, state, agent, transitionReason, signal)
     } catch (error) {
       releasePiSessionClaim(state, agent)
       throw error
@@ -2247,7 +2252,82 @@ async function restartReloadedPiSessions(ctx: Context, state: RuntimeState): Pro
       { type: 'session_start', reason: pending.get(agent) ?? 'resume' },
       contextFor(ctx, state, agent, undefined),
     ))
+    await discoverPiResources(ctx, state, agent, pending.get(agent) ?? 'resume', undefined)
   }
+}
+
+/**
+ * Pi's `resources_discover`, fired right after session_start (Pi:
+ * AgentSession.extendResourcesFromExtensions): handlers return extra
+ * `skillPaths` (and prompt/theme paths) for the session's cwd, and Pi extends
+ * its resource loader with them. On DSH the skills registry is the host's
+ * `skills` service, so every discovered skill ROOT is handed to the official
+ * filesystem provider (dsh-skill-filesystem) exactly like a package's static
+ * skill directories — once per root, per package (the registry is host-level
+ * and provider names must stay unique). Prompt templates and TUI themes have
+ * no DSH seat and are reported, not silently dropped. A single SKILL.md file
+ * path (Pi accepts those too) has no root to mount and is reported likewise.
+ */
+async function discoverPiResources(
+  ctx: Context,
+  state: RuntimeState,
+  agent: UnknownRecord | undefined,
+  reason: string,
+  signal: AbortSignal | undefined,
+): Promise<void> {
+  if ((state.handlers.get('resources_discover')?.length ?? 0) === 0) return
+  const cwd = cwdOf(agent)
+  const results = await dispatch(
+    state,
+    'resources_discover',
+    { type: 'resources_discover', cwd, reason: reason === 'reload' ? 'reload' : 'startup' },
+    contextFor(ctx, state, agent, signal),
+  )
+  const roots: string[] = []
+  const skipped: string[] = []
+  let promptPaths = 0
+  let themePaths = 0
+  for (const result of results) {
+    if (typeof result !== 'object' || result === null) continue
+    const record = result as UnknownRecord
+    for (const entry of Array.isArray(record.skillPaths) ? record.skillPaths as unknown[] : []) {
+      if (typeof entry !== 'string' || entry.length === 0) continue
+      const absolute = pathResolve(cwd, entry)
+      let isDirectory = false
+      try {
+        isDirectory = (await stat(absolute)).isDirectory()
+      } catch {
+        continue
+      }
+      if (!isDirectory) { skipped.push(absolute); continue }
+      if (!state.discoveredSkillRoots.has(absolute) && !roots.includes(absolute)) roots.push(absolute)
+    }
+    if (Array.isArray(record.promptPaths)) promptPaths += (record.promptPaths as unknown[]).length
+    if (Array.isArray(record.themePaths)) themePaths += (record.themePaths as unknown[]).length
+  }
+  if (promptPaths > 0 || themePaths > 0 || skipped.length > 0) {
+    logger(ctx).info(`[pi2dsh] ${state.packageName}: resources_discover returned ${promptPaths} prompt path(s), ${themePaths} theme path(s) and ${skipped.length} single skill file(s) that DSH has no seat for; they were not mounted`)
+  }
+  if (roots.length === 0) return
+  const skills = (ctx as unknown as { get(name: string): unknown }).get('skills')
+  if (skills === undefined) {
+    logger(ctx).warn(`[pi2dsh] ${state.packageName}: resources_discover found ${roots.length} skill root(s) but this DSH composition has no ctx.skills`)
+    return
+  }
+  for (const root of roots) state.discoveredSkillRoots.add(root)
+  state.discoveredSkillProviders += 1
+  const { apply: applyFilesystemSkills } = await import('@deepseek-ai/dsh-skill-filesystem')
+  const config = {
+    providerName: `pi2dsh-${state.packageName.replace(/[^a-zA-Z0-9_-]+/gu, '-').replace(/^-+|-+$/gu, '')}-discovered-${state.discoveredSkillProviders}`,
+    includeDefaultRoots: false,
+    customSkillDirs: roots,
+    watch: false,
+  }
+  await ctx.plugin(Object.assign(
+    (skillCtx: Context) => applyFilesystemSkills(skillCtx, config),
+    { inject: ['skills'] },
+  ))
+  logger(ctx).info(`[pi2dsh] ${state.packageName}: resources_discover mounted ${roots.length} skill root(s) as ${config.providerName}`)
 }
 
 function subscribeInterceptors(ctx: Context, state: RuntimeState): void {
@@ -2511,17 +2591,29 @@ async function runBeforeAgentStart(
     prompt,
     ...(images.length > 0 ? { images } : {}),
     systemPrompt: assembled,
-    systemPromptOptions: {},
+    systemPromptOptions: await piSystemPromptOptions(ctx, state, agent, claimed.map(entry => entry.message as UnknownRecord)),
   }
-  const results = await dispatch(state, 'before_agent_start', event, contextFor(ctx, state, agent, signal))
+  // Pi chains systemPrompt returns: each handler sees the prompt as the
+  // previous handler left it (BeforeAgentStartEventResult: "If multiple
+  // extensions return this, they are chained"). Running every handler on the
+  // original and keeping the last return let a handler that merely echoes its
+  // input erase another's addition (pi-code: context-imports appended the
+  // expanded @imports; a later extension returned the base prompt unchanged
+  // and that became the turn's override).
+  const eventContext = contextFor(ctx, state, agent, signal)
+  const results: unknown[] = []
+  for (const handler of state.handlers.get('before_agent_start') ?? []) {
+    const result = await runInPiRuntime(state, agent, () => handler(event, eventContext))
+    results.push(result)
+    if (typeof result === 'object' && result !== null && typeof (result as UnknownRecord).systemPrompt === 'string') {
+      event.systemPrompt = (result as UnknownRecord).systemPrompt as string
+    }
+  }
+  if (event.systemPrompt !== assembled) state.turnSystemPromptOverrides.set(agent, event.systemPrompt as string)
   const injected: UnknownRecord[] = []
   for (const result of results) {
     if (typeof result !== 'object' || result === null) continue
     const record = result as UnknownRecord
-    if (typeof record.systemPrompt === 'string') {
-      state.turnSystemPromptOverrides.set(agent, record.systemPrompt)
-      event.systemPrompt = record.systemPrompt
-    }
     const message = record.message as UnknownRecord | undefined
     if (message === undefined) continue
     const content = message.content
@@ -2537,6 +2629,93 @@ async function runBeforeAgentStart(
     }) as unknown as UnknownRecord)
   }
   if (injected.length > 0) state.pendingInjections.set(agent, injected)
+}
+
+/**
+ * Pi's `BuildSystemPromptOptions` for the before_agent_start event: the
+ * structured view of "what the host loaded", which extensions read instead of
+ * re-discovering resources. Two fields carry weight on DSH:
+ *  - `cwd`: the session's working directory (pi-code's context-imports
+ *    otherwise falls back to process.cwd(), the CLI's directory).
+ *  - `contextFiles`: the AGENTS.md/CLAUDE.md chain the host loaded, as
+ *    `{path, content}`. DSH delivers those as an `agent-instructions` user
+ *    message rather than system-prompt text, so the set is recovered from the
+ *    official loader itself: the baseline message records the exact
+ *    discovery/budget identity DSH used, and `loadBaselineInstructionSet`
+ *    from `@deepseek-ai/dsh-agent-instructions` re-runs that same walk. No
+ *    parallel discovery logic lives here; without the package or a baseline
+ *    the list is empty, exactly Pi's value when nothing was loaded.
+ * (pi-code's CLAUDE.md `@import` expansion reads this list — with `{}` it
+ * had nothing to expand and the model "found" the imported file with `read`.)
+ */
+async function piSystemPromptOptions(ctx: Context, state: RuntimeState, agent: UnknownRecord, claimed: readonly UnknownRecord[]): Promise<UnknownRecord> {
+  const cwd = cwdOf(agent)
+  const baselineOf = (message: unknown): UnknownRecord | undefined => {
+    const source = (message as UnknownRecord | undefined)?.source as UnknownRecord | undefined
+    return source?.kind === 'agent-instructions' && source.baseline === true ? source : undefined
+  }
+  // On the FIRST step the baseline is not in the log yet: DSH inserts it into
+  // the inbox and it is claimed into this very step (assembly runs before the
+  // step enters and writes it as user/message). So the claimed batch is
+  // searched first, then the durable log — the user/message it became on
+  // later turns, or the inbox insertion record that carried it in.
+  let baseline: UnknownRecord | undefined
+  for (const message of claimed) {
+    baseline = baselineOf(message)
+    if (baseline !== undefined) break
+  }
+  if (baseline === undefined) {
+    const events = (agentSession(agent)?.events ?? []) as UnknownRecord[]
+    for (let index = events.length - 1; index >= 0 && baseline === undefined; index -= 1) {
+      const event = events[index]!
+      const data = event.data as UnknownRecord | undefined
+      if (event.type === 'user/message') baseline = baselineOf(data)
+      else if (event.type === 'agent/inbox/spliced' && Array.isArray(data?.inserted)) {
+        for (const inserted of data.inserted as unknown[]) {
+          baseline = baselineOf(inserted)
+          if (baseline !== undefined) break
+        }
+      }
+    }
+  }
+  // On the very first assembly the baseline may exist nowhere yet (DSH enters
+  // it with the step, after assembly): discovery then runs with the loader's
+  // own defaults — the same walk the stock profile configures — and picks up
+  // the recorded identity from the second turn on.
+  try {
+    const identity = typeof baseline?.baselineIdentity === 'string'
+      ? JSON.parse(baseline.baselineIdentity) as Record<string, unknown>
+      : {}
+    // The package's public surface is the discovery walk (paths) and the
+    // rendered budgeted text; per-file content is read here under the same
+    // source cap the loader applies (larger files are ignored, as it does).
+    const { discoverBaselineInstructionFiles } = await import('@deepseek-ai/dsh-agent-instructions') as unknown as {
+      discoverBaselineInstructionFiles(options: Record<string, unknown>): Promise<Array<{ absolutePath: string, displayPath: string }>>
+    }
+    const list = (value: unknown): string[] | undefined => Array.isArray(value) && value.every(entry => typeof entry === 'string') ? value as string[] : undefined
+    const discovered = await discoverBaselineInstructionFiles({
+      cwd,
+      ...(typeof identity.projectRoot === 'string' && identity.projectRoot.length > 0 ? { projectRoot: identity.projectRoot } : {}),
+      ...(list(identity.projectRootMarkers) !== undefined ? { projectRootMarkers: list(identity.projectRootMarkers) } : {}),
+      ...(list(identity.instructionFileCandidates) !== undefined ? { instructionFileCandidates: list(identity.instructionFileCandidates) } : {}),
+      ...(list(identity.localInstructionFileCandidates) !== undefined ? { localInstructionFileCandidates: list(identity.localInstructionFileCandidates) } : {}),
+    })
+    const maxSourceBytes = typeof identity.maxSourceBytes === 'number' ? identity.maxSourceBytes : 1048576
+    const contextFiles: Array<{ path: string, content: string }> = []
+    for (const file of discovered) {
+      try {
+        const bytes = await readFile(file.absolutePath)
+        if (bytes.byteLength > maxSourceBytes) continue
+        contextFiles.push({ path: file.absolutePath, content: bytes.toString('utf8') })
+      } catch {
+        // A candidate that vanished between discovery and read is simply absent.
+      }
+    }
+    return { cwd, contextFiles }
+  } catch (error) {
+    logger(ctx).warn(`[pi2dsh] could not recover the host's instruction files for before_agent_start (contextFiles left empty): ${error instanceof Error ? error.message : String(error)}`)
+    return { cwd, contextFiles: [] }
+  }
 }
 
 // Project one not-yet-entered DSH message as the Pi message shape context
@@ -4904,7 +5083,10 @@ async function loadExtensions(
     // at startup instead of when some later code path constructs it.
     try {
       const source = await readFile(join(rootDir, extension), 'utf8')
-      const infraImport = /import[^;]*?\b(ModelRuntime|DefaultPackageManager)\b[^;]*?from\s*['"]@(?:earendil-works|mariozechner)\/pi-coding-agent['"]/su.exec(source)
+      // ModelRuntime is no longer on this list: ModelRuntime.create() is a
+      // real runtime whose model calls ride the DSH llm bridge (only its
+      // directory/credential surface is a structured capability error).
+      const infraImport = /import[^;]*?\b(DefaultPackageManager)\b[^;]*?from\s*['"]@(?:earendil-works|mariozechner)\/pi-coding-agent['"]/su.exec(source)
       if (infraImport !== null) onHostInfraReference?.(infraImport[1]!, extension)
     } catch {
       // Unreadable entries fail below through the loader with a real error.
@@ -4985,6 +5167,8 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
     sessionlessStartTasks: new WeakMap(),
     extensionsReady: false,
     pendingSessionStarts: new Map(),
+    discoveredSkillRoots: new Set(),
+    discoveredSkillProviders: 0,
     currentSystemPrompt: '',
     messageSource: `pi2dsh:${options.manifest.package.name}`,
     eventBus: sharedEventBusFor(shared, ownerAgent),
@@ -5589,9 +5773,7 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
   const onHostInfraReference = (symbol: string): void =>
     capabilityLedgerOf(ctx, state).reportStartupReference({
       capability: symbol,
-      reason: symbol === 'DefaultPackageManager'
-        ? 'installing packages is owned by the DSH host and its security gates (dsh plugin add/remove).'
-        : "standalone model stacks are owned by the DSH host llm configuration (packages read ctx.modelRegistry).",
+      reason: 'installing packages is owned by the DSH host and its security gates (dsh plugin add/remove).',
       guidance: '',
       packageName: state.packageName,
     })

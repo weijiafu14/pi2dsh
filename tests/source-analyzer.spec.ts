@@ -27,6 +27,48 @@ describe('Pi package discovery and compatibility analysis', () => {
     }
   })
 
+  it('discovers a directory entry under Pi\'s one-level rule: direct files plus subdirectory index/manifest, never helpers', async () => {
+    // Pi (package-manager.ts collectAutoExtensionEntries): `extensions/*.ts|js`
+    // are entries; a subdirectory contributes only its index.ts/index.js (or its
+    // own pi.extensions manifest); nothing recurses. pi-code keeps 40 shared
+    // modules under extensions/internal/ and extensions/hooks/*.ts precisely
+    // because Pi does not treat them as entries.
+    const fsp = await import('node:fs/promises')
+    const os = await import('node:os')
+    const root = await fsp.mkdtemp(join(os.tmpdir(), 'pi2dsh-ext-rule-'))
+    try {
+      const write = async (rel: string, text = 'export default function x() {}\n') => {
+        await fsp.mkdir(join(root, rel, '..'), { recursive: true })
+        await fsp.writeFile(join(root, rel), text)
+      }
+      await fsp.writeFile(join(root, 'package.json'), JSON.stringify({ name: 'ext-rule', version: '0.0.1', pi: { extensions: ['./extensions'] } }))
+      await write('extensions/top.ts')
+      await write('extensions/plain.js')
+      await write('extensions/notes.md', '# not an extension\n')
+      await write('extensions/hooks/index.ts')
+      await write('extensions/hooks/config.ts', 'export const cfg = 1\n')
+      await write('extensions/internal/helper.ts', 'export const h = 1\n')
+      await write('extensions/nested/deep/index.ts')
+      await write('extensions/manifested/package.json', JSON.stringify({ pi: { extensions: ['./entry.ts'] } }))
+      await write('extensions/manifested/entry.ts')
+      await write('extensions/manifested/other.ts')
+      const pkg = await resolvePiPackage(root)
+      try {
+        const rel = pkg.resources.extensions.map(path => path.slice(pkg.rootDir.length + 1)).sort()
+        expect(rel).toEqual([
+          'extensions/hooks/index.ts',
+          'extensions/manifested/entry.ts',
+          'extensions/plain.js',
+          'extensions/top.ts',
+        ])
+      } finally {
+        await pkg.dispose()
+      }
+    } finally {
+      await fsp.rm(root, { recursive: true, force: true })
+    }
+  })
+
   it('discovers explicit manifest resources and reports every detected API use', async () => {
     const pkg = await resolvePiPackage(join(fixtures, 'complete-package'))
     try {
