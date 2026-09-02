@@ -64,6 +64,8 @@ try {
     env: { PI_CODE_PROBE: ENV_CW },
     hooks: { PreToolUse: [{ matcher: 'Bash', hooks: [{ type: 'command', command: `touch ${HOOK_MARK}` }] }] },
   }, null, 2))
+  await mkdir(join(project, '.claude', 'commands'), { recursive: true })
+  await writeFile(join(project, '.claude', 'commands', 'greet.md'), '---\ndescription: greet probe\n---\nReply with exactly the text GREET-COMMAND-OK and nothing else.\n')
   await writeFile(join(project, '.claude', 'skills', 'demo-skill', 'SKILL.md'), '---\nname: demo-skill\ndescription: A probe skill that explains the demo protocol\n---\nWhen invoked, reply with exactly SKILL-DEMO-OK.\n')
 
   const port = Number(process.env.PI_CODE_WEB_PORT ?? 5199)
@@ -125,21 +127,26 @@ try {
   const importCarrier = records.filter(r => r.type === 'request/header' && String(r.data?.header?.system ?? '').includes(IMPORT_CW))
   const skillCarrier = records.filter(r => r.type === 'user/message' && r.data?.source?.kind !== 'user' && JSON.stringify(r.data).includes('A probe skill that explains the demo protocol'))
   const trustAsked = records.some(r => JSON.stringify(r).includes('Trust this project'))
+  // The command body exists only in .claude/commands/greet.md; the expansion enters the
+  // conversation as a plugin-sourced message (or a command/run record), never as user text.
+  const commandCarrier = records.filter(r => (r.type === 'user/message' && r.data?.source?.kind !== 'user' && JSON.stringify(r.data).includes('GREET-COMMAND-OK'))
+    || (r.type === 'command/run' && JSON.stringify(r.data).includes('greet')))
   const results = {
     piCodeVersion: installed.version,
     settingsEnv: { pass: envSeen, codeword: ENV_CW },
     preToolUseHook: { pass: hookFired, marker: HOOK_MARK },
     claudeMdImport: { pass: importCarrier.length > 0, codeword: IMPORT_CW },
     claudeSkillsDiscovered: { pass: skillCarrier.length > 0 },
+    commandsUserPath: { pass: commandCarrier.length > 0, carriers: commandCarrier.map(r => r.type) },
     trustQuestionInLog: trustAsked,
     sessions: files.length,
   }
   for (const [name, entry] of Object.entries(results)) if (typeof entry === 'object' && 'pass' in entry) console.log(`[pi-code-web] ${name} → ${entry.pass ? 'PASS' : 'FAIL'}`)
   const taken = (await readdir(shots)).sort()
-  for (const required of ['01-trust-question.png', '02-env-answered.png', '03-import-answered.png']) {
+  for (const required of ['01-trust-question.png', '02-env-answered.png', '03-import-answered.png', '04-slash-command.png']) {
     assert(taken.includes(required), `missing ${required} — got ${JSON.stringify(taken)}`)
   }
-  const passed = envSeen && hookFired && importCarrier.length > 0 && skillCarrier.length > 0
+  const passed = envSeen && hookFired && importCarrier.length > 0 && skillCarrier.length > 0 && commandCarrier.length > 0
   await writeFile(outputPath, JSON.stringify({ results: { piCodeWeb: { status: passed ? 'passed' : 'failed', ...results, screenshots: taken, scratch } } }, null, 2))
   console.log(`[pi-code-web] ${passed ? 'passed' : 'FAILED'} — shots at ${shots}; evidence → ${outputPath}`)
   if (!passed) process.exitCode = 1

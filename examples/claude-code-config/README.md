@@ -42,6 +42,11 @@ Open a workspace that carries a `.claude/` directory — this example's
 - `.claude/settings.json` exporting `PI_CODE_PROBE` and running a `PreToolUse`
   hook on `Bash`
 - `.claude/skills/demo-skill/SKILL.md`
+- `.claude/rules/general.md` (always on) and `.claude/rules/src-only.md`
+  (attached when a file under `src/` is read)
+- `.claude/output-styles/pirate.md` — select it with `/output-style pirate`
+  (or `"outputStyle": "pirate"` in `settings.json`)
+- `.claude/commands/greet.md` — run it as `/greet`
 
 The first session in that workspace asks **"Trust this project?"** through
 DSH's own question dialog. That is pi-code's rule, the same as on Pi: a
@@ -67,29 +72,41 @@ brings into the prompt — the model does not open the file. The skill from
 `.claude/skills` is listed in the session's skill catalog and loads through
 DSH's `skill` tool.
 
+Type `/greet` in the composer: the command file's body is what the model
+answers. Ask it to read `src/probe.ts` and the `src/**` rule rides along with
+the file's content. A project `.mcp.json` (stdio or HTTP servers) is connected
+by pi-code's own MCP client and its tools register as `<server>_<tool>`.
+
 ## What was verified, and how
 
 Verified end to end on stock DSH (`0.1.1-rc.2` and `0.1.2-alpha.3`), headless
-and web, with a fresh `DSH_HOME` and a real model:
+and web, with a fresh `DSH_HOME` and a real model. Every row is read from the
+session log, never from page text or the model's wording:
 
-| Claude Code feature | Evidence read from the session log |
+| Claude Code feature | Evidence |
 |---|---|
+| "Trust this project?" | answered in DSH's native question card in the web app; headless fails closed without a stored decision |
 | `settings.json` `env` | the bash tool's own result carries the value |
 | `PreToolUse` hook on `Bash` | the hook's marker file exists on disk |
 | `CLAUDE.md` `@import` | the imported text is inside `request/header.system` |
 | `.claude/skills` | the skill's description is in DSH's skill-catalog message |
-| "Trust this project?" | answered in the web dialog; headless fails closed without a stored decision |
+| `.claude/output-styles` + `outputStyle` setting | `## Output Style: <name>` and its body are in `request/header.system` |
+| `.claude/rules` (unscoped) | the rule text is in `request/header.system` |
+| `.claude/rules` with `paths:` | the rule body is attached to the `read` result of a matching file |
+| `.mcp.json` (stdio server) | the server's tool ran through pi-code's own MCP client; its result carries the server's answer |
+| `.claude/commands` | as a user slash command in the web app (the expansion enters the conversation) and through the model-facing `slash_command` tool |
 
 Regression: `scripts/verify-pi-code-headless-e2e.mjs` and
-`scripts/verify-pi-code-web-e2e.mjs`.
+`scripts/verify-pi-code-web-e2e.mjs` (`pnpm test:pi-code`).
 
-## Loaded but not verified here
+## Not working on DSH
 
-pi-code also reads `.claude/commands` (as `/dir:name` commands), `.claude/agents`,
-output styles, `.claude/rules`, Claude plugins and MCP server definitions, and
-adds todo, checkpoints, memory, web search and subagents. Those mount (the
-package's 7 tools and 12 commands register) but have not been driven end to
-end in this example yet; treat them as "mounts, awaiting a real run".
+- **`Task` subagents from `.claude/agents`.** pi-code runs an agent by
+  spawning the Pi CLI as a child process (`getPiInvocation`); on DSH that
+  resolves to the host's own binary, which answers `--profile <name> is
+  required`, so every `Task` call fails. This is a Pi-CLI process contract,
+  not a host ABI surface, and pi2dsh does not fake it. For subagents on DSH
+  use [`@tintinweb/pi-subagents`](../subagents/), which is verified.
 
 ## Boundaries
 

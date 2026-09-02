@@ -202,6 +202,14 @@ pi2dsh：通用 Pi Host ABI 兼容层，让 Pi 生态插件原样跑在 DeepSeek
   stock profile 的配置）；② 多个 handler 的 `systemPrompt` 返回是**链式**的（后一个看到
   前一个的结果），"跑完取最后一个"会让只回显输入的 handler 冲掉别人的追加；③ 首轮
   claim 早于 per-agent 订阅的竞态假设被实跑证伪——查时序先插 trace 再下结论。
+- **宿主内建工具的参数形状要投影成 Pi 形状**（2026-09-02 pi-code 路径限定规则事故）：DSH 的
+  read/edit/write 参数是 Claude 词汇（`file_path`、`old_string`/`new_string`、grep `include`），
+  Pi 同名内建是 `path`、`oldText`/`newText`、`glob`；桥把 DSH 工具名原样当 Pi 名递给扩展，
+  `event.input` 却是 DSH 形状——pi-code 在 tool_result 里读 `input.path` 取不到，规则永不附着，
+  其 hooks 的 Pi→Claude 词汇转换也二次错转。修法在 runtime.ts `piViewOfToolArguments`
+  （tool_call / tool_result / tool_execution_start 三处，迁移的 Pi 工具原样透传；投影后的
+  副本才是"原始参数"，否则会误判成 hook 篡改参数而拒掉原生工具）。**pi-code 的 Task 子代理
+  是缺口不是欠账**：它拉起 Pi CLI 子进程，DSH 上解析成宿主 bin（`--profile <name> is required`）。
 - **`resources_discover` 真触发**：session_start 后按 Pi 语义派发，返回的技能根挂进官方
   `dsh-skill-filesystem`（每包每根一次，provider 名唯一）；prompt/theme 路径 DSH 无座位，
   日志报告不挂载。DSH 把技能目录作为 `skill-catalog` 来源的会话消息投递给模型，**不在**

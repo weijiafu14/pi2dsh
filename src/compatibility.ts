@@ -477,7 +477,7 @@ export const EVENT_RULES: Readonly<Record<string, SurfaceRule>> = Object.freeze(
   agent_start: { level: 'full', detail: 'Mapped to the DSH turn/start boundary.', design: 'The DSH turn/start boundary from the durable session/event stream. DSH\'s turn is the whole prompt, which is what Pi calls an agent run.' },
   agent_settled: { level: 'full', detail: 'Mapped to the DSH turn/end boundary.', design: 'The DSH turn/end boundary.' },
   turn_start: { level: 'full', detail: 'Fires once per MODEL CALL, as in Pi — DSH calls that a step — with turnIndex counting from zero and resetting at each new prompt.', design: 'The DSH step/start boundary — one step is one model call, which is what Pi calls a turn. The index resets when a new prompt is claimed off the inbox, matching Pi\'s reset at agent_start.' },
-  tool_execution_start: { level: 'full', detail: 'Mapped from durable tool/call events.', design: 'Projected from the durable tool/call event, so a handler sees exactly what was written to the session log.' },
+  tool_execution_start: { level: 'full', detail: 'Mapped from durable tool/call events; host built-in file tools are shown with Pi\'s argument names (`file_path`→`path`, `old_string`/`new_string`→`oldText`/`newText`, grep `include`→`glob`).', design: 'Projected from the durable tool/call event, so a handler sees exactly what was written to the session log.' },
   tool_execution_end: { level: 'full', detail: 'Mapped from finalized tools/result events.', design: 'Dispatched on DSH\'s tools/post-execute waterfall and awaited there. Riding the durable result emit instead let the handler land after turn_end, which is the opposite of Pi\'s order; the waterfall is the moment that is guaranteed to run before the caller sees the result.' },
   tool_execution_update: {
     level: 'partial',
@@ -486,12 +486,12 @@ export const EVENT_RULES: Readonly<Record<string, SurfaceRule>> = Object.freeze(
   },
   tool_call: {
     level: 'partial',
-    detail: 'Blocking is supported, in-place argument mutation reaches migrated Pi tools, and `terminate` follows Pi\'s batch rule — the loop stops after a tool batch only when every call in it was blocked asking to stop. Mutating a DSH-native tool\'s arguments is rejected because DSH logs arguments before policy.',
+    detail: 'Blocking is supported, in-place argument mutation reaches migrated Pi tools, and `terminate` follows Pi\'s batch rule — the loop stops after a tool batch only when every call in it was blocked asking to stop. Mutating a DSH-native tool\'s arguments is rejected because DSH logs arguments before policy. Host built-in file tools are shown with Pi\'s argument names (`file_path`→`path`, edit\'s `old_string`/`new_string`→`oldText`/`newText`, grep\'s `include`→`glob`), so extensions that read `input` by Pi\'s names — a path-scoped rule attaching to a matching read — see the shape they expect; migrated Pi tools pass through untouched.',
     design: 'DSH\'s tools/pre-execute waterfall, whose decision type carries exactly the two outcomes Pi needs (proceed, deny with a reason). Pi\'s in-place argument mutation is applied to migrated Pi tools; for a DSH-native tool it is refused, because DSH logs arguments before policy runs and the log would then disagree with what executed. Pi\'s batch rule for terminate is reimplemented verbatim: the loop stops only when every finalized call in the batch asked to stop.',
   },
   tool_result: {
     level: 'partial',
-    detail: 'Text replacement and success-to-error blocking are supported; arbitrary details and error recovery are not.',
+    detail: 'Text replacement and success-to-error blocking are supported; arbitrary details and error recovery are not. Host built-in file tools are shown with Pi\'s argument names (`file_path`→`path`, edit\'s `old_string`/`new_string`→`oldText`/`newText`, grep\'s `include`→`glob`), so extensions that read `input` by Pi\'s names — a path-scoped rule attaching to a matching read — see the shape they expect; migrated Pi tools pass through untouched.',
     design: 'The same tools/post-execute waterfall, which is where a result can still be rewritten before the caller reads it.',
   },
   before_agent_start: {

@@ -2002,7 +2002,7 @@ function subscribeLifecycle(ctx: Context, state: RuntimeState): void {
       let args: unknown = {}
       try { args = JSON.parse(String(data.arguments ?? '{}')) } catch { args = {} }
       void dispatch(state, 'tool_execution_start', {
-        type: 'tool_execution_start', toolCallId: data.callId, toolName: data.name, args,
+        type: 'tool_execution_start', toolCallId: data.callId, toolName: data.name, args: piViewOfToolArguments(state, String(data.name), args),
       }, eventContext).catch(error => warn('tool_execution_start', error))
     }
     if (type === 'assistant/chunk' && (state.handlers.get('message_update')?.length ?? 0) > 0) {
@@ -2330,6 +2330,32 @@ async function discoverPiResources(
   logger(ctx).info(`[pi2dsh] ${state.packageName}: resources_discover mounted ${roots.length} skill root(s) as ${config.providerName}`)
 }
 
+/**
+ * The Pi view of a host tool's arguments. DSH's built-in file tools carry
+ * Claude-style argument names (`file_path`, `old_string`/`new_string`,
+ * grep's `include`); Pi's same-named built-ins carry `path`,
+ * `oldText`/`newText`, `glob`. Extensions read `event.input` by Pi's names —
+ * pi-code attaches a path-scoped rule to the read of a matching `input.path`,
+ * and its hooks translate Pi shapes to Claude's `tool_input` — so a host call
+ * is projected into Pi's shape for the tool_call / tool_result /
+ * tool_execution_start events. Migrated Pi tools already speak Pi and pass
+ * through untouched; unknown keys are kept, so nothing is lost.
+ */
+const HOST_TOOL_ARGUMENT_PROJECTION: Record<string, Record<string, string>> = {
+  read: { file_path: 'path' },
+  write: { file_path: 'path' },
+  edit: { file_path: 'path', old_string: 'oldText', new_string: 'newText' },
+  grep: { include: 'glob' },
+}
+function piViewOfToolArguments(state: RuntimeState, name: string, args: unknown): unknown {
+  if (state.tools.has(name)) return cloneJson(args)
+  const mapping = HOST_TOOL_ARGUMENT_PROJECTION[name]
+  if (mapping === undefined || typeof args !== 'object' || args === null || Array.isArray(args)) return cloneJson(args)
+  const projected: UnknownRecord = {}
+  for (const [key, value] of Object.entries(args as UnknownRecord)) projected[mapping[key] ?? key] = value
+  return cloneJson(projected)
+}
+
 function subscribeInterceptors(ctx: Context, state: RuntimeState): void {
   const cordis = ctx as unknown as { on(name: string, callback: (...args: any[]) => unknown): () => void }
   cordis.on('tools/pre-execute', async (exec: ToolExecution, next: () => Promise<PreToolDecision>): Promise<PreToolDecision> => {
@@ -2338,10 +2364,11 @@ function subscribeInterceptors(ctx: Context, state: RuntimeState): void {
     // a parent's guard would silently police another session's calls, and its
     // handlers would receive an end without ever having seen the start.
     if (!acceptsAgent(state, exec.agent as unknown as UnknownRecord | undefined)) return next()
-    const input = cloneJson(exec.arguments)
+    const original = piViewOfToolArguments(state, exec.name, exec.arguments)
+    const input = cloneJson(original)
     const event: UnknownRecord = { type: 'tool_call', toolName: exec.name, toolCallId: exec.callId, input }
     const results = await dispatch(state, 'tool_call', event, contextFor(ctx, state, exec.agent as unknown as UnknownRecord, exec.signal))
-    if (!jsonEqual(event.input, exec.arguments)) {
+    if (!jsonEqual(event.input, original)) {
       if (state.tools.has(exec.name)) {
         // Pi semantics: tool_call handlers mutate event.input in place. For
         // pi2dsh-owned tools the mutation is applied inside our execute
@@ -2405,7 +2432,7 @@ function subscribeInterceptors(ctx: Context, state: RuntimeState): void {
       type: 'tool_result',
       toolName: exec.name,
       toolCallId: exec.callId,
-      input: cloneJson(exec.arguments),
+      input: piViewOfToolArguments(state, exec.name, exec.arguments),
       content: await dshToPiContent(ctx, result.content),
       details: result.meta ?? null,
       isError: result.isError,

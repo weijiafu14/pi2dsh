@@ -93,5 +93,11 @@ await shot('02-env-answered')
 await sendNoWait('What is the secret import codeword from your context files? Reply with the codeword only.')
 await settled()
 await shot('03-import-answered')
+
+// Turn 3: a .claude/commands file as a USER slash command. Typing `/greet` in
+// the composer goes through DSH's command runtime to pi-code's registered
+// command, whose expansion is what the model answers.
+await send('/greet')
+await shot('04-slash-command')
 console.log('[capture-pi-code-web] done')
 await browser.close()
