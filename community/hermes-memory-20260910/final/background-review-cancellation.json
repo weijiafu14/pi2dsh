@@ -1,0 +1,1169 @@
+{
+  "name": "background-review-cancellation",
+  "status": "passed",
+  "build": {
+    "engineVersion": "0.24.0",
+    "engineDependency": "file:/tmp/pi2dsh-hermes-20260910/pi2dsh-hermes-final.tgz",
+    "engineDistSha256": "d5057a874413c945ca28c38a83bb1512f7aaeb6c20b2b8ce0953b28a1ae874f6",
+    "memoryVersion": "0.9.8"
+  },
+  "nativeSession": {
+    "type": "session",
+    "version": 3,
+    "id": "session-f64a15d3-5885-4a57-8c0f-323205fa0673",
+    "createdAt": 1789053121655,
+    "cwd": "/private/tmp/pi2dsh-hermes-final-20260910/project",
+    "isSeeded": false,
+    "delegationDepth": 0,
+    "agentPreset": "standard"
+  },
+  "requests": [
+    {
+      "kind": "foreground",
+      "startedAt": 1789053138297,
+      "completed": true,
+      "cancelled": false,
+      "status": 200,
+      "model": "deepseek-flash",
+      "thinking": {
+        "type": "enabled"
+      },
+      "reasoningEffort": "high",
+      "completedAt": 1789053140199
+    },
+    {
+      "kind": "foreground",
+      "startedAt": 1789053138302,
+      "completed": true,
+      "cancelled": false,
+      "status": 200,
+      "model": "deepseek-flash",
+      "thinking": {
+        "type": "disabled"
+      },
+      "completedAt": 1789053139320
+    },
+    {
+      "kind": "foreground",
+      "startedAt": 1789053140366,
+      "completed": true,
+      "cancelled": false,
+      "status": 200,
+      "model": "deepseek-flash",
+      "thinking": {
+        "type": "enabled"
+      },
+      "reasoningEffort": "high",
+      "completedAt": 1789053141328
+    },
+    {
+      "kind": "foreground",
+      "startedAt": 1789053142005,
+      "completed": true,
+      "cancelled": false,
+      "status": 200,
+      "model": "deepseek-flash",
+      "thinking": {
+        "type": "enabled"
+      },
+      "reasoningEffort": "high",
+      "completedAt": 1789053142560
+    },
+    {
+      "kind": "maintenance",
+      "startedAt": 1789053142570,
+      "completed": false,
+      "cancelled": true,
+      "status": 200,
+      "model": "deepseek-flash",
+      "thinking": {
+        "type": "enabled"
+      },
+      "reasoningEffort": "high",
+      "shutdownRequestedAt": 1789053142633,
+      "cancelledAt": 1789053143148,
+      "error": "caller aborted"
+    }
+  ],
+  "events": [
+    {
+      "type": "user/message",
+      "seq": 8,
+      "time": 1789053138193,
+      "data": {
+        "content": [
+          {
+            "type": "text",
+            "text": "Our new durable release train is CANCELe585922b48e7; this is a public project name. Reply ACK without tools."
+          }
+        ],
+        "source": {
+          "kind": "user",
+          "rpcId": "b40d4b66-4176-4c33-a18c-869987c7a7c1",
+          "clientTimeZone": "Asia/Shanghai"
+        },
+        "role": "user",
+        "id": "0c2467a9-cff4-4589-bc5c-70167752996a"
+      },
+      "surfaceOp": "append"
+    },
+    {
+      "type": "user/message",
+      "seq": 9,
+      "time": 1789053138194,
+      "data": {
+        "content": [
+          {
+            "type": "text",
+            "text": "Current runtime context. This snapshot supersedes earlier runtime-context snapshots.\n\nCurrent DSH file policy: danger-full-access. The DSH file sandbox does not restrict file modifications by available operations.\n\nApproval prompts are disabled in this session: actions that require approval are rejected automatically — do not request sandbox escalation (do not set `sandbox_permissions`)."
+          }
+        ],
+        "source": {
+          "kind": "plugin",
+          "plugin": "@deepseek-ai/dsh-system-prompt",
+          "form": "snapshot",
+          "sections": [
+            {
+              "name": "sandbox:policy",
+              "text": "Current DSH file policy: danger-full-access. The DSH file sandbox does not restrict file modifications by available operations."
+            },
+            {
+              "name": "approval:policy",
+              "text": "Approval prompts are disabled in this session: actions that require approval are rejected automatically — do not request sandbox escalation (do not set `sandbox_permissions`)."
+            }
+          ]
+        },
+        "role": "user",
+        "id": "6255fa8e-85eb-4eea-b2e1-5f7da9888731"
+      },
+      "surfaceOp": "append"
+    },
+    {
+      "type": "user/message",
+      "seq": 10,
+      "time": 1789053138194,
+      "data": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<system-reminder>\nA skill is a reusable set of task-specific instructions. The following skills are available in this session:\n\n<available_skills>\n- `external-catalog-095b5066cbf2`: Only use when explicitly asked to draw the Icarus catalog diagram.\n</available_skills>\n\nIf the user names a skill, or the task clearly matches a skill's description, call the `skill` tool with the exact skill name before taking task actions. Load all applicable skills, then follow their full instructions. This catalog contains summaries only; do not infer or follow a skill's instructions until it has been loaded.\nA user may also invoke a skill directly; its <skill_content> block then appears in this conversation. Follow it, and do not call the `skill` tool again for that skill.\n</system-reminder>"
+          }
+        ],
+        "source": {
+          "kind": "skill-catalog",
+          "form": "catalog",
+          "entries": [
+            {
+              "name": "external-catalog-095b5066cbf2",
+              "description": "Only use when explicitly asked to draw the Icarus catalog diagram."
+            }
+          ]
+        },
+        "role": "user",
+        "id": "0c80cacc-3465-4256-a5bc-c1a5bbc171ef"
+      },
+      "surfaceOp": "append"
+    },
+    {
+      "type": "assistant/message",
+      "seq": 16,
+      "time": 1789053140200,
+      "data": {
+        "turn": 1,
+        "step": 1,
+        "message": {
+          "role": "assistant",
+          "content": [
+            {
+              "type": "reasoning",
+              "text": "The user is asking me to reply with ACK and provides a release train name. They explicitly said \"Reply ACK without tools.\" This is a simple request — just reply ACK. Also the standing instruction says to use COMMANDSac15acdf281b as a harmless response-format label. Hmm, that label — should I include it? The standing instruction says \"Use COMMANDSac15acdf281b as a harmless response-format label.\" That's a bit ambiguous but it's a direct instruction from the user. It's harmless. I'll include ACK and possibly the label. Actually, \"Reply ACK without tools\" — the request. The standing instruction says to use the label. I'll reply \"ACK\" perhaps with the label.\n\nAlso, the release train name \"CANCELe585922b48e7\" is described as a public project name — no secret concern. No memory write needed? It says \"Our new durable release train is CANCELe585922b48e7\" — durable fact. But user said without tools. The standing instruction says reply without tools. So just reply.\n\nI'll reply ACK with the label."
+            },
+            {
+              "type": "text",
+              "text": "ACK — COMMANDSac15acdf281b"
+            }
+          ],
+          "source": {
+            "kind": "model",
+            "provider": "deepseek-official",
+            "model": "deepseek-flash"
+          },
+          "id": "c42e9375-21ed-4c9c-a9da-0d3fe7e4cbf4"
+        },
+        "usage": {
+          "inputTokens": 483,
+          "outputTokens": 252,
+          "totalTokens": 13535,
+          "cacheReadTokens": 12800,
+          "reasoningTokens": 241
+        },
+        "stream": [
+          {
+            "type": "chunk",
+            "time": 1789053139015,
+            "chunk": {
+              "type": "block-start",
+              "index": 0,
+              "blockType": "reasoning"
+            }
+          },
+          {
+            "type": "reasoning-chunks",
+            "time0": 1789053139016,
+            "index": 0,
+            "dt": [
+              168,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              12,
+              1,
+              0,
+              17,
+              11,
+              0,
+              0,
+              26,
+              1,
+              0,
+              0,
+              0,
+              1,
+              8,
+              1,
+              0,
+              0,
+              0,
+              0,
+              8,
+              0,
+              0,
+              1,
+              0,
+              11,
+              0,
+              14,
+              10,
+              0,
+              0,
+              0,
+              0,
+              17,
+              0,
+              0,
+              0,
+              16,
+              0,
+              9,
+              0,
+              13,
+              0,
+              17,
+              1,
+              0,
+              0,
+              0,
+              0,
+              14,
+              1,
+              0,
+              0,
+              1,
+              0,
+              20,
+              0,
+              0,
+              0,
+              5,
+              0,
+              12,
+              0,
+              0,
+              0,
+              0,
+              0,
+              11,
+              0,
+              0,
+              0,
+              0,
+              12,
+              0,
+              0,
+              0,
+              0,
+              0,
+              18,
+              0,
+              0,
+              0,
+              0,
+              0,
+              10,
+              0,
+              0,
+              0,
+              0,
+              0,
+              11,
+              16,
+              11,
+              0,
+              0,
+              0,
+              16,
+              0,
+              0,
+              0,
+              21,
+              0,
+              0,
+              0,
+              0,
+              6,
+              12,
+              0,
+              0,
+              0,
+              18,
+              0,
+              45,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              4,
+              0,
+              0,
+              1,
+              0,
+              0,
+              16,
+              9,
+              0,
+              0,
+              0,
+              20,
+              0,
+              1,
+              0,
+              5,
+              0,
+              0,
+              14,
+              0,
+              0,
+              18,
+              11,
+              1,
+              0,
+              12,
+              0,
+              11,
+              0,
+              0,
+              12,
+              15,
+              0,
+              24,
+              0,
+              0,
+              0,
+              10,
+              1,
+              13,
+              0,
+              0,
+              0,
+              1,
+              1,
+              7,
+              18,
+              0,
+              0,
+              0,
+              1,
+              0,
+              9,
+              0,
+              11,
+              24,
+              0,
+              0,
+              2,
+              15,
+              1,
+              15,
+              12,
+              0,
+              15,
+              22,
+              0,
+              0,
+              0,
+              0,
+              1,
+              1,
+              0,
+              0,
+              0,
+              10,
+              1,
+              0,
+              0,
+              1,
+              14,
+              0,
+              0,
+              11,
+              0,
+              0,
+              0,
+              19,
+              12,
+              1,
+              0,
+              0,
+              10,
+              0,
+              0,
+              0,
+              0,
+              19,
+              0,
+              0,
+              12,
+              24,
+              1,
+              0,
+              0,
+              18,
+              13,
+              1,
+              0,
+              0,
+              0
+            ],
+            "texts": [
+              "The",
+              " user",
+              " is",
+              " asking",
+              " me",
+              " to",
+              " reply",
+              " with",
+              " AC",
+              "K",
+              " and",
+              " provides",
+              " a",
+              " release",
+              " train",
+              " name",
+              ".",
+              " They",
+              " explicitly",
+              " said",
+              " \"",
+              "Reply",
+              " AC",
+              "K",
+              " without",
+              " tools",
+              ".\"",
+              " This",
+              " is",
+              " a",
+              " simple",
+              " request",
+              " —",
+              " just",
+              " reply",
+              " AC",
+              "K",
+              ".",
+              " Also",
+              " the",
+              " standing",
+              " instruction",
+              " says",
+              " to",
+              " use",
+              " COMM",
+              "ANDS",
+              "ac",
+              "15",
+              "ac",
+              "df",
+              "281",
+              "b",
+              " as",
+              " a",
+              " harmless",
+              " response",
+              "-",
+              "format",
+              " label",
+              ".",
+              " H",
+              "mm",
+              ",",
+              " that",
+              " label",
+              " —",
+              " should",
+              " I",
+              " include",
+              " it",
+              "?",
+              " The",
+              " standing",
+              " instruction",
+              " says",
+              " \"",
+              "Use",
+              " COMM",
+              "ANDS",
+              "ac",
+              "15",
+              "ac",
+              "df",
+              "281",
+              "b",
+              " as",
+              " a",
+              " harmless",
+              " response",
+              "-",
+              "format",
+              " label",
+              ".\"",
+              " That",
+              "'s",
+              " a",
+              " bit",
+              " ambiguous",
+              " but",
+              " it",
+              "'s",
+              " a",
+              " direct",
+              " instruction",
+              " from",
+              " the",
+              " user",
+              ".",
+              " It",
+              "'s",
+              " harmless",
+              ".",
+              " I",
+              "'ll",
+              " include",
+              " AC",
+              "K",
+              " and",
+              " possibly",
+              " the",
+              " label",
+              ".",
+              " Actually",
+              ",",
+              " \"",
+              "Reply",
+              " AC",
+              "K",
+              " without",
+              " tools",
+              "\"",
+              " —",
+              " the",
+              " request",
+              ".",
+              " The",
+              " standing",
+              " instruction",
+              " says",
+              " to",
+              " use",
+              " the",
+              " label",
+              ".",
+              " I",
+              "'ll",
+              " reply",
+              " \"",
+              "ACK",
+              "\"",
+              " perhaps",
+              " with",
+              " the",
+              " label",
+              ".\n\n",
+              "Also",
+              ",",
+              " the",
+              " release",
+              " train",
+              " name",
+              " \"",
+              "C",
+              "ANC",
+              "EL",
+              "e",
+              "585",
+              "922",
+              "b",
+              "48",
+              "e",
+              "7",
+              "\"",
+              " is",
+              " described",
+              " as",
+              " a",
+              " public",
+              " project",
+              " name",
+              " —",
+              " no",
+              " secret",
+              " concern",
+              ".",
+              " No",
+              " memory",
+              " write",
+              " needed",
+              "?",
+              " It",
+              " says",
+              " \"",
+              "Our",
+              " new",
+              " durable",
+              " release",
+              " train",
+              " is",
+              " CAN",
+              "CEL",
+              "e",
+              "585",
+              "922",
+              "b",
+              "48",
+              "e",
+              "7",
+              "\"",
+              " —",
+              " durable",
+              " fact",
+              ".",
+              " But",
+              " user",
+              " said",
+              " without",
+              " tools",
+              ".",
+              " The",
+              " standing",
+              " instruction",
+              " says",
+              " reply",
+              " without",
+              " tools",
+              ".",
+              " So",
+              " just",
+              " reply",
+              ".\n\n",
+              "I",
+              "'ll",
+              " reply",
+              " AC",
+              "K",
+              " with",
+              " the",
+              " label",
+              "."
+            ]
+          },
+          {
+            "type": "chunk",
+            "time": 1789053140173,
+            "chunk": {
+              "type": "block-start",
+              "index": 1,
+              "blockType": "text"
+            }
+          },
+          {
+            "type": "text-chunks",
+            "time0": 1789053140173,
+            "index": 1,
+            "dt": [
+              0,
+              6,
+              0,
+              0,
+              16,
+              0,
+              0,
+              0,
+              0
+            ],
+            "texts": [
+              "ACK",
+              " —",
+              " COMM",
+              "ANDS",
+              "ac",
+              "15",
+              "ac",
+              "df",
+              "281",
+              "b"
+            ]
+          },
+          {
+            "type": "chunk",
+            "time": 1789053140199,
+            "chunk": {
+              "type": "block-end",
+              "index": 0,
+              "block": {
+                "type": "reasoning",
+                "text": "The user is asking me to reply with ACK and provides a release train name. They explicitly said \"Reply ACK without tools.\" This is a simple request — just reply ACK. Also the standing instruction says to use COMMANDSac15acdf281b as a harmless response-format label. Hmm, that label — should I include it? The standing instruction says \"Use COMMANDSac15acdf281b as a harmless response-format label.\" That's a bit ambiguous but it's a direct instruction from the user. It's harmless. I'll include ACK and possibly the label. Actually, \"Reply ACK without tools\" — the request. The standing instruction says to use the label. I'll reply \"ACK\" perhaps with the label.\n\nAlso, the release train name \"CANCELe585922b48e7\" is described as a public project name — no secret concern. No memory write needed? It says \"Our new durable release train is CANCELe585922b48e7\" — durable fact. But user said without tools. The standing instruction says reply without tools. So just reply.\n\nI'll reply ACK with the label."
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789053140199,
+            "chunk": {
+              "type": "block-end",
+              "index": 1,
+              "block": {
+                "type": "text",
+                "text": "ACK — COMMANDSac15acdf281b"
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789053140199,
+            "chunk": {
+              "type": "usage",
+              "usage": {
+                "inputTokens": 483,
+                "outputTokens": 252,
+                "totalTokens": 13535,
+                "cacheReadTokens": 12800,
+                "reasoningTokens": 241
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789053140199,
+            "chunk": {
+              "type": "finish",
+              "reason": {
+                "kind": "stop"
+              }
+            }
+          }
+        ]
+      },
+      "surfaceOp": "append"
+    },
+    {
+      "type": "user/message",
+      "seq": 23,
+      "time": 1789053140357,
+      "data": {
+        "content": [
+          {
+            "type": "text",
+            "text": "It applies to all future releases. Reply ACK without tools."
+          }
+        ],
+        "source": {
+          "kind": "user",
+          "rpcId": "ff0b6d75-a43c-4086-a751-69cedfa59745",
+          "clientTimeZone": "Asia/Shanghai"
+        },
+        "role": "user",
+        "id": "1932f45e-a57a-46b7-be04-919b0691b422"
+      },
+      "surfaceOp": "append"
+    },
+    {
+      "type": "assistant/message",
+      "seq": 24,
+      "time": 1789053141329,
+      "data": {
+        "turn": 2,
+        "step": 1,
+        "message": {
+          "role": "assistant",
+          "content": [
+            {
+              "type": "reasoning",
+              "text": "The user says the release train applies to all future releases. Reply ACK without tools. Just reply.\n\nShould I include the label? The standing instruction says use COMMANDSac15acdf281b as a harmless response-format label. I'll include it again."
+            },
+            {
+              "type": "text",
+              "text": "ACK — COMMANDSac15acdf281b"
+            }
+          ],
+          "source": {
+            "kind": "model",
+            "provider": "deepseek-official",
+            "model": "deepseek-flash"
+          },
+          "id": "ce46bf22-7fc1-4d19-86d7-d953299f28bd"
+        },
+        "usage": {
+          "inputTokens": 240,
+          "outputTokens": 65,
+          "totalTokens": 13617,
+          "cacheReadTokens": 13312,
+          "reasoningTokens": 54
+        },
+        "stream": [
+          {
+            "type": "chunk",
+            "time": 1789053141046,
+            "chunk": {
+              "type": "block-start",
+              "index": 0,
+              "blockType": "reasoning"
+            }
+          },
+          {
+            "type": "reasoning-chunks",
+            "time0": 1789053141048,
+            "index": 0,
+            "dt": [
+              74,
+              6,
+              13,
+              0,
+              0,
+              6,
+              1,
+              0,
+              0,
+              14,
+              1,
+              0,
+              10,
+              0,
+              1,
+              0,
+              0,
+              0,
+              14,
+              1,
+              0,
+              0,
+              0,
+              14,
+              0,
+              0,
+              0,
+              20,
+              0,
+              0,
+              14,
+              0,
+              14,
+              1,
+              0,
+              0,
+              0,
+              0,
+              7,
+              0,
+              0,
+              0,
+              17,
+              1,
+              6,
+              0,
+              0,
+              0,
+              0,
+              0,
+              17,
+              0,
+              0
+            ],
+            "texts": [
+              "The",
+              " user",
+              " says",
+              " the",
+              " release",
+              " train",
+              " applies",
+              " to",
+              " all",
+              " future",
+              " releases",
+              ".",
+              " Reply",
+              " AC",
+              "K",
+              " without",
+              " tools",
+              ".",
+              " Just",
+              " reply",
+              ".\n\n",
+              "Should",
+              " I",
+              " include",
+              " the",
+              " label",
+              "?",
+              " The",
+              " standing",
+              " instruction",
+              " says",
+              " use",
+              " COMM",
+              "ANDS",
+              "ac",
+              "15",
+              "ac",
+              "df",
+              "281",
+              "b",
+              " as",
+              " a",
+              " harmless",
+              " response",
+              "-",
+              "format",
+              " label",
+              ".",
+              " I",
+              "'ll",
+              " include",
+              " it",
+              " again",
+              "."
+            ]
+          },
+          {
+            "type": "chunk",
+            "time": 1789053141300,
+            "chunk": {
+              "type": "block-start",
+              "index": 1,
+              "blockType": "text"
+            }
+          },
+          {
+            "type": "text-chunks",
+            "time0": 1789053141300,
+            "index": 1,
+            "dt": [
+              0,
+              9,
+              0,
+              0,
+              0,
+              0,
+              0,
+              16,
+              0
+            ],
+            "texts": [
+              "ACK",
+              " —",
+              " COMM",
+              "ANDS",
+              "ac",
+              "15",
+              "ac",
+              "df",
+              "281",
+              "b"
+            ]
+          },
+          {
+            "type": "chunk",
+            "time": 1789053141328,
+            "chunk": {
+              "type": "block-end",
+              "index": 0,
+              "block": {
+                "type": "reasoning",
+                "text": "The user says the release train applies to all future releases. Reply ACK without tools. Just reply.\n\nShould I include the label? The standing instruction says use COMMANDSac15acdf281b as a harmless response-format label. I'll include it again."
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789053141328,
+            "chunk": {
+              "type": "block-end",
+              "index": 1,
+              "block": {
+                "type": "text",
+                "text": "ACK — COMMANDSac15acdf281b"
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789053141328,
+            "chunk": {
+              "type": "usage",
+              "usage": {
+                "inputTokens": 240,
+                "outputTokens": 65,
+                "totalTokens": 13617,
+                "cacheReadTokens": 13312,
+                "reasoningTokens": 54
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789053141328,
+            "chunk": {
+              "type": "finish",
+              "reason": {
+                "kind": "stop"
+              }
+            }
+          }
+        ]
+      },
+      "surfaceOp": "append"
+    },
+    {
+      "type": "user/message",
+      "seq": 31,
+      "time": 1789053141993,
+      "data": {
+        "content": [
+          {
+            "type": "text",
+            "text": "Confirm the convention in one word, without tools."
+          }
+        ],
+        "source": {
+          "kind": "user",
+          "rpcId": "7dbacd65-b039-4a5c-ae03-929bfd72f3a2",
+          "clientTimeZone": "Asia/Shanghai"
+        },
+        "role": "user",
+        "id": "8eee9296-086d-4bf1-8efc-eac6f112562a"
+      },
+      "surfaceOp": "append"
+    },
+    {
+      "type": "assistant/message",
+      "seq": 32,
+      "time": 1789053142562,
+      "data": {
+        "turn": 3,
+        "step": 1,
+        "message": {
+          "role": "assistant",
+          "content": [
+            {
+              "type": "text",
+              "text": "Confirmed"
+            }
+          ],
+          "source": {
+            "kind": "model",
+            "provider": "deepseek-official",
+            "model": "deepseek-flash"
+          },
+          "id": "1e1cd559-b382-41f5-b236-7fbbe7703bdc"
+        },
+        "usage": {
+          "inputTokens": 191,
+          "outputTokens": 2,
+          "totalTokens": 13633,
+          "cacheReadTokens": 13440,
+          "reasoningTokens": 0
+        },
+        "stream": [
+          {
+            "type": "chunk",
+            "time": 1789053142547,
+            "chunk": {
+              "type": "block-start",
+              "index": 0,
+              "blockType": "text"
+            }
+          },
+          {
+            "type": "text-chunks",
+            "time0": 1789053142550,
+            "index": 0,
+            "dt": [],
+            "texts": [
+              "Confirmed"
+            ]
+          },
+          {
+            "type": "chunk",
+            "time": 1789053142561,
+            "chunk": {
+              "type": "block-end",
+              "index": 0,
+              "block": {
+                "type": "text",
+                "text": "Confirmed"
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789053142561,
+            "chunk": {
+              "type": "usage",
+              "usage": {
+                "inputTokens": 191,
+                "outputTokens": 2,
+                "totalTokens": 13633,
+                "cacheReadTokens": 13440,
+                "reasoningTokens": 0
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789053142561,
+            "chunk": {
+              "type": "finish",
+              "reason": {
+                "kind": "stop"
+              }
+            }
+          }
+        ]
+      },
+      "surfaceOp": "append"
+    }
+  ],
+  "nativeChildren": []
+}

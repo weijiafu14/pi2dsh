@@ -1,0 +1,1112 @@
+
+> pi2dsh@0.24.0 verify /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh
+> pnpm check && pnpm test:coverage && pnpm check:docs && pnpm check:pack
+
+
+> pi2dsh@0.24.0 check /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh
+> tsc --noEmit
+
+
+> pi2dsh@0.24.0 test:coverage /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh
+> pnpm build && vitest run --coverage
+
+
+> pi2dsh@0.24.0 build /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh
+> tsdown
+
+ℹ tsdown v0.22.14 powered by rolldown v1.2.5
+ℹ config file: /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/tsdown.config.ts 
+ℹ entry: src/index.ts, src/runtime.ts, src/host.ts, src/cli.ts, src/credentials-oauth.ts, src/compat/pi-coding-agent.ts, src/compat/pi-tui.ts, src/compat/pi-ai.ts
+ℹ target: node22.19.0
+ℹ tsconfig: tsconfig.json
+ℹ entry: dsh-x/src/client.ts
+ℹ target: node22.19.0
+ℹ tsconfig: tsconfig.json
+
+ WARN  `external` is deprecated. Use `deps.neverBundle` instead.
+
+ℹ Build start
+
+ WARN  We recommend using the ESM format instead of CommonJS.
+The ESM format is compatible with modern platforms and runtimes, and most new libraries are now distributed only in ESM format.
+Learn more at https://nodejs.org/en/learn/modules/publishing-a-package#how-did-we-get-here
+
+ℹ Cleaning 115 files
+ℹ [CJS] dsh-x/client.js  93.73 kB │ gzip: 21.94 kB
+ℹ [CJS] 1 files, total: 93.73 kB
+✔ Build complete in 1708ms
+(rolldown-plugin-dts:fake-js plugin) /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/@types+node-fetch@2.6.13/node_modules/@types/node-fetch/index.d.ts uses CommonJS dts syntax. CommonJS dts modules cannot be bundled by rolldown-plugin-dts. Please mark this module as external in your Rolldown config.
+(rolldown-plugin-dts:fake-js plugin) /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/form-data@4.0.6/node_modules/form-data/index.d.ts uses CommonJS dts syntax. CommonJS dts modules cannot be bundled by rolldown-plugin-dts. Please mark this module as external in your Rolldown config.
+ℹ Hint: consider adding deps.onlyBundle option to avoid unintended bundling of dependencies, or set deps.onlyBundle: false to disable this hint.
+See more at https://tsdown.dev/options/dependencies#deps-onlybundle
+Detected dependencies in bundle:
+- @anthropic-ai/sdk
+- @earendil-works/pi-ai
+- ms
+- debug
+- has-flag
+- supports-color
+- agent-base
+- https-proxy-agent
+- retry
+- p-retry
+- extend
+- gaxios
+- bignumber.js
+- json-bigint
+- gcp-metadata
+- google-logging-utils
+- base64-js
+- google-auth-library
+- safe-buffer
+- ecdsa-sig-formatter
+- jws
+- buffer-equal-constant-time
+- jwa
+- ws
+- @google/genai
+- partial-json
+- @mistralai/mistralai
+- zod
+- zod-to-json-schema
+- node-fetch
+- openai
+- @opentelemetry/api
+- @opentelemetry/semantic-conventions
+- undici-types
+- undici
+- @earendil-works/pi-telemetry
+- data-uri-to-buffer
+- web-streams-polyfill
+- fetch-blob
+- formdata-polyfill
+- node-domexception
+ℹ [ESM] Granting execute permission to dist/cli.d.mts
+ℹ [ESM] Granting execute permission to dist/cli.mjs
+ℹ [ESM] dist/index.mjs                                  17.20 kB │ gzip:   5.82 kB
+ℹ [ESM] dist/host.mjs                                    6.26 kB │ gzip:   2.33 kB
+ℹ [ESM] dist/compat/pi-coding-agent.mjs                  6.20 kB │ gzip:   1.88 kB
+ℹ [ESM] dist/credentials-oauth.mjs                       4.72 kB │ gzip:   1.46 kB
+ℹ [ESM] dist/cli.mjs                                     4.08 kB │ gzip:   1.73 kB
+ℹ [ESM] dist/compat/pi-tui.mjs                           2.83 kB │ gzip:   1.05 kB
+ℹ [ESM] dist/compat/pi-ai.mjs                            2.54 kB │ gzip:   0.82 kB
+ℹ [ESM] dist/runtime.mjs                                 0.48 kB │ gzip:   0.23 kB
+ℹ [ESM] dist/mistral-conversations-D-Kf38nj.mjs.map      3.54 MB
+ℹ [ESM] dist/google-shared-LEpwok5n.mjs.map              2.23 MB
+ℹ [ESM] dist/mistral-conversations-D-Kf38nj.mjs          1.47 MB
+ℹ [ESM] dist/otel-EL651-JR.mjs.map                       1.23 MB
+ℹ [ESM] dist/google-shared-LEpwok5n.mjs                  1.20 MB
+ℹ [ESM] dist/otel-EL651-JR.mjs                           1.18 MB
+ℹ [ESM] dist/runtime-B3N7s93Q.mjs.map                  759.03 kB │ gzip: 203.87 kB
+ℹ [ESM] dist/pi-coding-agent-lcNs9Wos.mjs.map          532.25 kB │ gzip: 123.84 kB
+ℹ [ESM] dist/openai-DkzRh5_G.mjs.map                   492.09 kB │ gzip:  93.57 kB
+ℹ [ESM] dist/anthropic-messages-CaYTgvLF.mjs.map       465.12 kB │ gzip:  88.57 kB
+ℹ [ESM] dist/src-ChZlNrRV.mjs.map                      405.65 kB │ gzip:  78.66 kB
+ℹ [ESM] dist/runtime-B3N7s93Q.mjs                      339.31 kB │ gzip:  90.58 kB
+ℹ [ESM] dist/pi-tui-DruSeKmd.mjs.map                   300.53 kB │ gzip:  68.30 kB
+ℹ [ESM] dist/pi-coding-agent-lcNs9Wos.mjs              255.04 kB │ gzip:  63.74 kB
+ℹ [ESM] dist/openai-DkzRh5_G.mjs                       252.41 kB │ gzip:  51.65 kB
+ℹ [ESM] dist/anthropic-messages-CaYTgvLF.mjs           239.81 kB │ gzip:  50.63 kB
+ℹ [ESM] dist/src-ChZlNrRV.mjs                          214.17 kB │ gzip:  40.66 kB
+ℹ [ESM] dist/pi-ai-Cy_BRMmd.mjs.map                    186.39 kB │ gzip:  44.40 kB
+ℹ [ESM] dist/pi-tui-DruSeKmd.mjs                       139.46 kB │ gzip:  34.82 kB
+ℹ [ESM] dist/pi-ai-Cy_BRMmd.mjs                        121.09 kB │ gzip:  27.52 kB
+ℹ [ESM] dist/compatibility-DS6POFZD.mjs.map             93.30 kB │ gzip:  27.51 kB
+ℹ [ESM] dist/openai-codex-responses-DedxQjNG.mjs.map    90.81 kB │ gzip:  21.27 kB
+ℹ [ESM] dist/openai-completions-DrjrWRdX.mjs.map        85.11 kB │ gzip:  19.00 kB
+ℹ [ESM] dist/compatibility-DS6POFZD.mjs                 78.11 kB │ gzip:  24.02 kB
+ℹ [ESM] dist/dist-QBBA-dL_.mjs.map                      70.63 kB │ gzip:  18.99 kB
+ℹ [ESM] dist/analyzer-DbgL3neo.mjs.map                  64.83 kB │ gzip:  15.05 kB
+ℹ [ESM] dist/simple-options-B_GO8FDE.mjs.map            57.89 kB │ gzip:  13.73 kB
+ℹ [ESM] dist/openai-codex-responses-DedxQjNG.mjs        46.77 kB │ gzip:  12.08 kB
+ℹ [ESM] dist/oauth-bridge-C_MAPMGA.mjs.map              43.69 kB │ gzip:  13.01 kB
+ℹ [ESM] dist/openai-responses-shared-BmnSvdKL.mjs.map   43.50 kB │ gzip:   9.40 kB
+ℹ [ESM] dist/openai-completions-DrjrWRdX.mjs            41.67 kB │ gzip:   9.62 kB
+ℹ [ESM] dist/index.mjs.map                              40.10 kB │ gzip:  12.91 kB
+ℹ [ESM] dist/dist-QBBA-dL_.mjs                          37.61 kB │ gzip:  10.56 kB
+ℹ [ESM] dist/analyzer-DbgL3neo.mjs                      32.92 kB │ gzip:   7.31 kB
+ℹ [ESM] dist/google-vertex-BgGRE4WU.mjs.map             29.33 kB │ gzip:   7.03 kB
+ℹ [ESM] dist/google-generative-ai-DYSbNJT7.mjs.map      26.27 kB │ gzip:   6.03 kB
+ℹ [ESM] dist/pi-ai-BHgA3JWd.d.mts.map                   25.96 kB │ gzip:   5.36 kB
+ℹ [ESM] dist/json-parse-CZ0U0sj_.mjs.map                22.34 kB │ gzip:   5.66 kB
+ℹ [ESM] dist/openai-responses-shared-BmnSvdKL.mjs       21.02 kB │ gzip:   5.00 kB
+ℹ [ESM] dist/simple-options-B_GO8FDE.mjs                18.41 kB │ gzip:   5.18 kB
+ℹ [ESM] dist/pi-messages-D61G2tgs.mjs.map               18.19 kB │ gzip:   4.95 kB
+ℹ [ESM] dist/oauth-bridge-C_MAPMGA.mjs                  17.47 kB │ gzip:   5.36 kB
+ℹ [ESM] dist/multipart-parser-BOEZ-KGK.mjs.map          16.91 kB │ gzip:   4.72 kB
+ℹ [ESM] dist/source-l77aIDwD.mjs.map                    15.83 kB │ gzip:   5.01 kB
+ℹ [ESM] dist/azure-openai-responses-HKWkzl2m.mjs.map    15.78 kB │ gzip:   4.76 kB
+ℹ [ESM] dist/google-vertex-BgGRE4WU.mjs                 14.47 kB │ gzip:   3.96 kB
+ℹ [ESM] dist/host.mjs.map                               14.20 kB │ gzip:   4.95 kB
+ℹ [ESM] dist/mcp-config-C1K-IzzB.mjs.map                12.81 kB │ gzip:   4.16 kB
+ℹ [ESM] dist/json-parse-CZ0U0sj_.mjs                    12.51 kB │ gzip:   3.62 kB
+ℹ [ESM] dist/google-generative-ai-DYSbNJT7.mjs          12.42 kB │ gzip:   3.26 kB
+ℹ [ESM] dist/credentials-oauth.mjs.map                  11.03 kB │ gzip:   3.47 kB
+ℹ [ESM] dist/pi-messages-D61G2tgs.mjs                    9.79 kB │ gzip:   3.13 kB
+ℹ [ESM] dist/multipart-parser-BOEZ-KGK.mjs               8.90 kB │ gzip:   2.63 kB
+ℹ [ESM] dist/pi-coding-agent-Cas0oHSx.d.mts.map          8.84 kB │ gzip:   2.81 kB
+ℹ [ESM] dist/azure-openai-responses-HKWkzl2m.mjs         8.83 kB │ gzip:   2.86 kB
+ℹ [ESM] dist/error-body-DKA3lknR.mjs.map                 8.05 kB │ gzip:   2.93 kB
+ℹ [ESM] dist/source-l77aIDwD.mjs                         7.45 kB │ gzip:   2.40 kB
+ℹ [ESM] dist/cli.mjs.map                                 7.11 kB │ gzip:   2.59 kB
+ℹ [ESM] dist/runtime.d.mts.map                           6.50 kB │ gzip:   2.30 kB
+ℹ [ESM] dist/pi-tui-iHoF2tFc.d.mts.map                   6.47 kB │ gzip:   2.06 kB
+ℹ [ESM] dist/provider-retry-Cw6YJ4cr.mjs.map             6.22 kB │ gzip:   2.26 kB
+ℹ [ESM] dist/mcp-config-C1K-IzzB.mjs                     6.19 kB │ gzip:   2.19 kB
+ℹ [ESM] dist/error-body-DKA3lknR.mjs                     4.70 kB │ gzip:   1.87 kB
+ℹ [ESM] dist/event-stream-QxN1yvIF.mjs.map               3.90 kB │ gzip:   1.37 kB
+ℹ [ESM] dist/provider-retry-Cw6YJ4cr.mjs                 3.56 kB │ gzip:   1.43 kB
+ℹ [ESM] dist/provider-env-C72pF4vP.mjs.map               2.61 kB │ gzip:   1.25 kB
+ℹ [ESM] dist/deferred-tools-BD4g5QUx.mjs.map             2.49 kB │ gzip:   1.02 kB
+ℹ [ESM] dist/pi-config-shim-CZ1wFzqM.mjs.map             1.97 kB │ gzip:   0.92 kB
+ℹ [ESM] dist/github-copilot-headers-CZo2QHrt.mjs.map     1.96 kB │ gzip:   0.87 kB
+ℹ [ESM] dist/diagnostics-BqYkodgB.mjs.map                1.83 kB │ gzip:   0.80 kB
+ℹ [ESM] dist/event-stream-QxN1yvIF.mjs                   1.75 kB │ gzip:   0.72 kB
+ℹ [ESM] dist/rolldown-runtime-CTfmNlz1.mjs               1.75 kB │ gzip:   0.82 kB
+ℹ [ESM] dist/provider-env-C72pF4vP.mjs                   1.68 kB │ gzip:   0.93 kB
+ℹ [ESM] dist/deferred-tools-BD4g5QUx.mjs                 1.42 kB │ gzip:   0.64 kB
+ℹ [ESM] dist/hash-Dbggamac.mjs.map                       1.29 kB │ gzip:   0.62 kB
+ℹ [ESM] dist/diagnostics-BqYkodgB.mjs                    1.14 kB │ gzip:   0.52 kB
+ℹ [ESM] dist/headers-CPzZhJQn.mjs.map                    1.12 kB │ gzip:   0.55 kB
+ℹ [ESM] dist/index.d.mts.map                             1.07 kB │ gzip:   0.52 kB
+ℹ [ESM] dist/github-copilot-headers-CZo2QHrt.mjs         1.02 kB │ gzip:   0.51 kB
+ℹ [ESM] dist/pi-config-shim-CZ1wFzqM.mjs                 0.98 kB │ gzip:   0.47 kB
+ℹ [ESM] dist/openai-prompt-cache-BDWtZRKh.mjs.map        0.86 kB │ gzip:   0.51 kB
+ℹ [ESM] dist/hash-Dbggamac.mjs                           0.72 kB │ gzip:   0.44 kB
+ℹ [ESM] dist/headers-CPzZhJQn.mjs                        0.65 kB │ gzip:   0.35 kB
+ℹ [ESM] dist/credentials-oauth.d.mts.map                 0.51 kB │ gzip:   0.30 kB
+ℹ [ESM] dist/oauth-bridge-hOnT3acY.d.mts.map             0.44 kB │ gzip:   0.29 kB
+ℹ [ESM] dist/pi-types-KazmR2O5.d.mts.map                 0.44 kB │ gzip:   0.23 kB
+ℹ [ESM] dist/host.d.mts.map                              0.40 kB │ gzip:   0.27 kB
+ℹ [ESM] dist/types-B9VBF8le.d.mts.map                    0.36 kB │ gzip:   0.20 kB
+ℹ [ESM] dist/openai-prompt-cache-BDWtZRKh.mjs            0.30 kB │ gzip:   0.23 kB
+ℹ [ESM] dist/runtime.d.mts                              48.93 kB │ gzip:  15.28 kB
+ℹ [ESM] dist/index.d.mts                                 8.63 kB │ gzip:   3.33 kB
+ℹ [ESM] dist/compat/pi-coding-agent.d.mts                8.38 kB │ gzip:   2.39 kB
+ℹ [ESM] dist/compat/pi-tui.d.mts                         5.23 kB │ gzip:   1.68 kB
+ℹ [ESM] dist/compat/pi-ai.d.mts                          3.27 kB │ gzip:   1.03 kB
+ℹ [ESM] dist/host.d.mts                                  2.42 kB │ gzip:   1.03 kB
+ℹ [ESM] dist/credentials-oauth.d.mts                     1.93 kB │ gzip:   0.72 kB
+ℹ [ESM] dist/cli.d.mts                                   0.03 kB │ gzip:   0.05 kB
+ℹ [ESM] dist/pi-ai-BHgA3JWd.d.mts                      137.13 kB │ gzip:  32.51 kB
+ℹ [ESM] dist/pi-coding-agent-Cas0oHSx.d.mts             59.72 kB │ gzip:  15.13 kB
+ℹ [ESM] dist/pi-tui-iHoF2tFc.d.mts                      39.60 kB │ gzip:   9.71 kB
+ℹ [ESM] dist/pi-types-KazmR2O5.d.mts                     1.53 kB │ gzip:   0.49 kB
+ℹ [ESM] dist/oauth-bridge-hOnT3acY.d.mts                 1.39 kB │ gzip:   0.58 kB
+ℹ [ESM] dist/types-B9VBF8le.d.mts                        1.37 kB │ gzip:   0.55 kB
+ℹ [ESM] 111 files, total: 17.18 MB
+node_modules/.pnpm/openai@6.26.0_ws@8.21.3_zod@4.4.3/node_modules/openai/internal/types.d.ts (14:68) [IMPORT_IS_UNDEFINED] Import `RequestInit` will always be undefined because there is no matching export in 'node_modules/.pnpm/@types+node-fetch@2.6.13/node_modules/@types/node-fetch/index.d.ts'
+    ╭─[ node_modules/.pnpm/openai@6.26.0_ws@8.21.3_zod@4.4.3/node_modules/openai/internal/types.d.ts:14:69 ]
+    │
+ 14 │ var [NodeFetch2RequestInit] = [3693, () => [NotAny, NotAny, NotAny, _$____________node_modules__types_node_fetch_index_d_ts0.RequestInit, NotAny, NotAny, NotAny, NotAny, NotAny, NotAny, NotAny], ["", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""]];
+    │                                                                     ──────────────────────────────────┬─────────────────────────────────  
+    │                                                                                                       ╰─────────────────────────────────── 
+────╯
+
+node_modules/.pnpm/@google+genai@1.52.0/node_modules/@google/genai/dist/genai.d.ts (469:76) [IMPORT_IS_UNDEFINED] Import `RequestInit` will always be undefined because there is no matching export in 'node_modules/.pnpm/@types+node-fetch@2.6.13/node_modules/@types/node-fetch/index.d.ts'
+     ╭─[ node_modules/.pnpm/@google+genai@1.52.0/node_modules/@google/genai/dist/genai.d.ts:469:77 ]
+     │
+ 469 │ var [NodeFetch2RequestInit] = [3484, () => [NotAny, NotAny, NotAny, NotAny, _$_______________node_modules__types_node_fetch_index_d_ts0.RequestInit, NotAny, NotAny, NotAny, NotAny, NotAny, NotAny], ["", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""]];
+     │                                                                             ───────────────────────────────────┬───────────────────────────────────  
+     │                                                                                                                ╰───────────────────────────────────── 
+─────╯
+
+node_modules/.pnpm/@anthropic-ai+sdk@0.91.1_zod@4.4.3/node_modules/@anthropic-ai/sdk/internal/types.d.ts (17:130) [IMPORT_IS_UNDEFINED] Import `RequestInit` will always be undefined because there is no matching export in 'node_modules/.pnpm/@types+node-fetch@2.6.13/node_modules/@types/node-fetch/index.d.ts'
+    ╭─[ node_modules/.pnpm/@anthropic-ai+sdk@0.91.1_zod@4.4.3/node_modules/@anthropic-ai/sdk/internal/types.d.ts:17:131 ]
+    │
+ 17 │ var [NodeFetch2RequestInit] = [3754, () => [_$node_fetch0.RequestInit, NotAny, _$node_fetch0.RequestInit, NotAny, NotAny, NotAny, _$_______________node_modules__types_node_fetch_index_d_ts0.RequestInit, NotAny, NotAny, NotAny, NotAny, NotAny, NotAny], ["", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""]];
+    │                                                                                                                                   ───────────────────────────────────┬───────────────────────────────────  
+    │                                                                                                                                                                      ╰───────────────────────────────────── 
+────╯
+
+[PLUGIN_TIMINGS] Your build spent 93% of 3.2s inside plugin hooks (3.0s).
+Measured inside the callback, so queue time is excluded and time the callback itself awaited is not:
+  - rolldown-plugin-dts:generate load (58%, 1.9s, 65 calls)
+Those rows are 58% of the build; the rest of the 93% is below.
+Not measurable — 3 hooks whose calls overlap, so elapsed time covers work other calls were doing. Profile with `node --cpu-prof`:
+  - tsdown:deps resolveId (2632 calls)
+  - rolldown-plugin-dts:resolver resolveId (3478 calls)
+  - rolldown-plugin-dts:fake-js transform (395 calls)
+See https://rolldown.rs/reference/InputOptions.checks#plugintimings for more details.
+
+✔ Build complete in 3276ms
+
+ RUN  v4.1.11 /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh
+      Coverage enabled with v8
+
+12:08:11 AM [vite] (ssr) Failed to load source map for /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-tools/bash.ts.
+Error: An error occurred while trying to read the map file at bash.js.map
+Error: ENOENT: no such file or directory, open '/Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-tools/bash.js.map'
+    at Object.readFileSync (node:fs:440:20)
+    at file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19675:13
+    at readFromFileMap (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19374:13)
+    at Object.exports.fromMapFileComment (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19469:12)
+    at Object.exports.fromMapFileSource (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19480:22)
+    at extractSourcemapFromFile (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19661:87)
+    at loadAndTransform (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:20637:22)
+12:08:11 AM [vite] (ssr) Failed to load source map for /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-tools/visual-truncate.ts.
+Error: An error occurred while trying to read the map file at visual-truncate.js.map
+Error: ENOENT: no such file or directory, open '/Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-tools/visual-truncate.js.map'
+    at Object.readFileSync (node:fs:440:20)
+    at file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19675:13
+    at readFromFileMap (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19374:13)
+    at Object.exports.fromMapFileComment (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19469:12)
+    at Object.exports.fromMapFileSource (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19480:22)
+    at extractSourcemapFromFile (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19661:87)
+    at loadAndTransform (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:20637:22)
+12:08:11 AM [vite] (ssr) Failed to load source map for /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-tools/child-process.ts.
+Error: An error occurred while trying to read the map file at child-process.js.map
+Error: ENOENT: no such file or directory, open '/Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-tools/child-process.js.map'
+    at Object.readFileSync (node:fs:440:20)
+    at file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19675:13
+    at readFromFileMap (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19374:13)
+    at Object.exports.fromMapFileComment (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19469:12)
+    at Object.exports.fromMapFileSource (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19480:22)
+    at extractSourcemapFromFile (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19661:87)
+    at loadAndTransform (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:20637:22)
+12:08:12 AM [vite] (ssr) Failed to load source map for /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-tools/shell.ts.
+Error: An error occurred while trying to read the map file at shell.js.map
+Error: ENOENT: no such file or directory, open '/Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-tools/shell.js.map'
+    at Object.readFileSync (node:fs:440:20)
+    at file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19675:13
+    at readFromFileMap (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19374:13)
+    at Object.exports.fromMapFileComment (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19469:12)
+    at Object.exports.fromMapFileSource (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19480:22)
+    at extractSourcemapFromFile (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19661:87)
+    at loadAndTransform (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:20637:22)
+12:08:12 AM [vite] (ssr) Failed to load source map for /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-tools/output-accumulator.ts.
+Error: An error occurred while trying to read the map file at output-accumulator.js.map
+Error: ENOENT: no such file or directory, open '/Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-tools/output-accumulator.js.map'
+    at Object.readFileSync (node:fs:440:20)
+    at file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19675:13
+    at readFromFileMap (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19374:13)
+    at Object.exports.fromMapFileComment (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19469:12)
+    at Object.exports.fromMapFileSource (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19480:22)
+    at extractSourcemapFromFile (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19661:87)
+    at loadAndTransform (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:20637:22)
+12:08:12 AM [vite] (ssr) Failed to load source map for /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-tools/truncate.ts.
+Error: An error occurred while trying to read the map file at truncate.js.map
+Error: ENOENT: no such file or directory, open '/Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-tools/truncate.js.map'
+    at Object.readFileSync (node:fs:440:20)
+    at file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19675:13
+    at readFromFileMap (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19374:13)
+    at Object.exports.fromMapFileComment (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19469:12)
+    at Object.exports.fromMapFileSource (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19480:22)
+    at extractSourcemapFromFile (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19661:87)
+    at loadAndTransform (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:20637:22)
+12:08:12 AM [vite] (ssr) Failed to load source map for /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-tools/render-utils.ts.
+Error: An error occurred while trying to read the map file at render-utils.js.map
+Error: ENOENT: no such file or directory, open '/Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-tools/render-utils.js.map'
+    at Object.readFileSync (node:fs:440:20)
+    at file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19675:13
+    at readFromFileMap (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19374:13)
+    at Object.exports.fromMapFileComment (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19469:12)
+    at Object.exports.fromMapFileSource (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19480:22)
+    at extractSourcemapFromFile (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19661:87)
+    at loadAndTransform (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:20637:22)
+12:08:12 AM [vite] (ssr) Failed to load source map for /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-tools/ansi.ts.
+Error: An error occurred while trying to read the map file at ansi.js.map
+Error: ENOENT: no such file or directory, open '/Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-tools/ansi.js.map'
+    at Object.readFileSync (node:fs:440:20)
+    at file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19675:13
+    at readFromFileMap (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19374:13)
+    at Object.exports.fromMapFileComment (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19469:12)
+    at Object.exports.fromMapFileSource (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19480:22)
+    at extractSourcemapFromFile (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19661:87)
+    at loadAndTransform (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:20637:22)
+12:08:12 AM [vite] (ssr) Failed to load source map for /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-tools/paths.ts.
+Error: An error occurred while trying to read the map file at paths.js.map
+Error: ENOENT: no such file or directory, open '/Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-tools/paths.js.map'
+    at Object.readFileSync (node:fs:440:20)
+    at file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19675:13
+    at readFromFileMap (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19374:13)
+    at Object.exports.fromMapFileComment (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19469:12)
+    at Object.exports.fromMapFileSource (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19480:22)
+    at extractSourcemapFromFile (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19661:87)
+    at loadAndTransform (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:20637:22)
+12:08:12 AM [vite] (ssr) Failed to load source map for /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-tools/tool-definition-wrapper.ts.
+Error: An error occurred while trying to read the map file at tool-definition-wrapper.js.map
+Error: ENOENT: no such file or directory, open '/Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-tools/tool-definition-wrapper.js.map'
+    at Object.readFileSync (node:fs:440:20)
+    at file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19675:13
+    at readFromFileMap (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19374:13)
+    at Object.exports.fromMapFileComment (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19469:12)
+    at Object.exports.fromMapFileSource (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19480:22)
+    at extractSourcemapFromFile (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19661:87)
+    at loadAndTransform (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:20637:22)
+12:08:12 AM [vite] (ssr) Failed to load source map for /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-tools/read.ts.
+Error: An error occurred while trying to read the map file at read.js.map
+Error: ENOENT: no such file or directory, open '/Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-tools/read.js.map'
+    at Object.readFileSync (node:fs:440:20)
+    at file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19675:13
+    at readFromFileMap (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19374:13)
+    at Object.exports.fromMapFileComment (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19469:12)
+    at Object.exports.fromMapFileSource (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19480:22)
+    at extractSourcemapFromFile (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19661:87)
+    at loadAndTransform (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:20637:22)
+12:08:12 AM [vite] (ssr) Failed to load source map for /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-tools/mime.ts.
+Error: An error occurred while trying to read the map file at mime.js.map
+Error: ENOENT: no such file or directory, open '/Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-tools/mime.js.map'
+    at Object.readFileSync (node:fs:440:20)
+    at file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19675:13
+    at readFromFileMap (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19374:13)
+    at Object.exports.fromMapFileComment (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19469:12)
+    at Object.exports.fromMapFileSource (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19480:22)
+    at extractSourcemapFromFile (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19661:87)
+    at loadAndTransform (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:20637:22)
+12:08:12 AM [vite] (ssr) Failed to load source map for /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-tools/path-utils.ts.
+Error: An error occurred while trying to read the map file at path-utils.js.map
+Error: ENOENT: no such file or directory, open '/Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-tools/path-utils.js.map'
+    at Object.readFileSync (node:fs:440:20)
+    at file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19675:13
+    at readFromFileMap (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19374:13)
+    at Object.exports.fromMapFileComment (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19469:12)
+    at Object.exports.fromMapFileSource (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19480:22)
+    at extractSourcemapFromFile (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19661:87)
+    at loadAndTransform (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:20637:22)
+12:08:12 AM [vite] (ssr) Failed to load source map for /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-tools/edit.ts.
+Error: An error occurred while trying to read the map file at edit.js.map
+Error: ENOENT: no such file or directory, open '/Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-tools/edit.js.map'
+    at Object.readFileSync (node:fs:440:20)
+    at file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19675:13
+    at readFromFileMap (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19374:13)
+    at Object.exports.fromMapFileComment (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19469:12)
+    at Object.exports.fromMapFileSource (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19480:22)
+    at extractSourcemapFromFile (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19661:87)
+    at loadAndTransform (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:20637:22)
+12:08:12 AM [vite] (ssr) Failed to load source map for /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-tools/diff-component.ts.
+Error: An error occurred while trying to read the map file at diff.js.map
+Error: ENOENT: no such file or directory, open '/Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-tools/diff.js.map'
+    at Object.readFileSync (node:fs:440:20)
+    at file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19675:13
+    at readFromFileMap (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19374:13)
+    at Object.exports.fromMapFileComment (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19469:12)
+    at Object.exports.fromMapFileSource (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19480:22)
+    at extractSourcemapFromFile (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19661:87)
+    at loadAndTransform (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:20637:22)
+12:08:12 AM [vite] (ssr) Failed to load source map for /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-tools/edit-diff.ts.
+Error: An error occurred while trying to read the map file at edit-diff.js.map
+Error: ENOENT: no such file or directory, open '/Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-tools/edit-diff.js.map'
+    at Object.readFileSync (node:fs:440:20)
+    at file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19675:13
+    at readFromFileMap (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19374:13)
+    at Object.exports.fromMapFileComment (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19469:12)
+    at Object.exports.fromMapFileSource (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19480:22)
+    at extractSourcemapFromFile (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19661:87)
+    at loadAndTransform (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:20637:22)
+12:08:12 AM [vite] (ssr) Failed to load source map for /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-tools/file-mutation-queue.ts.
+Error: An error occurred while trying to read the map file at file-mutation-queue.js.map
+Error: ENOENT: no such file or directory, open '/Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-tools/file-mutation-queue.js.map'
+    at Object.readFileSync (node:fs:440:20)
+    at file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19675:13
+    at readFromFileMap (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19374:13)
+    at Object.exports.fromMapFileComment (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19469:12)
+    at Object.exports.fromMapFileSource (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19480:22)
+    at extractSourcemapFromFile (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19661:87)
+    at loadAndTransform (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:20637:22)
+12:08:12 AM [vite] (ssr) Failed to load source map for /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-tools/write.ts.
+Error: An error occurred while trying to read the map file at write.js.map
+Error: ENOENT: no such file or directory, open '/Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-tools/write.js.map'
+    at Object.readFileSync (node:fs:440:20)
+    at file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19675:13
+    at readFromFileMap (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19374:13)
+    at Object.exports.fromMapFileComment (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19469:12)
+    at Object.exports.fromMapFileSource (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19480:22)
+    at extractSourcemapFromFile (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19661:87)
+    at loadAndTransform (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:20637:22)
+12:08:12 AM [vite] (ssr) Failed to load source map for /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-tools/grep.ts.
+Error: An error occurred while trying to read the map file at grep.js.map
+Error: ENOENT: no such file or directory, open '/Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-tools/grep.js.map'
+    at Object.readFileSync (node:fs:440:20)
+    at file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19675:13
+    at readFromFileMap (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19374:13)
+    at Object.exports.fromMapFileComment (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19469:12)
+    at Object.exports.fromMapFileSource (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19480:22)
+    at extractSourcemapFromFile (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19661:87)
+    at loadAndTransform (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:20637:22)
+12:08:12 AM [vite] (ssr) Failed to load source map for /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-tools/find.ts.
+Error: An error occurred while trying to read the map file at find.js.map
+Error: ENOENT: no such file or directory, open '/Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-tools/find.js.map'
+    at Object.readFileSync (node:fs:440:20)
+    at file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19675:13
+    at readFromFileMap (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19374:13)
+    at Object.exports.fromMapFileComment (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19469:12)
+    at Object.exports.fromMapFileSource (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19480:22)
+    at extractSourcemapFromFile (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19661:87)
+    at loadAndTransform (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:20637:22)
+12:08:12 AM [vite] (ssr) Failed to load source map for /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-tools/ls.ts.
+Error: An error occurred while trying to read the map file at ls.js.map
+Error: ENOENT: no such file or directory, open '/Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-tools/ls.js.map'
+    at Object.readFileSync (node:fs:440:20)
+    at file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19675:13
+    at readFromFileMap (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19374:13)
+    at Object.exports.fromMapFileComment (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19469:12)
+    at Object.exports.fromMapFileSource (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19480:22)
+    at extractSourcemapFromFile (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19661:87)
+    at loadAndTransform (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:20637:22)
+12:08:12 AM [vite] (ssr) Failed to load source map for /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-ai-lazy.ts.
+Error: An error occurred while trying to read the map file at lazy.js.map
+Error: ENOENT: no such file or directory, open '/Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/lazy.js.map'
+    at Object.readFileSync (node:fs:440:20)
+    at file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19675:13
+    at readFromFileMap (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19374:13)
+    at Object.exports.fromMapFileComment (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19469:12)
+    at Object.exports.fromMapFileSource (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19480:22)
+    at extractSourcemapFromFile (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19661:87)
+    at loadAndTransform (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:20637:22)
+12:08:12 AM [vite] (ssr) Failed to load source map for /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-ai-event-stream.ts.
+Error: An error occurred while trying to read the map file at event-stream.js.map
+Error: ENOENT: no such file or directory, open '/Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/event-stream.js.map'
+    at Object.readFileSync (node:fs:440:20)
+    at file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19675:13
+    at readFromFileMap (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19374:13)
+    at Object.exports.fromMapFileComment (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19469:12)
+    at Object.exports.fromMapFileSource (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19480:22)
+    at extractSourcemapFromFile (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19661:87)
+    at loadAndTransform (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:20637:22)
+12:08:12 AM [vite] (ssr) Failed to load source map for /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-oauth-flows/openai-codex.ts.
+Error: An error occurred while trying to read the map file at openai-codex.js.map
+Error: ENOENT: no such file or directory, open '/Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-oauth-flows/openai-codex.js.map'
+    at Object.readFileSync (node:fs:440:20)
+    at file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19675:13
+    at readFromFileMap (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19374:13)
+    at Object.exports.fromMapFileComment (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19469:12)
+    at Object.exports.fromMapFileSource (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19480:22)
+    at extractSourcemapFromFile (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19661:87)
+    at loadAndTransform (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:20637:22)
+12:08:12 AM [vite] (ssr) Failed to load source map for /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-oauth-flows/provider-env.ts.
+Error: An error occurred while trying to read the map file at provider-env.js.map
+Error: ENOENT: no such file or directory, open '/Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-oauth-flows/provider-env.js.map'
+    at Object.readFileSync (node:fs:440:20)
+    at file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19675:13
+    at readFromFileMap (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19374:13)
+    at Object.exports.fromMapFileComment (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19469:12)
+    at Object.exports.fromMapFileSource (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19480:22)
+    at extractSourcemapFromFile (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19661:87)
+    at loadAndTransform (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:20637:22)
+12:08:12 AM [vite] (ssr) Failed to load source map for /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-oauth-flows/device-code.ts.
+Error: An error occurred while trying to read the map file at device-code.js.map
+Error: ENOENT: no such file or directory, open '/Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-oauth-flows/device-code.js.map'
+    at Object.readFileSync (node:fs:440:20)
+    at file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19675:13
+    at readFromFileMap (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19374:13)
+    at Object.exports.fromMapFileComment (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19469:12)
+    at Object.exports.fromMapFileSource (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19480:22)
+    at extractSourcemapFromFile (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19661:87)
+    at loadAndTransform (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:20637:22)
+12:08:12 AM [vite] (ssr) Failed to load source map for /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-oauth-flows/oauth-page.ts.
+Error: An error occurred while trying to read the map file at oauth-page.js.map
+Error: ENOENT: no such file or directory, open '/Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-oauth-flows/oauth-page.js.map'
+    at Object.readFileSync (node:fs:440:20)
+    at file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19675:13
+    at readFromFileMap (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19374:13)
+    at Object.exports.fromMapFileComment (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19469:12)
+    at Object.exports.fromMapFileSource (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19480:22)
+    at extractSourcemapFromFile (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19661:87)
+    at loadAndTransform (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:20637:22)
+12:08:12 AM [vite] (ssr) Failed to load source map for /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-oauth-flows/pkce.ts.
+Error: An error occurred while trying to read the map file at pkce.js.map
+Error: ENOENT: no such file or directory, open '/Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-oauth-flows/pkce.js.map'
+    at Object.readFileSync (node:fs:440:20)
+    at file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19675:13
+    at readFromFileMap (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19374:13)
+    at Object.exports.fromMapFileComment (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19469:12)
+    at Object.exports.fromMapFileSource (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19480:22)
+    at extractSourcemapFromFile (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19661:87)
+    at loadAndTransform (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:20637:22)
+12:08:12 AM [vite] (ssr) Failed to load source map for /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-oauth-flows/anthropic.ts.
+Error: An error occurred while trying to read the map file at anthropic.js.map
+Error: ENOENT: no such file or directory, open '/Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-oauth-flows/anthropic.js.map'
+    at Object.readFileSync (node:fs:440:20)
+    at file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19675:13
+    at readFromFileMap (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19374:13)
+    at Object.exports.fromMapFileComment (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19469:12)
+    at Object.exports.fromMapFileSource (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19480:22)
+    at extractSourcemapFromFile (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19661:87)
+    at loadAndTransform (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:20637:22)
+12:08:12 AM [vite] (ssr) Failed to load source map for /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-oauth-flows/github-copilot.ts.
+Error: An error occurred while trying to read the map file at github-copilot.js.map
+Error: ENOENT: no such file or directory, open '/Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-oauth-flows/github-copilot.js.map'
+    at Object.readFileSync (node:fs:440:20)
+    at file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19675:13
+    at readFromFileMap (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19374:13)
+    at Object.exports.fromMapFileComment (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19469:12)
+    at Object.exports.fromMapFileSource (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19480:22)
+    at extractSourcemapFromFile (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19661:87)
+    at loadAndTransform (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:20637:22)
+12:08:12 AM [vite] (ssr) Failed to load source map for /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-oauth-flows/github-copilot.models.ts.
+Error: An error occurred while trying to read the map file at github-copilot.models.js.map
+Error: ENOENT: no such file or directory, open '/Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-oauth-flows/github-copilot.models.js.map'
+    at Object.readFileSync (node:fs:440:20)
+    at file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19675:13
+    at readFromFileMap (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19374:13)
+    at Object.exports.fromMapFileComment (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19469:12)
+    at Object.exports.fromMapFileSource (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19480:22)
+    at extractSourcemapFromFile (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19661:87)
+    at loadAndTransform (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:20637:22)
+12:08:12 AM [vite] (ssr) Failed to load source map for /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-oauth-flows/model-catalog.ts.
+Error: An error occurred while trying to read the map file at model-catalog.js.map
+Error: ENOENT: no such file or directory, open '/Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-oauth-flows/model-catalog.js.map'
+    at Object.readFileSync (node:fs:440:20)
+    at file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19675:13
+    at readFromFileMap (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19374:13)
+    at Object.exports.fromMapFileComment (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19469:12)
+    at Object.exports.fromMapFileSource (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19480:22)
+    at extractSourcemapFromFile (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19661:87)
+    at loadAndTransform (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:20637:22)
+12:08:12 AM [vite] (ssr) Failed to load source map for /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-oauth-flows/kimi-coding.ts.
+Error: An error occurred while trying to read the map file at kimi-coding.js.map
+Error: ENOENT: no such file or directory, open '/Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-oauth-flows/kimi-coding.js.map'
+    at Object.readFileSync (node:fs:440:20)
+    at file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19675:13
+    at readFromFileMap (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19374:13)
+    at Object.exports.fromMapFileComment (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19469:12)
+    at Object.exports.fromMapFileSource (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19480:22)
+    at extractSourcemapFromFile (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19661:87)
+    at loadAndTransform (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:20637:22)
+12:08:12 AM [vite] (ssr) Failed to load source map for /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-ai-credential-store.ts.
+Error: An error occurred while trying to read the map file at credential-store.js.map
+Error: ENOENT: no such file or directory, open '/Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/credential-store.js.map'
+    at Object.readFileSync (node:fs:440:20)
+    at file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19675:13
+    at readFromFileMap (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19374:13)
+    at Object.exports.fromMapFileComment (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19469:12)
+    at Object.exports.fromMapFileSource (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19480:22)
+    at extractSourcemapFromFile (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19661:87)
+    at loadAndTransform (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:20637:22)
+12:08:12 AM [vite] (ssr) Failed to load source map for /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-ai-abort.ts.
+Error: An error occurred while trying to read the map file at abort.js.map
+Error: ENOENT: no such file or directory, open '/Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/abort.js.map'
+    at Object.readFileSync (node:fs:440:20)
+    at file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19675:13
+    at readFromFileMap (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19374:13)
+    at Object.exports.fromMapFileComment (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19469:12)
+    at Object.exports.fromMapFileSource (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19480:22)
+    at extractSourcemapFromFile (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19661:87)
+    at loadAndTransform (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:20637:22)
+12:08:12 AM [vite] (ssr) Failed to load source map for /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-ai-auth-resolve.ts.
+Error: An error occurred while trying to read the map file at resolve.js.map
+Error: ENOENT: no such file or directory, open '/Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/resolve.js.map'
+    at Object.readFileSync (node:fs:440:20)
+    at file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19675:13
+    at readFromFileMap (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19374:13)
+    at Object.exports.fromMapFileComment (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19469:12)
+    at Object.exports.fromMapFileSource (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19480:22)
+    at extractSourcemapFromFile (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19661:87)
+    at loadAndTransform (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:20637:22)
+12:08:12 AM [vite] (ssr) Failed to load source map for /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/pi-ai-diagnostics.ts.
+Error: An error occurred while trying to read the map file at diagnostics.js.map
+Error: ENOENT: no such file or directory, open '/Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/src/compat/vendor/diagnostics.js.map'
+    at Object.readFileSync (node:fs:440:20)
+    at file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19675:13
+    at readFromFileMap (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19374:13)
+    at Object.exports.fromMapFileComment (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19469:12)
+    at Object.exports.fromMapFileSource (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19480:22)
+    at extractSourcemapFromFile (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:19661:87)
+    at loadAndTransform (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/vite@8.2.2_@types+node@24.13.3_jiti@2.7.0_yaml@2.9.0/node_modules/vite/dist/node/chunks/node.js:20637:22)
+
+ Test Files  35 passed (35)
+      Tests  364 passed (364)
+   Start at  00:08:11
+   Duration  6.83s (transform 3.85s, setup 0ms, import 18.36s, tests 15.47s, environment 2ms)
+
+ % Coverage report from v8
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------------|---------|----------|---------|---------|-------------------
+All files          |   71.01 |    61.75 |   63.26 |   74.82 |                   
+ src               |   74.51 |    63.26 |   73.77 |   78.57 |                   
+  analyzer.ts      |   81.27 |    75.92 |     100 |   81.93 | ...01,410,416-423 
+  ansi.ts          |   97.43 |    92.18 |     100 |     100 | 48,115,119,122    
+  ...r-surfaces.ts |   90.33 |    77.51 |     100 |   92.22 | ...60,801,849-851 
+  capability.ts    |      90 |    77.77 |   92.85 |   89.18 | 133-137           
+  cli.ts           |       0 |        0 |       0 |       0 | 12-112            
+  client.ts        |       0 |        0 |       0 |       0 | 134-1130          
+  compatibility.ts |     100 |       70 |     100 |     100 | 592,603-604       
+  ...ials-oauth.ts |       0 |        0 |       0 |       0 | 25-160            
+  ...tics-model.ts |   96.22 |    91.42 |     100 |     100 | 86-90,105         
+  dsh-content.ts   |       0 |        0 |       0 |       0 | 5-16              
+  engine.ts        |   86.34 |    74.43 |   83.33 |   89.06 | ...73,612,638-639 
+  host.ts          |   73.17 |    55.17 |   91.66 |   76.71 | ...09,213-216,219 
+  index.ts         |       0 |      100 |       0 |       0 | 18-19             
+  mcp-config.ts    |    91.5 |     81.7 |     100 |   96.66 | 80,92,204         
+  model-bridge.ts  |   82.68 |    64.33 |   89.47 |    86.5 | ...97,652,728-729 
+  module-graph.ts  |   64.83 |     58.7 |   89.65 |   73.26 | ...09-314,343-344 
+  oauth-bridge.ts  |   89.51 |    81.39 |   81.81 |   92.45 | ...38,357,387,422 
+  pi-cli-bridge.ts |   86.77 |    71.64 |    92.3 |   98.85 | 47                
+  ...li-client.mjs |       0 |        0 |       0 |       0 | 3-25              
+  ...nent-relay.ts |   72.88 |    55.55 |    87.5 |      76 | ...,88-89,135-141 
+  ...on-surface.ts |   69.47 |     57.5 |   92.85 |   76.19 | ...29-230,240-241 
+  ...er-adapter.ts |   85.08 |    76.36 |   86.44 |    87.2 | ...16,723-726,754 
+  runtime.ts       |   77.02 |    62.32 |   75.14 |   81.52 | ...5987,6009-6018 
+  ...ion-bridge.ts |   91.41 |    74.77 |   95.83 |   94.75 | ...74,395,486,589 
+  ...ion-events.ts |     100 |     87.5 |     100 |     100 | 24                
+  source.ts        |   81.42 |    82.29 |     100 |   82.92 | ...78,216,245-255 
+  ...ent-bridge.ts |   84.53 |    74.11 |   78.08 |    87.5 | ...9,902-910,1012 
+  tui-surfaces.ts  |   80.55 |    72.54 |   86.04 |   88.19 | ...87-292,298,300 
+ src/compat        |   27.35 |    25.22 |   22.29 |   29.03 |                   
+  pi-ai.ts         |   52.21 |    42.37 |   53.33 |   62.06 | ...87-309,320,357 
+  ...ding-agent.ts |   23.07 |    24.75 |   15.85 |   23.89 | ...1028,1041-1168 
+  pi-tui.ts        |   17.05 |     10.6 |   19.04 |   17.24 | ...96-411,426-626 
+-------------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ===============================
+Statements   : 71.01% ( 5080/7153 )
+Branches     : 61.75% ( 3513/5689 )
+Functions    : 63.26% ( 973/1538 )
+Lines        : 74.82% ( 4527/6050 )
+================================================================================
+
+> pi2dsh@0.24.0 check:docs /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh
+> pnpm build && node scripts/generate-capability-docs.mjs --check
+
+
+> pi2dsh@0.24.0 build /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh
+> tsdown
+
+ℹ tsdown v0.22.14 powered by rolldown v1.2.5
+ℹ config file: /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/tsdown.config.ts 
+ℹ entry: src/index.ts, src/runtime.ts, src/host.ts, src/cli.ts, src/credentials-oauth.ts, src/compat/pi-coding-agent.ts, src/compat/pi-tui.ts, src/compat/pi-ai.ts
+ℹ target: node22.19.0
+ℹ tsconfig: tsconfig.json
+ℹ entry: dsh-x/src/client.ts
+ℹ target: node22.19.0
+ℹ tsconfig: tsconfig.json
+
+ WARN  `external` is deprecated. Use `deps.neverBundle` instead.
+
+ℹ Build start
+
+ WARN  We recommend using the ESM format instead of CommonJS.
+The ESM format is compatible with modern platforms and runtimes, and most new libraries are now distributed only in ESM format.
+Learn more at https://nodejs.org/en/learn/modules/publishing-a-package#how-did-we-get-here
+
+ℹ Cleaning 115 files
+ℹ [CJS] dsh-x/client.js  93.73 kB │ gzip: 21.94 kB
+ℹ [CJS] 1 files, total: 93.73 kB
+✔ Build complete in 1965ms
+(rolldown-plugin-dts:fake-js plugin) /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/@types+node-fetch@2.6.13/node_modules/@types/node-fetch/index.d.ts uses CommonJS dts syntax. CommonJS dts modules cannot be bundled by rolldown-plugin-dts. Please mark this module as external in your Rolldown config.
+(rolldown-plugin-dts:fake-js plugin) /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/form-data@4.0.6/node_modules/form-data/index.d.ts uses CommonJS dts syntax. CommonJS dts modules cannot be bundled by rolldown-plugin-dts. Please mark this module as external in your Rolldown config.
+ℹ Hint: consider adding deps.onlyBundle option to avoid unintended bundling of dependencies, or set deps.onlyBundle: false to disable this hint.
+See more at https://tsdown.dev/options/dependencies#deps-onlybundle
+Detected dependencies in bundle:
+- @anthropic-ai/sdk
+- @earendil-works/pi-ai
+- ms
+- debug
+- has-flag
+- supports-color
+- agent-base
+- https-proxy-agent
+- retry
+- p-retry
+- extend
+- gaxios
+- bignumber.js
+- json-bigint
+- gcp-metadata
+- google-logging-utils
+- base64-js
+- google-auth-library
+- safe-buffer
+- ecdsa-sig-formatter
+- jws
+- buffer-equal-constant-time
+- jwa
+- ws
+- @google/genai
+- partial-json
+- @mistralai/mistralai
+- zod
+- zod-to-json-schema
+- node-fetch
+- openai
+- @opentelemetry/api
+- @opentelemetry/semantic-conventions
+- undici-types
+- undici
+- @earendil-works/pi-telemetry
+- data-uri-to-buffer
+- web-streams-polyfill
+- fetch-blob
+- formdata-polyfill
+- node-domexception
+ℹ [ESM] Granting execute permission to dist/cli.d.mts
+ℹ [ESM] Granting execute permission to dist/cli.mjs
+ℹ [ESM] dist/index.mjs                                  17.20 kB │ gzip:   5.82 kB
+ℹ [ESM] dist/host.mjs                                    6.26 kB │ gzip:   2.33 kB
+ℹ [ESM] dist/compat/pi-coding-agent.mjs                  6.20 kB │ gzip:   1.88 kB
+ℹ [ESM] dist/credentials-oauth.mjs                       4.72 kB │ gzip:   1.46 kB
+ℹ [ESM] dist/cli.mjs                                     4.08 kB │ gzip:   1.73 kB
+ℹ [ESM] dist/compat/pi-tui.mjs                           2.83 kB │ gzip:   1.05 kB
+ℹ [ESM] dist/compat/pi-ai.mjs                            2.54 kB │ gzip:   0.82 kB
+ℹ [ESM] dist/runtime.mjs                                 0.48 kB │ gzip:   0.23 kB
+ℹ [ESM] dist/mistral-conversations-D-Kf38nj.mjs.map      3.54 MB
+ℹ [ESM] dist/google-shared-LEpwok5n.mjs.map              2.23 MB
+ℹ [ESM] dist/mistral-conversations-D-Kf38nj.mjs          1.47 MB
+ℹ [ESM] dist/otel-EL651-JR.mjs.map                       1.23 MB
+ℹ [ESM] dist/google-shared-LEpwok5n.mjs                  1.20 MB
+ℹ [ESM] dist/otel-EL651-JR.mjs                           1.18 MB
+ℹ [ESM] dist/runtime-B3N7s93Q.mjs.map                  759.03 kB │ gzip: 203.87 kB
+ℹ [ESM] dist/pi-coding-agent-lcNs9Wos.mjs.map          532.25 kB │ gzip: 123.84 kB
+ℹ [ESM] dist/openai-DkzRh5_G.mjs.map                   492.09 kB │ gzip:  93.57 kB
+ℹ [ESM] dist/anthropic-messages-CaYTgvLF.mjs.map       465.12 kB │ gzip:  88.57 kB
+ℹ [ESM] dist/src-ChZlNrRV.mjs.map                      405.65 kB │ gzip:  78.66 kB
+ℹ [ESM] dist/runtime-B3N7s93Q.mjs                      339.31 kB │ gzip:  90.58 kB
+ℹ [ESM] dist/pi-tui-DruSeKmd.mjs.map                   300.53 kB │ gzip:  68.30 kB
+ℹ [ESM] dist/pi-coding-agent-lcNs9Wos.mjs              255.04 kB │ gzip:  63.74 kB
+ℹ [ESM] dist/openai-DkzRh5_G.mjs                       252.41 kB │ gzip:  51.65 kB
+ℹ [ESM] dist/anthropic-messages-CaYTgvLF.mjs           239.81 kB │ gzip:  50.63 kB
+ℹ [ESM] dist/src-ChZlNrRV.mjs                          214.17 kB │ gzip:  40.66 kB
+ℹ [ESM] dist/pi-ai-Cy_BRMmd.mjs.map                    186.39 kB │ gzip:  44.40 kB
+ℹ [ESM] dist/pi-tui-DruSeKmd.mjs                       139.46 kB │ gzip:  34.82 kB
+ℹ [ESM] dist/pi-ai-Cy_BRMmd.mjs                        121.09 kB │ gzip:  27.52 kB
+ℹ [ESM] dist/compatibility-DS6POFZD.mjs.map             93.30 kB │ gzip:  27.51 kB
+ℹ [ESM] dist/openai-codex-responses-DedxQjNG.mjs.map    90.81 kB │ gzip:  21.27 kB
+ℹ [ESM] dist/openai-completions-DrjrWRdX.mjs.map        85.11 kB │ gzip:  19.00 kB
+ℹ [ESM] dist/compatibility-DS6POFZD.mjs                 78.11 kB │ gzip:  24.02 kB
+ℹ [ESM] dist/dist-QBBA-dL_.mjs.map                      70.63 kB │ gzip:  18.99 kB
+ℹ [ESM] dist/analyzer-DbgL3neo.mjs.map                  64.83 kB │ gzip:  15.05 kB
+ℹ [ESM] dist/simple-options-B_GO8FDE.mjs.map            57.89 kB │ gzip:  13.73 kB
+ℹ [ESM] dist/openai-codex-responses-DedxQjNG.mjs        46.77 kB │ gzip:  12.08 kB
+ℹ [ESM] dist/oauth-bridge-C_MAPMGA.mjs.map              43.69 kB │ gzip:  13.01 kB
+ℹ [ESM] dist/openai-responses-shared-BmnSvdKL.mjs.map   43.50 kB │ gzip:   9.40 kB
+ℹ [ESM] dist/openai-completions-DrjrWRdX.mjs            41.67 kB │ gzip:   9.62 kB
+ℹ [ESM] dist/index.mjs.map                              40.10 kB │ gzip:  12.91 kB
+ℹ [ESM] dist/dist-QBBA-dL_.mjs                          37.61 kB │ gzip:  10.56 kB
+ℹ [ESM] dist/analyzer-DbgL3neo.mjs                      32.92 kB │ gzip:   7.31 kB
+ℹ [ESM] dist/google-vertex-BgGRE4WU.mjs.map             29.33 kB │ gzip:   7.03 kB
+ℹ [ESM] dist/google-generative-ai-DYSbNJT7.mjs.map      26.27 kB │ gzip:   6.03 kB
+ℹ [ESM] dist/pi-ai-BHgA3JWd.d.mts.map                   25.96 kB │ gzip:   5.36 kB
+ℹ [ESM] dist/json-parse-CZ0U0sj_.mjs.map                22.34 kB │ gzip:   5.66 kB
+ℹ [ESM] dist/openai-responses-shared-BmnSvdKL.mjs       21.02 kB │ gzip:   5.00 kB
+ℹ [ESM] dist/simple-options-B_GO8FDE.mjs                18.41 kB │ gzip:   5.18 kB
+ℹ [ESM] dist/pi-messages-D61G2tgs.mjs.map               18.19 kB │ gzip:   4.95 kB
+ℹ [ESM] dist/oauth-bridge-C_MAPMGA.mjs                  17.47 kB │ gzip:   5.36 kB
+ℹ [ESM] dist/multipart-parser-BOEZ-KGK.mjs.map          16.91 kB │ gzip:   4.72 kB
+ℹ [ESM] dist/source-l77aIDwD.mjs.map                    15.83 kB │ gzip:   5.01 kB
+ℹ [ESM] dist/azure-openai-responses-HKWkzl2m.mjs.map    15.78 kB │ gzip:   4.76 kB
+ℹ [ESM] dist/google-vertex-BgGRE4WU.mjs                 14.47 kB │ gzip:   3.96 kB
+ℹ [ESM] dist/host.mjs.map                               14.20 kB │ gzip:   4.95 kB
+ℹ [ESM] dist/mcp-config-C1K-IzzB.mjs.map                12.81 kB │ gzip:   4.16 kB
+ℹ [ESM] dist/json-parse-CZ0U0sj_.mjs                    12.51 kB │ gzip:   3.62 kB
+ℹ [ESM] dist/google-generative-ai-DYSbNJT7.mjs          12.42 kB │ gzip:   3.26 kB
+ℹ [ESM] dist/credentials-oauth.mjs.map                  11.03 kB │ gzip:   3.47 kB
+ℹ [ESM] dist/pi-messages-D61G2tgs.mjs                    9.79 kB │ gzip:   3.13 kB
+ℹ [ESM] dist/multipart-parser-BOEZ-KGK.mjs               8.90 kB │ gzip:   2.63 kB
+ℹ [ESM] dist/pi-coding-agent-Cas0oHSx.d.mts.map          8.84 kB │ gzip:   2.81 kB
+ℹ [ESM] dist/azure-openai-responses-HKWkzl2m.mjs         8.83 kB │ gzip:   2.86 kB
+ℹ [ESM] dist/error-body-DKA3lknR.mjs.map                 8.05 kB │ gzip:   2.93 kB
+ℹ [ESM] dist/source-l77aIDwD.mjs                         7.45 kB │ gzip:   2.40 kB
+ℹ [ESM] dist/cli.mjs.map                                 7.11 kB │ gzip:   2.59 kB
+ℹ [ESM] dist/runtime.d.mts.map                           6.50 kB │ gzip:   2.30 kB
+ℹ [ESM] dist/pi-tui-iHoF2tFc.d.mts.map                   6.47 kB │ gzip:   2.06 kB
+ℹ [ESM] dist/provider-retry-Cw6YJ4cr.mjs.map             6.22 kB │ gzip:   2.26 kB
+ℹ [ESM] dist/mcp-config-C1K-IzzB.mjs                     6.19 kB │ gzip:   2.19 kB
+ℹ [ESM] dist/error-body-DKA3lknR.mjs                     4.70 kB │ gzip:   1.87 kB
+ℹ [ESM] dist/event-stream-QxN1yvIF.mjs.map               3.90 kB │ gzip:   1.37 kB
+ℹ [ESM] dist/provider-retry-Cw6YJ4cr.mjs                 3.56 kB │ gzip:   1.43 kB
+ℹ [ESM] dist/provider-env-C72pF4vP.mjs.map               2.61 kB │ gzip:   1.25 kB
+ℹ [ESM] dist/deferred-tools-BD4g5QUx.mjs.map             2.49 kB │ gzip:   1.02 kB
+ℹ [ESM] dist/pi-config-shim-CZ1wFzqM.mjs.map             1.97 kB │ gzip:   0.92 kB
+ℹ [ESM] dist/github-copilot-headers-CZo2QHrt.mjs.map     1.96 kB │ gzip:   0.87 kB
+ℹ [ESM] dist/diagnostics-BqYkodgB.mjs.map                1.83 kB │ gzip:   0.80 kB
+ℹ [ESM] dist/event-stream-QxN1yvIF.mjs                   1.75 kB │ gzip:   0.72 kB
+ℹ [ESM] dist/rolldown-runtime-CTfmNlz1.mjs               1.75 kB │ gzip:   0.82 kB
+ℹ [ESM] dist/provider-env-C72pF4vP.mjs                   1.68 kB │ gzip:   0.93 kB
+ℹ [ESM] dist/deferred-tools-BD4g5QUx.mjs                 1.42 kB │ gzip:   0.64 kB
+ℹ [ESM] dist/hash-Dbggamac.mjs.map                       1.29 kB │ gzip:   0.62 kB
+ℹ [ESM] dist/diagnostics-BqYkodgB.mjs                    1.14 kB │ gzip:   0.52 kB
+ℹ [ESM] dist/headers-CPzZhJQn.mjs.map                    1.12 kB │ gzip:   0.55 kB
+ℹ [ESM] dist/index.d.mts.map                             1.07 kB │ gzip:   0.52 kB
+ℹ [ESM] dist/github-copilot-headers-CZo2QHrt.mjs         1.02 kB │ gzip:   0.51 kB
+ℹ [ESM] dist/pi-config-shim-CZ1wFzqM.mjs                 0.98 kB │ gzip:   0.47 kB
+ℹ [ESM] dist/openai-prompt-cache-BDWtZRKh.mjs.map        0.86 kB │ gzip:   0.51 kB
+ℹ [ESM] dist/hash-Dbggamac.mjs                           0.72 kB │ gzip:   0.44 kB
+ℹ [ESM] dist/headers-CPzZhJQn.mjs                        0.65 kB │ gzip:   0.35 kB
+ℹ [ESM] dist/credentials-oauth.d.mts.map                 0.51 kB │ gzip:   0.30 kB
+ℹ [ESM] dist/oauth-bridge-hOnT3acY.d.mts.map             0.44 kB │ gzip:   0.29 kB
+ℹ [ESM] dist/pi-types-KazmR2O5.d.mts.map                 0.44 kB │ gzip:   0.23 kB
+ℹ [ESM] dist/host.d.mts.map                              0.40 kB │ gzip:   0.27 kB
+ℹ [ESM] dist/types-B9VBF8le.d.mts.map                    0.36 kB │ gzip:   0.20 kB
+ℹ [ESM] dist/openai-prompt-cache-BDWtZRKh.mjs            0.30 kB │ gzip:   0.23 kB
+ℹ [ESM] dist/runtime.d.mts                              48.93 kB │ gzip:  15.28 kB
+ℹ [ESM] dist/index.d.mts                                 8.63 kB │ gzip:   3.33 kB
+ℹ [ESM] dist/compat/pi-coding-agent.d.mts                8.38 kB │ gzip:   2.39 kB
+ℹ [ESM] dist/compat/pi-tui.d.mts                         5.23 kB │ gzip:   1.68 kB
+ℹ [ESM] dist/compat/pi-ai.d.mts                          3.27 kB │ gzip:   1.03 kB
+ℹ [ESM] dist/host.d.mts                                  2.42 kB │ gzip:   1.03 kB
+ℹ [ESM] dist/credentials-oauth.d.mts                     1.93 kB │ gzip:   0.72 kB
+ℹ [ESM] dist/cli.d.mts                                   0.03 kB │ gzip:   0.05 kB
+ℹ [ESM] dist/pi-ai-BHgA3JWd.d.mts                      137.13 kB │ gzip:  32.51 kB
+ℹ [ESM] dist/pi-coding-agent-Cas0oHSx.d.mts             59.72 kB │ gzip:  15.13 kB
+ℹ [ESM] dist/pi-tui-iHoF2tFc.d.mts                      39.60 kB │ gzip:   9.71 kB
+ℹ [ESM] dist/pi-types-KazmR2O5.d.mts                     1.53 kB │ gzip:   0.49 kB
+ℹ [ESM] dist/oauth-bridge-hOnT3acY.d.mts                 1.39 kB │ gzip:   0.58 kB
+ℹ [ESM] dist/types-B9VBF8le.d.mts                        1.37 kB │ gzip:   0.55 kB
+ℹ [ESM] 111 files, total: 17.18 MB
+node_modules/.pnpm/openai@6.26.0_ws@8.21.3_zod@4.4.3/node_modules/openai/internal/types.d.ts (14:68) [IMPORT_IS_UNDEFINED] Import `RequestInit` will always be undefined because there is no matching export in 'node_modules/.pnpm/@types+node-fetch@2.6.13/node_modules/@types/node-fetch/index.d.ts'
+    ╭─[ node_modules/.pnpm/openai@6.26.0_ws@8.21.3_zod@4.4.3/node_modules/openai/internal/types.d.ts:14:69 ]
+    │
+ 14 │ var [NodeFetch2RequestInit] = [3693, () => [NotAny, NotAny, NotAny, _$____________node_modules__types_node_fetch_index_d_ts0.RequestInit, NotAny, NotAny, NotAny, NotAny, NotAny, NotAny, NotAny], ["", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""]];
+    │                                                                     ──────────────────────────────────┬─────────────────────────────────  
+    │                                                                                                       ╰─────────────────────────────────── 
+────╯
+
+node_modules/.pnpm/@google+genai@1.52.0/node_modules/@google/genai/dist/genai.d.ts (469:76) [IMPORT_IS_UNDEFINED] Import `RequestInit` will always be undefined because there is no matching export in 'node_modules/.pnpm/@types+node-fetch@2.6.13/node_modules/@types/node-fetch/index.d.ts'
+     ╭─[ node_modules/.pnpm/@google+genai@1.52.0/node_modules/@google/genai/dist/genai.d.ts:469:77 ]
+     │
+ 469 │ var [NodeFetch2RequestInit] = [3259, () => [NotAny, NotAny, NotAny, NotAny, _$_______________node_modules__types_node_fetch_index_d_ts0.RequestInit, NotAny, NotAny, NotAny, NotAny, NotAny, NotAny], ["", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""]];
+     │                                                                             ───────────────────────────────────┬───────────────────────────────────  
+     │                                                                                                                ╰───────────────────────────────────── 
+─────╯
+
+node_modules/.pnpm/@anthropic-ai+sdk@0.91.1_zod@4.4.3/node_modules/@anthropic-ai/sdk/internal/types.d.ts (17:130) [IMPORT_IS_UNDEFINED] Import `RequestInit` will always be undefined because there is no matching export in 'node_modules/.pnpm/@types+node-fetch@2.6.13/node_modules/@types/node-fetch/index.d.ts'
+    ╭─[ node_modules/.pnpm/@anthropic-ai+sdk@0.91.1_zod@4.4.3/node_modules/@anthropic-ai/sdk/internal/types.d.ts:17:131 ]
+    │
+ 17 │ var [NodeFetch2RequestInit] = [3816, () => [_$node_fetch0.RequestInit, NotAny, _$node_fetch0.RequestInit, NotAny, NotAny, NotAny, _$_______________node_modules__types_node_fetch_index_d_ts0.RequestInit, NotAny, NotAny, NotAny, NotAny, NotAny, NotAny], ["", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""]];
+    │                                                                                                                                   ───────────────────────────────────┬───────────────────────────────────  
+    │                                                                                                                                                                      ╰───────────────────────────────────── 
+────╯
+
+[PLUGIN_TIMINGS] Your build spent 95% of 3.5s inside plugin hooks (3.3s).
+Measured inside the callback, so queue time is excluded and time the callback itself awaited is not:
+  - rolldown-plugin-dts:generate load (62%, 2.2s, 65 calls)
+Those rows are 62% of the build; the rest of the 95% is below.
+Not measurable — 3 hooks whose calls overlap, so elapsed time covers work other calls were doing. Profile with `node --cpu-prof`:
+  - tsdown:deps resolveId (2632 calls)
+  - rolldown-plugin-dts:resolver resolveId (3478 calls)
+  - rolldown-plugin-dts:fake-js transform (395 calls)
+See https://rolldown.rs/reference/InputOptions.checks#plugintimings for more details.
+
+✔ Build complete in 3554ms
+capability docs up to date
+
+> pi2dsh@0.24.0 check:pack /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh
+> pnpm build && publint && node scripts/check-pack.mjs
+
+
+> pi2dsh@0.24.0 build /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh
+> tsdown
+
+ℹ tsdown v0.22.14 powered by rolldown v1.2.5
+ℹ config file: /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/tsdown.config.ts 
+ℹ entry: src/index.ts, src/runtime.ts, src/host.ts, src/cli.ts, src/credentials-oauth.ts, src/compat/pi-coding-agent.ts, src/compat/pi-tui.ts, src/compat/pi-ai.ts
+ℹ target: node22.19.0
+ℹ tsconfig: tsconfig.json
+ℹ entry: dsh-x/src/client.ts
+ℹ target: node22.19.0
+ℹ tsconfig: tsconfig.json
+
+ WARN  `external` is deprecated. Use `deps.neverBundle` instead.
+
+ℹ Build start
+
+ WARN  We recommend using the ESM format instead of CommonJS.
+The ESM format is compatible with modern platforms and runtimes, and most new libraries are now distributed only in ESM format.
+Learn more at https://nodejs.org/en/learn/modules/publishing-a-package#how-did-we-get-here
+
+ℹ Cleaning 115 files
+ℹ [CJS] dsh-x/client.js  93.73 kB │ gzip: 21.94 kB
+ℹ [CJS] 1 files, total: 93.73 kB
+✔ Build complete in 1620ms
+(rolldown-plugin-dts:fake-js plugin) /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/@types+node-fetch@2.6.13/node_modules/@types/node-fetch/index.d.ts uses CommonJS dts syntax. CommonJS dts modules cannot be bundled by rolldown-plugin-dts. Please mark this module as external in your Rolldown config.
+(rolldown-plugin-dts:fake-js plugin) /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/node_modules/.pnpm/form-data@4.0.6/node_modules/form-data/index.d.ts uses CommonJS dts syntax. CommonJS dts modules cannot be bundled by rolldown-plugin-dts. Please mark this module as external in your Rolldown config.
+ℹ Hint: consider adding deps.onlyBundle option to avoid unintended bundling of dependencies, or set deps.onlyBundle: false to disable this hint.
+See more at https://tsdown.dev/options/dependencies#deps-onlybundle
+Detected dependencies in bundle:
+- @anthropic-ai/sdk
+- @earendil-works/pi-ai
+- ms
+- debug
+- has-flag
+- supports-color
+- agent-base
+- https-proxy-agent
+- retry
+- p-retry
+- extend
+- gaxios
+- bignumber.js
+- json-bigint
+- gcp-metadata
+- google-logging-utils
+- base64-js
+- google-auth-library
+- safe-buffer
+- ecdsa-sig-formatter
+- jws
+- buffer-equal-constant-time
+- jwa
+- ws
+- @google/genai
+- partial-json
+- @mistralai/mistralai
+- zod
+- zod-to-json-schema
+- node-fetch
+- openai
+- @opentelemetry/api
+- @opentelemetry/semantic-conventions
+- undici-types
+- undici
+- @earendil-works/pi-telemetry
+- data-uri-to-buffer
+- web-streams-polyfill
+- fetch-blob
+- formdata-polyfill
+- node-domexception
+ℹ [ESM] Granting execute permission to dist/cli.d.mts
+ℹ [ESM] Granting execute permission to dist/cli.mjs
+ℹ [ESM] dist/index.mjs                                  17.20 kB │ gzip:   5.82 kB
+ℹ [ESM] dist/host.mjs                                    6.26 kB │ gzip:   2.33 kB
+ℹ [ESM] dist/compat/pi-coding-agent.mjs                  6.20 kB │ gzip:   1.88 kB
+ℹ [ESM] dist/credentials-oauth.mjs                       4.72 kB │ gzip:   1.46 kB
+ℹ [ESM] dist/cli.mjs                                     4.08 kB │ gzip:   1.73 kB
+ℹ [ESM] dist/compat/pi-tui.mjs                           2.83 kB │ gzip:   1.05 kB
+ℹ [ESM] dist/compat/pi-ai.mjs                            2.54 kB │ gzip:   0.82 kB
+ℹ [ESM] dist/runtime.mjs                                 0.48 kB │ gzip:   0.23 kB
+ℹ [ESM] dist/mistral-conversations-D-Kf38nj.mjs.map      3.54 MB
+ℹ [ESM] dist/google-shared-LEpwok5n.mjs.map              2.23 MB
+ℹ [ESM] dist/mistral-conversations-D-Kf38nj.mjs          1.47 MB
+ℹ [ESM] dist/otel-EL651-JR.mjs.map                       1.23 MB
+ℹ [ESM] dist/google-shared-LEpwok5n.mjs                  1.20 MB
+ℹ [ESM] dist/otel-EL651-JR.mjs                           1.18 MB
+ℹ [ESM] dist/runtime-B3N7s93Q.mjs.map                  759.03 kB │ gzip: 203.87 kB
+ℹ [ESM] dist/pi-coding-agent-lcNs9Wos.mjs.map          532.25 kB │ gzip: 123.84 kB
+ℹ [ESM] dist/openai-DkzRh5_G.mjs.map                   492.09 kB │ gzip:  93.57 kB
+ℹ [ESM] dist/anthropic-messages-CaYTgvLF.mjs.map       465.12 kB │ gzip:  88.57 kB
+ℹ [ESM] dist/src-ChZlNrRV.mjs.map                      405.65 kB │ gzip:  78.66 kB
+ℹ [ESM] dist/runtime-B3N7s93Q.mjs                      339.31 kB │ gzip:  90.58 kB
+ℹ [ESM] dist/pi-tui-DruSeKmd.mjs.map                   300.53 kB │ gzip:  68.30 kB
+ℹ [ESM] dist/pi-coding-agent-lcNs9Wos.mjs              255.04 kB │ gzip:  63.74 kB
+ℹ [ESM] dist/openai-DkzRh5_G.mjs                       252.41 kB │ gzip:  51.65 kB
+ℹ [ESM] dist/anthropic-messages-CaYTgvLF.mjs           239.81 kB │ gzip:  50.63 kB
+ℹ [ESM] dist/src-ChZlNrRV.mjs                          214.17 kB │ gzip:  40.66 kB
+ℹ [ESM] dist/pi-ai-Cy_BRMmd.mjs.map                    186.39 kB │ gzip:  44.40 kB
+ℹ [ESM] dist/pi-tui-DruSeKmd.mjs                       139.46 kB │ gzip:  34.82 kB
+ℹ [ESM] dist/pi-ai-Cy_BRMmd.mjs                        121.09 kB │ gzip:  27.52 kB
+ℹ [ESM] dist/compatibility-DS6POFZD.mjs.map             93.30 kB │ gzip:  27.51 kB
+ℹ [ESM] dist/openai-codex-responses-DedxQjNG.mjs.map    90.81 kB │ gzip:  21.27 kB
+ℹ [ESM] dist/openai-completions-DrjrWRdX.mjs.map        85.11 kB │ gzip:  19.00 kB
+ℹ [ESM] dist/compatibility-DS6POFZD.mjs                 78.11 kB │ gzip:  24.02 kB
+ℹ [ESM] dist/dist-QBBA-dL_.mjs.map                      70.63 kB │ gzip:  18.99 kB
+ℹ [ESM] dist/analyzer-DbgL3neo.mjs.map                  64.83 kB │ gzip:  15.05 kB
+ℹ [ESM] dist/simple-options-B_GO8FDE.mjs.map            57.89 kB │ gzip:  13.73 kB
+ℹ [ESM] dist/openai-codex-responses-DedxQjNG.mjs        46.77 kB │ gzip:  12.08 kB
+ℹ [ESM] dist/oauth-bridge-C_MAPMGA.mjs.map              43.69 kB │ gzip:  13.01 kB
+ℹ [ESM] dist/openai-responses-shared-BmnSvdKL.mjs.map   43.50 kB │ gzip:   9.40 kB
+ℹ [ESM] dist/openai-completions-DrjrWRdX.mjs            41.67 kB │ gzip:   9.62 kB
+ℹ [ESM] dist/index.mjs.map                              40.10 kB │ gzip:  12.91 kB
+ℹ [ESM] dist/dist-QBBA-dL_.mjs                          37.61 kB │ gzip:  10.56 kB
+ℹ [ESM] dist/analyzer-DbgL3neo.mjs                      32.92 kB │ gzip:   7.31 kB
+ℹ [ESM] dist/google-vertex-BgGRE4WU.mjs.map             29.33 kB │ gzip:   7.03 kB
+ℹ [ESM] dist/google-generative-ai-DYSbNJT7.mjs.map      26.27 kB │ gzip:   6.03 kB
+ℹ [ESM] dist/pi-ai-BHgA3JWd.d.mts.map                   25.96 kB │ gzip:   5.36 kB
+ℹ [ESM] dist/json-parse-CZ0U0sj_.mjs.map                22.34 kB │ gzip:   5.66 kB
+ℹ [ESM] dist/openai-responses-shared-BmnSvdKL.mjs       21.02 kB │ gzip:   5.00 kB
+ℹ [ESM] dist/simple-options-B_GO8FDE.mjs                18.41 kB │ gzip:   5.18 kB
+ℹ [ESM] dist/pi-messages-D61G2tgs.mjs.map               18.19 kB │ gzip:   4.95 kB
+ℹ [ESM] dist/oauth-bridge-C_MAPMGA.mjs                  17.47 kB │ gzip:   5.36 kB
+ℹ [ESM] dist/multipart-parser-BOEZ-KGK.mjs.map          16.91 kB │ gzip:   4.72 kB
+ℹ [ESM] dist/source-l77aIDwD.mjs.map                    15.83 kB │ gzip:   5.01 kB
+ℹ [ESM] dist/azure-openai-responses-HKWkzl2m.mjs.map    15.78 kB │ gzip:   4.76 kB
+ℹ [ESM] dist/google-vertex-BgGRE4WU.mjs                 14.47 kB │ gzip:   3.96 kB
+ℹ [ESM] dist/host.mjs.map                               14.20 kB │ gzip:   4.95 kB
+ℹ [ESM] dist/mcp-config-C1K-IzzB.mjs.map                12.81 kB │ gzip:   4.16 kB
+ℹ [ESM] dist/json-parse-CZ0U0sj_.mjs                    12.51 kB │ gzip:   3.62 kB
+ℹ [ESM] dist/google-generative-ai-DYSbNJT7.mjs          12.42 kB │ gzip:   3.26 kB
+ℹ [ESM] dist/credentials-oauth.mjs.map                  11.03 kB │ gzip:   3.47 kB
+ℹ [ESM] dist/pi-messages-D61G2tgs.mjs                    9.79 kB │ gzip:   3.13 kB
+ℹ [ESM] dist/multipart-parser-BOEZ-KGK.mjs               8.90 kB │ gzip:   2.63 kB
+ℹ [ESM] dist/pi-coding-agent-Cas0oHSx.d.mts.map          8.84 kB │ gzip:   2.81 kB
+ℹ [ESM] dist/azure-openai-responses-HKWkzl2m.mjs         8.83 kB │ gzip:   2.86 kB
+ℹ [ESM] dist/error-body-DKA3lknR.mjs.map                 8.05 kB │ gzip:   2.93 kB
+ℹ [ESM] dist/source-l77aIDwD.mjs                         7.45 kB │ gzip:   2.40 kB
+ℹ [ESM] dist/cli.mjs.map                                 7.11 kB │ gzip:   2.59 kB
+ℹ [ESM] dist/runtime.d.mts.map                           6.50 kB │ gzip:   2.30 kB
+ℹ [ESM] dist/pi-tui-iHoF2tFc.d.mts.map                   6.47 kB │ gzip:   2.06 kB
+ℹ [ESM] dist/provider-retry-Cw6YJ4cr.mjs.map             6.22 kB │ gzip:   2.26 kB
+ℹ [ESM] dist/mcp-config-C1K-IzzB.mjs                     6.19 kB │ gzip:   2.19 kB
+ℹ [ESM] dist/error-body-DKA3lknR.mjs                     4.70 kB │ gzip:   1.87 kB
+ℹ [ESM] dist/event-stream-QxN1yvIF.mjs.map               3.90 kB │ gzip:   1.37 kB
+ℹ [ESM] dist/provider-retry-Cw6YJ4cr.mjs                 3.56 kB │ gzip:   1.43 kB
+ℹ [ESM] dist/provider-env-C72pF4vP.mjs.map               2.61 kB │ gzip:   1.25 kB
+ℹ [ESM] dist/deferred-tools-BD4g5QUx.mjs.map             2.49 kB │ gzip:   1.02 kB
+ℹ [ESM] dist/pi-config-shim-CZ1wFzqM.mjs.map             1.97 kB │ gzip:   0.92 kB
+ℹ [ESM] dist/github-copilot-headers-CZo2QHrt.mjs.map     1.96 kB │ gzip:   0.87 kB
+ℹ [ESM] dist/diagnostics-BqYkodgB.mjs.map                1.83 kB │ gzip:   0.80 kB
+ℹ [ESM] dist/event-stream-QxN1yvIF.mjs                   1.75 kB │ gzip:   0.72 kB
+ℹ [ESM] dist/rolldown-runtime-CTfmNlz1.mjs               1.75 kB │ gzip:   0.82 kB
+ℹ [ESM] dist/provider-env-C72pF4vP.mjs                   1.68 kB │ gzip:   0.93 kB
+ℹ [ESM] dist/deferred-tools-BD4g5QUx.mjs                 1.42 kB │ gzip:   0.64 kB
+ℹ [ESM] dist/hash-Dbggamac.mjs.map                       1.29 kB │ gzip:   0.62 kB
+ℹ [ESM] dist/diagnostics-BqYkodgB.mjs                    1.14 kB │ gzip:   0.52 kB
+ℹ [ESM] dist/headers-CPzZhJQn.mjs.map                    1.12 kB │ gzip:   0.55 kB
+ℹ [ESM] dist/index.d.mts.map                             1.07 kB │ gzip:   0.52 kB
+ℹ [ESM] dist/github-copilot-headers-CZo2QHrt.mjs         1.02 kB │ gzip:   0.51 kB
+ℹ [ESM] dist/pi-config-shim-CZ1wFzqM.mjs                 0.98 kB │ gzip:   0.47 kB
+ℹ [ESM] dist/openai-prompt-cache-BDWtZRKh.mjs.map        0.86 kB │ gzip:   0.51 kB
+ℹ [ESM] dist/hash-Dbggamac.mjs                           0.72 kB │ gzip:   0.44 kB
+ℹ [ESM] dist/headers-CPzZhJQn.mjs                        0.65 kB │ gzip:   0.35 kB
+ℹ [ESM] dist/credentials-oauth.d.mts.map                 0.51 kB │ gzip:   0.30 kB
+ℹ [ESM] dist/oauth-bridge-hOnT3acY.d.mts.map             0.44 kB │ gzip:   0.29 kB
+ℹ [ESM] dist/pi-types-KazmR2O5.d.mts.map                 0.44 kB │ gzip:   0.23 kB
+ℹ [ESM] dist/host.d.mts.map                              0.40 kB │ gzip:   0.27 kB
+ℹ [ESM] dist/types-B9VBF8le.d.mts.map                    0.36 kB │ gzip:   0.20 kB
+ℹ [ESM] dist/openai-prompt-cache-BDWtZRKh.mjs            0.30 kB │ gzip:   0.23 kB
+ℹ [ESM] dist/runtime.d.mts                              48.93 kB │ gzip:  15.28 kB
+ℹ [ESM] dist/index.d.mts                                 8.63 kB │ gzip:   3.33 kB
+ℹ [ESM] dist/compat/pi-coding-agent.d.mts                8.38 kB │ gzip:   2.39 kB
+ℹ [ESM] dist/compat/pi-tui.d.mts                         5.23 kB │ gzip:   1.68 kB
+ℹ [ESM] dist/compat/pi-ai.d.mts                          3.27 kB │ gzip:   1.03 kB
+ℹ [ESM] dist/host.d.mts                                  2.42 kB │ gzip:   1.03 kB
+ℹ [ESM] dist/credentials-oauth.d.mts                     1.93 kB │ gzip:   0.72 kB
+ℹ [ESM] dist/cli.d.mts                                   0.03 kB │ gzip:   0.05 kB
+ℹ [ESM] dist/pi-ai-BHgA3JWd.d.mts                      137.13 kB │ gzip:  32.51 kB
+ℹ [ESM] dist/pi-coding-agent-Cas0oHSx.d.mts             59.72 kB │ gzip:  15.13 kB
+ℹ [ESM] dist/pi-tui-iHoF2tFc.d.mts                      39.60 kB │ gzip:   9.71 kB
+ℹ [ESM] dist/pi-types-KazmR2O5.d.mts                     1.53 kB │ gzip:   0.49 kB
+ℹ [ESM] dist/oauth-bridge-hOnT3acY.d.mts                 1.39 kB │ gzip:   0.58 kB
+ℹ [ESM] dist/types-B9VBF8le.d.mts                        1.37 kB │ gzip:   0.55 kB
+ℹ [ESM] 111 files, total: 17.18 MB
+node_modules/.pnpm/openai@6.26.0_ws@8.21.3_zod@4.4.3/node_modules/openai/internal/types.d.ts (14:68) [IMPORT_IS_UNDEFINED] Import `RequestInit` will always be undefined because there is no matching export in 'node_modules/.pnpm/@types+node-fetch@2.6.13/node_modules/@types/node-fetch/index.d.ts'
+    ╭─[ node_modules/.pnpm/openai@6.26.0_ws@8.21.3_zod@4.4.3/node_modules/openai/internal/types.d.ts:14:69 ]
+    │
+ 14 │ var [NodeFetch2RequestInit] = [3695, () => [NotAny, NotAny, NotAny, _$____________node_modules__types_node_fetch_index_d_ts0.RequestInit, NotAny, NotAny, NotAny, NotAny, NotAny, NotAny, NotAny], ["", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""]];
+    │                                                                     ──────────────────────────────────┬─────────────────────────────────  
+    │                                                                                                       ╰─────────────────────────────────── 
+────╯
+
+node_modules/.pnpm/@google+genai@1.52.0/node_modules/@google/genai/dist/genai.d.ts (469:76) [IMPORT_IS_UNDEFINED] Import `RequestInit` will always be undefined because there is no matching export in 'node_modules/.pnpm/@types+node-fetch@2.6.13/node_modules/@types/node-fetch/index.d.ts'
+     ╭─[ node_modules/.pnpm/@google+genai@1.52.0/node_modules/@google/genai/dist/genai.d.ts:469:77 ]
+     │
+ 469 │ var [NodeFetch2RequestInit] = [3484, () => [NotAny, NotAny, NotAny, NotAny, _$_______________node_modules__types_node_fetch_index_d_ts0.RequestInit, NotAny, NotAny, NotAny, NotAny, NotAny, NotAny], ["", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""]];
+     │                                                                             ───────────────────────────────────┬───────────────────────────────────  
+     │                                                                                                                ╰───────────────────────────────────── 
+─────╯
+
+node_modules/.pnpm/@anthropic-ai+sdk@0.91.1_zod@4.4.3/node_modules/@anthropic-ai/sdk/internal/types.d.ts (17:130) [IMPORT_IS_UNDEFINED] Import `RequestInit` will always be undefined because there is no matching export in 'node_modules/.pnpm/@types+node-fetch@2.6.13/node_modules/@types/node-fetch/index.d.ts'
+    ╭─[ node_modules/.pnpm/@anthropic-ai+sdk@0.91.1_zod@4.4.3/node_modules/@anthropic-ai/sdk/internal/types.d.ts:17:131 ]
+    │
+ 17 │ var [NodeFetch2RequestInit] = [3701, () => [_$node_fetch0.RequestInit, NotAny, _$node_fetch0.RequestInit, NotAny, NotAny, NotAny, _$_______________node_modules__types_node_fetch_index_d_ts0.RequestInit, NotAny, NotAny, NotAny, NotAny, NotAny, NotAny], ["", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", ""]];
+    │                                                                                                                                   ───────────────────────────────────┬───────────────────────────────────  
+    │                                                                                                                                                                      ╰───────────────────────────────────── 
+────╯
+
+[PLUGIN_TIMINGS] Your build spent 95% of 3.1s inside plugin hooks (2.9s).
+Measured inside the callback, so queue time is excluded and time the callback itself awaited is not:
+  - rolldown-plugin-dts:generate load (58%, 1.8s, 65 calls)
+Those rows are 58% of the build; the rest of the 95% is below.
+Not measurable — 3 hooks whose calls overlap, so elapsed time covers work other calls were doing. Profile with `node --cpu-prof`:
+  - tsdown:deps resolveId (2632 calls)
+  - rolldown-plugin-dts:resolver resolveId (3478 calls)
+  - rolldown-plugin-dts:fake-js transform (395 calls)
+See https://rolldown.rs/reference/InputOptions.checks#plugintimings for more details.
+
+✔ Build complete in 3163ms
+Running publint v0.3.24 for pi2dsh...
+Packing files with `pnpm pack`...
+Linting...
+All good!
+{"tarball":"/Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/.artifacts/pi2dsh-0.24.0.tgz","files":118,"installedVersion":"0.24.0"}

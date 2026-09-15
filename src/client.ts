@@ -123,6 +123,7 @@ interface PiToolCallBlock {
   isError?: boolean
 }
 interface PiImageToolViewProps {
+  loadImage?: (attachment: NativeImageAttachment) => Promise<string>
   toolName: string
   block: PiToolCallBlock
   sessionId?: string
@@ -425,18 +426,27 @@ const styles = {
   },
 } as const
 
-/** Pull one image through DSH's own session-authorized attachment RPC. */
-function AuthorizedToolImage({ sessionId, attachment }: {
+/** Prefer the host-owned authorized loader; old hosts retain their public attachment RPC. */
+function AuthorizedToolImage({ sessionId, attachment, loadImage }: {
   sessionId: string
   attachment: NativeImageAttachment
+  loadImage?: (attachment: NativeImageAttachment) => Promise<string>
 }) {
   const [url, setUrl] = useState<string | undefined>(undefined)
   const [failed, setFailed] = useState(false)
   useEffect(() => {
     const controller = new AbortController()
     let objectUrl: string | undefined
+    setFailed(false)
+    setUrl(undefined)
     void (async () => {
       try {
+        if (loadImage !== undefined) {
+          const loaded = await loadImage(attachment)
+          if (!controller.signal.aborted) setUrl(loaded)
+          // This URL belongs to the host cache, not to this component.
+          return
+        }
         const response = await fetch('/api/session.attachment', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
@@ -465,7 +475,7 @@ function AuthorizedToolImage({ sessionId, attachment }: {
       controller.abort()
       if (objectUrl !== undefined) URL.revokeObjectURL(objectUrl)
     }
-  }, [sessionId, attachment.attachmentId, attachment.mediaType])
+  }, [sessionId, attachment.attachmentId, attachment.mediaType, loadImage])
   if (failed) return createElement('div', { style: styles.imageError }, 'Image attachment could not be loaded.')
   if (url === undefined) return createElement('div', { style: styles.imageToolText }, 'Loading image…')
   return createElement('img', {
@@ -519,7 +529,7 @@ function PiImageToolView(props: PiImageToolViewProps) {
       ? null
       : createElement('div', { style: styles.imageGrid },
         ...images.map(attachment => createElement(AuthorizedToolImage, {
-          key: attachment.attachmentId, sessionId, attachment,
+          key: attachment.attachmentId, sessionId, attachment, ...(props.loadImage === undefined ? {} : { loadImage: props.loadImage }),
         })),
       ),
   ))

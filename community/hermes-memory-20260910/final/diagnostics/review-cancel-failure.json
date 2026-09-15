@@ -1,0 +1,11 @@
+{
+  "phase": "review-cancel",
+  "status": "failed",
+  "build": {
+    "engineVersion": "0.24.0",
+    "engineDependency": "file:/tmp/pi2dsh-hermes-20260910/pi2dsh-hermes-final.tgz",
+    "engineDistSha256": "d5057a874413c945ca28c38a83bb1512f7aaeb6c20b2b8ce0953b28a1ae874f6",
+    "memoryVersion": "0.9.8"
+  },
+  "error": "Error: timeout: maintenance request aborted by native shutdown\n    at until (file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/scripts/verify-hermes-full-e2e.mjs:38:9)\n    at async file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/scripts/verify-hermes-full-e2e.mjs:527:7"
+}

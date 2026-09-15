@@ -1,0 +1,6 @@
+{
+  "name": "pi2dsh-native-shutdown-probe",
+  "version": "0.0.0",
+  "type": "module",
+  "dsh": { "bundle": { "patch": "./cordis.patch.yml" } }
+}

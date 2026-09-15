@@ -1,0 +1,27 @@
+{
+  "generatedAt": "2026-09-10T15:46:20.182Z",
+  "startedAt": "2026-09-10T15:45:37.835Z",
+  "scenario": "pi-subagents-lifecycle (steer / resume / stop / model-follow / explicit-model-thinking)",
+  "cliSpec": "@deepseek-ai/dsh@0.1.1-rc.2",
+  "engineSpec": "file:<working-tree>",
+  "subagentsSpec": "@tintinweb/pi-subagents@0.18.0",
+  "status": "passed",
+  "selection": "steer",
+  "scenarios": {
+    "steer": {
+      "gateObserved": true,
+      "timingGate": "public tools/pre-execute waits for a real child request/header before allowing steer",
+      "status": "passed",
+      "problems": [],
+      "steeredLanded": true,
+      "alphaAlsoLanded": false,
+      "spawnTaskVerbatim": true,
+      "parentToolCalls": [
+        "Agent",
+        "steer_subagent",
+        "get_subagent_result"
+      ],
+      "childFile": "/tmp/pi2dsh-dsh-audit-20260910-4hEN8x/subagents-old/dsh-home/sessions/--private-tmp-pi2dsh-dsh-audit-20260910-4hEN8x-subagents-old-workspace--/pi2dsh-sub-mtvp8smi-1/session.jsonl"
+    }
+  }
+}

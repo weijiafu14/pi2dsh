@@ -1,0 +1,3 @@
+- insert:
+    - id: native-shutdown-probe
+      name: './index.mjs'

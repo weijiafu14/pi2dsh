@@ -9,6 +9,12 @@ dsh plugin add pi2dsh          # once
 dsh plugin add <any-pi-plugin> # then any Pi plugin, straight from npm
 ```
 
+pi2dsh `0.25.0` targets Pi `0.84.1` and uses one engine for DSH `0.1.1-rc.2`
+and `0.1.5-rc.1` / `0.1.5-rc.2`. Exact tested workflows and exclusions are in
+the [version acceptance record](community/dsh-015-compat/README.md) and
+[rc.2 checks](community/dsh-015-rc2-20260914/README.md). Cross-version saved-data
+migration is outside this release.
+
 ## Why this exists
 
 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) is built
@@ -406,11 +412,11 @@ audit states this boundary explicitly.
 | [Tools](docs/capabilities/tools.md) | 11 | 2 same semantics · 9 mapped, difference stated |
 | [Commands, flags, editor input](docs/capabilities/commands.md) | 13 | 13 mapped, difference stated |
 | [Messages, context, agent loop](docs/capabilities/conversation.md) | 20 | 9 same semantics · 11 mapped, difference stated |
-| [Sessions & side conversations](docs/capabilities/sessions.md) | 24 | 7 same semantics · 17 mapped, difference stated |
+| [Sessions & side conversations](docs/capabilities/sessions.md) | 24 | 6 same semantics · 18 mapped, difference stated |
 | [Models, providers, credentials](docs/capabilities/models.md) | 15 | 1 same semantics · 12 mapped, difference stated · 2 not available |
 | [Asking the user, rendering](docs/capabilities/interaction.md) | 24 | 5 same semantics · 19 mapped, difference stated |
 | [Project environment & resources](docs/capabilities/environment.md) | 4 | 2 same semantics · 1 mapped, difference stated · 1 not available |
-| **Total** | **111** | **26 same semantics · 82 mapped, difference stated · 3 not available** |
+| **Total** | **111** | **25 same semantics · 83 mapped, difference stated · 3 not available** |
 <!-- capability-table:end -->
 
 Plus **203 imported symbols** from Pi's three runtime packages

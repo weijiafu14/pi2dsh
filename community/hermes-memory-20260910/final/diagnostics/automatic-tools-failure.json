@@ -1,0 +1,12 @@
+{
+  "phase": "automatic-tools",
+  "status": "failed",
+  "build": {
+    "dshVersion": "0.1.5-rc.1",
+    "engineVersion": "0.24.0",
+    "engineDependency": "file:/tmp/pi2dsh-hermes-20260910/pi2dsh-hermes-final.tgz",
+    "engineDistSha256": "d5057a874413c945ca28c38a83bb1512f7aaeb6c20b2b8ce0953b28a1ae874f6",
+    "memoryVersion": "0.9.8"
+  },
+  "error": "AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:\n+ actual - expected\n\n  [\n+   'memory_add',\n    'memory_search'\n  ]\n\n    at file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/scripts/verify-hermes-full-e2e.mjs:466:47"
+}

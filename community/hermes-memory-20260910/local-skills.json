@@ -1,0 +1,12 @@
+{
+  "status": "passed",
+  "engine": {
+    "from": "local-tarball",
+    "tarball": "/tmp/pi2dsh-hermes-20260910/pi2dsh-0.24.0.tgz",
+    "commit": "52f78417974a6847c5350b85b72e01a37aa8948f"
+  },
+  "calls": [
+    "skill",
+    "skill"
+  ]
+}

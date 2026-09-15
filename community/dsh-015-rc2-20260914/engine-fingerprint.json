@@ -1,0 +1,16 @@
+{
+  "version": "0.24.0",
+  "source": "unreleased local working tree",
+  "files": {
+    "src/runtime.ts": "76556da63ea0a4e8991cb3a3f054151fa37375adf14ca50fce715e02930faca7",
+    "src/model-bridge.ts": "f4d8a26cffe139acf96ad535871574634010bcf78a05ad756bdc3cc7b1ee2e81",
+    "src/subagent-bridge.ts": "d0c7568a3384a7e6d9fe8b0a4be2d54403936abf8cce8220ce5c048c8412ecaa",
+    "src/session-bridge.ts": "f60208d2cdc7d4e2e3b96d5cab9054a2dceb29f4ddfff280a397f17e2f0bb14c",
+    "src/session-events.ts": "a661763783528bcedc1270015410ee0bbe5bd5b3dac70ad4e10e1bda3c31132f",
+    "src/dsh-content.ts": "88309818d263f9ccf9f3bf5aa6bef028d6213e3b873e6998e0a153e7828c6695",
+    "src/client.ts": "aecec0c94fe54c194a5726a90d62f442dc5da231334f03abe467c1686f84019d",
+    "package.json": "2d65ab72a2e2dd35da841fee4d0f02db84d93866d0053d804a2b053a8933c298",
+    "dist/runtime.mjs": "4da75bc84cc3da8a40398a5d9ff23a17bbdfd7827189cc44cba4b1b3a2487c7d",
+    "dsh-x/client.js": "5dae44bc5dc0fef1d9fe086e4245d101617ad78ec6569b02a532f77c148574b4"
+  }
+}

@@ -30,6 +30,7 @@
 // The credential is read from the environment only and asserted absent from
 // the evidence before anything is written.
 
+import { isSessionLog } from './lib/session-log.mjs'
 import assert from 'node:assert/strict'
 import { execFile as execFileCallback, spawn } from 'node:child_process'
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
@@ -145,7 +146,7 @@ const readRecorded = async () =>
   (await readFile(recordPath, 'utf8').catch(() => '')).split('\n').filter(Boolean).map(line => JSON.parse(line))
 
 const sessionFiles = async home =>
-  (await filesBelow(join(home, 'sessions')).catch(() => [])).filter(path => path.endsWith('/session.jsonl')).sort()
+  (await filesBelow(join(home, 'sessions')).catch(() => [])).filter(path => isSessionLog(path)).sort()
 
 const assistantText = records => records
   .filter(record => record.type === 'assistant/message')

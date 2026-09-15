@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "pi2dshCommit": "52f78417974a6847c5350b85b72e01a37aa8948f",
+  "dshCommit": "npm:@deepseek-ai/dsh@0.1.5-rc.1",
+  "results": {
+    "visionBridge": {
+      "status": "passed",
+      "engine": {
+        "version": "0.24.0",
+        "from": "local",
+        "spec": "file:<working-tree>",
+        "commit": "52f78417974a6847c5350b85b72e01a37aa8948f",
+        "dirty": true
+      },
+      "image": "solid-green.png",
+      "answeredGreen": true,
+      "readThroughVision": true,
+      "visionRoute": "openai-compatible"
+    }
+  }
+}

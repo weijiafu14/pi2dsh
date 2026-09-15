@@ -16,6 +16,7 @@
 //        cryptic 400" to "this one tool is rejected, loudly, at mount".
 //
 // Usage: DEEPSEEK_API_KEY=… node scripts/verify-malformed-tool-schema.mjs [out.json]
+import { isSessionLog } from './lib/session-log.mjs'
 import assert from 'node:assert/strict'
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -133,7 +134,7 @@ const answered = records => records
 
 async function sessionLog(home) {
   const files = await filesBelow(join(home, 'sessions'))
-    .then(all => all.filter(path => path.endsWith('/session.jsonl')))
+    .then(all => all.filter(path => isSessionLog(path)))
     .catch(() => [])
   if (files.length === 0) return []
   const raw = await readFile(files[files.length - 1], 'utf8')

@@ -24,6 +24,7 @@
 // profile, the session log, or the evidence file, and asserted absent from
 // every captured artifact before anything is written.
 
+import { isSessionLog, systemPromptText } from './lib/session-log.mjs'
 import assert from 'node:assert/strict'
 import { execFile as execFileCallback } from 'node:child_process'
 import { chmod, mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
@@ -209,7 +210,7 @@ try {
     + ' then reply with the tool output verbatim.'
   const run = await runDsh(['--profile', 'headless', prompt])
 
-  const sessionFiles = (await filesBelow(join(home, 'sessions'))).filter(path => path.endsWith('/session.jsonl'))
+  const sessionFiles = (await filesBelow(join(home, 'sessions'))).filter(path => isSessionLog(path))
   assert.equal(sessionFiles.length, 1, `expected one durable session log, found ${sessionFiles.length}`)
   const rawLog = await readFile(sessionFiles[0], 'utf8')
   const seen = JSON.parse(await readFile(report, 'utf8'))
@@ -238,7 +239,8 @@ try {
   // The request header records the exact system prompt that was sent.
   const headers = records.filter(record => record.type === 'request/header')
   assert(headers.length > 0, 'no request/header events in the durable log')
-  const firstPrompt = JSON.stringify(headers[0].data ?? {})
+  const firstRequestIndex = records.indexOf(headers[0])
+  const firstPrompt = records.slice(0, firstRequestIndex + 1).map(systemPromptText).filter(Boolean).at(-1) ?? ''
   assert(firstPrompt.includes(OVERRIDE_MARKER),
     'the first request of the turn did not carry the override, so it landed a turn late')
 

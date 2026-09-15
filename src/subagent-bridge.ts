@@ -31,6 +31,8 @@ export interface SubagentHost {
   packageName?: string
   /** The delegating parent Agent's own ctx (undefined outside an agent scope). */
   parentAgentContext(): unknown
+  /** The live parent identity required by newer DSH agent ownership. */
+  parentAgent?(): UnknownRecord | undefined
   /**
    * Translate the child's Pi custom tools into DSH tool definitions and
    * register them THROUGH the unpublished child ctx, so they land in the
@@ -95,6 +97,7 @@ export interface CreateAgentSessionOptions {
   customTools?: unknown[]
   model?: unknown
   thinkingLevel?: unknown
+  signal?: AbortSignal
   [key: string]: unknown
 }
 
@@ -131,10 +134,10 @@ function nativeToolNameOf(name: string): string {
  */
 function childSchemas(
   toolsService: { schemas(scope?: unknown): ReadonlyArray<{ name: string }> },
-  childCtx: { agent?: unknown },
+  childAgent: unknown,
 ): ReadonlyArray<{ name: string }> {
   try {
-    if (childCtx.agent !== undefined) return toolsService.schemas(childCtx.agent)
+    if (childAgent !== undefined) return toolsService.schemas(childAgent)
   } catch {
     // fall through to the global read below
   }
@@ -210,6 +213,8 @@ export class PiBridgedAgentSession {
   /** Keeps message projections (which await attachment reads) in log order. */
   #messageProjection: Promise<unknown> = Promise.resolve()
   #aborted = false
+  #liveStreamAttempt: { id: unknown, index: number, ended: boolean } | undefined
+  #streamingText = ''
 
   constructor(
     host: SubagentHost,
@@ -236,7 +241,24 @@ export class PiBridgedAgentSession {
     // Project this child session's durable events into Pi AgentSessionEvents.
     const offEvents = cordis.on('session/event', (session: UnknownRecord, event: UnknownRecord) => {
       if (session !== this.#session) return
+      if (event.type === 'assistant/chunk' && this.#liveStreamAttempt !== undefined) return
       this.#project(event)
+    })
+    const offStream = cordis.on('agent/assistant-stream', (payload: UnknownRecord) => {
+      if (payload.agent !== this.#handle.agent) return
+      const frame = payload.frame as UnknownRecord
+      if (frame.type === 'start') {
+        this.#liveStreamAttempt = { id: frame.attemptId, index: -1, ended: false }
+        this.#streamingText = ''
+      } else {
+        const active = this.#liveStreamAttempt
+        if (active === undefined || active.ended || active.id !== frame.attemptId) return
+        if (frame.type === 'end') active.ended = true
+        if (frame.type === 'chunk' && Number(frame.index) > active.index) {
+          active.index = Number(frame.index)
+          this.#project({ type: 'assistant/chunk', data: { chunk: frame.chunk } })
+        }
+      }
     })
     // Pi packages assign session.agent.beforeToolCall to gate the subagent's
     // tool calls; DSH's pre-execute seam is the same decision point.
@@ -254,7 +276,7 @@ export class PiBridgedAgentSession {
       }
       return next()
     })
-    this.#disposers.push(offEvents, offPre)
+    this.#disposers.push(offEvents, offStream, offPre)
     // Pi's AgentSession exposes ONE AgentState object as both `session.state`
     // and `session.agent.state` (agent-session.ts: `get state() { return
     // this.agent.state }`). `messages` is a PUBLIC settable member of
@@ -383,13 +405,16 @@ export class PiBridgedAgentSession {
       }
       emit({ type: 'tool_execution_start', toolCallId: data.callId, toolName: data.name, args })
     }
+    if (type === 'assistant/message') this.#streamingText = ''
     if (type === 'assistant/chunk') {
       const chunk = ((event.data as UnknownRecord).chunk ?? {}) as UnknownRecord
+      if (chunk.type !== undefined && chunk.type !== 'text-delta') return
       const delta = typeof chunk.text === 'string' ? chunk.text : typeof chunk.delta === 'string' ? chunk.delta : ''
+      const message = { role: 'assistant', content: [{ type: 'text', text: this.#streamingText += delta }] }
       emit({
         type: 'message_update',
-        message: { role: 'assistant', content: [{ type: 'text', text: delta }] },
-        assistantMessageEvent: { type: 'text_delta', delta, ...chunk },
+        message,
+        assistantMessageEvent: { type: 'text_delta', contentIndex: 0, delta, partial: message },
       })
     }
     // Projecting content now awaits the attachment service, so the chain keeps
@@ -470,7 +495,7 @@ export class PiBridgedAgentSession {
     })
     this.#host.deliver(this.#handle.agent, createUserMessage({
       content: blocks,
-      source: { kind: 'plugin', plugin: this.#host.messageSource },
+      source: { kind: 'plugin', plugin: this.#host.messageSource, form: 'relay' },
     }), 'followup')
     await completed
     // The turn's own event resolves `completed`, but message projection awaits
@@ -683,6 +708,7 @@ export async function createBridgedAgentSession(
     | {
       create?: (options: UnknownRecord) => Promise<{ agent: UnknownRecord, dispose(): Promise<void> }>
       resume?: (options: UnknownRecord) => Promise<{ agent: UnknownRecord, dispose(): Promise<void> }>
+      get?(id: string): unknown
     }
     | undefined
   if (agents?.create === undefined) {
@@ -705,6 +731,9 @@ export async function createBridgedAgentSession(
   // label convention below keeps these threads out of task/subagent product
   // surfaces (better-sidebar and dsh-sidechain both filter on the prefix).
   const sideline = providedManager !== undefined && archiveFile === undefined
+  const parentId = host.parentSessionId()
+  const parentAgent = host.parentAgent?.() ?? (parentId === undefined ? undefined : agents.get?.(parentId))
+  const parentOwnership = parentAgent === undefined ? {} : { parentAgent }
   subagentSerial += 1
   const sessionId = `pi2dsh-sub-${Date.now().toString(36)}-${subagentSerial}`
   let handle
@@ -792,11 +821,12 @@ export async function createBridgedAgentSession(
     // scope contributions). A persisted resume takes the SAME setup — the
     // reconstructed session keeps its durable header, but the live scoped
     // world (preset join, restrictions, custom tools, prompt) is fresh.
-    const setup = async (childCtx: { get?(name: string): unknown, agent?: { session?: { append?(type: string, data: unknown): void } } } & UnknownRecord): Promise<void> => {
+    const setup = async (childCtx: { get?(name: string): unknown, agent?: UnknownRecord } & UnknownRecord, agent?: UnknownRecord): Promise<void> => {
+        const childAgent = agent ?? childCtx.agent
         // 1. Delegation policy, official semantics: the parent's explicit
         //    sandbox override travels with the child; approval is pinned so
         //    a headless child never blocks on a dialog nobody is watching.
-        const childSession = childCtx.agent?.session
+        const childSession = childAgent?.session as { append?(type: string, data: unknown): void } | undefined
         if (typeof childSession?.append === 'function') {
           if (delegated.sandboxMode !== undefined) {
             childSession.append('sandbox/mode', { mode: delegated.sandboxMode, source: 'delegation' })
@@ -856,7 +886,7 @@ export async function createBridgedAgentSession(
             // known set is the CHILD's resolved view — preset-scoped tools
             // live above the global layer, so the bare schemas() would miss
             // them on roster-owned surfaces.
-            const known = new Set(childSchemas(toolsService, childCtx).map(schema => schema.name))
+            const known = new Set(childSchemas(toolsService, childAgent).map(schema => schema.name))
             // Keep the disposer: DSH restrictions INTERSECT, so a later
             // setActiveToolsByName must retire this one, not stack on it.
             initialRestrictionDispose = toolsService.restrict({ allow: restriction.filter(name => known.has(name)) })
@@ -876,7 +906,7 @@ export async function createBridgedAgentSession(
             }
             | undefined
           if (toolsService !== undefined) {
-            const known = new Set(childSchemas(toolsService, childCtx).map(schema => schema.name))
+            const known = new Set(childSchemas(toolsService, childAgent).map(schema => schema.name))
             toolsService.restrict({ deny: excluded.map(nativeToolNameOf).filter(name => known.has(name)) })
           }
         }
@@ -908,10 +938,11 @@ export async function createBridgedAgentSession(
       }
       // The durable header (cwd, lineage, preset) is the persisted session's
       // own; only the live identity and the fresh scoped world are supplied.
-      handle = await agents.resume({ resumeSessionId, ...agentOptionsFragment, setup })
+      handle = await agents.resume({ resumeSessionId, ...parentOwnership, ...agentOptionsFragment, setup, ...(options.signal === undefined ? {} : { signal: options.signal }) })
     } else {
       handle = await agents.create({
         sessionId,
+        ...parentOwnership,
         meta: {
           cwd: typeof options.cwd === 'string' ? options.cwd : host.cwd(),
           origin: 'subagent',
@@ -924,6 +955,7 @@ export async function createBridgedAgentSession(
         },
         ...agentOptionsFragment,
         setup,
+        ...(options.signal === undefined ? {} : { signal: options.signal }),
       })
     }
   } catch (error) {
@@ -946,8 +978,8 @@ export async function createBridgedAgentSession(
       )
     }
     throw new Error(
-      'pi2dsh: subagent creation needs the DSH host loop (model runtime) to provide the agent factory; '
-      + `this composition cannot run one (${error instanceof Error ? error.message : String(error)})`,
+      `pi2dsh: native subagent creation failed (${error instanceof Error ? error.message : String(error)})`,
+      { cause: error },
     )
   }
   const tools = [
@@ -984,8 +1016,8 @@ export async function createBridgedAgentSession(
   }
   // Pi's thinkingLevel option is per-child request config; DSH carries it on
   // the instance's agent/request waterfall, which the adoption below joins the
-  // child to. 'off' stays absent — DSH's reasoning contract treats absence as
-  // off, and injecting a literal 'off' would collide with route capabilities.
+  // child to. An explicit 'off' must survive adoption: current DSH adapters
+  // can otherwise apply their own enabled-thinking default.
   const thinkingLevel = typeof options.thinkingLevel === 'string' ? options.thinkingLevel : undefined
   host.adoptChildAgent?.(handle.agent, thinkingLevel)
   // Real Pi loads the child's extension set inside createAgentSession (the

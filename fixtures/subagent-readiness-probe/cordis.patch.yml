@@ -1,0 +1,3 @@
+- insert:
+    - id: pi2dsh-subagent-readiness
+      name: '@pi2dsh-fixtures/subagent-readiness'

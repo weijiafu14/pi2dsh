@@ -29,6 +29,8 @@ const EXTENSION = [
   "    ;(globalThis as any).__rd = { reason: event.reason, cwd: event.cwd, ctxCwd: ctx.cwd }",
   "    return { skillPaths: [join(ctx.cwd, '.claude', 'skills'), join(ctx.cwd, 'lonely', 'SKILL.md')], promptPaths: ['/nowhere/prompt.md'] }",
   '  })',
+  "  pi.on('session_shutdown', async () => { await new Promise(r => setTimeout(r, 20)); (globalThis as any).__rdShutdown = true })",
+  "  pi.registerCommand('list-skills', { handler: async (_args: string, ctx: any) => ctx.ui.notify(JSON.stringify(pi.getCommands())) })",
   '}',
 ].join('\n')
 
@@ -67,7 +69,8 @@ describe('resources_discover on DSH', () => {
     await ctx.plugin(CommandRuntime)
     await ctx.plugin(SkillRegistry)
     await ctx.plugin(AgentRegistry)
-    await ctx.plugin(plugin)
+    const mounted = await ctx.plugin(plugin)
+    ;(globalThis as Record<string, unknown>).__rdShutdown = false
     await new Promise(resolve => setTimeout(resolve, 25))
 
     const typed = ctx as unknown as {
@@ -96,5 +99,9 @@ describe('resources_discover on DSH', () => {
     expect((await typed.skills.get('demo-skill', { cwd: project, signal }))?.content).toContain('RD_SKILL_OK')
     // The single SKILL.md path has no root: reported, never mounted as a skill.
     expect(listed.some(skill => skill.name === 'lonely')).toBe(false)
+    const command = await ctx.commands.execute(agent as never, '/list-skills', [], signal)
+    expect(command?.result).toMatchObject({ kind: 'success', text: expect.stringContaining('skill:demo-skill') })
+    await mounted.dispose()
+    expect((globalThis as Record<string, unknown>).__rdShutdown).toBe(true)
   })
 })

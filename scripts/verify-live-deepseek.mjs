@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { isSessionLog } from './lib/session-log.mjs'
 import assert from 'node:assert/strict'
 import { execFile as execFileCallback } from 'node:child_process'
 import { cp, chmod, mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
@@ -78,7 +79,7 @@ try {
 
   const prompt = 'You are running a migration acceptance test. You MUST call the pi_greet tool exactly once with name Ada. Do not claim success without the tool result. After the tool result, reply with the exact returned greeting and a short confirmation.'
   const run = await runDsh(['--profile', 'headless', prompt])
-  const sessionFiles = (await filesBelow(join(home, 'sessions'))).filter(path => path.endsWith('/session.jsonl'))
+  const sessionFiles = (await filesBelow(join(home, 'sessions'))).filter(path => isSessionLog(path))
   assert.equal(sessionFiles.length, 1, `expected one durable session log, found ${sessionFiles.length}`)
   const rawLog = await readFile(sessionFiles[0], 'utf8')
 

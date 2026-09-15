@@ -1,0 +1,39 @@
+{
+  "results": {
+    "piCodeWeb": {
+      "status": "passed",
+      "piCodeVersion": "1.0.47",
+      "settingsEnv": {
+        "pass": true,
+        "codeword": "ENVPROBE-7905"
+      },
+      "preToolUseHook": {
+        "pass": true,
+        "marker": "/private/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-picode-web-DW4rJ1/hook-fired-5107"
+      },
+      "claudeMdImport": {
+        "pass": true,
+        "codeword": "IMPORTPROBE-3383"
+      },
+      "claudeSkillsDiscovered": {
+        "pass": true
+      },
+      "commandsUserPath": {
+        "pass": true,
+        "carriers": [
+          "command/run",
+          "user/message"
+        ]
+      },
+      "trustQuestionInLog": false,
+      "sessions": 1,
+      "screenshots": [
+        "01-trust-question.png",
+        "02-env-answered.png",
+        "03-import-answered.png",
+        "04-slash-command.png"
+      ],
+      "scratch": "/private/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-picode-web-DW4rJ1"
+    }
+  }
+}

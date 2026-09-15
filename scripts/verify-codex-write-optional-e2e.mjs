@@ -13,6 +13,7 @@
 // Tokens are copied only into the temporary home; the home is removed after
 // the run and no token material is written to the report.
 
+import { isSessionLog } from './lib/session-log.mjs'
 import assert from 'node:assert/strict'
 import { execFile as execFileCallback } from 'node:child_process'
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
@@ -130,7 +131,7 @@ try {
     'Use your file-writing tool to create a file named probe-1149.txt in the current working directory containing exactly: OPTIONAL_OK. Then reply with the single word DONE.',
   ], { cwd: ws, timeout: 420_000 })
 
-  const files = (await filesBelow(join(home, 'sessions'))).filter(path => path.endsWith('/session.jsonl'))
+  const files = (await filesBelow(join(home, 'sessions'))).filter(path => isSessionLog(path))
   assert.equal(files.length, 1, `expected one session log, found ${files.length}`)
   const records = (await readFile(files[0], 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line))
 

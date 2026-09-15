@@ -2,7 +2,9 @@
 // SharedHostState、模型目录投影、/login 与凭证恢复、伴生路由、命令/工具/
 // 事件桥等多个职责。拆法必须跟着架构走：按 CLAUDE.md 三层结构与 host 级/
 // 包级资源边界切模块，纯搬家不改逻辑；动手前先给出切分方案对齐再执行。
-import { access, mkdir, readFile, stat, writeFile } from 'node:fs/promises'
+import { isPiUserMessage, readSessionEvents } from './session-events.js'
+import { withPiPrintTransport, type PiPrintRequest } from './pi-cli-bridge.js'
+import { access, mkdir, readFile, realpath, stat, writeFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
 import { EventEmitter } from 'node:events'
@@ -14,6 +16,7 @@ import { createJiti } from 'jiti'
 import type { Context } from '@deepseek-ai/cordis'
 import { createUserMessage, type ContentBlock } from '@deepseek-ai/dsh-llm'
 import { scopeOf } from '@deepseek-ai/dsh-scope'
+import { fileContentForPi } from './dsh-content.js'
 import { renderPrompt } from '@deepseek-ai/dsh-system-prompt'
 import type {
   PostToolDecision,
@@ -147,6 +150,7 @@ interface RuntimeState {
   toolRestrictions: WeakMap<object, () => void>
   pendingActiveTools?: string[]
   commands: Map<string, PiCommand>
+  nativeSkillCommands: UnknownRecord[]
   // DSH-side disposers for registered commands, so Pi's same-name
   // registerCommand replacement (Map.set semantics) can release the old one.
   commandDisposers: Map<string, () => void>
@@ -159,6 +163,8 @@ interface RuntimeState {
   hostAgent: UnknownRecord | undefined
   /** Agents whose linear Pi session_shutdown has already been projected. */
   piShutdownAgents: WeakSet<object>
+  shutdownTasks: WeakMap<object, Promise<void>>
+  pendingShutdowns: Set<Promise<void>>
   disposedAgents: WeakSet<object>
   /** Durable sessions that have already received Pi's session_start event. */
   startedSessions: Set<string>
@@ -577,9 +583,10 @@ function isSubagentOrigin(subject: UnknownRecord | undefined): boolean {
 function currentPiModel(state: RuntimeState, agent: UnknownRecord): UnknownRecord | undefined {
   const override = state.modelOverrides.get(agent)
   const options = agent.options as { provider?: unknown, model?: unknown } | undefined
-  const selectedProvider = String(override?.provider ?? options?.provider ?? '')
+  const durable = lastRequestRouteOf(agentSession(agent))
+  const selectedProvider = String(override?.provider ?? durable?.provider ?? options?.provider ?? '')
   const provider = state.companionRoutes.get(selectedProvider) ?? selectedProvider
-  const id = String(override?.model ?? options?.model ?? '')
+  const id = String(override?.model ?? durable?.model ?? options?.model ?? '')
   if (id.length === 0) return override
   const known = provider.length > 0 ? state.modelCatalog?.find(provider, id) : undefined
   return known ?? { id, name: id, provider, api: 'faux', input: ['text'], reasoning: false }
@@ -631,9 +638,7 @@ function resolveCallerRoute(
 
 /** A session's durable events, whether the store exposes them as value or method. */
 function eventsOf(session: UnknownRecord): readonly UnknownRecord[] {
-  const events = (session as { events?: unknown }).events
-  if (typeof events === 'function') return (events as () => readonly UnknownRecord[]).call(session) ?? []
-  return Array.isArray(events) ? events as readonly UnknownRecord[] : []
+  return readSessionEvents(session)
 }
 
 /** The session id a presentation call belongs to, or '' outside a session. */
@@ -964,6 +969,16 @@ function contextFor(
           options as PiCustomOptions | undefined,
         )
       }
+      if (humanAnswererAvailable(userQuestions, agent, state.shared)) {
+        const gap = {
+          capability: 'ui.custom',
+          reason: 'native dialogs are available, but this surface has no terminal-component renderer.',
+          guidance: 'Use the package\'s non-terminal fallback or a DSH terminal surface.',
+          packageName: state.packageName,
+        }
+        capabilityLedgerOf(ctx, state).reportDegraded(gap)
+        throw new PiCapabilityError(gap)
+      }
       return undefined
     },
     // Pi's editor calls, on DSH's real composer. `inputActions.setDraft` is
@@ -1283,7 +1298,12 @@ function contextFor(
     // DSH keeps exactly that on the agent's durable inbox (next-step plus
     // next-turn); a hardcoded false told every package the queue is always
     // empty, so anything that waits for the queue to drain never waited.
-    hasPendingMessages: () => (agent as { inbox?: { hasPending?: unknown } } | undefined)?.inbox?.hasPending === true,
+    hasPendingMessages: () => {
+      const inbox = agent?.inbox as { nextStep?: readonly unknown[], nextTurn?: readonly unknown[], hasPending?: boolean } | undefined
+      return inbox?.nextStep !== undefined || inbox?.nextTurn !== undefined
+        ? (inbox.nextStep?.length ?? 0) + (inbox.nextTurn?.length ?? 0) > 0
+        : inbox?.hasPending === true
+    },
     // Pi defines shutdown() as "request a graceful shutdown; the actual
     // behavior is provided by the host" (runner.ts bindExtensions). This
     // host's behavior: on DSH the user owns process exit, so the request is
@@ -1432,7 +1452,7 @@ function contextFor(
         // Pi's default position is "before": fork the history strictly before
         // the entry; "at" includes it.
         const position = (options?.position as string | undefined) ?? 'before'
-        const events = ((source as { events?: readonly UnknownRecord[] }).events ?? []) as readonly UnknownRecord[]
+        const events = readSessionEvents(source)
         const requested = Math.min(position === 'at' ? seq : seq - 1, events.length - 1)
         const boundary = requested < 0 ? -1 : shrinkToTurnBoundary(events, requested)
         const child = boundary < 0
@@ -1471,7 +1491,7 @@ function contextFor(
             + 'can be navigation targets; package-appended sidecar entries are not part of the DSH durable log',
           )
         }
-        const events = ((source as { events?: readonly UnknownRecord[] }).events ?? []) as readonly UnknownRecord[]
+        const events = readSessionEvents(source)
         const capped = Math.min(seq, events.length - 1)
         const boundary = capped < 0 ? -1 : shrinkToTurnBoundary(events, capped)
         const child = boundary < 0
@@ -1515,7 +1535,8 @@ function contextFor(
         // Accept either the bare id or a path whose basename is "<id>.jsonl".
         const raw = String(sessionPath)
         const base = raw.replace(/\\/g, '/').split('/').pop() ?? raw
-        const candidate = base.endsWith('.jsonl') ? base.slice(0, -'.jsonl'.length) : base
+        const candidate = state.bridge.sessionIdOfArchiveFile(raw)
+          ?? (base.endsWith('.jsonl') ? base.slice(0, -'.jsonl'.length) : base)
         const target = sessions.get(candidate) ?? sessions.list().find(entry => String((entry as { id?: unknown }).id) === candidate)
         if (target === undefined) {
           throw new Error(
@@ -1572,6 +1593,18 @@ async function dispatch(
     results.push(await runInPiRuntime(state, agent, () => handler(event, eventContext)))
   }
   return results
+}
+
+function shutdownPiSession(ctx: Context, state: RuntimeState, agent: UnknownRecord, reason: string, signal?: AbortSignal): Promise<void> {
+  const existing = state.shutdownTasks.get(agent)
+  if (existing !== undefined) return existing
+  if (state.piShutdownAgents.has(agent)) return Promise.resolve()
+  state.piShutdownAgents.add(agent)
+  const task = dispatch(state, 'session_shutdown', { type: 'session_shutdown', reason }, contextFor(ctx, state, agent, signal)).then(() => {})
+  state.shutdownTasks.set(agent, task)
+  state.pendingShutdowns.add(task)
+  void task.then(() => state.pendingShutdowns.delete(task), () => state.pendingShutdowns.delete(task))
+  return task
 }
 
 /**
@@ -1689,6 +1722,9 @@ async function dshToPiContent(ctx: Context, content: readonly ContentBlock[]): P
       // image: Pi passes what exists.
       if (image !== undefined) out.push(image)
     }
+    else if ((block as { type: string }).type === 'file') {
+      out.push(fileContentForPi((block as unknown as UnknownRecord).attachment, ctx as never))
+    }
     else out.push({ type: block.type })
   }
   return out
@@ -1721,7 +1757,11 @@ async function messageFromSessionEvent(ctx: Context, event: UnknownRecord): Prom
   const data = event.data
   if (typeof data !== 'object' || data === null) return undefined
   const record = data as UnknownRecord
-  if (type === 'user/message') return { role: 'user', content: await dshToPiContent(ctx, (record.content ?? []) as ContentBlock[]) }
+  if (type === 'user/message') return {
+    role: isPiUserMessage(record) ? 'user' : 'custom',
+    ...(!isPiUserMessage(record) ? { customType: String((record.source as UnknownRecord | undefined)?.piCustomType ?? (record.source as UnknownRecord | undefined)?.kind ?? 'context'), display: false } : {}),
+    content: await dshToPiContent(ctx, (record.content ?? []) as ContentBlock[]),
+  }
   if (type === 'assistant/message') {
     const message = record.message as UnknownRecord | undefined
     return { role: 'assistant', content: await dshToPiContent(ctx, (message?.content ?? []) as ContentBlock[]) }
@@ -1836,6 +1876,21 @@ function untrackRuntimeSession(state: RuntimeState, agent: UnknownRecord | undef
   if (states?.size === 0) state.shared.runtimeStatesBySession.delete(id)
 }
 
+const sessionExportTasks = new WeakMap<object, Promise<void>>()
+
+async function prepareSessionFileExports(ctx: Context, state: RuntimeState): Promise<void> {
+  const persistence = optionalService<import('./session-bridge.js').SessionExportPersistence>(ctx, 'sessionPersistence')
+  if (typeof persistence?.list !== 'function'
+    || (typeof persistence.open !== 'function' && typeof persistence.inspect !== 'function')) return
+  let task = sessionExportTasks.get(ctx.root)
+  if (task === undefined) {
+    task = state.bridge.exportStoredSessions(persistence)
+    sessionExportTasks.set(ctx.root, task)
+    task.catch(() => { sessionExportTasks.delete(ctx.root) })
+  }
+  await task
+}
+
 /** Dispatch or join the one in-flight Pi session_start for this session. */
 async function startPiSession(
   ctx: Context,
@@ -1861,23 +1916,19 @@ async function startPiSession(
     // session_shutdown(A) must settle before session_start(B). Serialize that
     // semantic handoff here; the later physical disposal of A is then only a
     // DSH-resource event and must not emit a second Pi shutdown.
-    if (replacing && !state.piShutdownAgents.has(previous)) {
-      state.piShutdownAgents.add(previous)
+    if (replacing) {
       releasePiSessionClaim(state, previous)
-      await runInPiRuntime(state, previous, () => dispatch(
-        state,
-        'session_shutdown',
-        { type: 'session_shutdown', reason: replacementReason(reason) },
-        contextFor(ctx, state, previous, signal),
-      ))
+      await shutdownPiSession(ctx, state, previous, replacementReason(reason), signal)
     }
 
     if (typeof agent === 'object' && agent !== null) {
       state.hostAgent = agent
       state.piShutdownAgents.delete(agent)
+      state.shutdownTasks.delete(agent)
     }
     if (!claimPiSessionStart(state, agent)) return
     try {
+      await prepareSessionFileExports(ctx, state)
       await dispatch(
         state,
         'session_start',
@@ -1885,6 +1936,7 @@ async function startPiSession(
         contextFor(ctx, state, agent, signal),
       )
       await discoverPiResources(ctx, state, agent, transitionReason, signal)
+      await refreshNativeSkillCommands(ctx, state, agent, signal)
     } catch (error) {
       releasePiSessionClaim(state, agent)
       throw error
@@ -1944,11 +1996,53 @@ function subscribeLifecycle(ctx: Context, state: RuntimeState): void {
       // still replace first and dispose second; the ownership guard above
       // prevents one Agent's late disposal from touching another runtime.
       if (ownsHostSession && !state.piShutdownAgents.has(agent)) {
-        state.piShutdownAgents.add(agent)
         state.hostAgent = undefined
-        void dispatch(state, 'session_shutdown', { type: 'session_shutdown', reason: 'quit' }, contextFor(ctx, state, agent, undefined))
+        void shutdownPiSession(ctx, state, agent, 'quit')
           .catch(error => warn('session_shutdown', error))
       }
+    }
+  })
+
+  const liveStreams = new WeakMap<object, { attemptId: unknown, turn: unknown, step: unknown, index: number, ended: boolean }>()
+  const projectAssistantChunk = (session: UnknownRecord, data: UnknownRecord, chunk: UnknownRecord, eventContext: UnknownRecord): void => {
+    if ((state.handlers.get('message_update')?.length ?? 0) === 0) return
+    if (chunk.type !== undefined && chunk.type !== 'text-delta') return
+    const key = `${String(session.id ?? '')}:${String(data.turn ?? 0)}:${String(data.step ?? 0)}`
+    const delta = typeof chunk.text === 'string'
+      ? chunk.text
+      : typeof chunk.delta === 'string' ? chunk.delta : ''
+    const accumulated = (state.streamingTexts.get(key) ?? '') + delta
+    state.streamingTexts.set(key, accumulated)
+    const message = { role: 'assistant', content: [{ type: 'text', text: accumulated }] }
+    void dispatch(state, 'message_update', {
+      type: 'message_update', message,
+      assistantMessageEvent: { type: 'text_delta', contentIndex: 0, delta, partial: message },
+    }, eventContext).catch(error => warn('message_update', error))
+  }
+
+  // Stream frames are transient on new hosts; completed messages stay in the
+  // durable log. Keep attempt identity here so a retry cannot reuse partial
+  // text, and do not project the legacy event as well on a dual-emitting host.
+  cordis.on('agent/assistant-stream', (payload: UnknownRecord) => {
+    const agent = payload.agent as UnknownRecord | undefined
+    if (agent === undefined || state.hostAnchor || !acceptsAgent(state, agent)) return
+    const session = agentSession(agent) as UnknownRecord | undefined
+    if (session === undefined) return
+    const frame = payload.frame as UnknownRecord
+    if (frame.type === 'start') {
+      liveStreams.set(session, { attemptId: frame.attemptId, turn: frame.turn, step: frame.step, index: -1, ended: false })
+      state.streamingTexts.delete(`${String(session.id ?? '')}:${String(frame.turn ?? 0)}:${String(frame.step ?? 0)}`)
+      return
+    }
+    const active = liveStreams.get(session)
+    if (active === undefined || active.ended || active.attemptId !== frame.attemptId) return
+    if (frame.type === 'chunk' && Number(frame.index) > active.index) {
+      active.index = Number(frame.index)
+      projectAssistantChunk(session, active, frame.chunk as UnknownRecord, contextFor(ctx, state, agent, undefined))
+    }
+    if (frame.type === 'end') {
+      active.ended = true
+      state.streamingTexts.delete(`${String(session.id ?? '')}:${String(active.turn ?? 0)}:${String(active.step ?? 0)}`)
     }
   })
 
@@ -1982,7 +2076,7 @@ function subscribeLifecycle(ctx: Context, state: RuntimeState): void {
       state.projection = state.projection.then(async () => {
         // This STEP's assistant message and this STEP's tool results — Pi's
         // turn_end reports one model call, not a whole prompt.
-        const stepEvents = ((session.events ?? []) as UnknownRecord[]).filter(entry => {
+        const stepEvents = readSessionEvents(session).filter(entry => {
           const entryData = entry.data as UnknownRecord | undefined
           return Number(entryData?.turn ?? -1) === turn && Number(entryData?.step ?? -1) === step
         })
@@ -2005,20 +2099,9 @@ function subscribeLifecycle(ctx: Context, state: RuntimeState): void {
         type: 'tool_execution_start', toolCallId: data.callId, toolName: data.name, args: piViewOfToolArguments(state, String(data.name), args),
       }, eventContext).catch(error => warn('tool_execution_start', error))
     }
-    if (type === 'assistant/chunk' && (state.handlers.get('message_update')?.length ?? 0) > 0) {
+    if (type === 'assistant/chunk' && !liveStreams.has(session)) {
       const data = event.data as UnknownRecord
-      const chunk = (data.chunk ?? {}) as UnknownRecord
-      const key = `${String(session.id ?? '')}:${String(data.turn ?? 0)}:${String(data.step ?? 0)}`
-      const delta = typeof chunk.text === 'string'
-        ? chunk.text
-        : typeof chunk.delta === 'string' ? chunk.delta : ''
-      const accumulated = (state.streamingTexts.get(key) ?? '') + delta
-      state.streamingTexts.set(key, accumulated)
-      void dispatch(state, 'message_update', {
-        type: 'message_update',
-        message: { role: 'assistant', content: [{ type: 'text', text: accumulated }] },
-        assistantMessageEvent: chunk,
-      }, eventContext).catch(error => warn('message_update', error))
+      projectAssistantChunk(session, data, (data.chunk ?? {}) as UnknownRecord, eventContext)
     }
     if (type === 'assistant/message') {
       const data = event.data as UnknownRecord
@@ -2034,13 +2117,16 @@ function subscribeLifecycle(ctx: Context, state: RuntimeState): void {
     // projection is advisory (cancel/replace cannot reach DSH's compactor),
     // and the "after" projection carries the summary when one was recorded.
     if (type === 'compaction/start') {
-      void dispatch(state, 'session_before_compact', {
+      const before = dispatch(state, 'session_before_compact', {
         type: 'session_before_compact',
         preparation: { ...(event.data as UnknownRecord) },
         branchEntries: [],
         reason: compactionReason(event.data as UnknownRecord),
         willRetry: false,
       }, eventContext).catch(error => warn('session_before_compact', error))
+      // Preserve Pi handler ordering and join this work during teardown.
+      // The native log notification itself is still not an awaited veto gate.
+      state.projection = Promise.all([state.projection, before]).then(() => {})
     }
     // `compaction/summary` and ONLY it. `compaction/end` closes the bracket
     // whether the compaction succeeded or failed (it carries `error` when it
@@ -2051,7 +2137,7 @@ function subscribeLifecycle(ctx: Context, state: RuntimeState): void {
       const data = event.data as UnknownRecord
       const shadowed = data.shadowedRange as { start?: unknown, end?: unknown } | undefined
       const usage = data.usage as UnknownRecord | undefined
-      void dispatch(state, 'session_compact', {
+      state.projection = state.projection.then(() => dispatch(state, 'session_compact', {
         type: 'session_compact',
         compactionEntry: {
           type: 'compaction',
@@ -2069,7 +2155,7 @@ function subscribeLifecycle(ctx: Context, state: RuntimeState): void {
         fromExtension: false,
         reason: compactionReason(data),
         willRetry: false,
-      }, eventContext).catch(error => warn('session_compact', error))
+      }, eventContext)).then(() => {}).catch(error => warn('session_compact', error))
     }
     if (type === 'request/header') {
       const header = ((event.data as UnknownRecord).header ?? {}) as UnknownRecord
@@ -2140,18 +2226,20 @@ function subscribeLifecycle(ctx: Context, state: RuntimeState): void {
       ...config,
       ...(override?.provider === undefined ? {} : { provider: override.provider }),
       ...(override?.model === undefined ? {} : { model: override.model }),
-      ...(thinking === undefined || thinking === 'off' ? {} : { reasoningEffort: thinking }),
+      ...(thinking === undefined || (thinking === 'off' && (currentPiModel(state, agent)?.thinkingLevelMap as UnknownRecord | undefined)?.off === null)
+        ? {} : { reasoningEffort: thinking }),
     }
   })
 
 
   cordis.effect(() => async () => {
+    await state.projection
     const agent = state.hostAgent
-    if (typeof agent === 'object' && agent !== null && !state.piShutdownAgents.has(agent)) {
-      state.piShutdownAgents.add(agent)
+    if (typeof agent === 'object' && agent !== null) {
       state.disposedAgents.add(agent)
-      await dispatch(state, 'session_shutdown', { type: 'session_shutdown', reason: 'quit' }, contextFor(ctx, state, agent, undefined))
+      await shutdownPiSession(ctx, state, agent, 'quit')
     }
+    await Promise.all(state.pendingShutdowns)
     state.hostAgent = undefined
     for (const active of state.activeAgents) untrackRuntimeSession(state, active)
     state.activeAgents.clear()
@@ -2202,7 +2290,7 @@ async function flushPendingSessionStarts(ctx: Context, state: RuntimeState): Pro
   if (state.ownerAgent !== undefined && state.projectSessionEvent !== undefined) {
     const session = agentSession(state.ownerAgent) as (UnknownRecord & { events?: UnknownRecord[] }) | undefined
     if (session !== undefined) {
-      const events = (session.events ?? []) as Array<UnknownRecord & { type?: string }>
+      const events = readSessionEvents(session)
       let from = -1
       for (let index = events.length - 1; index >= 0; index -= 1) {
         if (events[index]!.type === 'turn/end') break
@@ -2253,6 +2341,7 @@ async function restartReloadedPiSessions(ctx: Context, state: RuntimeState): Pro
       contextFor(ctx, state, agent, undefined),
     ))
     await discoverPiResources(ctx, state, agent, pending.get(agent) ?? 'resume', undefined)
+    await refreshNativeSkillCommands(ctx, state, agent, undefined)
   }
 }
 
@@ -2268,6 +2357,30 @@ async function restartReloadedPiSessions(ctx: Context, state: RuntimeState): Pro
  * no DSH seat and are reported, not silently dropped. A single SKILL.md file
  * path (Pi accepts those too) has no root to mount and is reported likewise.
  */
+async function refreshNativeSkillCommands(ctx: Context, state: RuntimeState, agent: UnknownRecord | undefined, signal?: AbortSignal): Promise<void> {
+  const skills = optionalService<{
+    list(options: UnknownRecord): Promise<UnknownRecord[]>
+    get(name: string, options: UnknownRecord): Promise<UnknownRecord | undefined>
+  }>(ctx, 'skills')
+  if (skills === undefined) { state.nativeSkillCommands = []; return }
+  const options = { cwd: cwdOf(agent), scope: scopeOf(ctx), signal: signal ?? new AbortController().signal }
+  try {
+    const entries: UnknownRecord[] = []
+    for (const summary of await skills.list(options)) {
+      if ((summary.invocation as UnknownRecord | undefined)?.userInvocable === false) continue
+      const skill = await skills.get(String(summary.name), options)
+      if (typeof skill?.path !== 'string') continue
+      entries.push({ name: `skill:${String(summary.name)}`, description: String(summary.description ?? ''), source: 'skill',
+        sourceInfo: { path: skill.path, source: skill.path, scope: String(summary.source ?? '').startsWith('project') ? 'project' : 'user', origin: 'top-level', baseDir: dirname(skill.path) },
+      })
+    }
+    state.nativeSkillCommands = entries
+  } catch (error) {
+    state.nativeSkillCommands = []
+    logger(ctx).warn(`[pi2dsh] skill command metadata could not be refreshed: ${error instanceof Error ? error.message : String(error)}`)
+  }
+}
+
 async function discoverPiResources(
   ctx: Context,
   state: RuntimeState,
@@ -2692,7 +2805,7 @@ async function piSystemPromptOptions(ctx: Context, state: RuntimeState, agent: U
     if (baseline !== undefined) break
   }
   if (baseline === undefined) {
-    const events = (agentSession(agent)?.events ?? []) as UnknownRecord[]
+    const events = readSessionEvents(agentSession(agent))
     for (let index = events.length - 1; index >= 0 && baseline === undefined; index -= 1) {
       const event = events[index]!
       const data = event.data as UnknownRecord | undefined
@@ -2770,7 +2883,7 @@ async function applyPiContextTransform(
   if ((state.handlers.get('context')?.length ?? 0) === 0) return pending
   const session = agentSession(agent)
   const history: UnknownRecord[] = []
-  for (const event of ((session?.events ?? []) as UnknownRecord[])) {
+  for (const event of readSessionEvents(session)) {
     const projected = await messageFromSessionEvent(ctx, event)
     if (projected === undefined) continue
     if (event.type === 'user/message') {
@@ -2808,11 +2921,22 @@ async function applyPiContextTransform(
   for (const [index, original] of pending.entries()) {
     const shape = tail[index]
     if (shape === undefined) { rebuilt.push(original); continue }
+    if (JSON.stringify(shape.content) === JSON.stringify(projectedPending[index]?.content)) {
+      rebuilt.push(original)
+      continue
+    }
     const blocks = await piToDshContent(ctx, typeof shape.content === 'string'
       ? [{ type: 'text', text: shape.content }]
       : shape.content ?? [])
+    // A context hook may edit the surrounding text while retaining the file
+    // handle. Restore those unchanged handles to their original durable refs
+    // so the host still owns file presentation and access checks.
+    const files = new Map<string, ContentBlock>()
+    for (const block of (original.content ?? []) as UnknownRecord[]) {
+      if (block.type === 'file') files.set(fileContentForPi(block.attachment, ctx as never).text, block as unknown as ContentBlock)
+    }
     rebuilt.push(createUserMessage({
-      content: blocks,
+      content: blocks.map(block => block.type === 'text' ? files.get(block.text) ?? block : block),
       source: (original.source ?? { kind: 'plugin', plugin: state.messageSource }) as never,
     }) as unknown as UnknownRecord)
   }
@@ -4317,7 +4441,7 @@ async function sendPiMessage(
     content: blocks,
     source: {
       kind: 'plugin', plugin: state.messageSource,
-      ...(customType === undefined ? {} : { piCustomType: customType }),
+      ...(customType === undefined ? { form: 'relay' as const } : { piCustomType: customType }),
     },
   })
   // A replacement session has no live agent of its own; the durable log IS the
@@ -4403,16 +4527,18 @@ async function executePiCommand(
   command: string,
   args: string[],
   options: PiExecOptions,
+  environment?: Record<string, string>,
 ): Promise<{ stdout: string; stderr: string; code: number; killed: boolean }> {
   const operation = combineExecSignal(options)
   try {
     if (typeof command !== 'string' || command.length === 0) throw new TypeError('Pi exec command must be a non-empty string')
     if (!Array.isArray(args) || args.some(value => typeof value !== 'string')) throw new TypeError('Pi exec args must be strings')
-    const executable = await service.resolveExecutable(command, undefined, operation.signal)
+    const executable = await service.resolveExecutable(command, environment, operation.signal)
     const collect = { maxBytes: 64 * 1024 * 1024 }
     const handle = service.spawn({
       argv: [executable, ...args],
       cwd: options.cwd ?? cwd,
+      ...(environment === undefined ? {} : { env: environment }),
       stdio: { stdin: 'ignore', stdout: collect, stderr: collect },
       graceMs: 5_000,
       signal: operation.signal,
@@ -4531,6 +4657,7 @@ function registerCommand(ctx: Context, state: RuntimeState, command: PiCommand):
       const live = state.commands.get(command.name) ?? command
       await runInPiRuntime(state, agent, async () => {
         await ensurePiSessionStarted(ctx, state, agent, invocation.signal as AbortSignal | undefined)
+        await refreshNativeSkillCommands(ctx, state, agent, invocation.signal as AbortSignal | undefined)
         await live.handler(String(invocation.rawInput ?? '').trimStart(), commandContext)
       })
       const notices = commandContext.__notices as string[]
@@ -4716,6 +4843,83 @@ function registerSharedProviderRoute(
   return route
 }
 
+async function runPiPrintRequest(ctx: Context, state: RuntimeState, parent: UnknownRecord | undefined, request: PiPrintRequest, signal: AbortSignal): Promise<{ stdout: string; code: number }> {
+  if (parent === undefined || state.subagentSessionFactory === undefined) throw new Error('pi2dsh CLI: native print work requires an active DSH agent')
+  const catalog = state.shared.childExtensions
+  const requestedPaths: string[] = []
+  for (const requested of request.extensions) {
+    let matched: string | undefined
+    for (const path of catalog?.packageByEntryPath.keys() ?? []) {
+      if (await realpath(path).catch(() => path) === requested) { matched = path; break }
+    }
+    if (matched === undefined) throw new Error(`pi2dsh CLI: extension ${requested} is not installed in this DSH profile`)
+    requestedPaths.push(matched)
+  }
+  const paths = [...new Set([...(request.noExtensions ? [] : catalog?.packageByEntryPath.keys() ?? []), ...requestedPaths])]
+  let model: UnknownRecord | undefined
+  if (request.model !== undefined) {
+    model = state.modelCatalog?.all().find(entry => `${entry.provider}/${entry.id}` === request.model
+      || (entry.id === request.model && (request.provider === undefined || entry.provider === request.provider)))
+    if (model === undefined) throw new Error(`pi2dsh CLI: model ${request.model} is unavailable in the DSH model directory`)
+  } else if (request.provider !== undefined) {
+    const inherited = currentPiModel(state, parent)
+    if (inherited?.provider !== request.provider) throw new Error('pi2dsh CLI: --provider requires an explicit --model for a different route')
+    model = inherited
+  }
+  const created = await runInPiRuntime(state, parent, () => state.subagentSessionFactory!({
+    cwd: request.cwd,
+    signal,
+    ...(model === undefined ? {} : { model }),
+    ...(request.thinking === undefined ? {} : { thinkingLevel: request.thinking }),
+    ...(request.tools === undefined ? {} : { tools: request.tools }),
+    ...(request.noSession ? { sessionManager: { getSessionFile: () => undefined } } : {}),
+    label: 'Background task',
+    resourceLoader: {
+      getExtensions: () => ({ extensions: paths.map(path => ({ path })), errors: [] }),
+      getSystemPrompt: () => request.systemPrompt,
+      getAppendSystemPrompt: () => request.appendSystemPrompt === undefined ? [] : [request.appendSystemPrompt],
+    },
+  }))
+  if (request.noSession) capabilityLedgerOf(ctx, state).reportHostDecision({
+    capability: 'pi print --no-session',
+    reason: 'the print worker has no Pi session file; DSH retains its native child audit log.',
+    guidance: 'Native retention remains a DSH host policy.',
+    packageName: state.packageName,
+  })
+  const child = created.session as {
+    prompt(text: string): Promise<void>; abort(): void; dispose(): Promise<void>
+    messages: UnknownRecord[]; sessionManager?: { getSessionId(): string }
+    bindExtensions(options: { onError(error: unknown): void }): Promise<void>
+  }
+  let rejectCancellation!: (reason: unknown) => void
+  const cancellation = new Promise<never>((_resolve, reject) => { rejectCancellation = reject })
+  void cancellation.catch(() => {})
+  const abort = () => {
+    child.abort()
+    rejectCancellation(signal.reason ?? new Error('Pi print worker cancelled'))
+  }
+  signal.addEventListener('abort', abort, { once: true })
+  try {
+    const failures: unknown[] = []
+    await child.bindExtensions({ onError: error => { failures.push(error) } })
+    if (failures.length > 0) throw new Error(`pi2dsh CLI: child extension mount failed: ${JSON.stringify(failures)}`)
+    signal.throwIfAborted()
+    await Promise.race([child.prompt(request.prompt), cancellation])
+    signal.throwIfAborted()
+    const session = optionalService<DshSessionsService>(ctx, 'sessions')?.get(child.sessionManager?.getSessionId() ?? '')
+    const end = readSessionEvents(session).findLast(event => event.type === 'turn/end')
+    if ((end?.data as { reason?: { kind?: string } } | undefined)?.reason?.kind !== 'completed') {
+      throw new Error(`pi2dsh CLI: native child did not complete: ${JSON.stringify(end?.data ?? {})}`)
+    }
+    const last = child.messages.findLast(message => message.role === 'assistant')
+    return { code: 0, stdout: textBlocks(last?.content).map(block => block.text).join('\n') }
+  } finally {
+    signal.removeEventListener('abort', abort)
+    if (signal.aborted) child.abort()
+    await child.dispose()
+  }
+}
+
 function createPiApi(ctx: Context, state: RuntimeState): UnknownRecord {
   return {
     on(event: string, handler: PiHandler) {
@@ -4864,10 +5068,22 @@ function createPiApi(ctx: Context, state: RuntimeState): UnknownRecord {
       const session = requireSession(state, 'setLabel')
       state.bridge.appendLabel(session.id, String(entryId), label)
     },
-    exec(command: string, args: string[] = [], options: PiExecOptions = {}) {
+    async exec(command: string, args: string[] = [], options: PiExecOptions = {}) {
       const service = optionalService<DshSubprocessService>(ctx, 'subprocess')
       if (service === undefined) unsupported('exec')
-      return executePiCommand(service, cwdOf(currentAgent(state)), command, args, options)
+      const parent = currentAgent(state)
+      // A Unix socket and local launcher are not meaningful in E2B/remote
+      // execution worlds. Keep their environment and provider path untouched.
+      let local = false
+      try {
+        const { LocalSubprocessRuntime } = await import('@deepseek-ai/dsh-subprocess-local')
+        local = service instanceof LocalSubprocessRuntime
+      } catch { /* optional local provider is absent */ }
+      if (!local) return executePiCommand(service, cwdOf(parent), command, args, options)
+      return withPiPrintTransport(
+        (request, signal) => runPiPrintRequest(ctx, state, parent, request, signal),
+        environment => executePiCommand(service, cwdOf(parent), command, args, options, environment),
+      ).catch(error => ({ stdout: '', stderr: error instanceof Error ? error.message : String(error), code: 1, killed: options.signal?.aborted === true }))
     },
     getActiveTools: () => getActiveTools(ctx, state),
     getAllTools: () => {
@@ -4890,12 +5106,12 @@ function createPiApi(ctx: Context, state: RuntimeState): UnknownRecord {
         }))
     },
     setActiveTools: (names: string[]) => setActiveTools(ctx, state, names),
-    getCommands: () => [...state.commands.values()].map(command => ({
+    getCommands: () => [...[...state.commands.values()].map(command => ({
       name: command.name,
       description: command.description,
       source: 'extension',
       sourceInfo: { path: '', source: 'pi2dsh', scope: 'user', origin: 'package' },
-    })),
+    })), ...state.nativeSkillCommands],
     async setModel(model: UnknownRecord) {
       const agent = currentAgent(state)
       if (agent === undefined) return false
@@ -5179,6 +5395,7 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
     toolDisposers: new Map(),
     toolRestrictions: new WeakMap(),
     commands: new Map(),
+    nativeSkillCommands: [],
     commandDisposers: new Map(),
     dshCommandOwners: new Map(),
     companionRoutes: shared.companionRoutes,
@@ -5187,6 +5404,8 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
     activeAgents: new Set(),
     hostAgent: undefined,
     piShutdownAgents: new WeakSet(),
+    shutdownTasks: new WeakMap(),
+    pendingShutdowns: new Set(),
     disposedAgents: new WeakSet(),
     startedSessions: new Set(),
     sessionStartTasks: new Map(),
@@ -5204,7 +5423,7 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
     llmBridge: undefined,
     piAiRegistry: __createPiAiRuntimeRegistry(),
     subagentSessionFactory: undefined,
-    bridge: new PiSessionBridge(),
+    bridge: new PiSessionBridge(ref => fileContentForPi(ref, ctx as never)),
     theme: sharedThemeFor(shared, ownerAgent),
     shortcuts: new Map(),
     messageRenderers: new Map(),
@@ -5693,6 +5912,7 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
     messageSource: state.messageSource,
     packageName: state.packageName,
     parentAgentContext: () => (currentAgent(state) as { ctx?: unknown } | undefined)?.ctx,
+    parentAgent: () => currentAgent(state),
     registerChildTools: (childCtx, tools) => {
       for (const tool of tools) registerChildPiTool(childCtx as Context, state, tool as PiTool)
     },
@@ -5756,7 +5976,10 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
       if (typeof persistence?.list !== 'function') return undefined
       try {
         const headers = await persistence.list()
-        return !headers.some(header => String((header as { id?: unknown } | undefined)?.id ?? '') === sessionId)
+        return !headers.some(snapshot => {
+          const header = ((snapshot as UnknownRecord).header ?? snapshot) as UnknownRecord
+          return String(header.id ?? '') === sessionId
+        })
       } catch {
         return undefined
       }
@@ -5782,8 +6005,18 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
     adoptChildAgent: (child, thinkingLevel) => {
       if (typeof child !== 'object' || child === null) return
       state.childAgents.add(child)
-      if (typeof thinkingLevel === 'string' && thinkingLevel.length > 0 && thinkingLevel !== 'off') {
+      if (typeof thinkingLevel === 'string' && thinkingLevel.length > 0) {
         state.thinkingLevels.set(child, thinkingLevel)
+        // Modern DSH dispatches Agent events in that Agent's scope. A parent
+        // listener cannot configure a child merely by accepting its identity.
+        const childCtx = (child as UnknownRecord).ctx as { on?: (event: string, listener: (payload: UnknownRecord, next: () => Promise<UnknownRecord>) => Promise<UnknownRecord>) => unknown } | undefined
+        childCtx?.on?.('agent/request', async (payload, next) => {
+          const config = await next()
+          if (payload.agent !== child) return config
+          const level = state.thinkingLevels.get(child)
+          if (level === undefined || (level === 'off' && (currentPiModel(state, child as UnknownRecord)?.thinkingLevelMap as UnknownRecord | undefined)?.off === null)) return config
+          return { ...config, reasoningEffort: level }
+        })
       }
     },
   })
@@ -5831,6 +6064,13 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
     // registration path; event handlers (both Pi lifecycle handlers and the
     // package-local event bus) start from a clean slate — without this every
     // reload would double the subscriptions.
+    await state.projection
+    const previousAgent = state.hostAgent ?? currentAgent(state)
+    if (previousAgent !== undefined) {
+      await shutdownPiSession(ctx, state, previousAgent, 'reload')
+      state.piShutdownAgents.delete(previousAgent)
+      state.shutdownTasks.delete(previousAgent)
+    }
     state.extensionsReady = false
     state.handlers.clear()
     // The bus is agent-shared: unwind only this instance's subscriptions.

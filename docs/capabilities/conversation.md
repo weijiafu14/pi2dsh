@@ -20,11 +20,11 @@ the surface is registered and stated as never firing rather than faked.
 | [`turn_end`](#turn_end-event) | `event` | Same semantics | Fires once per MODEL CALL, as in Pi — DSH calls that a step — carrying that call's own assistant message and its own tool results, with turnIndex counting model calls from zero and resetting each prompt. |
 | [`message_start`](#message_start-event) | `event` | Mapped, difference stated | Durable user, assistant, and tool-result messages are mapped without Pi-specific provider metadata. |
 | [`message_end`](#message_end-event) | `event` | Mapped, difference stated | Durable messages are observed, but message replacement is not supported. |
-| [`message_update`](#message_update-event) | `event` | Mapped, difference stated | Projected from DSH assistant/chunk events with accumulated text; Pi's full AgentMessage accumulation state is approximated. |
+| [`message_update`](#message_update-event) | `event` | Mapped, difference stated | Projected from live agent/assistant-stream frames on newer hosts and durable assistant/chunk events on older hosts, with retry-attempt isolation and canonical Pi text_delta events; reasoning is not mixed into text; Pi's full AgentMessage accumulation state is approximated. |
 | [`context`](#context-event) | `event` | Mapped, difference stated | Fires before each step with the full message projection; the transform applies to the step's not-yet-entered messages (the slice packages rewrite), while already-entered history stays read-only under DSH's append-only log. |
 | [`signal`](#signal-ctx) | `ctx.*` | Same semantics | Mapped to the active DSH cancellation signal when one is available. |
 | [`isIdle`](#isidle-ctx) | `ctx.*` | Mapped, difference stated | Command contexts report idle; tool/lifecycle contexts conservatively report non-idle. |
-| [`hasPendingMessages`](#haspendingmessages-ctx) | `ctx.*` | Same semantics | Reads the DSH agent inbox — next-step plus next-turn input — which is exactly Pi's steering plus follow-up queue. |
+| [`hasPendingMessages`](#haspendingmessages-ctx) | `ctx.*` | Same semantics | Reads the public DSH nextStep and nextTurn inbox lists (legacy hasPending is a fallback) — next-step plus next-turn input — which is exactly Pi's steering plus follow-up queue. |
 | [`getContextUsage`](#getcontextusage-ctx) | `ctx.*` | Mapped, difference stated | Returns no Pi token-usage projection. |
 | [`getSystemPrompt`](#getsystemprompt-ctx) | `ctx.*` | Same semantics | Returns the system prompt currently assembled by the bridge. |
 | [`getSystemPromptOptions`](#getsystempromptoptions-ctx) | `ctx.*` | Mapped, difference stated | Returns an empty Pi option projection in command contexts. |
@@ -101,7 +101,7 @@ Projected from the same durable message events; DSH's log is append-only, so Pi'
 
 `event` · Mapped, difference stated
 
-Projected from DSH assistant/chunk events with text accumulated by the bridge. Pi's full AgentMessage accumulation state is approximated, not reconstructed.
+New live frames and old durable chunks feed the same projection; a host using live frames is not counted twice. Text resets between attempts. Thinking and tool-argument streaming are not claimed by this text-only projection. Pi's full AgentMessage accumulation state is approximated, not reconstructed.
 
 ### `context` <a id="context-event"></a>
 

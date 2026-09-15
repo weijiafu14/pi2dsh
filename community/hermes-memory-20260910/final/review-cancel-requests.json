@@ -1,0 +1,68 @@
+[
+  {
+    "kind": "foreground",
+    "startedAt": 1789053138297,
+    "completed": true,
+    "cancelled": false,
+    "status": 200,
+    "model": "deepseek-flash",
+    "thinking": {
+      "type": "enabled"
+    },
+    "reasoningEffort": "high",
+    "completedAt": 1789053140199
+  },
+  {
+    "kind": "foreground",
+    "startedAt": 1789053138302,
+    "completed": true,
+    "cancelled": false,
+    "status": 200,
+    "model": "deepseek-flash",
+    "thinking": {
+      "type": "disabled"
+    },
+    "completedAt": 1789053139320
+  },
+  {
+    "kind": "foreground",
+    "startedAt": 1789053140366,
+    "completed": true,
+    "cancelled": false,
+    "status": 200,
+    "model": "deepseek-flash",
+    "thinking": {
+      "type": "enabled"
+    },
+    "reasoningEffort": "high",
+    "completedAt": 1789053141328
+  },
+  {
+    "kind": "foreground",
+    "startedAt": 1789053142005,
+    "completed": true,
+    "cancelled": false,
+    "status": 200,
+    "model": "deepseek-flash",
+    "thinking": {
+      "type": "enabled"
+    },
+    "reasoningEffort": "high",
+    "completedAt": 1789053142560
+  },
+  {
+    "kind": "maintenance",
+    "startedAt": 1789053142570,
+    "completed": false,
+    "cancelled": true,
+    "status": 200,
+    "model": "deepseek-flash",
+    "thinking": {
+      "type": "enabled"
+    },
+    "reasoningEffort": "high",
+    "shutdownRequestedAt": 1789053142633,
+    "cancelledAt": 1789053143148,
+    "error": "caller aborted"
+  }
+]

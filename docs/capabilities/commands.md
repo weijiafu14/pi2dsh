@@ -15,7 +15,7 @@ being sent as chat. Pi's never-throw collision behaviour is preserved.
 | [`registerShortcut`](#registershortcut-pi) | `pi.*` | Mapped, difference stated | Registration is recorded and introspectable; DSH surfaces feed no terminal key input, so handlers never fire — the same as Pi's non-TUI modes. |
 | [`registerFlag`](#registerflag-pi) | `pi.*` | Mapped, difference stated | The declared default is available through getFlag; Pi process flags cannot be added to the DSH launcher. |
 | [`getFlag`](#getflag-pi) | `pi.*` | Mapped, difference stated | Returns the migrated flag default because DSH cannot register the original Pi CLI flag. |
-| [`getCommands`](#getcommands-pi) | `pi.*` | Mapped, difference stated | Returns commands registered by this migrated Pi package, not every command visible in the DSH scope. |
+| [`getCommands`](#getcommands-pi) | `pi.*` | Mapped, difference stated | Returns this package's registered commands plus Pi-shaped skill descriptors for file-backed, user-invocable skills visible in the current native DSH scope. It does not enumerate unrelated native slash commands. |
 | [`input`](#input-event) | `event` | Mapped, difference stated | Registration is accepted; raw Pi terminal input never occurs on DSH surfaces, so the handler never fires. Loading is unaffected. |
 | [`onTerminalInput`](#onterminalinput-ctxui) | `ctx.ui.*` | Mapped, difference stated | Raw terminal input is absent; feature-detected listeners remain disabled. |
 | [`pasteToEditor`](#pastetoeditor-ctxui) | `ctx.ui.*` | Mapped, difference stated | Appends to a per-agent editor buffer readable through getEditorText(). |
@@ -59,7 +59,7 @@ Reads the bridge map registerFlag wrote.
 
 `pi.*` · Mapped, difference stated
 
-Reads the bridge's own command map, which holds this package's registrations rather than the whole DSH scope.
+Reads the package command map and a native skill metadata snapshot refreshed at session startup and command boundaries through ctx.skills.list/get. Skill descriptors preserve actual source paths; opaque non-file skill bodies are not assigned invented paths.
 
 ### `input` <a id="input-event"></a>
 

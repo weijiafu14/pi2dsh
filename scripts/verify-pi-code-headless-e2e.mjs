@@ -16,6 +16,7 @@
 //
 // Usage: DEEPSEEK_API_KEY=… PI2DSH_DSH_BIN=<stock dsh> PI2DSH_DSH_CWD=<its dir> \
 //        node scripts/verify-pi-code-headless-e2e.mjs [out.json]
+import { isSessionLog, systemPromptText } from './lib/session-log.mjs'
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
 import { mkdir, mkdtemp, readFile, readdir, realpath, writeFile, chmod } from 'node:fs/promises'
@@ -109,7 +110,7 @@ async function headless(prompt, cwd, done, timeoutMs = 300_000) {
   async function recordsOf() {
     if (!existsSync(sessionsRoot)) return []
     const files = []
-    const walk = async d => { for (const e of await readdir(d, { withFileTypes: true })) { const p = join(d, e.name); if (e.isDirectory()) await walk(p); else if (e.name === 'session.jsonl') files.push(p) } }
+    const walk = async d => { for (const e of await readdir(d, { withFileTypes: true })) { const p = join(d, e.name); if (e.isDirectory()) await walk(p); else if (isSessionLog(e.name)) files.push(p) } }
     await walk(sessionsRoot)
     const all = []
     for (const f of files.sort()) all.push(...(await readFile(f, 'utf8')).split('\n').filter(Boolean).map(l => JSON.parse(l)))
@@ -141,7 +142,7 @@ await writeFile(join(scratch, 'turn1.log'), t1.output)
 // Turn 2: CLAUDE.md @import resolution (codeword lives only in the imported file).
 const t2 = await headless(`What is the secret import codeword from your context files? Reply with the codeword only.`, project, () => true)
 const injected = t2.recs.filter(r => (r.type === 'user/message' && r.data?.source?.kind === 'plugin' && JSON.stringify(r.data).includes(IMPORT_CW))
-  || (r.type === 'request/header' && String(r.data?.header?.system ?? '').includes(IMPORT_CW)))
+  || systemPromptText(r).includes(IMPORT_CW))
 const importSeen = injected.length > 0
 results.claudeMdImportCarrier = injected.map(r => r.type === 'user/message' ? `user/message(plugin=${r.data.source.plugin})` : 'request/header.system')
 results.claudeMdImport = { pass: importSeen, codeword: IMPORT_CW }
@@ -163,7 +164,7 @@ console.log(`[pi-code-headless] .claude/skills discovery → ${skillSeen ? 'PASS
 // Turn 3: output style + unscoped rule (both land in the system prompt) and the
 // scoped rule (attached to the read of a matching path).
 const t3 = await headless(`Use the read tool to read the file src/probe.ts, then reply with the single word DONE.`, project, (recs) => recs.some(r => r.type === 'tool/result'))
-const t3sys = t3.recs.filter(r => r.type === 'request/header').map(r => String(r.data?.header?.system ?? ''))
+const t3sys = t3.recs.map(systemPromptText).filter(Boolean)
 const styleSeen = t3sys.some(s => s.includes('## Output Style: pirate') && s.includes(STYLE_CW))
 const ruleSeen = t3sys.some(s => s.includes(RULE_CW))
 const readCalls = new Set(t3.recs.filter(r => r.type === 'tool/call' && r.data?.name === 'read' && String(r.data?.arguments ?? '').includes('src/probe.ts')).map(r => r.data.callId))

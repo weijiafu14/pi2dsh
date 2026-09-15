@@ -147,6 +147,7 @@ describe('an installed Pi package in the real DSH runtime', () => {
       trusted: false,
       pending: false,
       hasUI: true,
+      customFallback: 'ui.custom',
       // ui.custom resolves to undefined per Pi's own rpc-mode semantics;
       // abort still fails here because the probe agent has no cancel().
       // shutdown is absorbed (Pi's host-defined semantics) and compact is a
@@ -406,7 +407,9 @@ describe('an installed Pi package in the real DSH runtime', () => {
     // instance receives its own one session_start for the still-live session.
     expect(counters).toMatchObject({
       session_start: 2,
-      session_shutdown: 1,
+      // Reload shuts down the old extension before reinitialization, then
+      // Agent disposal shuts down the new one. Both must close their resources.
+      session_shutdown: 2,
       package_event: 2,
       flag_default: 2,
       command: 1,

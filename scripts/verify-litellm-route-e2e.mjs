@@ -2,17 +2,18 @@
 // Live validation for deepseek-harness discussion #2170: route DSH through a
 // REAL local liteLLM proxy and prove the turn succeeds while the DSH side
 // never holds DEEPSEEK_API_KEY — the upstream credential lives only in
-// liteLLM's own config, exactly the separation the thread asks about.
+// liteLLM's own environment, exactly the separation the thread asks about.
 //
 // Real components end to end: stock npm dsh CLI, published pi2dsh engine, a
 // catalog-only Pi provider whose baseUrl is the liteLLM proxy, liteLLM itself
 // (via uvx), and the real api.deepseek.com behind it. Nothing is mocked.
 //
 //   DEEPSEEK_API_KEY=… node scripts/verify-litellm-route-e2e.mjs [outfile]
-//     (the key is written ONLY into liteLLM's scratch config, chmod 600,
-//      removed with the scratch; the DSH home env explicitly omits it)
+//     (the proxy reads the key from its environment; its config contains only
+//      an environment reference, and the DSH home env explicitly omits the key)
 //   PI2DSH_ENGINE_SPEC / PI2DSH_CLI_DIR / PI2DSH_DSH_BIN as in the other harnesses.
 
+import { isSessionLog } from './lib/session-log.mjs'
 import assert from 'node:assert/strict'
 import { spawn, execFile as execFileCallback } from 'node:child_process'
 import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
@@ -86,7 +87,7 @@ try {
     '  - model_name: deepseek-chat',
     '    litellm_params:',
     '      model: deepseek/deepseek-chat',
-    `      api_key: ${upstreamKey}`,
+    '      api_key: os.environ/DEEPSEEK_API_KEY',
     'general_settings:',
     `  master_key: ${masterKey}`,
     '',
@@ -150,7 +151,7 @@ try {
   const run = await runDsh(['--profile', 'headless', 'Reply with exactly: LITELLM_OK'], { cwd: ws, timeout: 300_000 })
   assert.match(String(run.stdout), /LITELLM_OK/u, `the turn did not complete:\n${run.stdout}\n${run.stderr}`)
 
-  const files = (await filesBelow(join(home, 'sessions'))).filter(path => path.endsWith('/session.jsonl'))
+  const files = (await filesBelow(join(home, 'sessions'))).filter(path => isSessionLog(path))
   assert.equal(files.length, 1, `expected one session log, found ${files.length}`)
   const records = (await readFile(files[0], 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line))
   const turnEnd = records.find(record => record.type === 'turn/end')
@@ -169,7 +170,7 @@ try {
     turnCompleted: true,
     dshEnvHadDeepseekKey: false,
     dshSideCredential: 'liteLLM virtual master key only',
-    upstreamKeyLocation: 'liteLLM config file (scratch, 0600) only',
+    upstreamKeyLocation: 'liteLLM environment only (config contains an env reference)',
     turnEndReason: turnEnd.data.reason.kind,
   }
   log('verdict: passed')

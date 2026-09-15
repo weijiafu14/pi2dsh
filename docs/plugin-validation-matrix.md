@@ -487,6 +487,75 @@ pi-code 在 session_start 请求项目信任、读 settings.json、注册 hooks�
 [`scripts/verify-pi-code-headless-e2e.mjs`](../scripts/verify-pi-code-headless-e2e.mjs)、
 [`scripts/verify-pi-code-web-e2e.mjs`](../scripts/verify-pi-code-web-e2e.mjs)。
 
+## DSH 0.1.5-rc.1 新建数据回归（2026-09-10）
+
+本块引用前面的插件记录与现有映射分支，只补充新宿主的证据，不给整个插件重打一个总分。
+旧数据跨版本迁移按用户决定不在本轮范围；同版本重启恢复仍属于验收。
+
+引用既有分支：[模型](architecture-mapping-matrix.md#pi-model-registry)、
+[消息流](architecture-mapping-matrix.md#pi-messages-stream)、
+[会话](architecture-mapping-matrix.md#dsh-session)、
+[子代理作用域](architecture-mapping-matrix.md#pi-extension-instance-scope)、
+[客户端](architecture-mapping-matrix.md#dsh-client)。
+
+| 插件 / Pi 能力 | 五层实际路径 | 本轮结论 |
+|---|---|---|
+| pi-provider-litellm 2.3.0 / provider 与 systemPrompt | 原包 createProvider → pi2dsh 的 DSH/Pi 消息翻译 → llm.registerAdapter → DSH 请求 / 原包 HTTP transport → 真实 DeepSeek 收到系统提示词并完成工具往返 | 注册 1 级；systemPrompt 翻译 2 级。透传录制器只观察请求，不改写或合成模型响应；原包的可选 LiteLLM Skills/MCP 产品未测试 |
+| pi-code 1.0.47 / 配置与 hooks | 原包读取 Claude 配置 → before_agent_start / tool 参数翻译 / resources_discover → assemble、tools、skill filesystem → DSH system/message、工具结果、技能目录消息 → CLI/Web 实际配置与命令生效 | 配置、规则、hooks、skills 维持 2 级；命令注册维持 1 级；Task 启 Pi CLI 的已知缺口仍为 4 级 |
+| Pi context 消费者 / 上传文件 | Web 真上传 + Pi context hook 改写周边文本 → fileHandleText 投影及引用还原 → 原生附件与文件工具 → DSH 日志仍保存 file 引用 → 模型真实读取仅在文件内的随机码，Web 保留附件卡 | 2 级可靠翻译；没有文件副本或新权限绕行；真实浏览器截图已目检 |
+| pi-codex-image-gen / 图片结果 | 原包图片工具 → PiImageToolView → tool.call.toolview owner.loadImage → DSH 授权附件加载 → 真实生成与参考图编辑结果在 Web 解码显示 | 2 级可靠翻译；修复了桥继续依赖旧附件 URL 的欠账，未增加附件权威或绕过授权 |
+| pi-subagents 0.18.0 / 子代理与工具 | 原包 Agent/createAgentSession → 显式 setup Agent、parentAgent 与工具限制 → agents.create/resume + 子作用域 → 原生子会话和真实工具结果 → steer、停止、继续、失败回传、模型继承/独立档位、插件隔离通过 | 创建与原生工具 1 级，控制/模型语义翻译 2 级；Pi 档案文件/自定义事实仍有既有 3 级旁路，不因此关闭 DSH-ARCH-001 |
+
+新版真实 CLI/Web/TUI 证据归档在 `community/dsh-015-compat/`。Provider 使用真实 API；
+模块挂载、类型检查或空目录探针不作为这些工作流的成功证据。
+
+### DSH 0.1.5-rc.2 专项复验（2026-09-14）
+
+沿用前述 pi-code 配置分支、[工具注册](architecture-mapping-matrix.md#pi-tools-registry)、
+[命令](architecture-mapping-matrix.md#pi-commands-registry)、
+[动态资源](architecture-mapping-matrix.md#pi-resources-discovery) 和
+[客户端](architecture-mapping-matrix.md#dsh-client)，不新增能力分类。
+
+| 能力 | Pi 调用 → 桥翻译 → DSH seam → 权威事实 → 用户结果 | 复验结论 |
+|---|---|---|
+| 配置与技能 | 原包读取 Claude 配置 → before_agent_start/resources_discover 与环境传播 → assemble/skills/工具执行 → 原生日志系统消息、技能目录和工具结果 → 导入码、环境值及技能描述实际生效 | 维持 2 级，六组 Web 断言中对应项通过 |
+| Hook 与命令 | 原包 PreToolUse/registerCommand → hooks/命令注册 → tools/pre-execute、commands → marker 文件、command/run 和用户消息 → hook 执行且 /greet 生效 | 各维持 1 级 |
+| 文件上下文 | Pi context hook 修改上传消息的文字 → 文件定位文本与原引用回译 → 公开附件/文件工具 → 日志保留 file 引用且文件工具读出随机码 → 附件卡和正确结果可见 | 维持 2 级，截图已目检 |
+
+官方 npm rc.2、原包 pi-code 1.0.47、全新 DSH_HOME、真实 DeepSeek 请求。
+[逐项结果与源码指纹](../community/dsh-015-rc2-20260914/README.md) 分开保存；
+本次没有改桥运行时，未重新宣称 Task/JSON CLI 或完整 Pi 消息流获得支持。
+
+<a id="pi-hermes-memory"></a>
+## pi-hermes-memory（2026-09-10—11 原包逐能力复验）
+
+原包为 npm `pi-hermes-memory@0.9.8`，gitHead
+`34c6fe49f832e6a0957ce517586158a8bdde71a4`；stock npm DSH `0.1.5-rc.1`，
+隔离 DSH_HOME，真实 DeepSeek 模型和原生 CLI/Web。桥是未发布的本地 tarball，
+仍标作 0.24.0；每份新增证据记录实际依赖路径和 dist SHA256，不能当成 npm 0.24.0。
+最初发布版的失败证据保留，未用修复后的结果覆盖。
+
+| 能力 / 映射分支 | Pi 调用 → 翻译 → DSH seam → 权威状态 → 实测结果 | 独立判级 |
+|---|---|---|
+| [记忆与技能工具](architecture-mapping-matrix.md#pi-tools-registry) | `registerTool` → 工具参数/结果桥 → `ctx.tools` → 原生日志和插件 Markdown/SQLite → 四类记忆、CRUD、秘密拒存、skill 创建/查看/patch/update/delete 及重启读回 | **2**；插件自己的内容存储不等于另建 DSH 会话权威 |
+| [技能发现](architecture-mapping-matrix.md#pi-resources-discovery) | `resources_discover` / `getCommands` → 文件 provider/原生技能元数据 → `ctx.skills` → DSH registry → 全局/项目技能重启加载、更新/删除生效，外部原生技能可见 | **2**；原 npm 0.24.0 的缺失是桥欠账 |
+| [历史索引](architecture-mapping-matrix.md#pi-session-host-context) | `getBranch/getSessionFile` → `snapshotEvents` 和完整 Pi JSONL 导出 → Session / persistence 公共读接口 → DSH 日志仍为恢复权威，插件索引派生文件 → 新进程 session_search 可检索正文 | **3**；新增派生文件就是 sidecar，不因搜索成功改判 2 |
+| [上下文策略](architecture-mapping-matrix.md#pi-prompt-system) | `before_agent_start` → 提示词转换 → 原生 system prompt → DSH 请求/会话记录 → legacy、policy-only、custom、none、固定指令及不同 cwd 项目隔离 | **2** |
+| [后台提取与纠错](architecture-mapping-matrix.md#pi-model-designated-call) | 生命周期/getBranch/completeSimple → 原生模型桥 → `ctx.llm` → DSH 模型/凭证目录，插件保存记忆 → 前台零写工具仍保存；工具次数触发、指定模型、真实主路由失败后回退、取消均有证据 | **2**；缺 simple 导出与空 branch 均为桥欠账 |
+| [子进程整理](architecture-mapping-matrix.md#pi-tools-process) | 原包 watchdog 调 `pi -p` → 受限本地协议适配 → `ctx.subprocess` + `ctx.agents` → 原生子代理模型/工具/审计 → 自动超限整理减少占用后父调用完成；超时中止无迟到写入 | **2**（本地 POSIX print/text 子集）；未支持任意 Pi CLI，Windows/远程执行不算此项通过 |
+| [Web 命令](architecture-mapping-matrix.md#pi-commands-registry) | 十条 registerCommand → commands/dialogs → `ctx.commands` / 原生问题表单 → command/done/工具日志/插件文件 → 十条均核对实际结果，guide 表单提交、interview 保存、pin 新会话注入 | **2**，其中 UI 能力单列 |
+| [交互管理器](architecture-mapping-matrix.md#pi-ui-custom) | `ui.custom` → 终端 renderer 或明确不支持 → 原生终端服务；裸 Web 触发原包只读清单降级 → 可见命令正文 | 完整 TUI 在裸 Web 为 **5**；清单 fallback 为 **2**。本轮没有声称完整终端管理器实测通过 |
+| [压缩与单会话关闭](architecture-mapping-matrix.md#pi-agent-lifecycle) | before_compact/shutdown → 生命周期桥 → compaction 事件 / Agent dispose → 原生会话和插件记忆 → 真实长会话压缩保存、宿主存活时单会话关闭保存均通过 | 功能路径 **2**；压缩前 awaited veto/replace 语义仍 **4**，`DSH-ARCH-004` |
+| [整进程退出](architecture-mapping-matrix.md#pi-session-lifecycle) | shutdown 临时发起模型请求 → disposer → native llm/settings 生命周期 → 新请求 NO_ADAPTER，提前 prepareCall 的固定请求可继续 → 无通用退出保存保证 | **4**，`DSH-ARCH-008`；原生最小复现不导入桥/原包。5 秒退出期限短于原包 10 秒预算 |
+| [无会话后台任务](architecture-mapping-matrix.md#pi-session-operations) | `--no-session` → 不导出 Pi 文件/不索引 → native child → DSH 审计仍持久化 | Pi 索引隔离 **2**；真正零持久化语义 **4**，`DSH-ARCH-007` |
+
+复现脚本：[`verify-hermes-memory-e2e.mjs`](../scripts/verify-hermes-memory-e2e.mjs)、
+[`verify-hermes-full-e2e.mjs`](../scripts/verify-hermes-full-e2e.mjs)。
+新增证据与失败/补测说明见 [本地验收记录](../community/hermes-memory-20260910/final/README.md)。
+原始 npm 基线：[CLI](../community/hermes-memory-20260910/published-cli.json)、
+[Web](../community/hermes-memory-20260910/published-web.json)。
+这是一组逐能力结果；核心 CRUD 或上游单测全绿都不能代表整个包无语义缺口。
+
 ## 继续新增记录时
 
 复制一个插件块，补齐“使用的架构分支、理论对应、实际五层、逐项等级、结论、证据”。

@@ -7,6 +7,7 @@
 // it again. Nothing here is specific to a scenario — the scenario lives in the
 // script that calls `openApp`.
 import { createRequire } from 'node:module'
+import { adoptWorkspace } from '../../scripts/lib/web-actions.mjs'
 import { mkdir } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 
@@ -53,7 +54,8 @@ if (UI === undefined) throw new Error(`capture: no UI strings for locale ${local
  */
 export async function openApp() {
   await mkdir(outDir, { recursive: true })
-  const browser = await chromium.launch()
+  const browser = await chromium.launch(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE === undefined
+    ? {} : { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE })
   const page = await browser.newPage({ viewport: { width: 1280, height: 860 }, locale })
   const shot = async name => {
     // Park the pointer away from the chrome so no hover tooltip lands in the asset.
@@ -66,7 +68,7 @@ export async function openApp() {
    * Send one composer line and wait for the turn to settle.
    * @param text - what to type into the composer.
    */
-  async function send(text) {
+  async function send(text, { typingDelayMs = 12 } = {}) {
     const composer = page.getByRole('textbox').last()
     await composer.click()
     // Type key by key (a slash command needs the suggestion popover to see each
@@ -79,7 +81,12 @@ export async function openApp() {
       undefined,
       { timeout: 10_000 },
     )
-    await composer.pressSequentially(text, { delay: 12 })
+    // Slash menus require key events. Ordinary (possibly multiline) text
+    // must be inserted as text: typing newline keys submits partial messages.
+    const typeText = () => text.startsWith('/')
+      ? composer.pressSequentially(text, { delay: typingDelayMs })
+      : page.keyboard.insertText(text)
+    await typeText()
     // Typing into a composer that was still settling silently drops the first
     // characters, which only shows up as a subtly wrong screenshot. Check —
     // and retype once, because a composer that swallowed the opening keystrokes
@@ -93,8 +100,11 @@ export async function openApp() {
     const matches = value => value === text || value.trim() === text.trim()
     let typed = await readComposer()
     if (!matches(typed)) {
-      await composer.fill('')
-      await composer.pressSequentially(text, { delay: 12 })
+      await composer.focus()
+      await composer.press('ControlOrMeta+A')
+      await composer.press('Backspace')
+      await page.waitForTimeout(150)
+      await typeText()
       typed = await readComposer()
     }
     if (!matches(typed)) {
@@ -181,25 +191,7 @@ export async function openApp() {
   // POST `/api/workspace/create` with `method: 'workspace/create'`. Probe by
   // response, not by version: the wrong spelling 404s, the right one answers
   // 200 (wrapping even refusals, so the body is always logged).
-  const attemptAdoption = (endpoint, method, payload) => page.evaluate(async ({ endpoint, method, payload }) => {
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        type: 'client-request',
-        rpcId: 'capture-workspace',
-        method,
-        payload,
-      }),
-    })
-    return { status: response.status, body: (await response.text()).slice(0, 300) }
-  }, { endpoint, method, payload }).catch(error => ({ status: 0, body: String(error) }))
-  // The 0.1.2 gateway wraps the business request twice, in its own words
-  // (both messages observed 2026-08-31): the payload carries "exactly one
-  // plain-object args field", and args' fields must match the method
-  // descriptor — workspace/create is `create(request)`, so args.request.
-  let adopted = await attemptAdoption('/api/workspace/create', 'workspace/create', { args: { request: { path: workspacePath } } })
-  if (adopted.status === 404) adopted = await attemptAdoption('/api/workspace.create', 'workspace.create', { path: workspacePath })
+  const adopted = await adoptWorkspace(page, workspacePath)
   console.log(`capture: workspace.create → ${adopted.status} ${adopted.body}`)
   await page.reload({ waitUntil: 'domcontentloaded' })
   await dismissNotice(page)

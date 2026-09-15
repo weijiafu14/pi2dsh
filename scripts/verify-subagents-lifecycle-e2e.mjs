@@ -32,6 +32,7 @@
 //
 //   node scripts/verify-subagents-lifecycle-e2e.mjs [community/subagents-lifecycle-e2e.json]
 
+import { installedCoreVersions } from './lib/e2e-harness.mjs'
 import { execFile as execFileCallback } from 'node:child_process'
 import { spawn } from 'node:child_process'
 import { randomBytes } from 'node:crypto'
@@ -50,6 +51,7 @@ const ENGINE_SPEC = process.env.PI2DSH_ENGINE_SPEC ?? projectRoot
 const SUBAGENTS_SPEC = process.env.PI2DSH_SUBAGENTS_SPEC ?? '@tintinweb/pi-subagents@0.18.0'
 // Cross-restart reopen probe (public Pi ABI: createAgentSession + SessionManager.open).
 const PROBE_DIR = join(projectRoot, 'fixtures', 'subagent-archive-probe')
+const READINESS_PROBE = join(projectRoot, 'fixtures', 'subagent-readiness-probe')
 const RUN_TAG = Date.now().toString(36).toUpperCase()
 
 const log = message => console.log(`[subagents-lifecycle] ${message}`)
@@ -66,6 +68,7 @@ const record = async status => {
     engineSpec: ENGINE_SPEC,
     subagentsSpec: SUBAGENTS_SPEC,
     status,
+    selection: process.env.PI2DSH_LIFECYCLE_ONLY ?? 'all',
     scenarios,
   }, null, 2)}\n`)
 }
@@ -104,6 +107,7 @@ const baseEnv = {
   ...process.env,
   DEEPSEEK_API_KEY: apiKey,
   DSH_HOME: home,
+  PI2DSH_READINESS_LOG: join(root, `readiness-${RUN_TAG}.jsonl`),
   PATH: `${shimDir}:${process.env.PATH ?? ''}`,
   CI: '1',
   NO_COLOR: '1',
@@ -232,20 +236,11 @@ try {
           'allowBuilds:',
           "  '@google/genai': false",
           '  protobufjs: false',
+          '  esbuild: true',
         ]
-        const pnpmStore = join(cliDir, 'node_modules', '.pnpm')
-        if (existsSync(pnpmStore)) {
-          const core = new Set()
-          for (const entry of await readdir(pnpmStore)) {
-            if (entry.startsWith('@deepseek-ai+dsh')) {
-              core.add(`@deepseek-ai/${entry.slice('@deepseek-ai+'.length).split('@0')[0]}`)
-            }
-          }
-          if (core.size > 0) {
-            workspaceLines.push('overrides:')
-            for (const name of [...core].sort()) workspaceLines.push(`  "${name}": ${cliVersion}`)
-          }
-        }
+        const core = installedCoreVersions(dshBin)
+        workspaceLines.push('overrides:')
+        for (const [name, version] of [...core.entries()].sort()) workspaceLines.push(`  "${name}": ${version}`)
         await writeFile(join(profileRoot, 'pnpm-workspace.yaml'), `${workspaceLines.join('\n')}\n`)
       }
       // -w on every add: the 0.1.2 lines' raw-pnpm passthrough demands it
@@ -274,6 +269,9 @@ try {
       '',
     ].join('\n'))
   }
+  await execFile(dshBin, ['plugin', '--profile', 'headless', 'add', '-w', READINESS_PROBE], {
+    env: baseEnv, timeout: 600_000, maxBuffer: 16 * 1024 * 1024,
+  })
   const engineVersion = JSON.parse(await readFile(join(home, 'profiles', 'headless', 'node_modules', 'pi2dsh', 'package.json'), 'utf8')).version
   log(`stock stack: cli ${cliVersion}, engine ${engineVersion}`)
 
@@ -348,7 +346,12 @@ try {
         problems.push('steer message precedes the first model request — not a mid-run delivery')
       }
     }
+    const gatePath = baseEnv.PI2DSH_READINESS_LOG
+    const gateRecords = existsSync(gatePath) ? readFileSync(gatePath, 'utf8').split('\n').filter(Boolean).map(line => JSON.parse(line)) : []
+    if (!gateRecords.some(entry => entry.stage === 'release')) problems.push('readiness fixture did not observe a child request')
     scenarios.steer = {
+      gateObserved: gateRecords.some(entry => entry.stage === 'release'),
+      timingGate: 'public tools/pre-execute waits for a real child request/header before allowing steer',
       status: problems.length === 0 ? 'passed' : 'failed',
       problems,
       steeredLanded,
@@ -359,6 +362,10 @@ try {
       outputTail: problems.length > 0 ? output.slice(-1200) : undefined,
     }
     log(`scenario steer: ${scenarios.steer.status}${problems.length > 0 ? ` — ${problems.join('; ')}` : ''}`)
+    if (process.env.PI2DSH_LIFECYCLE_ONLY === 'steer') {
+      await record(problems.length === 0 ? 'passed' : 'failed')
+      process.exit(problems.length === 0 ? 0 : 1)
+    }
   }
 
   // ======================================================================

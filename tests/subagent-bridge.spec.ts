@@ -750,6 +750,11 @@ describe('the caller route a child inherits is the LIVE one', () => {
       id: 'stale-default', provider: 'deepseek-official',
     })
 
+    const native = { ...agent, session: { id: 'native', snapshotEvents: () => [
+      { type: 'request/header', data: { header: { config: { provider: 'native-live', model: 'live-model' } } } },
+    ] } }
+    expect(runtimeInternals.currentPiModel(state, native)).toMatchObject({ id: 'live-model', provider: 'native-live' })
+
     // After the session switched models, the override is the live route.
     overrides.set(agent, { provider: 'my-gateway', model: 'switched-model' })
     expect(runtimeInternals.currentPiModel(state, agent)).toMatchObject({
@@ -798,6 +803,12 @@ describe('per-child thinking level and adoption', () => {
     expect(adopted[0]?.level).toBeUndefined()
     expect((pi as unknown as { state: { thinkingLevel: string } }).state.thinkingLevel).toBe('off')
   })
+
+  it('preserves explicit off separately from an omitted native default', async () => {
+    const adopted: Array<{ child: unknown, level?: string }> = []
+    await createBridgedAgentSession(await harness(adopted), { thinkingLevel: 'off' })
+    expect(adopted[0]?.level).toBe('off')
+  })
 })
 
 describe('the durable last-request route', () => {
@@ -829,5 +840,67 @@ describe('the durable last-request route', () => {
     expect(runtimeInternals.resolveCallerRoute(undefined, durable, snapshot)).toEqual(durable)
     expect(runtimeInternals.resolveCallerRoute(undefined, undefined, snapshot)).toEqual(snapshot)
     expect(runtimeInternals.resolveCallerRoute(undefined, undefined, undefined)).toBeUndefined()
+  })
+})
+
+describe('modern DSH child creation and stream contract', () => {
+  it('uses the explicit setup Agent, preserves parent ownership, and isolates stream attempts', async () => {
+    const ctx = new Context()
+    await ctx.plugin(SessionStore)
+    const session = ctx.sessions.create(SessionId('modern-child'), { meta: { cwd: process.cwd() } })
+    const parent = { id: 'live-parent' }
+    const schemaScopes: unknown[] = []
+    const restrictions: unknown[] = []
+    const tools = {
+      schemas(scope: unknown) { schemaScopes.push(scope); return [{ name: 'read' }] },
+      restrict(filter: unknown) { restrictions.push(filter); return () => {} },
+    }
+    const childCtx = { get(name: string) { return name === 'tools' ? tools : undefined } }
+    const agent = { id: session.id, session, ctx: childCtx }
+    let createOptions: UnknownRecord | undefined
+    const get = ctx.get.bind(ctx)
+    ;(ctx as unknown as { get(name: string): unknown }).get = name => name === 'agents' ? {
+      async create(options: UnknownRecord) {
+        createOptions = options
+        await (options.setup as (context: unknown, agent: unknown) => Promise<void>)(childCtx, agent)
+        return { agent, dispose: async () => {} }
+      },
+    } : get(name as never)
+    const host = makeHost(ctx, [])
+    host.parentAgent = () => parent
+    host.delegatedPolicyOverrides = () => ({ approvalPolicy: 'never' })
+    const { session: child } = await createBridgedAgentSession(host, { tools: ['read'] })
+    expect(createOptions?.parentAgent).toBe(parent)
+    expect(schemaScopes).toEqual([agent])
+    expect(restrictions).toEqual([{ allow: ['read'] }])
+    expect(session.events).toEqual(expect.arrayContaining([
+      expect.objectContaining({ type: 'approval/policy', data: { policy: 'never', source: 'delegation' } }),
+    ]))
+    const updates: string[] = []
+    const innerTypes: unknown[] = []
+    child.subscribe(event => {
+      const e = event as { type?: string, message?: { content?: Array<{ text?: string }> } }
+      if (e.type === 'message_update') {
+        updates.push(e.message?.content?.[0]?.text ?? '')
+        innerTypes.push((event as UnknownRecord).assistantMessageEvent)
+      }
+    })
+    const emit = (frame: UnknownRecord, owner: unknown = agent) => {
+      ;(ctx as unknown as { emit(name: string, data: unknown): void }).emit('agent/assistant-stream', { agent: owner, frame })
+    }
+    emit({ type: 'start', attemptId: 'a' })
+    emit({ type: 'chunk', attemptId: 'a', index: 0, chunk: { type: 'text-delta', text: 'first' } })
+    emit({ type: 'chunk', attemptId: 'a', index: 0, chunk: { text: 'duplicate' } })
+    emit({ type: 'chunk', attemptId: 'a', index: 1, chunk: { text: 'other-agent' } }, parent)
+    emit({ type: 'start', attemptId: 'retry' })
+    emit({ type: 'chunk', attemptId: 'a', index: 1, chunk: { text: 'stale' } })
+    emit({ type: 'chunk', attemptId: 'retry', index: 0, chunk: { text: 'second' } })
+    emit({ type: 'end', attemptId: 'retry' })
+    emit({ type: 'chunk', attemptId: 'retry', index: 1, chunk: { text: 'after end' } })
+    expect(updates).toEqual(['first', 'second'])
+    expect(innerTypes[0]).toMatchObject({ type: 'text_delta', contentIndex: 0, delta: 'first' })
+    await child.dispose()
+    emit({ type: 'chunk', attemptId: 'retry', index: 1, chunk: { text: 'after disposal' } })
+    expect(updates).toEqual(['first', 'second'])
   })
 })

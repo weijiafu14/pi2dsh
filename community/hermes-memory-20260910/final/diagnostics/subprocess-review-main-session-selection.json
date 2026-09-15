@@ -1,0 +1,12 @@
+{
+  "phase": "subprocess-review",
+  "status": "failed",
+  "build": {
+    "dshVersion": "0.1.5-rc.1",
+    "engineVersion": "0.24.0",
+    "engineDependency": "file:/tmp/pi2dsh-hermes-20260910/pi2dsh-hermes-final3.tgz",
+    "engineDistSha256": "197eb6ad2959df8dac6e98fa842aed8664917e1845c673515a81453f1004f7ae",
+    "memoryVersion": "0.9.8"
+  },
+  "error": "AssertionError [ERR_ASSERTION]: foreground model used tools; this would not prove background review\n\n1 !== 0\n\n    at file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/scripts/verify-hermes-full-e2e.mjs:531:14"
+}

@@ -11,6 +11,22 @@
 没有真实插件证据的能力不进入本页，只在架构模型中保留为“理论可行、尚未实证”。当前
 结论不是全覆盖声明；它只对已经盘点并走完证据链的分支负责。
 
+**新版本验收边界（2026-09-10）**：当前仓库已修复 `0.1.5-rc.1` 的系统提示词、
+历史读取、实时文字流、子代理作用域/父子归属、Inbox 和文件展示适配，并保留
+`0.1.1-rc.2` 的公开能力路径。同一源码在两版 stock npm CLI 上分别验证；它仍以
+Pi `0.84.1` 为目标，尚未作为新 npm 版本发布。
+新版完整示例加明确记录的补跑为 **19 过、1 跳过**（缺 Alibaba 凭证）。
+逐项原始结果、合并后复验和真实浏览器截图见
+[`community/dsh-015-compat`](../community/dsh-015-compat/)。只验新建数据及同版本重启，
+跨版本旧数据迁移按用户要求排除。已有 `DSH-ARCH-001/003/004/005/006/007` 未关闭，
+实时流仍只承诺部分 Pi 文字投影，不能从示例通过推导全部 ABI 完整。
+
+**rc.2 增量核验（2026-09-14）**：npm `next` 已为 `0.1.5-rc.2`，`latest` 仍为 rc.1。
+完整源码差异和核心发布包字节比较未发现桥所用接口变化，现有 peer 范围已覆盖。
+rc.2 的真实 Web 配置、hooks、技能、命令和文件引用回归通过；本轮无需新增运行时
+适配，未改变以上等级，也不将专项回归扩张成 rc.2 全量示例验收。
+见[增量核验记录](../community/dsh-015-rc2-20260914/README.md)。
+
 ## 已经由真实插件证明的映射
 
 - **命令注册**：pi-btw 证明 Pi 命令可进入 DSH `ctx.commands`，达到 1 级原生承接。
@@ -54,6 +70,7 @@
 | `DSH-ARCH-003` | 已有 adapter 最终 request/response 周围的通用 middleware | 插件只能拥有整条 transport，不能增强已有 adapter |
 | `DSH-ARCH-004` | 压缩执行前的取消/替换 waterfall | 插件只能知道压缩已经发生，不能改变压缩决定 |
 | `DSH-ARCH-005` | 早于项目资源加载的 trust policy | 普通仓外插件挂载后再判断信任已经太晚 |
+| `DSH-ARCH-008` | 整进程关闭前、保持模型/凭证/设置服务存活的 awaited gate（0.1.5-rc.1 实证） | pi-hermes-memory 的退出总结即时发起新请求时可遇到 `NO_ADAPTER`；提前 `prepareCall` 的单次请求可继续，但不恢复通用关闭阶段或突破 5 秒退出上限 |
 
 只有同时具备真实消费者、从 Pi 调用到用户结果的五层证据、公开 seam 倒推和最小复现，
 才允许新增 `DSH-ARCH-*`。sidecar 能用或另一条 adapter 能绕通，不等于原来的 DSH seam
@@ -132,3 +149,16 @@ tools 管线、prepareCall、sessions、webServer、client slots 等）实证存
 | `DSH-ARCH-002` | rc.6 的配置型 provider schema 无法表达 `supportsDeveloperRole`、`maxTokensField` 等 wire compat | **rc.8 已修复**：官方 `llm-pi-ai` profile 开放按协议校验的 compat、输入模态与 `reasoningEfforts`；pi2dsh 已改为字段级翻译并保留 vendor-owned 字段边界 |
 
 编号保留，避免历史讨论和证据链接失效；它不再计入当前 DSH 缺口。
+
+## pi-hermes-memory 0.9.8 的实证收敛（2026-09-10—11）
+
+[完整逐能力记录](plugin-validation-matrix.md#pi-hermes-memory)表明：空会话投影、缺失的
+simple 模型导出、原生技能元数据、后台 Pi CLI 调用及子代理思考档位丢失属于桥欠账，
+可以由公开 Session、llm、skills、subprocess、agents 和 child-local request waterfall
+承接。未修改原包已在真实 CLI/Web 完成记忆/技能生命周期、后台提取与纠错、指定模型与
+失败回退、自动整理、取消和十条命令；旧版 0.1.1-rc.2 的核心链路与整理亦通过。
+
+历史文件索引使用原生日志的派生导出，严格维持 **3 级**。真正的无持久化后台任务、
+压缩前 awaited veto/replace、整进程退出临时新模型请求的通用保活阶段，分别仍受
+`DSH-ARCH-007`、`DSH-ARCH-004`、`DSH-ARCH-008` 约束。功能成功不能覆盖这三个
+语义差异。裸 Web 上终端管理器的只读 fallback 也不等于完整终端 UI 已验证。

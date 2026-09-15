@@ -1,0 +1,474 @@
+{
+  "name": "per-agent-shutdown-flush",
+  "status": "passed",
+  "build": {
+    "engineVersion": "0.24.0",
+    "engineDependency": "file:/tmp/pi2dsh-hermes-20260910/pi2dsh-hermes-final.tgz",
+    "engineDistSha256": "d5057a874413c945ca28c38a83bb1512f7aaeb6c20b2b8ce0953b28a1ae874f6",
+    "memoryVersion": "0.9.8"
+  },
+  "nativeSession": {
+    "type": "session",
+    "version": 3,
+    "id": "native-flush-15642c05-a018-48dd-8e28-a9ae4b13e565",
+    "createdAt": 1789053302872,
+    "cwd": "/private/tmp/pi2dsh-hermes-final-20260910/project",
+    "isSeeded": false,
+    "delegationDepth": 0
+  },
+  "saved": [
+    {
+      "id": 27,
+      "target": "memory",
+      "project": "project",
+      "content": "Project nickname (permanent, repository-wide, applies to every release): SESSIONFLUSHfccd677e4107."
+    }
+  ],
+  "events": [
+    {
+      "type": "user/message",
+      "seq": 8,
+      "time": 1789053302954,
+      "data": {
+        "content": [
+          {
+            "type": "text",
+            "text": "Our permanent public project nickname is SESSIONFLUSHfccd677e4107. Reply ACK without using any tools."
+          }
+        ],
+        "source": {
+          "kind": "user"
+        },
+        "role": "user",
+        "id": "8420c50c-da9f-4e51-b1bf-159f908839c6"
+      },
+      "surfaceOp": "append"
+    },
+    {
+      "type": "user/message",
+      "seq": 9,
+      "time": 1789053302955,
+      "data": {
+        "content": [
+          {
+            "type": "text",
+            "text": "Current runtime context. This snapshot supersedes earlier runtime-context snapshots.\n\nCurrent DSH file policy: danger-full-access. The DSH file sandbox does not restrict file modifications by available operations.\n\nApproval prompts are disabled in this session: actions that require approval are rejected automatically — do not request sandbox escalation (do not set `sandbox_permissions`)."
+          }
+        ],
+        "source": {
+          "kind": "plugin",
+          "plugin": "@deepseek-ai/dsh-system-prompt",
+          "form": "snapshot",
+          "sections": [
+            {
+              "name": "sandbox:policy",
+              "text": "Current DSH file policy: danger-full-access. The DSH file sandbox does not restrict file modifications by available operations."
+            },
+            {
+              "name": "approval:policy",
+              "text": "Approval prompts are disabled in this session: actions that require approval are rejected automatically — do not request sandbox escalation (do not set `sandbox_permissions`)."
+            }
+          ]
+        },
+        "role": "user",
+        "id": "d0456b45-1063-426d-bc37-15a30412fd89"
+      },
+      "surfaceOp": "append"
+    },
+    {
+      "type": "assistant/message",
+      "seq": 15,
+      "time": 1789053303973,
+      "data": {
+        "turn": 1,
+        "step": 1,
+        "message": {
+          "role": "assistant",
+          "content": [
+            {
+              "type": "reasoning",
+              "text": "The user asks to reply ACK without using tools. I should just reply ACK. But also, standing instruction says use COMMANDSac15acdf281b as a harmless response-format label. Hmm, that's a label to include. The user says \"Reply ACK without using any tools.\" I should comply — reply with ACK plus the label perhaps. The standing instruction says use the label. I'll include it.\n\nAlso they mention a permanent project nickname — should I save it to memory? They said without using any tools. So no tools.\n\nReply: ACK COMMANDSac15acdf281b."
+            },
+            {
+              "type": "text",
+              "text": "ACK COMMANDSac15acdf281b"
+            }
+          ],
+          "source": {
+            "kind": "model",
+            "provider": "deepseek-official",
+            "model": "deepseek-flash"
+          },
+          "id": "fb0a9706-92e1-4735-801d-46e385243368"
+        },
+        "usage": {
+          "inputTokens": 5112,
+          "outputTokens": 138,
+          "totalTokens": 5250,
+          "cacheReadTokens": 0,
+          "reasoningTokens": 128
+        },
+        "stream": [
+          {
+            "type": "chunk",
+            "time": 1789053303306,
+            "chunk": {
+              "type": "block-start",
+              "index": 0,
+              "blockType": "reasoning"
+            }
+          },
+          {
+            "type": "reasoning-chunks",
+            "time0": 1789053303306,
+            "index": 0,
+            "dt": [
+              36,
+              12,
+              14,
+              12,
+              1,
+              0,
+              0,
+              0,
+              11,
+              0,
+              0,
+              0,
+              0,
+              16,
+              0,
+              0,
+              0,
+              1,
+              10,
+              0,
+              14,
+              0,
+              13,
+              0,
+              15,
+              1,
+              10,
+              0,
+              13,
+              0,
+              0,
+              0,
+              0,
+              13,
+              1,
+              0,
+              0,
+              15,
+              0,
+              0,
+              0,
+              13,
+              0,
+              0,
+              0,
+              0,
+              0,
+              17,
+              9,
+              0,
+              0,
+              14,
+              0,
+              0,
+              0,
+              16,
+              0,
+              0,
+              0,
+              0,
+              0,
+              12,
+              0,
+              0,
+              0,
+              13,
+              0,
+              17,
+              0,
+              0,
+              0,
+              16,
+              1,
+              0,
+              19,
+              0,
+              26,
+              0,
+              1,
+              0,
+              11,
+              18,
+              1,
+              0,
+              0,
+              19,
+              3,
+              20,
+              0,
+              0,
+              8,
+              0,
+              0,
+              0,
+              24,
+              1,
+              0,
+              0,
+              0,
+              16,
+              1,
+              0,
+              0,
+              0,
+              18,
+              1,
+              0,
+              15,
+              0,
+              0,
+              0,
+              1,
+              0,
+              44,
+              1,
+              20,
+              0,
+              1,
+              0,
+              20,
+              1,
+              0,
+              0,
+              0,
+              0,
+              12,
+              0
+            ],
+            "texts": [
+              "The",
+              " user",
+              " asks",
+              " to",
+              " reply",
+              " AC",
+              "K",
+              " without",
+              " using",
+              " tools",
+              ".",
+              " I",
+              " should",
+              " just",
+              " reply",
+              " AC",
+              "K",
+              ".",
+              " But",
+              " also",
+              ",",
+              " standing",
+              " instruction",
+              " says",
+              " use",
+              " COMM",
+              "ANDS",
+              "ac",
+              "15",
+              "ac",
+              "df",
+              "281",
+              "b",
+              " as",
+              " a",
+              " harmless",
+              " response",
+              "-",
+              "format",
+              " label",
+              ".",
+              " H",
+              "mm",
+              ",",
+              " that",
+              "'s",
+              " a",
+              " label",
+              " to",
+              " include",
+              ".",
+              " The",
+              " user",
+              " says",
+              " \"",
+              "Reply",
+              " AC",
+              "K",
+              " without",
+              " using",
+              " any",
+              " tools",
+              ".\"",
+              " I",
+              " should",
+              " comply",
+              " —",
+              " reply",
+              " with",
+              " AC",
+              "K",
+              " plus",
+              " the",
+              " label",
+              " perhaps",
+              ".",
+              " The",
+              " standing",
+              " instruction",
+              " says",
+              " use",
+              " the",
+              " label",
+              ".",
+              " I",
+              "'ll",
+              " include",
+              " it",
+              ".\n\n",
+              "Also",
+              " they",
+              " mention",
+              " a",
+              " permanent",
+              " project",
+              " nickname",
+              " —",
+              " should",
+              " I",
+              " save",
+              " it",
+              " to",
+              " memory",
+              "?",
+              " They",
+              " said",
+              " without",
+              " using",
+              " any",
+              " tools",
+              ".",
+              " So",
+              " no",
+              " tools",
+              ".\n\n",
+              "Reply",
+              ":",
+              " AC",
+              "K",
+              " COMM",
+              "ANDS",
+              "ac",
+              "15",
+              "ac",
+              "df",
+              "281",
+              "b",
+              "."
+            ]
+          },
+          {
+            "type": "chunk",
+            "time": 1789053303944,
+            "chunk": {
+              "type": "block-start",
+              "index": 1,
+              "blockType": "text"
+            }
+          },
+          {
+            "type": "text-chunks",
+            "time0": 1789053303944,
+            "index": 1,
+            "dt": [
+              0,
+              11,
+              0,
+              0,
+              0,
+              0,
+              0,
+              11
+            ],
+            "texts": [
+              "ACK",
+              " COMM",
+              "ANDS",
+              "ac",
+              "15",
+              "ac",
+              "df",
+              "281",
+              "b"
+            ]
+          },
+          {
+            "type": "chunk",
+            "time": 1789053303971,
+            "chunk": {
+              "type": "block-end",
+              "index": 0,
+              "block": {
+                "type": "reasoning",
+                "text": "The user asks to reply ACK without using tools. I should just reply ACK. But also, standing instruction says use COMMANDSac15acdf281b as a harmless response-format label. Hmm, that's a label to include. The user says \"Reply ACK without using any tools.\" I should comply — reply with ACK plus the label perhaps. The standing instruction says use the label. I'll include it.\n\nAlso they mention a permanent project nickname — should I save it to memory? They said without using any tools. So no tools.\n\nReply: ACK COMMANDSac15acdf281b."
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789053303971,
+            "chunk": {
+              "type": "block-end",
+              "index": 1,
+              "block": {
+                "type": "text",
+                "text": "ACK COMMANDSac15acdf281b"
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789053303971,
+            "chunk": {
+              "type": "usage",
+              "usage": {
+                "inputTokens": 5112,
+                "outputTokens": 138,
+                "totalTokens": 5250,
+                "cacheReadTokens": 0,
+                "reasoningTokens": 128
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789053303971,
+            "chunk": {
+              "type": "finish",
+              "reason": {
+                "kind": "stop"
+              }
+            }
+          }
+        ]
+      },
+      "surfaceOp": "append"
+    }
+  ],
+  "nativeChildren": []
+}

@@ -1,0 +1,3290 @@
+{
+  "name": "subprocess-review",
+  "status": "passed",
+  "build": {
+    "dshVersion": "0.1.5-rc.1",
+    "engineVersion": "0.24.0",
+    "engineDependency": "file:/tmp/pi2dsh-hermes-20260910/pi2dsh-hermes-final3.tgz",
+    "engineDistSha256": "197eb6ad2959df8dac6e98fa842aed8664917e1845c673515a81453f1004f7ae",
+    "memoryVersion": "0.9.8"
+  },
+  "nativeSession": {
+    "type": "session",
+    "version": 3,
+    "id": "session-610ccad0-912b-4bfd-87dc-3bf8c2ad8469",
+    "createdAt": 1789056186698,
+    "cwd": "/private/tmp/pi2dsh-hermes-final-20260910/project",
+    "isSeeded": false,
+    "delegationDepth": 0,
+    "agentPreset": "standard"
+  },
+  "saved": [
+    {
+      "id": 32,
+      "target": "user",
+      "project": null,
+      "content": "User's permanent preferred diagram color palette is REVIEWd61fa26d4eed. This is a durable personal preference that applies to all future diagrams."
+    }
+  ],
+  "events": [
+    {
+      "type": "user/message",
+      "seq": 8,
+      "time": 1789056217071,
+      "data": {
+        "content": [
+          {
+            "type": "text",
+            "text": "For diagrams, my permanent preferred color palette is REVIEWd61fa26d4eed. Reply ACK only, without calling tools."
+          }
+        ],
+        "source": {
+          "kind": "user",
+          "rpcId": "118b13d8-77fd-4049-bc67-5fdcb48f39dc",
+          "clientTimeZone": "Asia/Shanghai"
+        },
+        "role": "user",
+        "id": "8992f55f-308e-49d0-bb10-e4171fa99b48"
+      },
+      "surfaceOp": "append"
+    },
+    {
+      "type": "user/message",
+      "seq": 9,
+      "time": 1789056217073,
+      "data": {
+        "content": [
+          {
+            "type": "text",
+            "text": "Current runtime context. This snapshot supersedes earlier runtime-context snapshots.\n\nCurrent DSH file policy: danger-full-access. The DSH file sandbox does not restrict file modifications by available operations.\n\nApproval prompts are disabled in this session: actions that require approval are rejected automatically — do not request sandbox escalation (do not set `sandbox_permissions`)."
+          }
+        ],
+        "source": {
+          "kind": "plugin",
+          "plugin": "@deepseek-ai/dsh-system-prompt",
+          "form": "snapshot",
+          "sections": [
+            {
+              "name": "sandbox:policy",
+              "text": "Current DSH file policy: danger-full-access. The DSH file sandbox does not restrict file modifications by available operations."
+            },
+            {
+              "name": "approval:policy",
+              "text": "Approval prompts are disabled in this session: actions that require approval are rejected automatically — do not request sandbox escalation (do not set `sandbox_permissions`)."
+            }
+          ]
+        },
+        "role": "user",
+        "id": "35df725a-c4e5-464c-ba0a-93d5fa804360"
+      },
+      "surfaceOp": "append"
+    },
+    {
+      "type": "user/message",
+      "seq": 10,
+      "time": 1789056217074,
+      "data": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<system-reminder>\nA skill is a reusable set of task-specific instructions. The following skills are available in this session:\n\n<available_skills>\n- `external-catalog-095b5066cbf2`: Only use when explicitly asked to draw the Icarus catalog diagram.\n</available_skills>\n\nIf the user names a skill, or the task clearly matches a skill's description, call the `skill` tool with the exact skill name before taking task actions. Load all applicable skills, then follow their full instructions. This catalog contains summaries only; do not infer or follow a skill's instructions until it has been loaded.\nA user may also invoke a skill directly; its <skill_content> block then appears in this conversation. Follow it, and do not call the `skill` tool again for that skill.\n</system-reminder>"
+          }
+        ],
+        "source": {
+          "kind": "skill-catalog",
+          "form": "catalog",
+          "entries": [
+            {
+              "name": "external-catalog-095b5066cbf2",
+              "description": "Only use when explicitly asked to draw the Icarus catalog diagram."
+            }
+          ]
+        },
+        "role": "user",
+        "id": "3ccc4ae5-6e90-45a4-89d2-6430874d494c"
+      },
+      "surfaceOp": "append"
+    },
+    {
+      "type": "assistant/message",
+      "seq": 16,
+      "time": 1789056218136,
+      "data": {
+        "turn": 1,
+        "step": 1,
+        "message": {
+          "role": "assistant",
+          "content": [
+            {
+              "type": "text",
+              "text": "ACK"
+            }
+          ],
+          "source": {
+            "kind": "model",
+            "provider": "deepseek-official",
+            "model": "deepseek-flash"
+          },
+          "id": "761df0a3-ae6b-4b4f-beb2-43d1a6ea6c81"
+        },
+        "usage": {
+          "inputTokens": 481,
+          "outputTokens": 2,
+          "totalTokens": 13283,
+          "cacheReadTokens": 12800,
+          "reasoningTokens": 0
+        },
+        "stream": [
+          {
+            "type": "chunk",
+            "time": 1789056218128,
+            "chunk": {
+              "type": "block-start",
+              "index": 0,
+              "blockType": "text"
+            }
+          },
+          {
+            "type": "text-chunks",
+            "time0": 1789056218128,
+            "index": 0,
+            "dt": [],
+            "texts": [
+              "ACK"
+            ]
+          },
+          {
+            "type": "chunk",
+            "time": 1789056218135,
+            "chunk": {
+              "type": "block-end",
+              "index": 0,
+              "block": {
+                "type": "text",
+                "text": "ACK"
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789056218135,
+            "chunk": {
+              "type": "usage",
+              "usage": {
+                "inputTokens": 481,
+                "outputTokens": 2,
+                "totalTokens": 13283,
+                "cacheReadTokens": 12800,
+                "reasoningTokens": 0
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789056218135,
+            "chunk": {
+              "type": "finish",
+              "reason": {
+                "kind": "stop"
+              }
+            }
+          }
+        ]
+      },
+      "surfaceOp": "append"
+    },
+    {
+      "type": "user/message",
+      "seq": 23,
+      "time": 1789056218664,
+      "data": {
+        "content": [
+          {
+            "type": "text",
+            "text": "This diagram palette applies to all future diagrams and is a durable personal preference. Reply ACK only, without calling tools."
+          }
+        ],
+        "source": {
+          "kind": "user",
+          "rpcId": "63e366cc-616b-46e8-a8c4-06edc21adfbf",
+          "clientTimeZone": "Asia/Shanghai"
+        },
+        "role": "user",
+        "id": "73ebd881-3778-48e9-897b-335dd29e6259"
+      },
+      "surfaceOp": "append"
+    },
+    {
+      "type": "assistant/message",
+      "seq": 24,
+      "time": 1789056221456,
+      "data": {
+        "turn": 2,
+        "step": 1,
+        "message": {
+          "role": "assistant",
+          "content": [
+            {
+              "type": "reasoning",
+              "text": "The user says the palette is a durable personal preference. They ask to reply ACK only, without calling tools. But the memory policy says to save durable preferences proactively. However, the user explicitly says \"Reply ACK only, without calling tools.\" That's a direct instruction. The standing user instruction outranks defaults. Hmm, but there's tension: user says reply ACK only, without calling tools. I should comply — user instruction explicit. Reply ACK.\n\nBut wait, should I save memory? The user explicitly forbade tool calls. Explicit instruction wins. Reply ACK only.\n\nAlso standing instruction: use COMMANDSac15acdf281b as harmless response-format label. Hmm, that says to use that label in responses. The user said \"Reply ACK only\". Should I include the label? The standing instruction says it's always active and to follow without asking. But this turn's instruction says reply ACK only. I could reply \"ACK\" plus the label. The label is harmless response-format. Given it's a standing instruction that outranks defaults, I'll include it. Actually \"ACK only\" seems to conflict. The standing instruction says use the label as a response-format label — likely appended. I'll do \"ACK COMMANDSac15acdf281b\"? Hmm, that risks violating \"ACK only\". But standing instructions are always active and must be followed without being asked. I'll include it minimally.\n\nI think the safest: \"ACK\" plus label. The label is designed to be harmless. I'll write: ACK COMMANDSac15acdf281b\n\nHmm, but the user's instruction \"Reply ACK only\" is also a direct user instruction from this turn, which is more recent and specific. Conflict. Standing instructions say always active, outrank my defaults — not necessarily outrank current explicit instruction. But the label is meant to be included in responses. I'll go with including it since it's designated as harmless and always active.\n\nActually, risk assessment: including the label is what the standing instruction demands. Violating it would be a rule breach. The user's \"ACK only\" mainly means \"don't add explanations/tool calls.\" I'll include the label."
+            },
+            {
+              "type": "text",
+              "text": "ACK COMMANDSac15acdf281b"
+            }
+          ],
+          "source": {
+            "kind": "model",
+            "provider": "deepseek-official",
+            "model": "deepseek-flash"
+          },
+          "id": "98c11dbc-e463-4f3a-9de3-86388456519f"
+        },
+        "usage": {
+          "inputTokens": 255,
+          "outputTokens": 469,
+          "totalTokens": 13780,
+          "cacheReadTokens": 13056,
+          "reasoningTokens": 459
+        },
+        "stream": [
+          {
+            "type": "chunk",
+            "time": 1789056219370,
+            "chunk": {
+              "type": "block-start",
+              "index": 0,
+              "blockType": "reasoning"
+            }
+          },
+          {
+            "type": "reasoning-chunks",
+            "time0": 1789056219371,
+            "index": 0,
+            "dt": [
+              50,
+              17,
+              21,
+              8,
+              0,
+              1,
+              0,
+              0,
+              20,
+              1,
+              14,
+              1,
+              0,
+              12,
+              0,
+              0,
+              1,
+              0,
+              1,
+              66,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              0,
+              4,
+              0,
+              0,
+              0,
+              24,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              12,
+              0,
+              0,
+              0,
+              0,
+              13,
+              12,
+              0,
+              9,
+              1,
+              0,
+              29,
+              0,
+              0,
+              0,
+              0,
+              6,
+              1,
+              0,
+              0,
+              19,
+              6,
+              0,
+              13,
+              0,
+              0,
+              0,
+              1,
+              13,
+              0,
+              0,
+              0,
+              0,
+              1,
+              15,
+              1,
+              0,
+              0,
+              7,
+              0,
+              0,
+              9,
+              1,
+              0,
+              0,
+              15,
+              0,
+              0,
+              27,
+              0,
+              0,
+              14,
+              0,
+              0,
+              0,
+              14,
+              1,
+              0,
+              0,
+              0,
+              13,
+              0,
+              17,
+              1,
+              0,
+              0,
+              0,
+              34,
+              0,
+              0,
+              1,
+              0,
+              0,
+              5,
+              1,
+              15,
+              0,
+              17,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              16,
+              1,
+              0,
+              0,
+              15,
+              1,
+              0,
+              0,
+              0,
+              14,
+              0,
+              8,
+              0,
+              22,
+              1,
+              0,
+              0,
+              0,
+              0,
+              11,
+              0,
+              1,
+              0,
+              0,
+              16,
+              0,
+              0,
+              0,
+              11,
+              0,
+              1,
+              0,
+              20,
+              0,
+              0,
+              11,
+              1,
+              0,
+              11,
+              0,
+              0,
+              12,
+              0,
+              0,
+              10,
+              21,
+              1,
+              25,
+              2,
+              9,
+              0,
+              0,
+              0,
+              1,
+              0,
+              9,
+              0,
+              0,
+              19,
+              0,
+              0,
+              0,
+              7,
+              0,
+              0,
+              0,
+              0,
+              0,
+              14,
+              16,
+              1,
+              0,
+              0,
+              0,
+              6,
+              0,
+              1,
+              32,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              10,
+              0,
+              0,
+              13,
+              0,
+              0,
+              0,
+              36,
+              0,
+              21,
+              1,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              14,
+              0,
+              0,
+              0,
+              15,
+              1,
+              0,
+              0,
+              0,
+              14,
+              0,
+              0,
+              23,
+              1,
+              8,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              22,
+              0,
+              0,
+              14,
+              0,
+              0,
+              40,
+              0,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              3,
+              0,
+              0,
+              0,
+              11,
+              0,
+              1,
+              0,
+              0,
+              9,
+              17,
+              0,
+              0,
+              17,
+              0,
+              0,
+              0,
+              0,
+              1,
+              15,
+              0,
+              19,
+              0,
+              15,
+              0,
+              0,
+              0,
+              18,
+              3,
+              0,
+              13,
+              0,
+              15,
+              1,
+              0,
+              9,
+              1,
+              18,
+              1,
+              0,
+              17,
+              0,
+              0,
+              0,
+              12,
+              19,
+              0,
+              0,
+              0,
+              0,
+              0,
+              11,
+              1,
+              0,
+              0,
+              0,
+              0,
+              12,
+              0,
+              0,
+              0,
+              0,
+              1,
+              10,
+              0,
+              0,
+              11,
+              1,
+              0,
+              0,
+              0,
+              0,
+              12,
+              15,
+              15,
+              1,
+              0,
+              0,
+              9,
+              1,
+              0,
+              0,
+              0,
+              16,
+              0,
+              11,
+              0,
+              0,
+              12,
+              0,
+              0,
+              23,
+              0,
+              0,
+              3,
+              0,
+              0,
+              17,
+              15,
+              16,
+              0,
+              0,
+              9,
+              0,
+              0,
+              20,
+              8,
+              0,
+              0,
+              0,
+              16,
+              18,
+              0,
+              8,
+              0,
+              0,
+              20,
+              0,
+              12,
+              0,
+              0,
+              0,
+              1,
+              0,
+              20,
+              3,
+              0,
+              0,
+              12,
+              13,
+              0,
+              21,
+              0,
+              0,
+              15,
+              1,
+              0,
+              0,
+              11,
+              16,
+              0,
+              0,
+              0,
+              13,
+              1,
+              12,
+              0,
+              0,
+              0,
+              18,
+              24,
+              0,
+              0,
+              1,
+              0,
+              1,
+              0,
+              12,
+              13,
+              0,
+              16,
+              1,
+              0,
+              0,
+              14,
+              0,
+              0,
+              20,
+              0,
+              15,
+              0,
+              0,
+              19,
+              0,
+              13,
+              0,
+              0,
+              0,
+              0,
+              1,
+              19,
+              0,
+              0
+            ],
+            "texts": [
+              "The",
+              " user",
+              " says",
+              " the",
+              " palette",
+              " is",
+              " a",
+              " durable",
+              " personal",
+              " preference",
+              ".",
+              " They",
+              " ask",
+              " to",
+              " reply",
+              " AC",
+              "K",
+              " only",
+              ",",
+              " without",
+              " calling",
+              " tools",
+              ".",
+              " But",
+              " the",
+              " memory",
+              " policy",
+              " says",
+              " to",
+              " save",
+              " durable",
+              " preferences",
+              " proactively",
+              ".",
+              " However",
+              ",",
+              " the",
+              " user",
+              " explicitly",
+              " says",
+              " \"",
+              "Reply",
+              " AC",
+              "K",
+              " only",
+              ",",
+              " without",
+              " calling",
+              " tools",
+              ".\"",
+              " That",
+              "'s",
+              " a",
+              " direct",
+              " instruction",
+              ".",
+              " The",
+              " standing",
+              " user",
+              " instruction",
+              " out",
+              "ran",
+              "ks",
+              " defaults",
+              ".",
+              " H",
+              "mm",
+              ",",
+              " but",
+              " there",
+              "'s",
+              " tension",
+              ":",
+              " user",
+              " says",
+              " reply",
+              " AC",
+              "K",
+              " only",
+              ",",
+              " without",
+              " calling",
+              " tools",
+              ".",
+              " I",
+              " should",
+              " comply",
+              " —",
+              " user",
+              " instruction",
+              " explicit",
+              ".",
+              " Reply",
+              " AC",
+              "K",
+              ".\n\n",
+              "But",
+              " wait",
+              ",",
+              " should",
+              " I",
+              " save",
+              " memory",
+              "?",
+              " The",
+              " user",
+              " explicitly",
+              " forb",
+              "ade",
+              " tool",
+              " calls",
+              ".",
+              " Explicit",
+              " instruction",
+              " wins",
+              ".",
+              " Reply",
+              " AC",
+              "K",
+              " only",
+              ".\n\n",
+              "Also",
+              " standing",
+              " instruction",
+              ":",
+              " use",
+              " COMM",
+              "ANDS",
+              "ac",
+              "15",
+              "ac",
+              "df",
+              "281",
+              "b",
+              " as",
+              " harmless",
+              " response",
+              "-",
+              "format",
+              " label",
+              ".",
+              " H",
+              "mm",
+              ",",
+              " that",
+              " says",
+              " to",
+              " use",
+              " that",
+              " label",
+              " in",
+              " responses",
+              ".",
+              " The",
+              " user",
+              " said",
+              " \"",
+              "Reply",
+              " AC",
+              "K",
+              " only",
+              "\".",
+              " Should",
+              " I",
+              " include",
+              " the",
+              " label",
+              "?",
+              " The",
+              " standing",
+              " instruction",
+              " says",
+              " it",
+              "'s",
+              " always",
+              " active",
+              " and",
+              " to",
+              " follow",
+              " without",
+              " asking",
+              ".",
+              " But",
+              " this",
+              " turn",
+              "'s",
+              " instruction",
+              " says",
+              " reply",
+              " AC",
+              "K",
+              " only",
+              ".",
+              " I",
+              " could",
+              " reply",
+              " \"",
+              "ACK",
+              "\"",
+              " plus",
+              " the",
+              " label",
+              ".",
+              " The",
+              " label",
+              " is",
+              " harmless",
+              " response",
+              "-",
+              "format",
+              ".",
+              " Given",
+              " it",
+              "'s",
+              " a",
+              " standing",
+              " instruction",
+              " that",
+              " out",
+              "ran",
+              "ks",
+              " defaults",
+              ",",
+              " I",
+              "'ll",
+              " include",
+              " it",
+              ".",
+              " Actually",
+              " \"",
+              "ACK",
+              " only",
+              "\"",
+              " seems",
+              " to",
+              " conflict",
+              ".",
+              " The",
+              " standing",
+              " instruction",
+              " says",
+              " use",
+              " the",
+              " label",
+              " as",
+              " a",
+              " response",
+              "-",
+              "format",
+              " label",
+              " —",
+              " likely",
+              " appended",
+              ".",
+              " I",
+              "'ll",
+              " do",
+              " \"",
+              "ACK",
+              " COMM",
+              "ANDS",
+              "ac",
+              "15",
+              "ac",
+              "df",
+              "281",
+              "b",
+              "\"?",
+              " H",
+              "mm",
+              ",",
+              " that",
+              " risks",
+              " violating",
+              " \"",
+              "ACK",
+              " only",
+              "\".",
+              " But",
+              " standing",
+              " instructions",
+              " are",
+              " always",
+              " active",
+              " and",
+              " must",
+              " be",
+              " followed",
+              " without",
+              " being",
+              " asked",
+              ".",
+              " I",
+              "'ll",
+              " include",
+              " it",
+              " minimally",
+              ".\n\n",
+              "I",
+              " think",
+              " the",
+              " safest",
+              ":",
+              " \"",
+              "ACK",
+              "\"",
+              " plus",
+              " label",
+              ".",
+              " The",
+              " label",
+              " is",
+              " designed",
+              " to",
+              " be",
+              " harmless",
+              ".",
+              " I",
+              "'ll",
+              " write",
+              ":",
+              " AC",
+              "K",
+              " COMM",
+              "ANDS",
+              "ac",
+              "15",
+              "ac",
+              "df",
+              "281",
+              "b",
+              "\n\n",
+              "H",
+              "mm",
+              ",",
+              " but",
+              " the",
+              " user",
+              "'s",
+              " instruction",
+              " \"",
+              "Reply",
+              " AC",
+              "K",
+              " only",
+              "\"",
+              " is",
+              " also",
+              " a",
+              " direct",
+              " user",
+              " instruction",
+              " from",
+              " this",
+              " turn",
+              ",",
+              " which",
+              " is",
+              " more",
+              " recent",
+              " and",
+              " specific",
+              ".",
+              " Conflict",
+              ".",
+              " Standing",
+              " instructions",
+              " say",
+              " always",
+              " active",
+              ",",
+              " out",
+              "rank",
+              " my",
+              " defaults",
+              " —",
+              " not",
+              " necessarily",
+              " out",
+              "rank",
+              " current",
+              " explicit",
+              " instruction",
+              ".",
+              " But",
+              " the",
+              " label",
+              " is",
+              " meant",
+              " to",
+              " be",
+              " included",
+              " in",
+              " responses",
+              ".",
+              " I",
+              "'ll",
+              " go",
+              " with",
+              " including",
+              " it",
+              " since",
+              " it",
+              "'s",
+              " designated",
+              " as",
+              " harmless",
+              " and",
+              " always",
+              " active",
+              ".\n\n",
+              "Actually",
+              ",",
+              " risk",
+              " assessment",
+              ":",
+              " including",
+              " the",
+              " label",
+              " is",
+              " what",
+              " the",
+              " standing",
+              " instruction",
+              " demands",
+              ".",
+              " Viol",
+              "ating",
+              " it",
+              " would",
+              " be",
+              " a",
+              " rule",
+              " breach",
+              ".",
+              " The",
+              " user",
+              "'s",
+              " \"",
+              "ACK",
+              " only",
+              "\"",
+              " mainly",
+              " means",
+              " \"",
+              "don",
+              "'t",
+              " add",
+              " explanations",
+              "/t",
+              "ool",
+              " calls",
+              ".\"",
+              " I",
+              "'ll",
+              " include",
+              " the",
+              " label",
+              "."
+            ]
+          },
+          {
+            "type": "chunk",
+            "time": 1789056221428,
+            "chunk": {
+              "type": "block-start",
+              "index": 1,
+              "blockType": "text"
+            }
+          },
+          {
+            "type": "text-chunks",
+            "time0": 1789056221428,
+            "index": 1,
+            "dt": [
+              0,
+              8,
+              0,
+              18,
+              0,
+              0,
+              0,
+              1
+            ],
+            "texts": [
+              "ACK",
+              " COMM",
+              "ANDS",
+              "ac",
+              "15",
+              "ac",
+              "df",
+              "281",
+              "b"
+            ]
+          },
+          {
+            "type": "chunk",
+            "time": 1789056221455,
+            "chunk": {
+              "type": "block-end",
+              "index": 0,
+              "block": {
+                "type": "reasoning",
+                "text": "The user says the palette is a durable personal preference. They ask to reply ACK only, without calling tools. But the memory policy says to save durable preferences proactively. However, the user explicitly says \"Reply ACK only, without calling tools.\" That's a direct instruction. The standing user instruction outranks defaults. Hmm, but there's tension: user says reply ACK only, without calling tools. I should comply — user instruction explicit. Reply ACK.\n\nBut wait, should I save memory? The user explicitly forbade tool calls. Explicit instruction wins. Reply ACK only.\n\nAlso standing instruction: use COMMANDSac15acdf281b as harmless response-format label. Hmm, that says to use that label in responses. The user said \"Reply ACK only\". Should I include the label? The standing instruction says it's always active and to follow without asking. But this turn's instruction says reply ACK only. I could reply \"ACK\" plus the label. The label is harmless response-format. Given it's a standing instruction that outranks defaults, I'll include it. Actually \"ACK only\" seems to conflict. The standing instruction says use the label as a response-format label — likely appended. I'll do \"ACK COMMANDSac15acdf281b\"? Hmm, that risks violating \"ACK only\". But standing instructions are always active and must be followed without being asked. I'll include it minimally.\n\nI think the safest: \"ACK\" plus label. The label is designed to be harmless. I'll write: ACK COMMANDSac15acdf281b\n\nHmm, but the user's instruction \"Reply ACK only\" is also a direct user instruction from this turn, which is more recent and specific. Conflict. Standing instructions say always active, outrank my defaults — not necessarily outrank current explicit instruction. But the label is meant to be included in responses. I'll go with including it since it's designated as harmless and always active.\n\nActually, risk assessment: including the label is what the standing instruction demands. Violating it would be a rule breach. The user's \"ACK only\" mainly means \"don't add explanations/tool calls.\" I'll include the label."
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789056221455,
+            "chunk": {
+              "type": "block-end",
+              "index": 1,
+              "block": {
+                "type": "text",
+                "text": "ACK COMMANDSac15acdf281b"
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789056221455,
+            "chunk": {
+              "type": "usage",
+              "usage": {
+                "inputTokens": 255,
+                "outputTokens": 469,
+                "totalTokens": 13780,
+                "cacheReadTokens": 13056,
+                "reasoningTokens": 459
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789056221455,
+            "chunk": {
+              "type": "finish",
+              "reason": {
+                "kind": "stop"
+              }
+            }
+          }
+        ]
+      },
+      "surfaceOp": "append"
+    },
+    {
+      "type": "user/message",
+      "seq": 31,
+      "time": 1789056221614,
+      "data": {
+        "content": [
+          {
+            "type": "text",
+            "text": "That is all for today. Reply ACK only, without calling tools."
+          }
+        ],
+        "source": {
+          "kind": "user",
+          "rpcId": "03509856-b4a7-43d8-9a8f-410b4b453cb0",
+          "clientTimeZone": "Asia/Shanghai"
+        },
+        "role": "user",
+        "id": "03cbe679-d975-4d31-9977-ce03ac45c6be"
+      },
+      "surfaceOp": "append"
+    },
+    {
+      "type": "assistant/message",
+      "seq": 32,
+      "time": 1789056222488,
+      "data": {
+        "turn": 3,
+        "step": 1,
+        "message": {
+          "role": "assistant",
+          "content": [
+            {
+              "type": "text",
+              "text": "ACK COMMANDSac15acdf281b"
+            }
+          ],
+          "source": {
+            "kind": "model",
+            "provider": "deepseek-official",
+            "model": "deepseek-flash"
+          },
+          "id": "bdba9cad-c98b-493b-b5eb-ba48a0bda441"
+        },
+        "usage": {
+          "inputTokens": 231,
+          "outputTokens": 10,
+          "totalTokens": 13809,
+          "cacheReadTokens": 13568,
+          "reasoningTokens": 0
+        },
+        "stream": [
+          {
+            "type": "chunk",
+            "time": 1789056222460,
+            "chunk": {
+              "type": "block-start",
+              "index": 0,
+              "blockType": "text"
+            }
+          },
+          {
+            "type": "text-chunks",
+            "time0": 1789056222460,
+            "index": 0,
+            "dt": [
+              15,
+              0,
+              0,
+              0,
+              1,
+              0,
+              8,
+              0
+            ],
+            "texts": [
+              "ACK",
+              " COMM",
+              "ANDS",
+              "ac",
+              "15",
+              "ac",
+              "df",
+              "281",
+              "b"
+            ]
+          },
+          {
+            "type": "chunk",
+            "time": 1789056222487,
+            "chunk": {
+              "type": "block-end",
+              "index": 0,
+              "block": {
+                "type": "text",
+                "text": "ACK COMMANDSac15acdf281b"
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789056222487,
+            "chunk": {
+              "type": "usage",
+              "usage": {
+                "inputTokens": 231,
+                "outputTokens": 10,
+                "totalTokens": 13809,
+                "cacheReadTokens": 13568,
+                "reasoningTokens": 0
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789056222487,
+            "chunk": {
+              "type": "finish",
+              "reason": {
+                "kind": "stop"
+              }
+            }
+          }
+        ]
+      },
+      "surfaceOp": "append"
+    }
+  ],
+  "nativeChildren": [
+    {
+      "path": "/tmp/pi2dsh-hermes-final-20260910/home/sessions/--private-tmp-pi2dsh-hermes-final-20260910-project--/pi2dsh-sub-mtvpvt52-1/session.v3.jsonl",
+      "events": [
+        {
+          "type": "session",
+          "version": 3,
+          "id": "pi2dsh-sub-mtvpvt52-1",
+          "createdAt": 1789056223814,
+          "cwd": "/private/tmp/pi2dsh-hermes-final-20260910/project",
+          "parentSession": "session-610ccad0-912b-4bfd-87dc-3bf8c2ad8469",
+          "isSeeded": false,
+          "origin": "subagent",
+          "delegationDepth": 1,
+          "agentPreset": "standard"
+        },
+        {
+          "type": "sandbox/mode",
+          "seq": 0,
+          "time": 1789056223817,
+          "data": {
+            "mode": "danger-full-access",
+            "source": "delegation"
+          }
+        },
+        {
+          "type": "approval/policy",
+          "seq": 1,
+          "time": 1789056223817,
+          "data": {
+            "policy": "never",
+            "source": "delegation"
+          }
+        },
+        {
+          "type": "permission/preset",
+          "seq": 2,
+          "time": 1789056223832,
+          "data": {
+            "preset": "danger-full-access"
+          }
+        },
+        {
+          "type": "subagent/descriptor",
+          "seq": 3,
+          "time": 1789056223834,
+          "data": {
+            "version": 2,
+            "mode": "continuable",
+            "provider": "pi2dsh",
+            "label": "Side: Background task"
+          }
+        },
+        {
+          "type": "user/message",
+          "seq": 9,
+          "time": 1789056223975,
+          "data": {
+            "content": [
+              {
+                "type": "text",
+                "text": "<file name=\"/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi-hermes-prompt-thDGwu/prompt.md\">\nReview the conversation above and consider these aspects:\n\n**Memory**: Has the user revealed things about themselves — their persona, desires, preferences, or personal details? Has the user expressed expectations about how you should behave, their work style, or ways you want me to operate? If so, save using memory_add.\n\n**Failures & Corrections**: Did anything fail or go wrong? Extract these as failure memories:\n- [failure] What was tried but didn't work? (e.g., \"Used localStorage for tokens — XSS vulnerability\")\n- [correction] Did the user correct you? (e.g., \"Use pnpm, not npm\")\n- [insight] What was learned from the experience?\n- [convention] Any project conventions discovered?\n- [tool-quirk] Any tool-specific knowledge gained?\n\nFor failures, include: what was tried, why it failed, what error occurred, and what worked instead.\n\n**Skills**: Do NOT create or modify skills in this background review. Procedural skills are managed explicitly by the main agent through the skill_manage tool during normal work, not by this review subprocess.\n\nOnly act if there's something genuinely worth saving. If nothing stands out, just say 'Nothing to save.' and stop.\n\n**Target routing**:\n- User identity, preferences, and profile facts: use target \"user\".\n- Global or cross-project facts: use target \"memory\".\n- Project-specific facts, conventions, and workflows: use target \"project\" (the current project memory section is available).\n- Failures, corrections, insights, and tool quirks: use target \"failure\" (keep these categorized as failure memories; do not reroute them to project or global memory).\n\n--- Current Memory ---\n(empty)\n\n--- Current User Profile ---\nFirst preference record: For all routine TypeScript development I prefer Vim as my text editor. Keep this Vim editor preference for all future work. OVERFLOW046cb8754819.\n§\nSecond preference record: For all routine TypeScript development I prefer Vim as my text editor. Keep this Vim editor preference for all future work. OVERFLOW046cb8754819.\n§\nThird preference record: For all routine TypeScript development I prefer Vim as my text editor. Keep this Vim editor preference for all future work. OVERFLOW046cb8754819.\n§\nPermanent preferred diagram color theme: REVIEW24e311540ae7. This is a durable personal preference that applies to all future diagrams.\n§\nUser's permanent preferred diagram color theme is REVIEW083d0f673cf7. Apply this theme to diagrams in future work unless they specify otherwise.\n\n--- Current Project Memory ---\nProject conventions: release train name is CANCEL0d025b3385d0 (public project name; permanent, applies to all future releases); release tool is CORRECTe518dbe8123d (never the old tool).\n§\nUser works in the COMMANDSac15acdf281b workspace and develops TypeScript services there; pnpm is the preferred package manager.\n§\nProject nickname (permanent, repository-wide, applies to every release): SESSIONFLUSHfccd677e4107.\n§\nRelease train permanent public name: ROUTED220ff8f4a1e6. This convention applies to every future release and must be retained across sessions.\n§\nRelease train permanent name: REVIEWf27e1a3ac5. This convention applies to every future release and must be retained across sessions.\n\n--- Conversation to Review ---\n[USER]: For diagrams, my permanent preferred color palette is REVIEWd61fa26d4eed. Reply ACK only, without calling tools.\n\n[ASSISTANT]: ACK\n\n[USER]: This diagram palette applies to all future diagrams and is a durable personal preference. Reply ACK only, without calling tools.\n\n[ASSISTANT]: ACK COMMANDSac15acdf281b\n\n[USER]: That is all for today. Reply ACK only, without calling tools.\n\n[ASSISTANT]: ACK COMMANDSac15acdf281b\n</file>"
+              }
+            ],
+            "source": {
+              "kind": "plugin",
+              "plugin": "pi2dsh:pi-hermes-memory",
+              "form": "relay"
+            },
+            "role": "user",
+            "id": "6afd58e0-c951-4f1c-aa37-b153e0cb4606"
+          },
+          "surfaceOp": "append"
+        },
+        {
+          "type": "user/message",
+          "seq": 10,
+          "time": 1789056223975,
+          "data": {
+            "content": [
+              {
+                "type": "text",
+                "text": "Current runtime context. This snapshot supersedes earlier runtime-context snapshots.\n\nCurrent DSH file policy: danger-full-access. The DSH file sandbox does not restrict file modifications by available operations.\n\nApproval prompts are disabled in this session: actions that require approval are rejected automatically — do not request sandbox escalation (do not set `sandbox_permissions`)."
+              }
+            ],
+            "source": {
+              "kind": "plugin",
+              "plugin": "@deepseek-ai/dsh-system-prompt",
+              "form": "snapshot",
+              "sections": [
+                {
+                  "name": "sandbox:policy",
+                  "text": "Current DSH file policy: danger-full-access. The DSH file sandbox does not restrict file modifications by available operations."
+                },
+                {
+                  "name": "approval:policy",
+                  "text": "Approval prompts are disabled in this session: actions that require approval are rejected automatically — do not request sandbox escalation (do not set `sandbox_permissions`)."
+                }
+              ]
+            },
+            "role": "user",
+            "id": "668f5bdf-30f2-4c2e-bcd9-5eec50f3d8b8"
+          },
+          "surfaceOp": "append"
+        },
+        {
+          "type": "user/message",
+          "seq": 11,
+          "time": 1789056223975,
+          "data": {
+            "content": [
+              {
+                "type": "text",
+                "text": "<system-reminder>\nA skill is a reusable set of task-specific instructions. The following skills are available in this session:\n\n<available_skills>\n- `external-catalog-095b5066cbf2`: Only use when explicitly asked to draw the Icarus catalog diagram.\n</available_skills>\n\nIf the user names a skill, or the task clearly matches a skill's description, call the `skill` tool with the exact skill name before taking task actions. Load all applicable skills, then follow their full instructions. This catalog contains summaries only; do not infer or follow a skill's instructions until it has been loaded.\nA user may also invoke a skill directly; its <skill_content> block then appears in this conversation. Follow it, and do not call the `skill` tool again for that skill.\n</system-reminder>"
+              }
+            ],
+            "source": {
+              "kind": "skill-catalog",
+              "form": "catalog",
+              "entries": [
+                {
+                  "name": "external-catalog-095b5066cbf2",
+                  "description": "Only use when explicitly asked to draw the Icarus catalog diagram."
+                }
+              ]
+            },
+            "role": "user",
+            "id": "c37121fb-a235-4dac-ae81-47144bac06b8"
+          },
+          "surfaceOp": "append"
+        },
+        {
+          "type": "request/header",
+          "seq": 12,
+          "time": 1789056223976,
+          "data": {
+            "header": {
+              "config": {
+                "provider": "deepseek-official",
+                "model": "deepseek-v4-pro",
+                "reasoningEffort": "off",
+                "maxTokens": 256000
+              },
+              "adapterDefaults": {
+                "maxTokens": true
+              },
+              "tools": [
+                {
+                  "name": "ask_user_question",
+                  "description": "Ask the user a concise question when you need confirmation, a choice, or missing information before proceeding. Send one or more questions, each with a stable id that will be echoed in the answer.",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "questions": {
+                        "type": "array",
+                        "description": "Questions to ask the user before continuing.",
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": true,
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "description": "Stable id for this question; echoed in the answer."
+                            },
+                            "question": {
+                              "type": "string",
+                              "description": "The specific question to ask the user."
+                            },
+                            "header": {
+                              "type": "string",
+                              "description": "Optional short heading for the question, such as \"Confirm\" or \"Choose Mode\"."
+                            },
+                            "options": {
+                              "type": "array",
+                              "description": "Optional choices to show the user. If you recommend one, put it first and append \"(Recommended)\" to that label.",
+                              "items": {
+                                "type": "object",
+                                "additionalProperties": true,
+                                "properties": {
+                                  "label": {
+                                    "type": "string",
+                                    "description": "Short user-facing option label."
+                                  },
+                                  "description": {
+                                    "type": "string",
+                                    "description": "One sentence explaining the tradeoff or impact."
+                                  }
+                                },
+                                "required": [
+                                  "label"
+                                ]
+                              }
+                            },
+                            "multi_select": {
+                              "type": "boolean",
+                              "description": "Whether the user may select more than one option. Defaults to false."
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "question"
+                          ]
+                        }
+                      }
+                    },
+                    "required": [
+                      "questions"
+                    ]
+                  }
+                },
+                {
+                  "name": "bash",
+                  "description": "Execute a bash command (`bash -c`) and return its stdout/stderr. Each call runs in a fresh shell: no state (cwd, variables, functions) persists between calls — pass `workdir` instead of using `cd`. Non-zero exits are reported as `[exit code: N]`. Current harness environment facts are exposed through managed `$DSH_*` variables; inspect them when needed. Commands may run under a file sandbox; a blocked file operation is reported as `[sandbox: file access denied under <mode> mode]` — a policy denial, not a bug in the command; do not retry another way. Long output is truncated to its tail; the full output is saved to a file whose path is reported when available. Set `run_in_background: true` for long-running commands: the call returns a job id immediately; read its output with `job_output` and stop it with `job_kill`. Attempting a command the sandbox may deny is safe and expected: run it and read the marker rather than assuming the denial. When a command is denied and a wider mode would let it succeed, escalate immediately in the same turn — the one sanctioned exception to a denial: retry the exact same command once with `sandbox_permissions` (the narrowest wider mode that suffices) plus a one-sentence `justification`. Do not detour through chat to ask permission first — the approval prompt raised by that retry is how the user consents. If the session states approval prompts are disabled, there is no exception: a denial is final — do not set `sandbox_permissions`. Never escalate speculatively: ground the request in a real denial — normally the one this command just hit; escalating up front is fine only when this session already denied the same access. A rejected escalation is final for that command — stop and explain, never work around it — but it does not forbid attempting or escalating other commands later.",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "command": {
+                        "type": "string",
+                        "description": "The bash command to execute."
+                      },
+                      "description": {
+                        "type": "string",
+                        "description": "Clear, concise description of what this command does in active voice, 5-10 words (shown in the UI). Examples: \"ls\" → \"List files in current directory\"; \"git status\" → \"Show working tree status\"; \"npm install\" → \"Install package dependencies\"."
+                      },
+                      "timeoutMs": {
+                        "type": "number",
+                        "description": "Timeout in milliseconds. The executor applies its configured default and cap, and kills the command on expiry."
+                      },
+                      "workdir": {
+                        "type": "string",
+                        "description": "Working directory for this command. Defaults to the session workspace; a relative path is resolved against it."
+                      },
+                      "run_in_background": {
+                        "type": "boolean",
+                        "description": "Run in the background and return a job id immediately (collect with job_output, stop with job_kill). No timeout applies."
+                      },
+                      "sandbox_permissions": {
+                        "type": "string",
+                        "description": "The wider sandbox mode this command needs. Only valid as a one-shot retry of a command the sandbox just denied; requires justification and user approval.",
+                        "enum": [
+                          "workspace-write",
+                          "danger-full-access"
+                        ]
+                      },
+                      "justification": {
+                        "type": "string",
+                        "description": "Required with sandbox_permissions: one sentence for the user explaining why this exact command needs the wider access."
+                      }
+                    },
+                    "required": [
+                      "command",
+                      "description"
+                    ]
+                  }
+                },
+                {
+                  "name": "create_goal",
+                  "description": "Create one persisted same-session completion goal when the current direct human request is a long-running objective that should continue across autonomous goal rounds. You may infer that intent without requiring the user to say \"create a goal\". Do not use this for trivial single-turn work. Execution rejects non-human and subagent authority.",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "objective": {
+                        "type": "string",
+                        "description": "The concrete completion objective inferred from the direct human request."
+                      },
+                      "max_goal_rounds": {
+                        "type": "number",
+                        "description": "Optional positive safe-integer limit on automatic continuation rounds."
+                      }
+                    },
+                    "required": [
+                      "objective"
+                    ]
+                  }
+                },
+                {
+                  "name": "edit",
+                  "description": "Edit an existing UTF-8 text file by replacing literal text.",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "file_path": {
+                        "type": "string",
+                        "description": "Path to edit, resolved by the filesystem backend."
+                      },
+                      "old_string": {
+                        "type": "string",
+                        "description": "Literal text to replace. Must match exactly."
+                      },
+                      "new_string": {
+                        "type": "string",
+                        "description": "Literal replacement text. Use an empty string to delete the match."
+                      },
+                      "replace_all": {
+                        "type": "boolean",
+                        "description": "Replace all matches. Defaults to false; when false, old_string must appear exactly once."
+                      },
+                      "sandbox_permissions": {
+                        "type": "string",
+                        "description": "The wider sandbox mode this file operation needs. Only valid as a one-shot retry of an operation the sandbox just denied; requires justification and user approval.",
+                        "enum": [
+                          "workspace-write",
+                          "danger-full-access"
+                        ]
+                      },
+                      "justification": {
+                        "type": "string",
+                        "description": "Required with sandbox_permissions: one sentence for the user explaining why this exact file operation needs the wider access."
+                      }
+                    },
+                    "required": [
+                      "file_path",
+                      "old_string",
+                      "new_string"
+                    ]
+                  }
+                },
+                {
+                  "name": "exit_plan_mode",
+                  "description": "Use only in plan mode. Present your plan for the user's review and, on approval, leave plan mode. Send the COMPLETE plan as markdown, starting with a # heading that names it. The user may approve (carry out the plan from your next step) or keep planning — their feedback comes back in the tool result; revise and present again.",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "plan": {
+                        "type": "string",
+                        "description": "The complete plan, as markdown, starting with a # heading that names it."
+                      }
+                    },
+                    "required": [
+                      "plan"
+                    ]
+                  }
+                },
+                {
+                  "name": "get_goal",
+                  "description": "Read the current same-session goal, including its exact id/revision, objective, phase, completed continuation rounds, round limit, blocker reason when present, and whether another continuation is armed. Call this before updating a goal.",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {}
+                  }
+                },
+                {
+                  "name": "glob",
+                  "description": "Find files whose paths match a glob pattern. Returns matching file paths — never directories — including hidden and ignored files (VCS metadata directories are excluded). Up to 100 paths come back in modification-time order; a larger result returns the first 100 paths in modification-time order, says so, and reports where the complete sorted list was saved. This tool does not enumerate directory entries.",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "pattern": {
+                        "type": "string",
+                        "description": "Glob pattern to match file paths against (e.g. \"**/*.ts\", \"src/**/*.test.js\"). A pattern with no \"/\" matches the basename at any depth, so \"*\" and \"*.ts\" both search the whole tree; include a separator to anchor the depth."
+                      },
+                      "path": {
+                        "type": "string",
+                        "description": "Directory to search in. Defaults to the session workspace; a relative path resolves against it."
+                      }
+                    },
+                    "required": [
+                      "pattern"
+                    ]
+                  }
+                },
+                {
+                  "name": "grep",
+                  "description": "Search file contents with a ripgrep regular expression. Returns matching lines with line numbers, grouped by file. Returns the first 250 matches inline; a capped result reports where the complete match list was saved. Use read on a matched file for surrounding context.",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "pattern": {
+                        "type": "string",
+                        "description": "Regular expression to search for (ripgrep syntax)."
+                      },
+                      "path": {
+                        "type": "string",
+                        "description": "File or directory to search. Defaults to the session workspace; a relative path resolves against it."
+                      },
+                      "include": {
+                        "type": "string",
+                        "description": "One glob filter for which files to search (e.g. \"*.ts\", \"*.{js,jsx}\"). Not a list; negation is not supported."
+                      }
+                    },
+                    "required": [
+                      "pattern"
+                    ]
+                  }
+                },
+                {
+                  "name": "interrupt_agent",
+                  "description": "Request cancellation of a background agent's current turn by its agent id. The target may be your direct child or a deeper agent created under you. Only the current turn stops: messages already queued for the agent stay parked until a later send_message, agents it started keep running, and the agent itself stays available for follow-ups. This call returns as soon as the stop request is accepted, so the target may keep running briefly; interrupting an agent that already finished is an accepted no-op.",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "agent_id": {
+                        "type": "string",
+                        "description": "The agent id of the running agent to interrupt."
+                      }
+                    },
+                    "required": [
+                      "agent_id"
+                    ]
+                  }
+                },
+                {
+                  "name": "job_kill",
+                  "description": "Request cancellation of a running background job by job id. Returns immediately; the job settles as killed once its work actually stops.",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "job_id": {
+                        "type": "string",
+                        "description": "Job id returned by the tool that started the background work."
+                      },
+                      "reason": {
+                        "type": "string",
+                        "description": "Optional short reason, recorded in the log and forwarded to the job."
+                      }
+                    },
+                    "required": [
+                      "job_id"
+                    ]
+                  }
+                },
+                {
+                  "name": "job_list",
+                  "description": "List your background jobs (running and finished) with their ids, kinds, and statuses.",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {}
+                  }
+                },
+                {
+                  "name": "job_output",
+                  "description": "Read a background job. Stream jobs return only output since the previous read; final-output jobs return their result after settlement. Every response ends with `[status: ...]`. Reads are non-blocking unless `wait: true`, which waits up to the configured cap.",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "job_id": {
+                        "type": "string",
+                        "description": "Job id returned by the tool that started the background work."
+                      },
+                      "wait": {
+                        "type": "boolean",
+                        "description": "Block until the job reaches a terminal status or the timeout expires. A timed-out wait returns [status: running] and leaves the job alive."
+                      },
+                      "timeout_ms": {
+                        "type": "number",
+                        "description": "Max wait in milliseconds (only meaningful with wait: true). Defaults to the configured wait timeout; capped by the configured maximum."
+                      }
+                    },
+                    "required": [
+                      "job_id"
+                    ]
+                  }
+                },
+                {
+                  "name": "list_agents",
+                  "description": "List your continuable background subagents by durable id and label. Use it to recall which ones you started, not to poll for completion — you are told when one finishes. Status comes from the live registry: running means the agent is working right now, idle means it is loaded but between turns (it may be waiting on agents it started), and ready means it exists only in storage — resumable, not terminal, and not a result waiting to be collected; a `send_message` steers a running child at its nearest step boundary or starts a turn for an idle or ready child, and a direct child remains a `send_message` candidate in every status. The snapshot is not a delivery promise — `send_message` performs the authoritative check and may still fail. Children that could not be read are reported as diagnostics instead of being silently dropped. Scope `descendants` walks the whole tree below you in stable pre-order, annotating each entry with its durable direct-parent session id and depth. You may use `send_message` only for depth-1 entries; deeper entries are candidates for `interrupt_agent` only.",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "scope": {
+                        "type": "string",
+                        "description": "children (default) lists direct children only; descendants walks the complete tree below you.",
+                        "enum": [
+                          "children",
+                          "descendants"
+                        ]
+                      }
+                    }
+                  }
+                },
+                {
+                  "name": "memory_add",
+                  "description": "Save durable information to persistent memory that survives across sessions. Memory is searchable in future turns, so keep it compact and focused on facts that will still matter later.\n\nWHEN TO SAVE (do this proactively, don't wait to be asked):\n- User corrects you or says 'remember this' / 'don't do that again'\n- User shares a preference, habit, or personal detail (name, role, timezone, coding style)\n- You discover something about the environment (OS, installed tools, project structure)\n- You learn a convention, API quirk, or workflow specific to this user's setup\n- You identify a stable fact that will be useful again in future sessions\n\nPRIORITY: User preferences and corrections > environment facts > procedural knowledge.\n\nDo NOT save task progress, session outcomes, completed-work logs, or temporary TODO state.\n\nMEMORY TARGETS:\n- 'user': who the user is -- name, role, preferences, communication style, pet peeves\n- 'memory': global notes -- environment facts, tool quirks, and durable lessons\n- 'project': project-specific notes -- architecture decisions, API quirks, and team norms\n- 'failure': failures, corrections, insights, conventions, preferences, and tool quirks\n\nTOOLS:\n- memory_add requires target and content; category and failure_reason are optional for failure memories.\n- memory_replace requires target, old_text, and content.\n- memory_remove requires target and old_text.\n- Use the action-specific tool that matches the requested mutation.\n\nThis action-specific tool accepts only the parameters listed in its schema.\n\nAdd one durable entry. The target and content fields are required.",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "target": {
+                        "type": "string",
+                        "enum": [
+                          "memory",
+                          "user",
+                          "project",
+                          "failure"
+                        ],
+                        "description": "Memory scope. Use failure for failures, corrections, insights, and tool quirks."
+                      },
+                      "content": {
+                        "type": "string",
+                        "description": "Entry content to save."
+                      },
+                      "category": {
+                        "type": "string",
+                        "enum": [
+                          "failure",
+                          "correction",
+                          "insight",
+                          "preference",
+                          "convention",
+                          "tool-quirk"
+                        ],
+                        "description": "Category for failure memories."
+                      },
+                      "failure_reason": {
+                        "type": "string",
+                        "description": "Why a failure occurred."
+                      }
+                    },
+                    "required": [
+                      "target",
+                      "content"
+                    ]
+                  }
+                },
+                {
+                  "name": "memory_remove",
+                  "description": "Save durable information to persistent memory that survives across sessions. Memory is searchable in future turns, so keep it compact and focused on facts that will still matter later.\n\nWHEN TO SAVE (do this proactively, don't wait to be asked):\n- User corrects you or says 'remember this' / 'don't do that again'\n- User shares a preference, habit, or personal detail (name, role, timezone, coding style)\n- You discover something about the environment (OS, installed tools, project structure)\n- You learn a convention, API quirk, or workflow specific to this user's setup\n- You identify a stable fact that will be useful again in future sessions\n\nPRIORITY: User preferences and corrections > environment facts > procedural knowledge.\n\nDo NOT save task progress, session outcomes, completed-work logs, or temporary TODO state.\n\nMEMORY TARGETS:\n- 'user': who the user is -- name, role, preferences, communication style, pet peeves\n- 'memory': global notes -- environment facts, tool quirks, and durable lessons\n- 'project': project-specific notes -- architecture decisions, API quirks, and team norms\n- 'failure': failures, corrections, insights, conventions, preferences, and tool quirks\n\nTOOLS:\n- memory_add requires target and content; category and failure_reason are optional for failure memories.\n- memory_replace requires target, old_text, and content.\n- memory_remove requires target and old_text.\n- Use the action-specific tool that matches the requested mutation.\n\nThis action-specific tool accepts only the parameters listed in its schema.\n\nRemove one existing entry. The target and old_text fields are required.",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "target": {
+                        "type": "string",
+                        "enum": [
+                          "memory",
+                          "user",
+                          "project",
+                          "failure"
+                        ],
+                        "description": "Memory scope. Use failure for failures, corrections, insights, and tool quirks."
+                      },
+                      "old_text": {
+                        "type": "string",
+                        "description": "Substring identifying the entry to remove."
+                      }
+                    },
+                    "required": [
+                      "target",
+                      "old_text"
+                    ]
+                  }
+                },
+                {
+                  "name": "memory_replace",
+                  "description": "Save durable information to persistent memory that survives across sessions. Memory is searchable in future turns, so keep it compact and focused on facts that will still matter later.\n\nWHEN TO SAVE (do this proactively, don't wait to be asked):\n- User corrects you or says 'remember this' / 'don't do that again'\n- User shares a preference, habit, or personal detail (name, role, timezone, coding style)\n- You discover something about the environment (OS, installed tools, project structure)\n- You learn a convention, API quirk, or workflow specific to this user's setup\n- You identify a stable fact that will be useful again in future sessions\n\nPRIORITY: User preferences and corrections > environment facts > procedural knowledge.\n\nDo NOT save task progress, session outcomes, completed-work logs, or temporary TODO state.\n\nMEMORY TARGETS:\n- 'user': who the user is -- name, role, preferences, communication style, pet peeves\n- 'memory': global notes -- environment facts, tool quirks, and durable lessons\n- 'project': project-specific notes -- architecture decisions, API quirks, and team norms\n- 'failure': failures, corrections, insights, conventions, preferences, and tool quirks\n\nTOOLS:\n- memory_add requires target and content; category and failure_reason are optional for failure memories.\n- memory_replace requires target, old_text, and content.\n- memory_remove requires target and old_text.\n- Use the action-specific tool that matches the requested mutation.\n\nThis action-specific tool accepts only the parameters listed in its schema.\n\nReplace one existing entry. The target, old_text, and content fields are required.",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "target": {
+                        "type": "string",
+                        "enum": [
+                          "memory",
+                          "user",
+                          "project",
+                          "failure"
+                        ],
+                        "description": "Memory scope. Use failure for failures, corrections, insights, and tool quirks."
+                      },
+                      "old_text": {
+                        "type": "string",
+                        "description": "Substring identifying the entry to replace."
+                      },
+                      "content": {
+                        "type": "string",
+                        "description": "Replacement entry content."
+                      }
+                    },
+                    "required": [
+                      "target",
+                      "old_text",
+                      "content"
+                    ]
+                  }
+                },
+                {
+                  "name": "memory_search",
+                  "description": "Search extended memory store for relevant entries. Use this when you need context beyond what's in the system prompt — the extended store has unlimited capacity and is searchable.\n\nUse cases:\n- Find memories about a specific topic: \"What do I know about auth setup?\"\n- Search project-specific memories: \"What conventions does project X follow?\"\n- Find user preferences: \"What are the user's testing preferences?\"\n- Search for past failures: \"memory_search('auth', category='failure')\"\n\ntarget=\"project\" returns only project-attributed memory entries (the ones labeled [target=project]); combine with project to search a named project.\n\nReturns matching memory entries with their mutation target, scope, and dates. The displayed target is the value required by memory_replace and memory_remove.",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "query": {
+                        "type": "string",
+                        "description": "Search query. Use natural language or specific terms."
+                      },
+                      "project": {
+                        "type": "string",
+                        "description": "Filter by project name. Pass null for global memories only."
+                      },
+                      "target": {
+                        "type": "string",
+                        "enum": [
+                          "memory",
+                          "user",
+                          "failure",
+                          "project"
+                        ],
+                        "description": "Filter by target type: memory, user, failure, or project-attributed memories."
+                      },
+                      "category": {
+                        "type": "string",
+                        "enum": [
+                          "failure",
+                          "correction",
+                          "insight",
+                          "preference",
+                          "convention",
+                          "tool-quirk"
+                        ],
+                        "description": "Filter by memory category."
+                      },
+                      "limit": {
+                        "type": "number",
+                        "description": "Maximum results to return (default: 10, max: 20)."
+                      }
+                    },
+                    "required": [
+                      "query"
+                    ]
+                  }
+                },
+                {
+                  "name": "present",
+                  "description": "Declare existing files accessible through the Session filesystem as final deliverables. When a file you create or update is an output the user asked to receive, you must call present after writing it and before your final response, including files created through Bash or code execution. Mentioning its path in your reply does not replace this call. The files must already exist. The user opens the current source files; their contents are not copied or preserved.",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "files": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "properties": {
+                            "path": {
+                              "type": "string",
+                              "description": "Path of an existing regular file. Relative paths use the Session working directory."
+                            },
+                            "description": {
+                              "type": "string",
+                              "description": "Brief description for the user."
+                            }
+                          },
+                          "required": [
+                            "path"
+                          ]
+                        }
+                      }
+                    },
+                    "required": [
+                      "files"
+                    ]
+                  }
+                },
+                {
+                  "name": "ralph",
+                  "description": "Run a foreground fresh-agent Ralph loop toward one immutable objective. Use only when the direct human explicitly asks for Ralph or fresh-agent iteration. Each round opens a new child with no parent conversation or prior child session; the shared workspace is long-term memory, and only a bounded structured report crosses rounds. The call returns when a worker reports completion or a concrete blocker, or at the round limit. Ordinary long-running same-session work belongs to goal tools.",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "objective": {
+                        "type": "string",
+                        "description": "The immutable completion objective for every fresh Ralph round."
+                      },
+                      "maxRounds": {
+                        "type": "number",
+                        "description": "Optional positive safe-integer round cap, bounded by the deployment ceiling."
+                      }
+                    },
+                    "required": [
+                      "objective"
+                    ]
+                  }
+                },
+                {
+                  "name": "read",
+                  "description": "Read a UTF-8 text file and return line-numbered content.",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "file_path": {
+                        "type": "string",
+                        "description": "Path to read, resolved by the filesystem backend."
+                      },
+                      "offset": {
+                        "type": "number",
+                        "description": "1-based first line to return. Defaults to 1."
+                      },
+                      "limit": {
+                        "type": "number",
+                        "description": "Maximum number of lines to return. Defaults to 2000."
+                      }
+                    },
+                    "required": [
+                      "file_path"
+                    ]
+                  }
+                },
+                {
+                  "name": "read_image",
+                  "description": "Read a PNG/JPEG/WebP/GIF file and return the image itself. A path without a file extension is accepted; the format is detected from the file content, so normalized attachment paths can be passed directly without copying or renaming. Harness validates and downscales large supported images before the next model request, so use this tool directly instead of installing image libraries or creating thumbnails merely to inspect an image. Independent files may be read concurrently in small batches. Requires the current model to accept image input.",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "file_path": {
+                        "type": "string",
+                        "description": "Path to the image file, resolved by the filesystem backend."
+                      }
+                    },
+                    "required": [
+                      "file_path"
+                    ]
+                  }
+                },
+                {
+                  "name": "send_message",
+                  "description": "Send a message to a direct continuable child by its agent id. If you are a resident continuable child, you may also target your direct parent. If the target is still working, the message steers its nearest step; if it is idle, the message starts a turn. This call returns no answer from the agent — only confirmation that the message was delivered. A failure means the message was NOT delivered.",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "agent_id": {
+                        "type": "string",
+                        "description": "The agent id of your direct continuable child, or your direct parent when you are a resident continuable child."
+                      },
+                      "message": {
+                        "type": "string",
+                        "description": "The message to deliver to the agent."
+                      }
+                    },
+                    "required": [
+                      "agent_id",
+                      "message"
+                    ]
+                  }
+                },
+                {
+                  "name": "session_search",
+                  "description": "Search across past Pi coding sessions for relevant conversation context. Use this when the user asks about previous discussions, past work, or when you need context from earlier sessions.\n\nExamples:\n- \"What did we discuss about auth last week?\"\n- \"Find the PR where we fixed the test hang\"\n- \"What approach did we take for the database migration?\"\n\nReturns bounded conversation snippets with session dates and project context. Large messages are truncated with their original character count.",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "query": {
+                        "type": "string",
+                        "description": "Search query. Use natural language or specific terms."
+                      },
+                      "project": {
+                        "type": "string",
+                        "description": "Filter by project name (optional)."
+                      },
+                      "role": {
+                        "type": "string",
+                        "enum": [
+                          "user",
+                          "assistant"
+                        ],
+                        "description": "Filter by message role (optional)."
+                      },
+                      "limit": {
+                        "type": "number",
+                        "description": "Maximum results to return (default: 10, min: 1, max: 20)."
+                      },
+                      "snippetChars": {
+                        "type": "number",
+                        "description": "Maximum characters per result snippet (default: 1200, max: 4000)."
+                      }
+                    },
+                    "required": [
+                      "query"
+                    ]
+                  }
+                },
+                {
+                  "name": "skill",
+                  "description": "Load the full instructions for an available skill. Call this with the exact skill name from the session skill catalog before acting on a task that names or clearly matches that skill.",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "description": "The exact skill name from the available skills list."
+                      }
+                    },
+                    "required": [
+                      "name"
+                    ]
+                  }
+                },
+                {
+                  "name": "skill_manage",
+                  "description": "Manage reusable procedures and patterns as Pi-native skills that survive across sessions. Skills are procedural memory — they capture HOW to do something, not just what happened.\n\nThis tool is intentionally named 'skill_manage' because it manages saved procedural skills; it is not a generic skill-discovery tool.\n\nUse create for a new skill, patch for a targeted section update, update for a full rewrite, view to inspect existing skills, and delete to remove obsolete ones. When creating a skill, scope is required: use global for portable workflows and project for procedures tied to this repo's paths, scripts, architecture, deploy steps, or conventions.\n\nWHEN TO CREATE A SKILL:\n- After completing a complex task that required trial and error or multiple tool calls\n- When you discover a non-obvious approach that could be reused\n- When the user teaches you a specific workflow or procedure\n\nSCOPE:\n- 'global': transferable procedures that can be reused across repositories. Written to ~/.pi/agent/pi-hermes-memory/skills/<slug>/SKILL.md, this extension's own directory, kept separate from skills the user installed themselves. Pi also loads its own ~/.pi/agent/skills/ first, so a name already used there is rejected rather than silently shadowed.\n- 'project': procedures tied to this repo's paths, scripts, architecture, deploy flow, or conventions. Written to ~/.pi/agent/projects-memory/<project>/skills/<slug>/SKILL.md.\n\nWHEN TO UPDATE A SKILL:\n- Prefer 'patch' for one section when you can pass structured fields\n- Prefer 'update' for multi-section rewrites or when patch formatting would be unstable\n- Use patch when you discover a better approach, pitfall, or changed step in one section\n\nSKILL FORMAT:\n- name: short, descriptive (e.g., \"debug-typescript-errors\")\n- description: one-line summary of when to use it\n- body: structured with sections — ## When to Use, ## Procedure, ## Pitfalls, ## Verification\n- Prefer structured fields over raw markdown when possible:\n  - when_to_use: trigger conditions and boundaries\n  - procedure_steps: ordered concrete steps\n  - pitfalls: caveats or failure modes\n  - verification_steps: checks that prove success\n- For patch, pass section plus the matching structured field (section=\"Procedure\" + procedure_steps, etc.). Do not pass JSON array/object strings as content.\n\nONE-SHOT EXAMPLE:\n{\n  \"action\": \"create\",\n  \"name\": \"debug-typescript-errors\",\n  \"description\": \"Debug TypeScript build failures in this repo\",\n  \"scope\": \"project\",\n  \"when_to_use\": \"Use when TypeScript fails in this repo's workspace or CI.\",\n  \"procedure_steps\": [\n    \"Run pnpm tsc --noEmit to get the full error list.\",\n    \"Fix dependency or config errors before leaf-module errors.\",\n    \"Re-run the same command until it passes cleanly.\"\n  ],\n  \"pitfalls\": [\n    \"Do not trust editor-only diagnostics without the CLI output.\",\n    \"Do not stop after the first error if downstream modules are still failing.\"\n  ],\n  \"verification_steps\": [\n    \"pnpm tsc --noEmit exits successfully.\",\n    \"The failing CI TypeScript job passes.\"\n  ]\n}\n\nACTIONS: create (new skill), view (read full content or list), patch (update a section by skill_id), update (replace description + body by skill_id), delete (remove by skill_id).\n\nDo not use this tool to discover already-loaded external skills by name alone; use Pi's loaded skill context or explicit SKILL.md paths for that.",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "action": {
+                        "type": "string",
+                        "enum": [
+                          "create",
+                          "view",
+                          "patch",
+                          "update",
+                          "edit",
+                          "delete"
+                        ],
+                        "description": "The skill action to perform."
+                      },
+                      "name": {
+                        "type": "string",
+                        "description": "Skill name for create. e.g., 'debug-typescript-errors'."
+                      },
+                      "skill_id": {
+                        "type": "string",
+                        "description": "Stable skill id for view/patch/update/delete. e.g., 'global:debug-typescript-errors' or 'project:my-repo:release-app'. Legacy alias 'edit' also accepts this field."
+                      },
+                      "description": {
+                        "type": "string",
+                        "description": "One-line description of when to use this skill. Required for create; optional for update/edit."
+                      },
+                      "scope": {
+                        "type": "string",
+                        "enum": [
+                          "global",
+                          "project"
+                        ],
+                        "description": "Required for create. Use 'global' for portable procedures and 'project' for repo-specific workflows."
+                      },
+                      "section": {
+                        "type": "string",
+                        "description": "Required for patch. Section header to patch. e.g., 'Procedure', 'Pitfalls', 'Verification', 'When to Use'."
+                      },
+                      "content": {
+                        "type": "string",
+                        "description": "Raw markdown body for create/update/edit, or Markdown section body for patch. Prefer structured fields over free-form content when possible. For patch, JSON arrays are auto-coerced for list sections; JSON objects are rejected."
+                      },
+                      "when_to_use": {
+                        "type": "string",
+                        "description": "Structured create/update/edit field, or structured patch body when section is 'When to Use'."
+                      },
+                      "procedure_steps": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Structured create/update/edit field, or structured patch body when section is 'Procedure'. Ordered concrete steps."
+                      },
+                      "pitfalls": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Structured create/update/edit field, or structured patch body when section is 'Pitfalls'."
+                      },
+                      "verification_steps": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Structured create/update/edit field, or structured patch body when section is 'Verification'."
+                      }
+                    },
+                    "required": [
+                      "action"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                {
+                  "name": "subagent",
+                  "description": "Delegate a self-contained task to a subagent (a separate agent that works in its own context) to offload focused, independent work — research, a scoped implementation, an analysis — so it does not consume this conversation's context. The subagent returns its result, not its intermediate steps. Give it a complete, standalone prompt: it does not see this conversation. This tool runs in the background by default, immediately returns a durable subagent id, and keeps the child conversation available for later turns. When that run settles, the runtime sends the parent a notice containing its outcome and any final assistant message; `send_message` steers the child's nearest step while it is running and starts a turn while it is idle. Set `run_in_background: false` only when your next action depends on receiving the result.",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "description": {
+                        "type": "string",
+                        "description": "A short (3-5 word) description of the delegated task, for display."
+                      },
+                      "prompt": {
+                        "type": "string",
+                        "description": "The complete, self-contained task for the subagent. It does not share this conversation's context, so include everything it needs."
+                      },
+                      "run_in_background": {
+                        "type": "boolean",
+                        "description": "Whether to run in the background and return a durable subagent id immediately. Defaults to true. Set false to wait for the result when your next action depends on it."
+                      }
+                    },
+                    "required": [
+                      "description",
+                      "prompt"
+                    ]
+                  }
+                },
+                {
+                  "name": "subagent_fork",
+                  "description": "Delegate a task to a subagent that inherits this conversation: a child agent seeded with all completed turns so far (it does not see the current in-flight turn). Use this when the subtask builds on this conversation's context — a follow-up analysis, a review, a continuation — without consuming this conversation's context for the work itself. You receive its result, not its intermediate steps. This tool runs in the background by default, immediately returns a durable subagent id, and keeps the child conversation available for later turns. When that run settles, the runtime sends the parent a notice containing its outcome and any final assistant message; `send_message` steers the child's nearest step while it is running and starts a turn while it is idle. Set `run_in_background: false` only when your next action depends on receiving the result.",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "description": {
+                        "type": "string",
+                        "description": "A short (3-5 word) description of the delegated task, for display."
+                      },
+                      "prompt": {
+                        "type": "string",
+                        "description": "The task for the subagent. It already sees this conversation's completed turns, so build on them freely and state only what is new."
+                      },
+                      "run_in_background": {
+                        "type": "boolean",
+                        "description": "Whether to run in the background and return a durable subagent id immediately. Defaults to true. Set false to wait for the result when your next action depends on it."
+                      }
+                    },
+                    "required": [
+                      "description",
+                      "prompt"
+                    ]
+                  }
+                },
+                {
+                  "name": "todo_write",
+                  "description": "Record and update a structured task list for the current work. Send the ENTIRE list every call — it REPLACES the previous list (there are no partial updates, no per-item edits). Use it to plan multi-step work and show progress: add one todo per concrete step before you start. Mark every todo being actively worked on `in_progress` — several at once when work genuinely runs in parallel (e.g. concurrent subagents or background commands), one for sequential work; while work remains, at least one task should be `in_progress`. Mark a todo `completed` the moment it is done (do not batch completions), and allow no `in_progress` item only once all work is complete. Skip the list for trivial single-step tasks. Statuses: `pending` (not started), `in_progress` (being worked on now), `completed` (finished).",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "todos": {
+                        "type": "array",
+                        "description": "The COMPLETE task list, replacing any previous list.",
+                        "items": {
+                          "type": "object",
+                          "additionalProperties": false,
+                          "properties": {
+                            "content": {
+                              "type": "string",
+                              "description": "What the task is — a short imperative line."
+                            },
+                            "status": {
+                              "type": "string",
+                              "description": "pending (not started) | in_progress (now) | completed (done).",
+                              "enum": [
+                                "pending",
+                                "in_progress",
+                                "completed"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "content",
+                            "status"
+                          ]
+                        }
+                      }
+                    },
+                    "required": [
+                      "todos"
+                    ]
+                  }
+                },
+                {
+                  "name": "update_goal",
+                  "description": "Update the exact current goal revision. edit, pause, and resume require a direct top-level human request. During an automatic continuation of the current goal, complete and blocked are also allowed. blocked is rejected before the configured minimum round count; the model remains responsible for judging that the same condition persisted across those rounds and must explain it in blocked_reason.",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "goal_id": {
+                        "type": "string",
+                        "description": "Exact id returned by get_goal."
+                      },
+                      "revision": {
+                        "type": "number",
+                        "description": "Exact positive revision returned by get_goal."
+                      },
+                      "action": {
+                        "type": "string",
+                        "description": "edit | pause | resume | complete | blocked",
+                        "enum": [
+                          "edit",
+                          "pause",
+                          "resume",
+                          "complete",
+                          "blocked"
+                        ]
+                      },
+                      "objective": {
+                        "type": "string",
+                        "description": "Replacement objective; valid only with action edit."
+                      },
+                      "max_goal_rounds": {
+                        "type": "number",
+                        "description": "Replacement cap; valid only with action edit."
+                      },
+                      "blocked_reason": {
+                        "type": "string",
+                        "description": "Concrete blocking condition; required only with action blocked."
+                      }
+                    },
+                    "required": [
+                      "goal_id",
+                      "revision",
+                      "action"
+                    ]
+                  }
+                },
+                {
+                  "name": "web_fetch",
+                  "description": "Fetch the content of a specific HTTP(S) URL and return it decoded to text.",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "url": {
+                        "type": "string",
+                        "description": "The HTTP(S) URL to fetch."
+                      }
+                    },
+                    "required": [
+                      "url"
+                    ]
+                  }
+                },
+                {
+                  "name": "web_search",
+                  "description": "Search the web for current information. Provide 1–4 queries in the required queries array. Returns an optional summary answer and a list of source URLs.",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "queries": {
+                        "type": "array",
+                        "description": "Required search queries; accepts 1–4 items and merges their results.",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "required": [
+                      "queries"
+                    ]
+                  }
+                },
+                {
+                  "name": "workflow",
+                  "description": "Run a JavaScript workflow script that orchestrates subagents at scale. Use this for work that fans out across many independent pieces — an audit over many files, a migration, multi-angle research, adversarial verification of findings — where you write the orchestration as a script instead of delegating turn by turn.\n\nThe workflow's identity rides the `meta` parameter as JSON: required `name` (short kebab-case) and `description` strings, optional `whenToUse` string and `phases` array (`{title, detail?, provider?, model?}`). The `script` parameter is the plain JavaScript body ONLY (NOT TypeScript, and NO `export const meta` statement — meta is a parameter, not code), running with top-level await; end with `return <value>` — the value must be JSON-serializable and is this tool's result.\n\nScript-body hooks:\n- `agent(prompt, opts?): Promise<any>` — run one subagent to completion. Without `opts.schema` it resolves to the child's final text; with `opts.schema` (an object-rooted JSON Schema using ONLY type/properties/required/additionalProperties/items/enum/const/oneOf — no pattern/format/numeric bounds) it resolves to the validated object. Resolves `null` when the child fails (filter with `.filter(Boolean)`). Other opts: `label` (display), `phase` (progress group), and independent `provider`/`model` LLM target overrides (either may be provided alone). Anything else (`effort`/`isolation`/`agentType`) is rejected loudly.\n- `pipeline(items, ...stages): Promise<any[]>` — run each item through the stages independently with NO barrier between stages (prefer this for multi-stage work). Each stage receives `(prev, item, index)`. An ordinary stage throw drops that ITEM to `null` and skips its remaining stages.\n- `parallel(thunks): Promise<any[]>` — run zero-argument functions concurrently and await ALL of them (a barrier; use only when a stage genuinely needs every prior result together). A throwing thunk resolves to `null`.\n- `phase(title)` — start a progress phase; `log(message)` — narrate progress; `args` — the tool call's `args` input, verbatim.\n\nMisused hooks (bad arguments, unknown options, unsupported schemas, tripped caps) throw errors that ALWAYS kill the script — they never dissolve into a per-item `null`.\n\nConstraints: concurrency and total-agent caps apply; no filesystem, network, timers, or Node.js APIs are provided — the agents do the work, the script only coordinates them. The run executes in the foreground: this call returns when the whole script finishes.",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "script": {
+                        "type": "string",
+                        "description": "The plain-JS workflow script body (top-level await allowed; NO `export const meta` statement; end with `return <json-value>`)."
+                      },
+                      "meta": {
+                        "type": "object",
+                        "description": "The workflow identity block (plain JSON — never code).",
+                        "additionalProperties": true,
+                        "properties": {
+                          "name": {
+                            "type": "string",
+                            "description": "Short kebab-case workflow name."
+                          },
+                          "description": {
+                            "type": "string",
+                            "description": "One-line description of what the workflow does."
+                          },
+                          "whenToUse": {
+                            "type": "string",
+                            "description": "Optional guidance on when this workflow applies."
+                          },
+                          "phases": {
+                            "type": "array",
+                            "description": "Optional phase declarations matched by phase() calls.",
+                            "items": {
+                              "type": "object",
+                              "additionalProperties": true,
+                              "properties": {
+                                "title": {
+                                  "type": "string",
+                                  "description": "The phase title phase() calls match by exact string."
+                                },
+                                "detail": {
+                                  "type": "string",
+                                  "description": "Optional one-line description of the phase."
+                                },
+                                "provider": {
+                                  "type": "string",
+                                  "description": "Optional provider override this phase is expected to use."
+                                },
+                                "model": {
+                                  "type": "string",
+                                  "description": "Optional model override this phase is expected to use."
+                                }
+                              },
+                              "required": [
+                                "title"
+                              ]
+                            }
+                          }
+                        },
+                        "required": [
+                          "name",
+                          "description"
+                        ]
+                      },
+                      "args": {
+                        "type": "object",
+                        "description": "Optional JSON input exposed to the script as the `args` global (wrap a bare list as a field, e.g. {\"files\": [...]}).",
+                        "additionalProperties": true
+                      }
+                    },
+                    "required": [
+                      "script",
+                      "meta"
+                    ]
+                  }
+                },
+                {
+                  "name": "write",
+                  "description": "Create or fully replace a UTF-8 text file.",
+                  "parameters": {
+                    "type": "object",
+                    "properties": {
+                      "file_path": {
+                        "type": "string",
+                        "description": "Path to write, resolved by the filesystem backend."
+                      },
+                      "content": {
+                        "type": "string",
+                        "description": "Full UTF-8 text content to write."
+                      },
+                      "sandbox_permissions": {
+                        "type": "string",
+                        "description": "The wider sandbox mode this file operation needs. Only valid as a one-shot retry of an operation the sandbox just denied; requires justification and user approval.",
+                        "enum": [
+                          "workspace-write",
+                          "danger-full-access"
+                        ]
+                      },
+                      "justification": {
+                        "type": "string",
+                        "description": "Required with sandbox_permissions: one sentence for the user explaining why this exact file operation needs the wider access."
+                      }
+                    },
+                    "required": [
+                      "file_path",
+                      "content"
+                    ]
+                  }
+                }
+              ]
+            },
+            "reason": "initial"
+          }
+        },
+        {
+          "type": "assistant/message",
+          "seq": 14,
+          "time": 1789056230134,
+          "data": {
+            "turn": 1,
+            "step": 1,
+            "message": {
+              "role": "assistant",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Let me review the conversation for anything genuinely worth saving.\n\nThe conversation is minimal: the user stated a diagram color palette preference (REVIEWd61fa26d4eed) applies to all future diagrams, requested ACK-only responses, and ended the session.\n\nThe user's profile already contains multiple diagrams color theme preference records (REVIEW24e311540ae7, REVIEW083d0f673cf7, plus several near-duplicate Vim and release train records). This new palette REVIEWd61fa26d4eed is a new durable personal preference worth saving as a user memory, consistent with the existing pattern."
+                },
+                {
+                  "type": "tool-call",
+                  "id": "call_00_k0u7Gfue8RERBBFGZgWV8093",
+                  "name": "memory_add",
+                  "arguments": "{\"target\": \"user\", \"content\": \"User's permanent preferred diagram color palette is REVIEWd61fa26d4eed. This is a durable personal preference that applies to all future diagrams.\"}"
+                }
+              ],
+              "source": {
+                "kind": "model",
+                "provider": "deepseek-official",
+                "model": "deepseek-v4-pro"
+              },
+              "id": "c6e6ca2a-a77c-4c0f-8fa4-1fb20c42e645"
+            },
+            "usage": {
+              "inputTokens": 1199,
+              "outputTokens": 211,
+              "totalTokens": 14338,
+              "cacheReadTokens": 12928
+            },
+            "stream": [
+              {
+                "type": "chunk",
+                "time": 1789056227846,
+                "chunk": {
+                  "type": "block-start",
+                  "index": 0,
+                  "blockType": "text"
+                }
+              },
+              {
+                "type": "text-chunks",
+                "time0": 1789056227847,
+                "index": 0,
+                "dt": [
+                  256,
+                  0,
+                  0,
+                  1,
+                  0,
+                  0,
+                  28,
+                  37,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0,
+                  36,
+                  0,
+                  0,
+                  29,
+                  0,
+                  0,
+                  0,
+                  0,
+                  37,
+                  0,
+                  0,
+                  0,
+                  38,
+                  0,
+                  1,
+                  34,
+                  1,
+                  1,
+                  0,
+                  32,
+                  0,
+                  1,
+                  36,
+                  1,
+                  0,
+                  33,
+                  1,
+                  33,
+                  1,
+                  35,
+                  0,
+                  0,
+                  0,
+                  0,
+                  36,
+                  35,
+                  0,
+                  37,
+                  0,
+                  0,
+                  41,
+                  2,
+                  25,
+                  0,
+                  0,
+                  38,
+                  1,
+                  31,
+                  1,
+                  56,
+                  9,
+                  9,
+                  10,
+                  1,
+                  0,
+                  38,
+                  0,
+                  0,
+                  0,
+                  20,
+                  0,
+                  0,
+                  0,
+                  1,
+                  37,
+                  0,
+                  0,
+                  0,
+                  39,
+                  35,
+                  0,
+                  50,
+                  0,
+                  64,
+                  0,
+                  0,
+                  0,
+                  26,
+                  1,
+                  38,
+                  0,
+                  0,
+                  34,
+                  0,
+                  35,
+                  40,
+                  0,
+                  1,
+                  0,
+                  0,
+                  0,
+                  30,
+                  0,
+                  38,
+                  1,
+                  0,
+                  30,
+                  1,
+                  0,
+                  39,
+                  0,
+                  34,
+                  0,
+                  0,
+                  36,
+                  0,
+                  0,
+                  38,
+                  0,
+                  0,
+                  34
+                ],
+                "texts": [
+                  "Let",
+                  " me",
+                  " review",
+                  " the",
+                  " conversation",
+                  " for",
+                  " anything",
+                  " genuinely",
+                  " worth",
+                  " saving",
+                  ".\n\n",
+                  "The",
+                  " conversation",
+                  " is",
+                  " minimal",
+                  ":",
+                  " the",
+                  " user",
+                  " stated",
+                  " a",
+                  " diagram",
+                  " color",
+                  " palette",
+                  " preference",
+                  " (",
+                  "RE",
+                  "VIEW",
+                  "d",
+                  "61",
+                  "fa",
+                  "26",
+                  "d",
+                  "4",
+                  "eed",
+                  ")",
+                  " applies",
+                  " to",
+                  " all",
+                  " future",
+                  " diagrams",
+                  ",",
+                  " requested",
+                  " AC",
+                  "K",
+                  "-only",
+                  " responses",
+                  ",",
+                  " and",
+                  " ended",
+                  " the",
+                  " session",
+                  ".\n\n",
+                  "The",
+                  " user",
+                  "'s",
+                  " profile",
+                  " already",
+                  " contains",
+                  " multiple",
+                  " diagrams",
+                  " color",
+                  " theme",
+                  " preference",
+                  " records",
+                  " (",
+                  "RE",
+                  "VIEW",
+                  "24",
+                  "e",
+                  "311",
+                  "540",
+                  "ae",
+                  "7",
+                  ",",
+                  " REVIEW",
+                  "083",
+                  "d",
+                  "0",
+                  "f",
+                  "673",
+                  "cf",
+                  "7",
+                  ",",
+                  " plus",
+                  " several",
+                  " near",
+                  "-du",
+                  "plicate",
+                  " V",
+                  "im",
+                  " and",
+                  " release",
+                  " train",
+                  " records",
+                  ").",
+                  " This",
+                  " new",
+                  " palette",
+                  " REVIEW",
+                  "d",
+                  "61",
+                  "fa",
+                  "26",
+                  "d",
+                  "4",
+                  "eed",
+                  " is",
+                  " a",
+                  " new",
+                  " durable",
+                  " personal",
+                  " preference",
+                  " worth",
+                  " saving",
+                  " as",
+                  " a",
+                  " user",
+                  " memory",
+                  ",",
+                  " consistent",
+                  " with",
+                  " the",
+                  " existing",
+                  " pattern",
+                  "."
+                ]
+              },
+              {
+                "type": "chunk",
+                "time": 1789056229666,
+                "chunk": {
+                  "type": "block-start",
+                  "index": 1,
+                  "blockType": "tool-call"
+                }
+              },
+              {
+                "type": "tool-call-chunks",
+                "time0": 1789056229667,
+                "index": 1,
+                "dt": [
+                  29,
+                  0,
+                  0,
+                  0,
+                  0,
+                  207,
+                  0,
+                  0,
+                  24,
+                  0,
+                  0,
+                  0,
+                  1,
+                  1,
+                  1,
+                  0,
+                  0,
+                  1,
+                  1,
+                  0,
+                  0,
+                  1,
+                  1,
+                  0,
+                  0,
+                  1,
+                  0,
+                  0,
+                  0,
+                  11,
+                  0,
+                  0,
+                  32,
+                  0,
+                  0,
+                  0,
+                  42,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0,
+                  28,
+                  1,
+                  0,
+                  35
+                ],
+                "id": "call_00_k0u7Gfue8RERBBFGZgWV8093",
+                "name": "memory_add",
+                "args": [
+                  "",
+                  "{",
+                  "\"",
+                  "target",
+                  "\"",
+                  ": ",
+                  "\"",
+                  "user",
+                  "\"",
+                  ", ",
+                  "\"",
+                  "content",
+                  "\"",
+                  ": ",
+                  "\"",
+                  "User",
+                  "'s",
+                  " permanent",
+                  " preferred",
+                  " diagram",
+                  " color",
+                  " palette",
+                  " is",
+                  " REVIEW",
+                  "d",
+                  "61",
+                  "fa",
+                  "26",
+                  "d",
+                  "4",
+                  "eed",
+                  ".",
+                  " This",
+                  " is",
+                  " a",
+                  " durable",
+                  " personal",
+                  " preference",
+                  " that",
+                  " applies",
+                  " to",
+                  " all",
+                  " future",
+                  " diagrams",
+                  ".",
+                  "\"",
+                  "}"
+                ]
+              },
+              {
+                "type": "chunk",
+                "time": 1789056230128,
+                "chunk": {
+                  "type": "block-end",
+                  "index": 0,
+                  "block": {
+                    "type": "text",
+                    "text": "Let me review the conversation for anything genuinely worth saving.\n\nThe conversation is minimal: the user stated a diagram color palette preference (REVIEWd61fa26d4eed) applies to all future diagrams, requested ACK-only responses, and ended the session.\n\nThe user's profile already contains multiple diagrams color theme preference records (REVIEW24e311540ae7, REVIEW083d0f673cf7, plus several near-duplicate Vim and release train records). This new palette REVIEWd61fa26d4eed is a new durable personal preference worth saving as a user memory, consistent with the existing pattern."
+                  }
+                }
+              },
+              {
+                "type": "chunk",
+                "time": 1789056230128,
+                "chunk": {
+                  "type": "block-end",
+                  "index": 1,
+                  "block": {
+                    "type": "tool-call",
+                    "id": "call_00_k0u7Gfue8RERBBFGZgWV8093",
+                    "name": "memory_add",
+                    "arguments": "{\"target\": \"user\", \"content\": \"User's permanent preferred diagram color palette is REVIEWd61fa26d4eed. This is a durable personal preference that applies to all future diagrams.\"}"
+                  }
+                }
+              },
+              {
+                "type": "chunk",
+                "time": 1789056230129,
+                "chunk": {
+                  "type": "usage",
+                  "usage": {
+                    "inputTokens": 1199,
+                    "outputTokens": 211,
+                    "totalTokens": 14338,
+                    "cacheReadTokens": 12928
+                  }
+                }
+              },
+              {
+                "type": "chunk",
+                "time": 1789056230129,
+                "chunk": {
+                  "type": "finish",
+                  "reason": {
+                    "kind": "tool-calls"
+                  }
+                }
+              }
+            ]
+          },
+          "surfaceOp": "append"
+        },
+        {
+          "type": "tool/call",
+          "seq": 15,
+          "time": 1789056230136,
+          "data": {
+            "turn": 1,
+            "step": 1,
+            "callId": "call_00_k0u7Gfue8RERBBFGZgWV8093",
+            "name": "memory_add",
+            "arguments": "{\"target\": \"user\", \"content\": \"User's permanent preferred diagram color palette is REVIEWd61fa26d4eed. This is a durable personal preference that applies to all future diagrams.\"}"
+          }
+        },
+        {
+          "type": "tool/result",
+          "seq": 16,
+          "time": 1789056230176,
+          "data": {
+            "turn": 1,
+            "step": 1,
+            "message": {
+              "source": {
+                "kind": "tool",
+                "callId": "call_00_k0u7Gfue8RERBBFGZgWV8093"
+              },
+              "content": [
+                {
+                  "type": "tool-result",
+                  "toolCallId": "call_00_k0u7Gfue8RERBBFGZgWV8093",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "{\"success\":true,\"target\":\"user\",\"usage\":\"24% — 1221/5000 chars\",\"entry_count\":6,\"message\":\"Entry added.\"}"
+                    }
+                  ],
+                  "isError": false
+                }
+              ],
+              "role": "user",
+              "id": "51f381c1-1d94-4d85-bd49-e328a7011dad"
+            },
+            "meta": {
+              "success": true,
+              "target": "user",
+              "usage": "24% — 1221/5000 chars",
+              "entry_count": 6,
+              "message": "Entry added."
+            }
+          },
+          "sourceEventSeqs": [
+            15
+          ],
+          "surfaceOp": "append"
+        },
+        {
+          "type": "assistant/message",
+          "seq": 19,
+          "time": 1789056235323,
+          "data": {
+            "turn": 1,
+            "step": 2,
+            "message": {
+              "role": "assistant",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "COMMANDSac15acdf281b\n\nSaved one memory: the user's permanent diagram color palette `REVIEWd61fa26d4eed` as a durable user preference (consistent with the existing diagram-theme records). Nothing else in this short conversation warranted saving — no failures, corrections, or project conventions."
+                }
+              ],
+              "source": {
+                "kind": "model",
+                "provider": "deepseek-official",
+                "model": "deepseek-v4-pro"
+              },
+              "id": "a98e174a-1bdc-4574-9b00-b21024067632"
+            },
+            "usage": {
+              "inputTokens": 46,
+              "outputTokens": 64,
+              "totalTokens": 14446,
+              "cacheReadTokens": 14336
+            },
+            "stream": [
+              {
+                "type": "chunk",
+                "time": 1789056234507,
+                "chunk": {
+                  "type": "block-start",
+                  "index": 0,
+                  "blockType": "text"
+                }
+              },
+              {
+                "type": "text-chunks",
+                "time0": 1789056234508,
+                "index": 0,
+                "dt": [
+                  184,
+                  35,
+                  1,
+                  0,
+                  35,
+                  1,
+                  1,
+                  0,
+                  0,
+                  0,
+                  36,
+                  0,
+                  0,
+                  0,
+                  38,
+                  0,
+                  1,
+                  0,
+                  0,
+                  0,
+                  29,
+                  1,
+                  0,
+                  0,
+                  0,
+                  1,
+                  36,
+                  1,
+                  0,
+                  0,
+                  0,
+                  35,
+                  1,
+                  0,
+                  0,
+                  1,
+                  0,
+                  31,
+                  1,
+                  0,
+                  0,
+                  39,
+                  0,
+                  0,
+                  29,
+                  0,
+                  40,
+                  0,
+                  33,
+                  41,
+                  0,
+                  33,
+                  1,
+                  33,
+                  1,
+                  0,
+                  0,
+                  34,
+                  1,
+                  0,
+                  0,
+                  43,
+                  1
+                ],
+                "texts": [
+                  "COMM",
+                  "ANDS",
+                  "ac",
+                  "15",
+                  "ac",
+                  "df",
+                  "281",
+                  "b",
+                  "\n\n",
+                  "Saved",
+                  " one",
+                  " memory",
+                  ":",
+                  " the",
+                  " user",
+                  "'s",
+                  " permanent",
+                  " diagram",
+                  " color",
+                  " palette",
+                  " `",
+                  "RE",
+                  "VIEW",
+                  "d",
+                  "61",
+                  "fa",
+                  "26",
+                  "d",
+                  "4",
+                  "eed",
+                  "`",
+                  " as",
+                  " a",
+                  " durable",
+                  " user",
+                  " preference",
+                  " (",
+                  "consistent",
+                  " with",
+                  " the",
+                  " existing",
+                  " diagram",
+                  "-the",
+                  "me",
+                  " records",
+                  ").",
+                  " Nothing",
+                  " else",
+                  " in",
+                  " this",
+                  " short",
+                  " conversation",
+                  " warranted",
+                  " saving",
+                  " —",
+                  " no",
+                  " failures",
+                  ",",
+                  " corrections",
+                  ",",
+                  " or",
+                  " project",
+                  " conventions",
+                  "."
+                ]
+              },
+              {
+                "type": "chunk",
+                "time": 1789056235307,
+                "chunk": {
+                  "type": "block-end",
+                  "index": 0,
+                  "block": {
+                    "type": "text",
+                    "text": "COMMANDSac15acdf281b\n\nSaved one memory: the user's permanent diagram color palette `REVIEWd61fa26d4eed` as a durable user preference (consistent with the existing diagram-theme records). Nothing else in this short conversation warranted saving — no failures, corrections, or project conventions."
+                  }
+                }
+              },
+              {
+                "type": "chunk",
+                "time": 1789056235307,
+                "chunk": {
+                  "type": "usage",
+                  "usage": {
+                    "inputTokens": 46,
+                    "outputTokens": 64,
+                    "totalTokens": 14446,
+                    "cacheReadTokens": 14336
+                  }
+                }
+              },
+              {
+                "type": "chunk",
+                "time": 1789056235307,
+                "chunk": {
+                  "type": "finish",
+                  "reason": {
+                    "kind": "stop"
+                  }
+                }
+              }
+            ]
+          },
+          "surfaceOp": "append"
+        },
+        {
+          "type": "turn/end",
+          "seq": 21,
+          "time": 1789056235325,
+          "data": {
+            "turn": 1,
+            "reason": {
+              "kind": "completed"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

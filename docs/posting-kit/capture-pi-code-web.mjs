@@ -99,5 +99,20 @@ await shot('03-import-answered')
 // command, whose expansion is what the model answers.
 await send('/greet')
 await shot('04-slash-command')
+const uploadFile = flag('upload-file')
+if (uploadFile !== undefined) {
+  const inputs = page.locator('input[type="file"]')
+  await inputs.first().waitFor({ state: 'attached', timeout: 15000 })
+  let input = inputs.first()
+  for (let i = 0; i < await inputs.count(); i += 1) {
+    const candidate = inputs.nth(i)
+    const accept = await candidate.getAttribute('accept') ?? ''
+    if (accept === '' || accept === '*' || /text|\.txt|\*\/\*/u.test(accept)) { input = candidate; break }
+  }
+  await input.setInputFiles(uploadFile)
+  await page.waitForTimeout(1500)
+  await send('Read the attached file with a file tool and report its codeword. Do not search other directories.')
+  await shot('05-file-attachment')
+}
 console.log('[capture-pi-code-web] done')
 await browser.close()

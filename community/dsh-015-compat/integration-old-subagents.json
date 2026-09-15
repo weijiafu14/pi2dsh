@@ -1,0 +1,135 @@
+{
+  "generatedAt": "2026-09-10T15:34:38.969Z",
+  "startedAt": "2026-09-10T15:30:18.629Z",
+  "scenario": "pi-subagents-lifecycle (steer / resume / stop / model-follow / explicit-model-thinking)",
+  "cliSpec": "@deepseek-ai/dsh@0.1.1-rc.2",
+  "engineSpec": "file:<working-tree>",
+  "subagentsSpec": "@tintinweb/pi-subagents@0.18.0",
+  "status": "failed",
+  "scenarios": {
+    "steer": {
+      "timingGate": "public tools/pre-execute waits for a real child request/header before allowing steer",
+      "status": "failed",
+      "problems": [
+        "steer message precedes the first model request — not a mid-run delivery"
+      ],
+      "steeredLanded": true,
+      "alphaAlsoLanded": false,
+      "spawnTaskVerbatim": true,
+      "parentToolCalls": [
+        "Agent",
+        "steer_subagent",
+        "get_subagent_result"
+      ],
+      "childFile": "/tmp/pi2dsh-dsh-audit-20260910-4hEN8x/subagents-old/dsh-home/sessions/--private-tmp-pi2dsh-dsh-audit-20260910-4hEN8x-subagents-old-workspace--/pi2dsh-sub-mtvop56s-1/session.jsonl",
+      "outputTail": "gine] preparing 2 Pi package(s): @pi2dsh-fixtures/subagent-archive-probe, @tintinweb/pi-subagents\n[pi2dsh] loaded @pi2dsh-fixtures/subagent-archive-probe: 3 tools, 0 commands, 0 skill roots (host anchor)\n[pi2dsh] tool Agent: $.properties.max_turns.minimum: constraint is not enforced by DSH and was dropped\n[pi2dsh] tool Agent: $.properties.isolation.anyOf: converted to DSH exact-one oneOf semantics\n[pi2dsh] loaded @tintinweb/pi-subagents: 3 tools, 1 commands, 0 skill roots (host anchor)\n[pi2dsh] loaded @pi2dsh-fixtures/subagent-archive-probe: 3 tools, 0 commands, 0 skill roots\n[pi2dsh] tool Agent: $.properties.max_turns.minimum: constraint is not enforced by DSH and was dropped\n[pi2dsh] tool Agent: $.properties.isolation.anyOf: converted to DSH exact-one oneOf semantics\n[pi2dsh] loaded @tintinweb/pi-subagents: 3 tools, 1 commands, 0 skill roots\n[pi2dsh] loaded @pi2dsh-fixtures/subagent-archive-probe: 3 tools, 0 commands, 0 skill roots\n[pi2dsh] loaded @tintinweb/pi-subagents: 0 tools, 0 commands, 0 skill roots\nDone. Ran exactly one bash command writing `STEER_MTVOOTXH` to `/tmp/pi2dsh-dsh-audit-20260910-4hEN8x/subagents-old/workspace/steered-MTVOOTXH.txt`. No alpha file was written.\n"
+    },
+    "failureReport": {
+      "status": "passed",
+      "problems": [],
+      "reportCarried": true,
+      "childFile": "/tmp/pi2dsh-dsh-audit-20260910-4hEN8x/subagents-old/dsh-home/sessions/--private-tmp-pi2dsh-dsh-audit-20260910-4hEN8x-subagents-old-workspace--/pi2dsh-sub-mtvopc1r-1/session.jsonl"
+    },
+    "resume": {
+      "status": "passed",
+      "problems": [],
+      "attempt": 1,
+      "recalled": true,
+      "childSessionFile": "/tmp/pi2dsh-dsh-audit-20260910-4hEN8x/subagents-old/dsh-home/sessions/--private-tmp-pi2dsh-dsh-audit-20260910-4hEN8x-subagents-old-workspace--/pi2dsh-sub-mtvopifm-1/session.jsonl",
+      "childTurns": 2,
+      "matchedChildLogs": 1
+    },
+    "resumeArchive": {
+      "status": "passed",
+      "problems": [],
+      "recalled": true,
+      "archive": "/tmp/pi2dsh-dsh-audit-20260910-4hEN8x/subagents-old/dsh-home/pi2dsh/agent/sessions/--private-tmp-pi2dsh-dsh-audit-20260910-4hEN8x-subagents-old-workspace--/dsh-pi2dsh-sub-mtvoprx8-1.jsonl",
+      "childSessionFile": "/tmp/pi2dsh-dsh-audit-20260910-4hEN8x/subagents-old/dsh-home/sessions/--private-tmp-pi2dsh-dsh-audit-20260910-4hEN8x-subagents-old-workspace--/pi2dsh-sub-mtvoprx8-1/session.jsonl",
+      "childTurns": 2
+    },
+    "stopChildTurnEnds": [
+      "{\"kind\":\"aborted\",\"reason\":{\"kind\":\"hook\",\"reason\":\"pi2dsh subagent abort()\"}}"
+    ],
+    "stopPaneTail": "   ▄▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▄  ▄▀▀▀▀▀           █   █  ▄▀▄  █▀▀▀▄ █   █ █▀▀▀▀ █▀▀▀▀ █▀▀▀▀\n   ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀           █   █ █   █ █   █ ██  █ █     █     █\n   ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀            █▀▀▀█ █▀▀▀█ █▄▄▄▀ █ █ █ █▀▀▀   ▀▀▀▄  ▀▀▀▄\n   ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀             █   █ █   █ █ █   █  ██ █         █     █\n    ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀              █   █ █   █ █   █ █   █ █▄▄▄▄ █▄▄▄▀ █▄▄▄▀\n      ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▄             deepseek-chat · Max effort\n         ▀▀▀▀▀▀▀▀▀▀▀  ▀▀▀▀▀▀▀             /private/tmp/pi2dsh-dsh-audit-20260910-4hEN8x/subagents-old/workspace\n                                          提示：/tokens 看 token 明细与上下文百分比 · /tips 更多技巧\n\n            探索未至之境！\n\n❯ Call the Agent tool exactly once: subagent_type general-purpose, name \"sleeper\", run_in_background false, prompt: \"Run the bash command `sleep 90` in the FOREGROUND and wait\n  for it to finish — do not set run_in_background, do not append &. When it finishes, write the file\n  /tmp/pi2dsh-dsh-audit-20260910-4hEN8x/subagents-old/workspace/stopped-agent-output-MTVOOTXH.txt containing SHOULD_NOT_EXIST_MTVOOTXH using bash, then reply done.\" Do not run\n  bash yourself.\n\n⏺\n\n✗ Agent({\"subagent_type\":\"general-purpose\",\"name\":\"sleeper\",\"run_in_background\":false,\"description\":\"Run sleep then write file\",\"prompt\":\"Run the bash command `sleep 90…) · 2s\n ⎿ AbortError: ABORTED — Error: tool call aborted\n   ⌘t 看完整轨迹\n\n已打断 · 接下来想让 DeepSeek 做什么？\n\n╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮\n❯\n╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯\n deepseek-chat · max · 缓存 96.5% · workspace                                                                                                                   ctx 8.0% (10k/131k)\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
+    "stopManagerScreen": "▀▀▀▀▀▀▀▀▀  ▀▀▀▀▀▀▀             /private/tmp/pi2dsh-dsh-audit-20260910-4hEN8x/subagents-old/workspace\n                                          提示：/tokens 看 token 明细与上下文百分比 · /tips 更多技巧\n\n            探索未至之境！\n\n❯ Call the Agent tool exactly once: subagent_type general-purpose, name \"sleeper\", run_in_background false, prompt: \"Run the bash command `sleep 90` in the FOREGROUND and wait\n  for it to finish — do not set run_in_background, do not append &. When it finishes, write the file\n  /tmp/pi2dsh-dsh-audit-20260910-4hEN8x/subagents-old/workspace/stopped-agent-output-MTVOOTXH.txt containing SHOULD_NOT_EXIST_MTVOOTXH using bash, then reply done.\" Do not run\n  bash yourself.\n\n⏺\n\n✗ Agent({\"subagent_type\":\"general-purpose\",\"name\":\"sleeper\",\"run_in_background\":false,\"description\":\"Run sleep then write file\",\"prompt\":\"Run the bash command `sleep 90…) · 2s\n ⎿ AbortError: ABORTED — Error: tool call aborted\n   ⌘t 看完整轨迹\n\n已打断 · 接下来想让 DeepSeek 做什么？\n\n  ────────────────────────────────────────────────────────────────────────────  📋 提问 · 第 1/1 题  ─────────────────────────────────────────────────────────────────────────────\n\n  Agents\n\n\n  ❯● Running agents (1) — 0 running, 0 done\n   ○ Agent types (4)\n   ○ Scheduled jobs (0)\n   ○ Create new agent\n   ○ Settings\n   ✎ 自定义回答：直接输入…\n\n  ↑/↓ 选择 · 输入文字附带回答 · Enter 提交 · Esc 中断\n deepseek-chat · max · 缓存 96.5% · workspace                                                                                                                   ctx 8.0% (10k/131k)\n\n\n\n\n\n",
+    "stop": {
+      "status": "passed",
+      "problems": [],
+      "tuiVersion": "0.9.0",
+      "interrupted": true,
+      "outputFileAbsentAfterWindow": true
+    },
+    "modelFollowPickerScreen": "h exactly: warmup-FOLLOW_MTVOOTXH\n\n⏺ warmup-FOLLOW_MTVOOTXH\n                                                                                                                                                    模型已切换为 Work Gateway Model\n╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮\n❯\n╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯\n deepseek-chat · max · 缓存 97.4% · workspace                                                                                                                   ctx 1.0% (10k/1.0m)\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
+    "modelFollow": {
+      "status": "passed",
+      "problems": [],
+      "defaultProvider": "deepseek-official",
+      "parentRoutes": [
+        {
+          "provider": "deepseek-official",
+          "model": "deepseek-v4-flash"
+        },
+        {
+          "provider": "work-gw",
+          "model": "deepseek-chat"
+        }
+      ],
+      "childRoutes": [
+        {
+          "provider": "work-gw",
+          "model": "deepseek-chat"
+        }
+      ],
+      "markerLanded": true
+    },
+    "explicitModelThinking": {
+      "status": "passed",
+      "problems": [],
+      "parentConfigs": [
+        {
+          "provider": "deepseek-official",
+          "model": "deepseek-v4-flash",
+          "reasoningEffort": "max",
+          "maxTokens": 256000
+        },
+        {
+          "provider": "work-gw",
+          "model": "deepseek-chat"
+        }
+      ],
+      "agentArguments": {
+        "description": "explicit route and effort probe",
+        "name": "explicit-probe",
+        "model": "deepseek-official/deepseek-v4-flash",
+        "prompt": "Run one bash command that writes the single word EXPLICIT_MTVOOTXH into /tmp/pi2dsh-dsh-audit-20260910-4hEN8x/subagents-old/workspace/explicit-model-thinking-MTVOOTXH.txt, then reply done.",
+        "run_in_background": false,
+        "subagent_type": "general-purpose",
+        "thinking": "max"
+      },
+      "childConfigs": [
+        {
+          "provider": "deepseek-official",
+          "model": "deepseek-v4-flash",
+          "maxTokens": 256000,
+          "reasoningEffort": "max"
+        }
+      ],
+      "childToolCalls": [
+        "bash"
+      ],
+      "markerLanded": true
+    },
+    "childExtensions": {
+      "status": "passed",
+      "problems": [],
+      "touched": true,
+      "positiveChild": "/tmp/pi2dsh-dsh-audit-20260910-4hEN8x/subagents-old/dsh-home/sessions/--private-tmp-pi2dsh-dsh-audit-20260910-4hEN8x-subagents-old-workspace--/pi2dsh-sub-mtvou848-1/session.jsonl",
+      "negativeChild": "/tmp/pi2dsh-dsh-audit-20260910-4hEN8x/subagents-old/dsh-home/sessions/--private-tmp-pi2dsh-dsh-audit-20260910-4hEN8x-subagents-old-workspace--/pi2dsh-sub-mtvouckh-1/session.jsonl"
+    },
+    "stack": {
+      "cliVersion": "0.1.1-rc.2",
+      "engineVersion": "0.24.0",
+      "scratch": "/tmp/pi2dsh-dsh-audit-20260910-4hEN8x/subagents-old"
+    }
+  }
+}

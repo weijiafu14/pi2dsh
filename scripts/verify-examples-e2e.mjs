@@ -41,6 +41,7 @@
 // The credential is read from the environment only and asserted absent from
 // every captured artifact before anything is written.
 
+import { isSessionLog } from './lib/session-log.mjs'
 import assert from 'node:assert/strict'
 import { existsSync } from 'node:fs'
 import { execFile as execFileCallback, spawn } from 'node:child_process'
@@ -52,7 +53,7 @@ import { join, resolve } from 'node:path'
 import { promisify } from 'node:util'
 
 import { stageSuiteTarball } from './lib/suite-tarball.mjs'
-import { createE2eHarness, filesBelow, seedCodexLogin } from './lib/e2e-harness.mjs'
+import { createE2eHarness, filesBelow, seedCodexLogin, authedUrl } from './lib/e2e-harness.mjs'
 
 const execFile = promisify(execFileCallback)
 const projectRoot = resolve(new URL('..', import.meta.url).pathname)
@@ -415,7 +416,7 @@ async function runAlibabaTokenPlan() {
       `restarted Plan turn did not complete:\n${restarted.stdout}\n${restarted.stderr}`)
 
     const sessionFiles = (await filesBelow(join(home, 'sessions')))
-      .filter(path => path.endsWith('/session.jsonl'))
+      .filter(path => isSessionLog(path))
     assert.equal(sessionFiles.length, 2, `expected two durable Plan sessions, found ${sessionFiles.length}`)
     const rawLogs = await Promise.all(sessionFiles.map(path => readFile(path, 'utf8')))
     const records = rawLogs.flatMap(raw => raw.split('\n').filter(Boolean).map(line => JSON.parse(line)))
@@ -482,6 +483,8 @@ async function runVisionBridge() {
     const installedVision = await runDsh(['plugin', '--profile', 'headless', 'add', '@kassing/pi-vision'])
     await prepareRegistryVision(scratch, home, env)
     await useJsonlSessions(home, 'headless')
+    // Keep the primary text-only even when the host default gains native vision.
+    await useDefaultModel(home, 'deepseek-official', process.env.PI2DSH_VISION_PRIMARY_MODEL ?? 'deepseek-v4-pro')
 
     const image = join(projectRoot, 'examples/vision-bridge/test-images/solid-green.png')
     await stat(image)
@@ -491,7 +494,7 @@ async function runVisionBridge() {
       + 'If the vision-bridge message reports a failure, answer VISION_BRIDGE_FAILED without using tools.'])
 
     const records = await sessionRecords(home)
-    const sessionFiles = (await filesBelow(join(home, 'sessions'))).filter(path => path.endsWith('/session.jsonl'))
+    const sessionFiles = (await filesBelow(join(home, 'sessions'))).filter(path => isSessionLog(path))
     const rawLog = await readFile(sessionFiles[0], 'utf8')
     const captured = `${installed.stdout}${installed.stderr}${installedVision.stdout}${installedVision.stderr}${run.stdout}${run.stderr}${rawLog}`
     assert(!captured.includes(apiKey), 'credential appeared in captured test artifacts')
@@ -558,7 +561,7 @@ async function runPersistentMemory() {
       'What is my project codename? Answer with just the codename. '
       + 'If you genuinely have no memory of one, answer NO-MEMORY.'])
 
-    const files = (await filesBelow(join(home, 'sessions'))).filter(path => path.endsWith('/session.jsonl')).sort()
+    const files = (await filesBelow(join(home, 'sessions'))).filter(path => isSessionLog(path)).sort()
     assert.equal(files.length, 2, `expected two session logs, found ${files.length}:\n  ${files.join('\n  ')}`)
     const load = async file => (await readFile(file, 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line))
     const logs = [await load(files[0]), await load(files[1])]
@@ -643,7 +646,7 @@ async function runBackgroundTasks() {
       + 'Immediately after it starts, call the bg_logs tool for that task and show me the raw output lines it returned. '
       + 'Do not wait for the job to finish and do not kill it.'])
 
-    const files = (await filesBelow(join(home, 'sessions'))).filter(path => path.endsWith('/session.jsonl'))
+    const files = (await filesBelow(join(home, 'sessions'))).filter(path => isSessionLog(path))
     assert.equal(files.length, 1, `expected one session log, found ${files.length}`)
     const records = (await readFile(files[0], 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line))
 
@@ -731,7 +734,7 @@ async function runMemoryTasksWeb() {
       timeout: 420_000,
       maxBuffer: 16 * 1024 * 1024,
     }).catch(error => { console.log(String(error.stdout ?? '')); throw error })
-    const files = (await filesBelow(join(home, 'sessions'))).filter(path => path.endsWith('/session.jsonl'))
+    const files = (await filesBelow(join(home, 'sessions'))).filter(path => isSessionLog(path))
     assert(files.length >= 2, `expected two web sessions, found ${files.length}`)
     const load = async file => (await readFile(file, 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line))
     const logs = await Promise.all(files.map(load))
@@ -914,6 +917,8 @@ async function runVisionBridgeWeb() {
     await runDsh(['plugin', '--profile', 'web', 'add', '@kassing/pi-vision'])
     await prepareRegistryVision(scratch, home, env)
     await useJsonlSessions(home, 'web')
+    // Keep the primary text-only even when the host default gains native vision.
+    await useDefaultModel(home, 'deepseek-official', process.env.PI2DSH_VISION_PRIMARY_MODEL ?? 'deepseek-v4-pro')
 
     const port = Number(process.env.VISION_PORT ?? 5188)
     web = spawnWeb(port, env)
@@ -1028,7 +1033,7 @@ async function runCustomGateways() {
     // Running the probe on some other default model would prove only catalog
     // projection, not that `my-gateway` can actually serve a conversation.
     const run = await runDsh(['--profile', 'headless', 'call the pi_registry_probe tool once and repeat its output'])
-    const sessionFiles = (await filesBelow(join(home, 'sessions'))).filter(path => path.endsWith('/session.jsonl'))
+    const sessionFiles = (await filesBelow(join(home, 'sessions'))).filter(path => isSessionLog(path))
     assert.equal(sessionFiles.length, 1, `expected one session log, found ${sessionFiles.length}`)
     const records = (await readFile(sessionFiles[0], 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line))
     // Read the probe's own result block rather than fishing a JSON substring
@@ -1190,11 +1195,11 @@ async function runSubscriptionLogin() {
     }
     let accountBacked
     if (authFile !== undefined && authFile.length > 0) {
-      const shots = join(scratch, 'provider-shots')
+      const shots = shotDir ?? join(scratch, 'provider-shots')
       await execFile('node', [
         join(projectRoot, 'docs/posting-kit/capture-providers.mjs'),
         shots,
-        '--url', `http://127.0.0.1:${port}`,
+        '--url', await authedUrl(`http://127.0.0.1:${port}`, () => log),
       ], {
         cwd: projectRoot,
         env: {
@@ -1408,38 +1413,6 @@ async function runSubagents() {
  * @returns absolute tarball path, installable with `dsh plugin add`.
  */
 
-/**
- * The url a BROWSER should open for this server. The 0.1.2 line prints a
- * one-time launch token into the server log and answers uncookied index
- * reads with 401; opening the printed `?token=` url once exchanges it for
- * the session cookie. rc lines print no token and the url passes through.
- * @param url - the bare origin url.
- * @param webLog - captured server stdout+stderr so far.
- * @returns the url for the capture's page.goto().
- */
-async function authedUrl(url, webLog) {
-  // A string snapshot races the server: the 401 gate answers readiness
-  // probes BEFORE the token line reaches the log, and a capture launched in
-  // that gap opens the bare origin and stalls on the auth wall ("New
-  // session" never appears — dsh-x, 2026-08-31). Callers pass a getter over
-  // their growing log; when the server is actually gated the token MUST
-  // appear, so its absence is a loud failure, never a silent tokenless url.
-  const read = typeof webLog === 'function' ? webLog : () => webLog
-  const gated = await fetch(url).then(response => response.status === 401).catch(() => false)
-  // 90s, not less: under a parallel full run the token line can trail the
-  // 401 gate by well over 30s (mcp-at-scale-web false-failed at 30s on
-  // 2026-08-31 while passing solo).
-  const deadline = Date.now() + (gated ? 90_000 : 0)
-  for (;;) {
-    const token = /[?&]token=([A-Za-z0-9_-]+)/u.exec(read())
-    if (token !== null) return `${url}/?token=${token[1]}`
-    if (Date.now() > deadline) {
-      if (gated) throw new Error('dsh web answers 401 (launch-token gate) but printed no ?token= url in its log')
-      return url
-    }
-    await new Promise(done => setTimeout(done, 500))
-  }
-}
 
 
 // ---------------------------------------------------------------------------
@@ -1814,7 +1787,7 @@ async function runCodeNavigation() {
     const run = await runDshIn(sampleDir, ['--profile', 'headless', CODE_NAV_PROMPT])
 
     const records = await sessionRecords(home)
-    const sessionFiles = (await filesBelow(join(home, 'sessions'))).filter(path => path.endsWith('/session.jsonl'))
+    const sessionFiles = (await filesBelow(join(home, 'sessions'))).filter(path => isSessionLog(path))
     const rawLog = await readFile(sessionFiles[0], 'utf8')
     assert(!`${installLog}${run.stdout}${run.stderr}${rawLog}`.includes(apiKey), 'credential appeared in captured test artifacts')
 
@@ -1890,7 +1863,7 @@ async function runCodeNavigationWeb() {
     assert(captured.length > 0, 'the code-navigation web run produced no screenshot')
 
     const records = await sessionRecords(home)
-    const sessionFiles = (await filesBelow(join(home, 'sessions'))).filter(path => path.endsWith('/session.jsonl'))
+    const sessionFiles = (await filesBelow(join(home, 'sessions'))).filter(path => isSessionLog(path))
     const rawLog = await readFile(sessionFiles[0], 'utf8')
     assert(!`${installLog}${webLog}${rawLog}`.includes(apiKey), 'credential appeared in captured test artifacts')
 
@@ -2030,7 +2003,7 @@ async function runMcpAtScale() {
     const elapsedMs = Date.now() - timeoutStart
 
     const records = await sessionRecords(home, { expect: 2 })
-    const sessionFiles = (await filesBelow(join(home, 'sessions'))).filter(path => path.endsWith('/session.jsonl'))
+    const sessionFiles = (await filesBelow(join(home, 'sessions'))).filter(path => isSessionLog(path))
     const rawLog = (await Promise.all(sessionFiles.map(path => readFile(path, 'utf8')))).join('\n')
     assert(!`${installLog}${discovery.stdout}${discovery.stderr}${budget.stdout}${budget.stderr}${rawLog}`.includes(apiKey),
       'credential appeared in captured test artifacts')
@@ -2102,7 +2075,7 @@ async function runMcpAtScaleWeb() {
     assert(captured.length > 0, 'the mcp-at-scale web run produced no screenshot')
 
     const records = await sessionRecords(home)
-    const sessionFiles = (await filesBelow(join(home, 'sessions'))).filter(path => path.endsWith('/session.jsonl'))
+    const sessionFiles = (await filesBelow(join(home, 'sessions'))).filter(path => isSessionLog(path))
     const rawLog = (await Promise.all(sessionFiles.map(path => readFile(path, 'utf8')))).join('\n')
     assert(!`${installLog}${webLog}${rawLog}`.includes(apiKey), 'credential appeared in captured test artifacts')
 

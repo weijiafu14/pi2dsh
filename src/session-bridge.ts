@@ -1,42 +1,28 @@
 // Pi session semantics over a DSH durable session.
 //
 // Single authority, live projection: DSH's append-only event log is the ONLY
-// store for conversation content, and every read below projects from it at
-// call time — nothing conversation-shaped is ever written to a second file.
+// authority for conversation content. API reads project from it at call time.
+// File-only Pi consumers additionally receive a disposable Pi JSONL export:
+// it is never read back as DSH state or used as a resume authority. This disk
+// adapter is a materialized compatibility view, not native storage.
 //
-// What DOES live on disk here is the Pi-visible session file, one per DSH
-// session, in genuine Pi session-file format (a Pi `{type:"session"}` header
-// line followed by Pi entry lines). It exists for two reasons, both forced by
-// Pi's own ABI:
-//
-//  1. Pi's contract IS a file. `getSessionFile()` hands consumers a path they
-//     probe with plain `existsSync` (pi-subagents' tombstone resurrect) and
-//     hand back to `SessionManager.open()` — the OS call cannot be
-//     intercepted, so a real inode must exist. The header line makes the file
-//     honestly parseable as a Pi session.
-//  2. Pi-ONLY entries (a package's appendEntry customs, labels, branch
-//     summaries, a session_info name fallback) have no home in the native
-//     log: DSH's persistence read path refuses logs carrying out-of-vocabulary
-//     event types, and `Session.append()` cannot set the envelope's
-//     `ignorable: true` escape hatch. These entries are sole originals, not
-//     copies — the file is where they live until DSH's deferred plugin-event
-//     registration surface exists (their KNOWN_SESSION_EVENT_TYPES comment
-//     defers it "until such a consumer exists").
-//
-// Lifecycle honesty: the file is minted while the native session is alive.
-// If the native store later loses the session, the next reopen attempt fails
-// at the official resume seam and DSH's own persistence list() delivers the
-// verdict (the same check agent-loop's restoreOrCreateConfigured uses) — a
-// POSITIVE "gone" retires the file via discardArchive so existsSync answers
-// honestly from then on. A composition merely lacking persistence returns no
-// verdict and retires nothing: absence of evidence never destroys a valid
-// identity token.
+// Pi-only facts (custom entries, labels, branch summaries) remain in their
+// original per-session archive. Derived full transcripts live separately in
+// Pi's standard sessions/<cwd>/ layout so file scanners and source anchors
+// can consume them. Editing a derived transcript never edits DSH or the
+// Pi-only facts; exports are rebuilt from those authorities. Resume uses the
+// export's native identity and the official DSH resume seam, never its body.
+// A positive native deletion verdict retires an export. An unavailable
+// persistence service or a failed listing never deletes evidence.
 
-import { appendFileSync, existsSync, mkdirSync, readFileSync, unlinkSync } from 'node:fs'
-import { basename, dirname, join, resolve } from 'node:path'
+import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, unlinkSync, writeFileSync } from 'node:fs'
+import { basename, dirname, join, relative, resolve } from 'node:path'
 import { randomUUID } from 'node:crypto'
+import { isPiEphemeralSession, isPiUserMessage, readSessionEvents } from './session-events.js'
 import { foldSurface } from '@deepseek-ai/dsh-session'
 import { getAgentDir } from './compat/vendor/pi-config-shim.js'
+import { fileContentForPi } from './dsh-content.js'
+import { getDefaultSessionDir } from './compat/vendor/pi-session-manager.js'
 
 /** The durable seq behind a projected entry id (`dsh-<seq>`), when it has one. */
 function entrySeq(id: string): number | undefined {
@@ -48,7 +34,8 @@ type UnknownRecord = Record<string, unknown>
 
 interface DshSessionLike {
   id: string
-  events: readonly UnknownRecord[] | (() => readonly UnknownRecord[])
+  events?: readonly UnknownRecord[] | (() => readonly UnknownRecord[])
+  snapshotEvents?(): readonly UnknownRecord[]
   append?(type: string, data: unknown, opts?: unknown): unknown
   header?: UnknownRecord
 }
@@ -131,20 +118,31 @@ export interface PiProjectedEntry {
   [key: string]: unknown
 }
 
+/** Only public persistence reads; never resume or load-with-recovery for indexing. */
+export interface SessionExportPersistence {
+  list(): Promise<readonly UnknownRecord[]>
+  inspect?(id: string): Promise<{ meta: UnknownRecord; events: readonly UnknownRecord[] }>
+  open?(id: string, access: 'read'): Promise<{
+    header: UnknownRecord
+    read(): Promise<{ events: readonly UnknownRecord[] }>
+    close(): Promise<void>
+  }>
+}
+
 function sidecarDir(): string {
   return join(getAgentDir(), 'session-entries')
 }
 
 function sessionEvents(session: DshSessionLike): readonly UnknownRecord[] {
-  const events = session.events
-  return typeof events === 'function' ? events.call(session) : events ?? []
+  return readSessionEvents(session)
 }
 
-function dshToPiContent(content: unknown): unknown[] {
+function dshToPiContent(content: unknown, fileContent: (ref: unknown) => unknown = fileContentForPi): unknown[] {
   if (!Array.isArray(content)) return [{ type: 'text', text: String(content ?? '') }]
   return content.map(block => {
     if (typeof block !== 'object' || block === null) return { type: 'text', text: String(block) }
     const record = block as UnknownRecord
+    if (record.type === 'file') return fileContent(record.attachment)
     if (record.type === 'text') return { type: 'text', text: String(record.text ?? '') }
     if (record.type === 'reasoning') return { type: 'thinking', thinking: String(record.text ?? '') }
     if (record.type === 'tool-call') {
@@ -155,8 +153,79 @@ function dshToPiContent(content: unknown): unknown[] {
 }
 
 export class PiSessionBridge {
+  constructor(private readonly fileContent: (ref: unknown) => unknown = fileContentForPi) {}
   private readonly records = new Map<string, SidecarRecord[]>()
   private readonly loaded = new Set<string>()
+  private readonly exportedSessions = new Map<string, { session: DshSessionLike; cwd: string }>()
+
+  async exportStoredSessions(persistence: SessionExportPersistence): Promise<void> {
+    const priorExports: Array<{ path: string; id: string }> = []
+    const root = join(getAgentDir(), 'sessions')
+    if (existsSync(root)) {
+      for (const directory of readdirSync(root, { withFileTypes: true })) {
+        if (!directory.isDirectory()) continue
+        for (const entry of readdirSync(join(root, directory.name), { withFileTypes: true })) {
+          if (!entry.isFile() || !entry.name.startsWith('dsh-')) continue
+          const path = join(root, directory.name, entry.name)
+          const id = this.sessionIdOfArchiveFile(path)
+          if (id !== undefined) priorExports.push({ path, id })
+        }
+      }
+    }
+    const snapshots = await persistence.list()
+    const present = new Set<string>()
+    const hidden = new Set<string>()
+    for (const snapshot of snapshots) {
+      const header = (snapshot.header ?? snapshot) as UnknownRecord
+      if (typeof header.id !== 'string') continue
+      present.add(header.id)
+      if (typeof header.cwd !== 'string') continue
+      if (typeof persistence.open === 'function') {
+        const handle = await persistence.open(header.id, 'read')
+        try {
+          const { events } = await handle.read()
+          const session = { id: header.id, header: handle.header, events }
+          if (isPiEphemeralSession(session)) hidden.add(header.id)
+          else this.exportSessionFile(session, header.cwd)
+        } finally { await handle.close() }
+      } else if (typeof persistence.inspect === 'function') {
+        const { meta, events } = await persistence.inspect(header.id)
+        const session = { id: header.id, header: meta, events }
+        if (isPiEphemeralSession(session)) hidden.add(header.id)
+        else this.exportSessionFile(session, header.cwd)
+      }
+      // Stored snapshots are not live objects and must not later overwrite a live export.
+      this.exportedSessions.delete(header.id)
+    }
+    // A successful complete native listing is the authority. Never let a
+    // deleted native session live on solely in a derived search export.
+    for (const exported of priorExports) {
+      if ((!present.has(exported.id) || hidden.has(exported.id)) && existsSync(exported.path)) unlinkSync(exported.path)
+    }
+  }
+
+  /** Materialize the public Pi file contract from the native session, never vice versa. */
+  exportSessionFile(session: DshSessionLike, cwd: string): string {
+    this.exportedSessions.set(session.id, { session, cwd })
+    const safe = session.id.replace(/[^a-zA-Z0-9._-]+/gu, '_')
+    const path = join(getDefaultSessionDir(cwd, getAgentDir()), `dsh-${safe}.jsonl`)
+    const header = {
+      type: 'session', version: 3, id: session.id, cwd,
+      timestamp: new Date(Number(session.header?.createdAt ?? sessionEvents(session)[0]?.time ?? Date.now())).toISOString(),
+      pi2dshExport: { nativeSessionId: session.id },
+    }
+    const text = `${[header, ...this.projectEntries(session)].map(value => JSON.stringify(value)).join('\n')}\n`
+    // Preserve mtime when unchanged so incremental file consumers can skip it.
+    if (existsSync(path) && readFileSync(path, 'utf8') === text) return path
+    const temporary = `${path}.${randomUUID()}.tmp`
+    try {
+      writeFileSync(temporary, text, { mode: 0o600 })
+      renameSync(temporary, path)
+    } finally {
+      if (existsSync(temporary)) unlinkSync(temporary)
+    }
+    return path
+  }
 
   private sidecarPath(sessionId: string): string {
     const safe = sessionId.replace(/[^a-zA-Z0-9._-]+/gu, '_')
@@ -196,9 +265,18 @@ export class PiSessionBridge {
   sessionIdOfArchiveFile(path: unknown): string | undefined {
     if (typeof path !== 'string' || path.length === 0) return undefined
     const resolved = resolve(path)
-    if (resolve(dirname(resolved)) !== resolve(sidecarDir())) return undefined
     const base = basename(resolved)
-    return base.endsWith('.jsonl') ? base.slice(0, -'.jsonl'.length) : undefined
+    if (resolve(dirname(resolved)) === resolve(sidecarDir())) {
+      return base.endsWith('.jsonl') ? base.slice(0, -'.jsonl'.length) : undefined
+    }
+    const within = relative(join(getAgentDir(), 'sessions'), resolved)
+    if (within.startsWith('..') || !base.startsWith('dsh-') || !base.endsWith('.jsonl')) return undefined
+    try {
+      const header = JSON.parse(readFileSync(resolved, 'utf8').split('\n')[0]!) as UnknownRecord
+      const marker = header.pi2dshExport as UnknownRecord | undefined
+      return typeof marker?.nativeSessionId === 'string' && marker.nativeSessionId === header.id
+        ? marker.nativeSessionId : undefined
+    } catch { return undefined }
   }
 
   /**
@@ -215,6 +293,15 @@ export class PiSessionBridge {
     }
     this.records.delete(sessionId)
     this.loaded.delete(sessionId)
+    this.exportedSessions.delete(sessionId)
+    const root = join(getAgentDir(), 'sessions')
+    if (existsSync(root)) {
+      for (const directory of readdirSync(root, { withFileTypes: true })) {
+        if (!directory.isDirectory()) continue
+        const file = join(root, directory.name, `dsh-${sessionId.replace(/[^a-zA-Z0-9._-]+/gu, '_')}.jsonl`)
+        if (this.sessionIdOfArchiveFile(file) === sessionId) unlinkSync(file)
+      }
+    }
   }
 
   load(sessionId: string): void {
@@ -247,6 +334,8 @@ export class PiSessionBridge {
     // The archive must open with its Pi header before any entry follows it.
     this.archiveFileFor(sessionId)
     appendFileSync(this.sidecarPath(sessionId), `${piEntryLineOf(record)}\n`)
+    const exported = this.exportedSessions.get(sessionId)
+    if (exported !== undefined) this.exportSessionFile(exported.session, exported.cwd)
   }
 
   appendCustomEntry(sessionId: string, customType: string, data: unknown): string {
@@ -349,8 +438,10 @@ export class PiSessionBridge {
         merged.push({
           time,
           entry: {
-            type: 'message', id: `dsh-${seq}`, timestamp: new Date(time).toISOString(),
-            message: { role: 'user', content: dshToPiContent(data.content) },
+            id: `dsh-${seq}`, timestamp: new Date(time).toISOString(),
+            ...(isPiUserMessage(data)
+              ? { type: 'message', message: { role: 'user', content: dshToPiContent(data.content, this.fileContent) } }
+              : { type: 'custom_message', customType: String((data.source as UnknownRecord | undefined)?.piCustomType ?? (data.source as UnknownRecord | undefined)?.kind ?? 'context'), content: dshToPiContent(data.content, this.fileContent), display: false }),
           },
         })
       } else if (type === 'assistant/message') {
@@ -359,7 +450,7 @@ export class PiSessionBridge {
           time,
           entry: {
             type: 'message', id: `dsh-${seq}`, timestamp: new Date(time).toISOString(),
-            message: { role: 'assistant', content: dshToPiContent(message.content) },
+            message: { role: 'assistant', content: dshToPiContent(message.content, this.fileContent) },
           },
         })
       } else if (type === 'tool/result') {
@@ -431,11 +522,11 @@ export class PiSessionBridge {
     const leafOf = (): PiProjectedEntry | undefined => entriesOf().at(-1)
     return {
       getCwd: () => cwd,
-      getSessionDir: () => sidecarDir(),
+      getSessionDir: () => getDefaultSessionDir(cwd, getAgentDir()),
       getSessionId: () => session.id,
       // The archive path is a REOPENABLE identity to Pi consumers (existsSync
       // guards, SessionManager.open) — materialized on read, not virtual.
-      getSessionFile: () => this.archiveFileFor(session.id, cwd),
+      getSessionFile: () => isPiEphemeralSession(session) ? undefined : this.exportSessionFile(session, cwd),
       getLeafId: () => leafOf()?.id ?? null,
       getLeafEntry: () => leafOf(),
       getEntry: (id: string) => entriesOf().find(entry => entry.id === id),

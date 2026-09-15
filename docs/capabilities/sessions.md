@@ -13,7 +13,7 @@ listed, named after the package, opened in its own view and continuable. This
 does not exercise the separate `ctx.subagents` provider seam. See
 [`examples/side-conversation`](../../examples/side-conversation/).
 
-**24 upstream-shaped Pi rule rows** — 7 same semantics · 17 mapped, difference stated.
+**24 upstream-shaped Pi rule rows** — 6 same semantics · 18 mapped, difference stated.
 
 | Pi surface | Kind | Status | What it does on DSH |
 |---|---|---|---|
@@ -22,7 +22,7 @@ does not exercise the separate `ctx.subagents` provider seam. See
 | [`getSessionName`](#getsessionname-pi) | `pi.*` | Same semantics | Reads DSH's own session title, so it agrees with what DSH displays and sees titles DSH generated itself; falls back to the archive's session_info entry when no title service is mounted. |
 | [`setLabel`](#setlabel-pi) | `pi.*` | Mapped, difference stated | Persisted as a Pi label entry line in the per-session Pi-format archive and reflected by the sessionManager projection. |
 | [`session_start`](#session_start-event) | `event` | Same semantics | Mapped to agent/session-start. |
-| [`session_shutdown`](#session_shutdown-event) | `event` | Same semantics | Mapped to agent disposal and plugin teardown with duplicate suppression. |
+| [`session_shutdown`](#session_shutdown-event) | `event` | Mapped, difference stated | Async Cordis teardown joins pending message projection and ordered shutdown handlers; reload dispatches reason=reload before remount. Duplicate disposal notifications are suppressed. During full process shutdown other host services may already be unavailable, so model-dependent exit work is not guaranteed. |
 | [`session_info_changed`](#session_info_changed-event) | `event` | Mapped, difference stated | Fired by setSessionName() and projected from DSH session/title events. |
 | [`session_before_compact`](#session_before_compact-event) | `event` | Mapped, difference stated | Projected from DSH compaction/start as a notification; cancel/replace cannot reach DSH's compactor. |
 | [`session_compact`](#session_compact-event) | `event` | Mapped, difference stated | Fires once per SUCCESSFUL compaction, from DSH's summary event, with the summary rendered to the string Pi's CompactionEntry declares. A manual compaction is identified as manual; DSH does not record which automatic trigger fired, so automatic ones report "threshold" and willRetry is always false. |
@@ -33,7 +33,7 @@ does not exercise the separate `ctx.subagents` provider seam. See
 | [`cwd`](#cwd-ctx) | `ctx.*` | Same semantics | Mapped to the active DSH agent session working directory. |
 | [`hasUI`](#hasui-ctx) | `ctx.*` | Same semantics | Reports whether a real interactive surface exists: true for a mounted public terminal surface (dsh-TUI tuiScenes or dsh-pi-tui piTuiExtensions) or for a live DSH question answerer; false for a genuinely headless composition and for child-agent questions that DSH refuses. |
 | [`mode`](#mode-ctx) | `ctx.*` | Same semantics | Reports tui only where a real full-screen terminal seat exists — dsh-TUI scenes or dsh-pi-tui raw mounts. Every web composition is rpc on purpose (2026-08-29 product decision): the browser renders product UI (side-chat window, MCP tab, pills), never a projected TUI, so packages asked "can I show interactive full-screen UI here?" get the honest no and take their own official degradation. |
-| [`sessionManager`](#sessionmanager-ctx) | `ctx.*` | Mapped, difference stated | A real read-only projection: DSH durable messages plus the session's Pi-only entries (customs, labels, branch summaries — stored as genuine Pi entry lines in the per-session archive file), exposed through Pi's exact 14-method surface as a single-branch tree. Conversation content is never duplicated: it projects live from the native DSH log at call time. buildContextEntries is compaction-aware — entries a compaction summarized away are gone, exactly as they are for the model — while getEntries stays the append-only log, which is the same split Pi makes. |
+| [`sessionManager`](#sessionmanager-ctx) | `ctx.*` | Mapped, difference stated | A real read-only projection using the host snapshotEvents API or the legacy event reader. Native file attachments become the host-rendered read-only file locator text in Pi. DSH durable messages plus the session's Pi-only entries (customs, labels, branch summaries — stored as genuine Pi entry lines in the per-session archive file), exposed through Pi's exact 14-method surface as a single-branch tree. API reads use the public snapshotEvents() surface where available, with the older events surface as fallback. getSessionFile() is undefined for Pi in-memory side sessions (native DSH audit remains); otherwise it atomically exports a complete Pi JSONL transcript under the redirected sessions directory for file-only consumers; this derived copy is never imported as native state. Cold history is read through public persistence inspect/read handles, and native deletion retires the derived exports. Host-authored context projects as custom messages rather than human turns. buildContextEntries is compaction-aware — entries a compaction summarized away are gone, exactly as they are for the model — while getEntries stays the append-only log, which is the same split Pi makes. |
 | [`shutdown`](#shutdown-ctx) | `ctx.*` | Mapped, difference stated | Pi defines shutdown behavior as host-provided (runner.ts bindExtensions); this host absorbs the request — the user owns DSH process exit — and informs the user once. The package keeps running. |
 | [`compact`](#compact-ctx) | `ctx.*` | Mapped, difference stated | Pi's fire-and-forget trigger, translated to DSH's official manual compaction (ctx.compaction.compactNow on the live agent). onComplete receives the real summary text and the shadowed-content token estimate as tokensBefore; firstKeptEntryId is empty because the DSH log has no Pi entry ids. Without a compaction service the gap flows through Pi's onError callback and the capability ledger. |
 | [`newSession`](#newsession-ctx) | `ctx.*` | Mapped, difference stated | Really creates a DSH session (ctx.sessions.create) with parent lineage; withSession runs against a projection context bound to it, whose sendMessage/sendUserMessage/appendEntry write into THAT session rather than the one the call came from. DSH has no host-level "current session pointer" a plugin could move — which session the surface shows stays a host choice, announced once. |
@@ -80,9 +80,9 @@ Dispatched from the cordis agent/session-start notification.
 
 ### `session_shutdown` <a id="session_shutdown-event"></a>
 
-`event` · Same semantics
+`event` · Mapped, difference stated
 
-Dispatched from agent/disposed and from plugin teardown, with duplicate suppression so a package that sees both gets one event.
+Uses the public async Cordis effect disposer while the native session still exists, with agent/disposed as the legacy fallback. The host does not expose a pre-shutdown gate that keeps every model and credential service alive until plugin callbacks complete.
 
 ### `session_info_changed` <a id="session_info_changed-event"></a>
 
@@ -148,7 +148,7 @@ Derived from the live optional TerminalSurfaceAdapter only. Surface selection is
 
 `ctx.*` · Mapped, difference stated
 
-A read-only projection folded from two ordered sources — DSH's durable session log (single authority for conversation, projected live) and the per-session Pi-format archive holding only Pi-only entries — into the single chain Pi's 14-method surface walks. Compaction awareness comes from the same fold: entries a compaction summarized away are dropped from the context view and kept in the log view.
+A read-only projection folded from two ordered sources — DSH's durable session log (single authority for conversation, projected live) and Pi-only entries recovered from the per-session archive — into the single chain Pi's 14-method surface walks. File consumers receive a derived native transcript in that archive; it is not a second restore authority. Compaction awareness comes from the same fold: entries a compaction summarized away are dropped from the context view and kept in the log view.
 
 ### `shutdown` <a id="shutdown-ctx"></a>
 

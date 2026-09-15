@@ -12,6 +12,7 @@
 // Screenshots (question dialog, answered turns) are for human eyes.
 //
 // Usage: DEEPSEEK_API_KEY=… node scripts/verify-pi-code-web-e2e.mjs [out.json]
+import { isSessionLog, systemPromptText } from './lib/session-log.mjs'
 import assert from 'node:assert/strict'
 import { execFile as execFileCallback, spawn } from 'node:child_process'
 import { mkdir, mkdtemp, readFile, readdir, realpath, rm, writeFile } from 'node:fs/promises'
@@ -40,6 +41,9 @@ const playwrightFrom = process.env.PLAYWRIGHT_FROM ?? join(dshRoot, 'apps/web')
 
 const scratch = await realpath(await mkdtemp(join(tmpdir(), 'pi2dsh-picode-web-')))
 let web
+const fileProbe = process.env.PI2DSH_TEST_FILE_UPLOAD === '1'
+const FILE_CW = `ATTACHMENT_${Date.now().toString(36)}`
+const uploadFile = join(scratch, 'attachment.txt')
 try {
   const { home, env, runDsh } = await makeHome(scratch)
   await runDsh(['plugin', '--profile', 'web', 'add', engineSpec])
@@ -67,6 +71,22 @@ try {
   await mkdir(join(project, '.claude', 'commands'), { recursive: true })
   await writeFile(join(project, '.claude', 'commands', 'greet.md'), '---\ndescription: greet probe\n---\nReply with exactly the text GREET-COMMAND-OK and nothing else.\n')
   await writeFile(join(project, '.claude', 'skills', 'demo-skill', 'SKILL.md'), '---\nname: demo-skill\ndescription: A probe skill that explains the demo protocol\n---\nWhen invoked, reply with exactly SKILL-DEMO-OK.\n')
+
+  if (fileProbe) {
+    await writeFile(uploadFile, `The attached codeword is ${FILE_CW}.\n`)
+    const probe = join(scratch, 'context-probe')
+    await mkdir(probe)
+    await writeFile(join(probe, 'package.json'), JSON.stringify({ name: '@pi2dsh-fixtures/file-context', version: '0.0.0', type: 'module', pi: { extensions: ['./index.ts'] } }))
+    await writeFile(join(probe, 'index.ts'), `export default function(pi) {
+      pi.on('context', event => ({ messages: event.messages.map(message => ({
+        ...message,
+        content: Array.isArray(message.content) ? message.content.map(block =>
+          block.type === 'text' && block.text.startsWith('Read the attached file')
+            ? { ...block, text: '[context checked] ' + block.text } : block) : message.content,
+      })) }))
+    }`)
+    await runDsh(['plugin', '--profile', 'web', 'add', probe])
+  }
 
   const port = Number(process.env.PI_CODE_WEB_PORT ?? 5199)
   const portFree = await fetch(`http://127.0.0.1:${port}`).then(() => false).catch(() => true)
@@ -104,10 +124,11 @@ try {
     await new Promise(done => setTimeout(done, 500))
   }
 
-  const shots = join(scratch, 'shots')
+  const shots = resolve(process.env.PI2DSH_SHOT_DIR ?? join(scratch, 'shots'))
   await execFile('node', [
     join(projectRoot, 'docs/posting-kit/capture-pi-code-web.mjs'), shots,
     '--url', authed, '--env-codeword', ENV_CW, '--import-codeword', IMPORT_CW,
+    ...(fileProbe ? ['--upload-file', uploadFile] : []),
   ], {
     cwd: projectRoot,
     env: { ...env, PLAYWRIGHT_FROM: playwrightFrom, CAPTURE_WORKSPACE: project },
@@ -117,22 +138,25 @@ try {
 
   // Evidence: the session log(s) this home produced.
   const files = []
-  const walk = async dir => { for (const entry of await readdir(dir, { withFileTypes: true })) { const path = join(dir, entry.name); if (entry.isDirectory()) await walk(path); else if (entry.name === 'session.jsonl') files.push(path) } }
+  const walk = async dir => { for (const entry of await readdir(dir, { withFileTypes: true })) { const path = join(dir, entry.name); if (entry.isDirectory()) await walk(path); else if (isSessionLog(entry.name)) files.push(path) } }
   await walk(join(home, 'sessions'))
   const records = []
   for (const file of files.sort()) records.push(...(await readFile(file, 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line)))
 
   const envSeen = records.some(r => r.type === 'tool/result' && JSON.stringify(r.data?.message?.content ?? '').includes(ENV_CW))
   const hookFired = existsSync(HOOK_MARK)
-  const importCarrier = records.filter(r => r.type === 'request/header' && String(r.data?.header?.system ?? '').includes(IMPORT_CW))
+  const importCarrier = records.filter(r => systemPromptText(r).includes(IMPORT_CW))
   const skillCarrier = records.filter(r => r.type === 'user/message' && r.data?.source?.kind !== 'user' && JSON.stringify(r.data).includes('A probe skill that explains the demo protocol'))
   const trustAsked = records.some(r => JSON.stringify(r).includes('Trust this project'))
   // The command body exists only in .claude/commands/greet.md; the expansion enters the
   // conversation as a plugin-sourced message (or a command/run record), never as user text.
   const commandCarrier = records.filter(r => (r.type === 'user/message' && r.data?.source?.kind !== 'user' && JSON.stringify(r.data).includes('GREET-COMMAND-OK'))
     || (r.type === 'command/run' && JSON.stringify(r.data).includes('greet')))
+  const fileRead = records.some(r => r.type === 'tool/result' && JSON.stringify(r.data?.message?.content ?? '').includes(FILE_CW))
+  const fileKept = records.some(r => r.type === 'user/message' && (r.data?.content ?? []).some(block => block.type === 'file'))
   const results = {
     piCodeVersion: installed.version,
+    ...(fileProbe ? { fileContextRoundTrip: { pass: fileRead && fileKept, fileRead, nativeReferenceKept: fileKept } } : {}),
     settingsEnv: { pass: envSeen, codeword: ENV_CW },
     preToolUseHook: { pass: hookFired, marker: HOOK_MARK },
     claudeMdImport: { pass: importCarrier.length > 0, codeword: IMPORT_CW },
@@ -146,7 +170,7 @@ try {
   for (const required of ['01-trust-question.png', '02-env-answered.png', '03-import-answered.png', '04-slash-command.png']) {
     assert(taken.includes(required), `missing ${required} — got ${JSON.stringify(taken)}`)
   }
-  const passed = envSeen && hookFired && importCarrier.length > 0 && skillCarrier.length > 0 && commandCarrier.length > 0
+  const passed = envSeen && hookFired && importCarrier.length > 0 && skillCarrier.length > 0 && commandCarrier.length > 0 && (!fileProbe || (fileRead && fileKept))
   await writeFile(outputPath, JSON.stringify({ results: { piCodeWeb: { status: passed ? 'passed' : 'failed', ...results, screenshots: taken, scratch } } }, null, 2))
   console.log(`[pi-code-web] ${passed ? 'passed' : 'FAILED'} — shots at ${shots}; evidence → ${outputPath}`)
   if (!passed) process.exitCode = 1

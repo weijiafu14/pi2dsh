@@ -202,6 +202,21 @@ window.__ModuleLoader__.load({
 		//#region src/client.ts
 		/** Services this half needs before it can take a seat. */
 		const inject$1 = ["slots", "inputTriggers"];
+		/**
+		* The session a slot occupant belongs to, on either generation. The rc lines
+		* hand session-scoped occupants a `sessionId` prop; the 0.1.2 line passes
+		* seats empty props (`renderSlot("conversation.session.header.utilities",
+		* {})` — read from the alpha.2 bundles on 2026-08-31) and provides identity
+		* through the standard kit's `useSession` selector hook instead (the
+		* renderer's own 'session' contribution). Both faces are read here; the
+		* conditional hook call is generation-stable — within one runtime the same
+		* branch always runs, so React's hook order never changes between renders.
+		*/
+		function useSeatSession(props) {
+			const viaHook = typeof props.useSession === "function" ? props.useSession((snapshot) => snapshot.sessionId) : void 0;
+			if (typeof props.sessionId === "string" && props.sessionId !== "") return props.sessionId;
+			return typeof viaHook === "string" ? viaHook : "";
+		}
 		const POLL_MS = 1e3;
 		const EMPTY = {
 			threads: [],
@@ -614,15 +629,22 @@ window.__ModuleLoader__.load({
 				font: "inherit"
 			}
 		};
-		/** Pull one image through DSH's own session-authorized attachment RPC. */
-		function AuthorizedToolImage({ sessionId, attachment }) {
+		/** Prefer the host-owned authorized loader; old hosts retain their public attachment RPC. */
+		function AuthorizedToolImage({ sessionId, attachment, loadImage }) {
 			const [url, setUrl] = (0, react.useState)(void 0);
 			const [failed, setFailed] = (0, react.useState)(false);
 			(0, react.useEffect)(() => {
 				const controller = new AbortController();
 				let objectUrl;
+				setFailed(false);
+				setUrl(void 0);
 				(async () => {
 					try {
+						if (loadImage !== void 0) {
+							const loaded = await loadImage(attachment);
+							if (!controller.signal.aborted) setUrl(loaded);
+							return;
+						}
 						const response = await fetch("/api/session.attachment", {
 							method: "POST",
 							headers: { "content-type": "application/json" },
@@ -655,7 +677,8 @@ window.__ModuleLoader__.load({
 			}, [
 				sessionId,
 				attachment.attachmentId,
-				attachment.mediaType
+				attachment.mediaType,
+				loadImage
 			]);
 			if (failed) return (0, react.createElement)("div", { style: styles.imageError }, "Image attachment could not be loaded.");
 			if (url === void 0) return (0, react.createElement)("div", { style: styles.imageToolText }, "Loading image…");
@@ -678,7 +701,10 @@ window.__ModuleLoader__.load({
 			}
 		}
 		/** Browser row shared by the explicitly supported Pi image tools. */
-		function PiImageToolView({ toolName, block, sessionId }) {
+		function PiImageToolView(props) {
+			const { toolName, block } = props;
+			const seatSession = useSeatSession(props);
+			const sessionId = seatSession === "" ? void 0 : seatSession;
 			const [expanded, setExpanded] = (0, react.useState)(true);
 			const settled = block.kind === "tool-result";
 			const argsRaw = settled ? block.call?.argsRaw ?? "" : block.argsRaw ?? "";
@@ -698,7 +724,8 @@ window.__ModuleLoader__.load({
 			}, (0, react.createElement)("span", { style: styles.imageToolStatus }, block.isError === true ? "●" : settled ? "●" : "◌"), (0, react.createElement)("span", null, toolName), summary === "" ? null : (0, react.createElement)("span", { style: styles.imageToolSummary }, `· ${summary}`)), !expanded ? null : (0, react.createElement)("div", { style: styles.imageToolBody }, text === "" ? null : (0, react.createElement)("div", { style: styles.imageToolText }, text), sessionId === void 0 || images.length === 0 ? null : (0, react.createElement)("div", { style: styles.imageGrid }, ...images.map((attachment) => (0, react.createElement)(AuthorizedToolImage, {
 				key: attachment.attachmentId,
 				sessionId,
-				attachment
+				attachment,
+				...props.loadImage === void 0 ? {} : { loadImage: props.loadImage }
 			})))));
 		}
 		/**
@@ -776,12 +803,13 @@ window.__ModuleLoader__.load({
 		/** Invisible occupant of a conversation-scoped seat; its mounted lifetime is
 		*  the evidence. The hidden marker exists so E2E can assert staging from the
 		*  DOM instead of trusting page text. */
-		function StageBeacon({ sessionId }) {
+		function StageBeacon(props) {
+			const sessionId = useSeatSession(props);
 			(0, react.useEffect)(() => {
-				if (typeof sessionId !== "string" || sessionId === "") return void 0;
+				if (sessionId === "") return void 0;
 				return markStaged(sessionId);
 			}, [sessionId]);
-			if (typeof sessionId !== "string" || sessionId === "") return null;
+			if (sessionId === "") return null;
 			return (0, react.createElement)("span", {
 				"data-pi2dsh": "stage",
 				"data-session": sessionId,
@@ -1108,8 +1136,9 @@ window.__ModuleLoader__.load({
 			}) : null));
 		}
 		function textSeat(marker, valueKeys) {
-			return function TextSeat({ sessionId }) {
-				const { surfaces } = useBrowserState(sessionId);
+			return function TextSeat(props) {
+				const sessionId = useSeatSession(props);
+				const { surfaces } = useBrowserState(sessionId === "" ? void 0 : sessionId);
 				const values = valueKeys.flatMap((key) => valuesFor(surfaces, key));
 				if (values.length === 0) return null;
 				return (0, react.createElement)("div", {
@@ -1132,8 +1161,9 @@ window.__ModuleLoader__.load({
 		* @param props - the session standard kit.
 		* @returns the entry strip, or null when the package appended none.
 		*/
-		function EntryStrip({ sessionId }) {
-			const { entries } = useBrowserState(sessionId);
+		function EntryStrip(props) {
+			const sessionId = useSeatSession(props);
+			const { entries } = useBrowserState(sessionId === "" ? void 0 : sessionId);
 			if (entries.length === 0) return null;
 			return (0, react.createElement)("div", {
 				"data-pi2dsh": "entries",
@@ -1156,8 +1186,10 @@ window.__ModuleLoader__.load({
 		* @param props - the session standard kit (state hook plus input actions).
 		* @returns nothing rendered; this seat exists for the effects.
 		*/
-		function ComposerBridge({ sessionId, useInput, inputActions }) {
-			const { draft } = useBrowserState(sessionId);
+		function ComposerBridge(props) {
+			const { useInput, inputActions } = props;
+			const sessionId = useSeatSession(props);
+			const { draft } = useBrowserState(sessionId === "" ? void 0 : sessionId);
 			const live = useInput === void 0 ? "" : useInput((state) => state.draft);
 			const [appliedRev, setAppliedRev] = (0, react.useState)(0);
 			(0, react.useEffect)(() => {
@@ -2490,8 +2522,8 @@ window.__ModuleLoader__.load({
 		* The chip in the host's composer status row: present only while tasks
 		* exist, click for the panel. Receives the session standard kit.
 		*/
-		function TasksChip({ sessionId }) {
-			const session = sessionId ?? "";
+		function TasksChip(props) {
+			const session = useSeatSession(props);
 			const [openPanel, setOpenPanel] = (0, react.useState)(false);
 			const tasks = useTasks(session, session !== "", void 0);
 			if (session === "" || tasks.length === 0) return null;

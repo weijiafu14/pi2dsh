@@ -1,0 +1,1 @@
+{"name":"@pi2dsh-fixtures/subagent-readiness","version":"0.0.0","type":"module","exports":"./index.mjs","dsh":{"bundle":{"patch":"./cordis.patch.yml"}}}

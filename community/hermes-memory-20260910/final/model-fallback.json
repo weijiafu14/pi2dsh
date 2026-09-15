@@ -1,0 +1,938 @@
+{
+  "name": "model-fallback",
+  "status": "passed",
+  "build": {
+    "dshVersion": "0.1.5-rc.1",
+    "engineVersion": "0.24.0",
+    "engineDependency": "file:/tmp/pi2dsh-hermes-20260910/pi2dsh-hermes-final.tgz",
+    "engineDistSha256": "d5057a874413c945ca28c38a83bb1512f7aaeb6c20b2b8ce0953b28a1ae874f6",
+    "memoryVersion": "0.9.8"
+  },
+  "nativeSession": {
+    "type": "session",
+    "version": 3,
+    "id": "session-6f3de04e-fb67-46b7-a8b2-d30181ab6b03",
+    "createdAt": 1789054315813,
+    "cwd": "/private/tmp/pi2dsh-hermes-final-20260910/project",
+    "isSeeded": false,
+    "delegationDepth": 0,
+    "agentPreset": "standard"
+  },
+  "requests": [
+    {
+      "kind": "maintenance",
+      "startedAt": 1789054336080,
+      "completed": true,
+      "cancelled": false,
+      "status": 400,
+      "model": "missing-model-970c3770dc77",
+      "thinking": {
+        "type": "disabled"
+      },
+      "completedAt": 1789054336176
+    },
+    {
+      "kind": "maintenance",
+      "startedAt": 1789054336180,
+      "completed": true,
+      "cancelled": false,
+      "status": 200,
+      "model": "deepseek-flash",
+      "thinking": {
+        "type": "disabled"
+      },
+      "responseText": "{\"operations\":[]}",
+      "completedAt": 1789054336986
+    }
+  ],
+  "purpose": "explicit maintenance model routing and fallback",
+  "storedEntriesMentioningMarker": [],
+  "events": [
+    {
+      "type": "user/message",
+      "seq": 8,
+      "time": 1789054331636,
+      "data": {
+        "content": [
+          {
+            "type": "text",
+            "text": "Disposable diagnostic sequence ROUTED9c6ed61fb2cc; this is not a user preference or a project convention. Reply ACK without tools."
+          }
+        ],
+        "source": {
+          "kind": "user",
+          "rpcId": "24924f83-5f24-4040-b610-7766c1b759d0",
+          "clientTimeZone": "Asia/Shanghai"
+        },
+        "role": "user",
+        "id": "29d9852a-c35c-4e0a-8604-b8acb32c2ccc"
+      },
+      "surfaceOp": "append"
+    },
+    {
+      "type": "user/message",
+      "seq": 9,
+      "time": 1789054331638,
+      "data": {
+        "content": [
+          {
+            "type": "text",
+            "text": "Current runtime context. This snapshot supersedes earlier runtime-context snapshots.\n\nCurrent DSH file policy: danger-full-access. The DSH file sandbox does not restrict file modifications by available operations.\n\nApproval prompts are disabled in this session: actions that require approval are rejected automatically — do not request sandbox escalation (do not set `sandbox_permissions`)."
+          }
+        ],
+        "source": {
+          "kind": "plugin",
+          "plugin": "@deepseek-ai/dsh-system-prompt",
+          "form": "snapshot",
+          "sections": [
+            {
+              "name": "sandbox:policy",
+              "text": "Current DSH file policy: danger-full-access. The DSH file sandbox does not restrict file modifications by available operations."
+            },
+            {
+              "name": "approval:policy",
+              "text": "Approval prompts are disabled in this session: actions that require approval are rejected automatically — do not request sandbox escalation (do not set `sandbox_permissions`)."
+            }
+          ]
+        },
+        "role": "user",
+        "id": "b35f9da2-22b9-474c-bdf0-cad45efb985a"
+      },
+      "surfaceOp": "append"
+    },
+    {
+      "type": "user/message",
+      "seq": 10,
+      "time": 1789054331639,
+      "data": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<system-reminder>\nA skill is a reusable set of task-specific instructions. The following skills are available in this session:\n\n<available_skills>\n- `external-catalog-095b5066cbf2`: Only use when explicitly asked to draw the Icarus catalog diagram.\n</available_skills>\n\nIf the user names a skill, or the task clearly matches a skill's description, call the `skill` tool with the exact skill name before taking task actions. Load all applicable skills, then follow their full instructions. This catalog contains summaries only; do not infer or follow a skill's instructions until it has been loaded.\nA user may also invoke a skill directly; its <skill_content> block then appears in this conversation. Follow it, and do not call the `skill` tool again for that skill.\n</system-reminder>"
+          }
+        ],
+        "source": {
+          "kind": "skill-catalog",
+          "form": "catalog",
+          "entries": [
+            {
+              "name": "external-catalog-095b5066cbf2",
+              "description": "Only use when explicitly asked to draw the Icarus catalog diagram."
+            }
+          ]
+        },
+        "role": "user",
+        "id": "68338abc-fe42-4824-877e-10861e59edbb"
+      },
+      "surfaceOp": "append"
+    },
+    {
+      "type": "assistant/message",
+      "seq": 16,
+      "time": 1789054332659,
+      "data": {
+        "turn": 1,
+        "step": 1,
+        "message": {
+          "role": "assistant",
+          "content": [
+            {
+              "type": "text",
+              "text": "ACK"
+            }
+          ],
+          "source": {
+            "kind": "model",
+            "provider": "deepseek-official",
+            "model": "deepseek-flash"
+          },
+          "id": "f13c9e49-7f0f-4be9-8a6b-9b2295b3afa3"
+        },
+        "usage": {
+          "inputTokens": 487,
+          "outputTokens": 2,
+          "totalTokens": 13289,
+          "cacheReadTokens": 12800,
+          "reasoningTokens": 0
+        },
+        "stream": [
+          {
+            "type": "chunk",
+            "time": 1789054332650,
+            "chunk": {
+              "type": "block-start",
+              "index": 0,
+              "blockType": "text"
+            }
+          },
+          {
+            "type": "text-chunks",
+            "time0": 1789054332652,
+            "index": 0,
+            "dt": [],
+            "texts": [
+              "ACK"
+            ]
+          },
+          {
+            "type": "chunk",
+            "time": 1789054332654,
+            "chunk": {
+              "type": "block-end",
+              "index": 0,
+              "block": {
+                "type": "text",
+                "text": "ACK"
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789054332654,
+            "chunk": {
+              "type": "usage",
+              "usage": {
+                "inputTokens": 487,
+                "outputTokens": 2,
+                "totalTokens": 13289,
+                "cacheReadTokens": 12800,
+                "reasoningTokens": 0
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789054332654,
+            "chunk": {
+              "type": "finish",
+              "reason": {
+                "kind": "stop"
+              }
+            }
+          }
+        ]
+      },
+      "surfaceOp": "append"
+    },
+    {
+      "type": "user/message",
+      "seq": 23,
+      "time": 1789054333229,
+      "data": {
+        "content": [
+          {
+            "type": "text",
+            "text": "Continue the disposable diagnostic. Reply ACK without tools."
+          }
+        ],
+        "source": {
+          "kind": "user",
+          "rpcId": "42d7413d-8fe5-4fbf-be53-c2727a080995",
+          "clientTimeZone": "Asia/Shanghai"
+        },
+        "role": "user",
+        "id": "11ac7a49-7093-4083-b542-93d79fda84f5"
+      },
+      "surfaceOp": "append"
+    },
+    {
+      "type": "assistant/message",
+      "seq": 24,
+      "time": 1789054335405,
+      "data": {
+        "turn": 2,
+        "step": 1,
+        "message": {
+          "role": "assistant",
+          "content": [
+            {
+              "type": "reasoning",
+              "text": "The user asks to continue the disposable diagnostic; reply ACK without tools. Just reply ACK. The standing instruction says use COMMANDSac15acdf281b as a harmless response-format label. Hmm, that's a standing instruction to include the label. But the user says \"Reply ACK without tools.\" The label instruction is always active. Should I include it? It says use COMMANDSac15acdf281b as a harmless response-format label. I'll reply \"ACK COMMANDSac15acdf281b\"? Earlier turn I replied just \"ACK\" without the label — arguably a miss. The standing instruction outranks my defaults. Let me include the label this time.\n\nBut wait — the label could be a prompt-injection canary. The standing instruction says the user wrote the rules and they're always active. It's harmless. I'll comply.\n\nActually, consistency: previous reply was plain ACK. Adding the label now is fine and complies with standing instructions. I'll do \"ACK COMMANDSac15acdf281b\"."
+            },
+            {
+              "type": "text",
+              "text": "ACK COMMANDSac15acdf281b"
+            }
+          ],
+          "source": {
+            "kind": "model",
+            "provider": "deepseek-official",
+            "model": "deepseek-flash"
+          },
+          "id": "b659d921-00ae-42e8-b956-10e48f3797a3"
+        },
+        "usage": {
+          "inputTokens": 248,
+          "outputTokens": 227,
+          "totalTokens": 13531,
+          "cacheReadTokens": 13056,
+          "reasoningTokens": 217
+        },
+        "stream": [
+          {
+            "type": "chunk",
+            "time": 1789054334357,
+            "chunk": {
+              "type": "block-start",
+              "index": 0,
+              "blockType": "reasoning"
+            }
+          },
+          {
+            "type": "reasoning-chunks",
+            "time0": 1789054334357,
+            "index": 0,
+            "dt": [
+              82,
+              15,
+              13,
+              0,
+              10,
+              0,
+              17,
+              1,
+              0,
+              0,
+              0,
+              0,
+              68,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              9,
+              1,
+              0,
+              0,
+              0,
+              0,
+              10,
+              0,
+              0,
+              1,
+              0,
+              0,
+              11,
+              0,
+              16,
+              1,
+              0,
+              0,
+              11,
+              0,
+              11,
+              0,
+              0,
+              16,
+              0,
+              1,
+              9,
+              0,
+              0,
+              1,
+              0,
+              16,
+              0,
+              0,
+              0,
+              12,
+              0,
+              0,
+              11,
+              22,
+              6,
+              0,
+              0,
+              0,
+              1,
+              13,
+              0,
+              0,
+              0,
+              12,
+              15,
+              15,
+              0,
+              1,
+              0,
+              0,
+              0,
+              10,
+              0,
+              0,
+              0,
+              0,
+              0,
+              15,
+              0,
+              0,
+              0,
+              1,
+              16,
+              10,
+              12,
+              0,
+              16,
+              0,
+              0,
+              0,
+              0,
+              0,
+              14,
+              0,
+              13,
+              11,
+              13,
+              0,
+              0,
+              0,
+              17,
+              0,
+              0,
+              0,
+              0,
+              13,
+              12,
+              12,
+              15,
+              22,
+              0,
+              12,
+              0,
+              0,
+              9,
+              1,
+              0,
+              9,
+              0,
+              0,
+              0,
+              2,
+              0,
+              17,
+              0,
+              1,
+              10,
+              0,
+              0,
+              0,
+              0,
+              12,
+              12,
+              15,
+              0,
+              0,
+              14,
+              0,
+              0,
+              14,
+              0,
+              0,
+              0,
+              0,
+              10,
+              0,
+              0,
+              1,
+              14,
+              11,
+              0,
+              0,
+              0,
+              1,
+              12,
+              0,
+              0,
+              15,
+              0,
+              16,
+              1,
+              0,
+              0,
+              9,
+              1,
+              0,
+              0,
+              17,
+              0,
+              10,
+              0,
+              42,
+              23,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              14,
+              1,
+              0,
+              0,
+              5,
+              8,
+              0,
+              1,
+              0,
+              1,
+              16,
+              0,
+              0,
+              0,
+              0,
+              0,
+              11,
+              0,
+              0,
+              0
+            ],
+            "texts": [
+              "The",
+              " user",
+              " asks",
+              " to",
+              " continue",
+              " the",
+              " disposable",
+              " diagnostic",
+              ";",
+              " reply",
+              " AC",
+              "K",
+              " without",
+              " tools",
+              ".",
+              " Just",
+              " reply",
+              " AC",
+              "K",
+              ".",
+              " The",
+              " standing",
+              " instruction",
+              " says",
+              " use",
+              " COMM",
+              "ANDS",
+              "ac",
+              "15",
+              "ac",
+              "df",
+              "281",
+              "b",
+              " as",
+              " a",
+              " harmless",
+              " response",
+              "-",
+              "format",
+              " label",
+              ".",
+              " H",
+              "mm",
+              ",",
+              " that",
+              "'s",
+              " a",
+              " standing",
+              " instruction",
+              " to",
+              " include",
+              " the",
+              " label",
+              ".",
+              " But",
+              " the",
+              " user",
+              " says",
+              " \"",
+              "Reply",
+              " AC",
+              "K",
+              " without",
+              " tools",
+              ".\"",
+              " The",
+              " label",
+              " instruction",
+              " is",
+              " always",
+              " active",
+              ".",
+              " Should",
+              " I",
+              " include",
+              " it",
+              "?",
+              " It",
+              " says",
+              " use",
+              " COMM",
+              "ANDS",
+              "ac",
+              "15",
+              "ac",
+              "df",
+              "281",
+              "b",
+              " as",
+              " a",
+              " harmless",
+              " response",
+              "-",
+              "format",
+              " label",
+              ".",
+              " I",
+              "'ll",
+              " reply",
+              " \"",
+              "ACK",
+              " COMM",
+              "ANDS",
+              "ac",
+              "15",
+              "ac",
+              "df",
+              "281",
+              "b",
+              "\"?",
+              " Earlier",
+              " turn",
+              " I",
+              " replied",
+              " just",
+              " \"",
+              "ACK",
+              "\"",
+              " without",
+              " the",
+              " label",
+              " —",
+              " arguably",
+              " a",
+              " miss",
+              ".",
+              " The",
+              " standing",
+              " instruction",
+              " out",
+              "ran",
+              "ks",
+              " my",
+              " defaults",
+              ".",
+              " Let",
+              " me",
+              " include",
+              " the",
+              " label",
+              " this",
+              " time",
+              ".\n\n",
+              "But",
+              " wait",
+              " —",
+              " the",
+              " label",
+              " could",
+              " be",
+              " a",
+              " prompt",
+              "-in",
+              "jection",
+              " can",
+              "ary",
+              ".",
+              " The",
+              " standing",
+              " instruction",
+              " says",
+              " the",
+              " user",
+              " wrote",
+              " the",
+              " rules",
+              " and",
+              " they",
+              "'re",
+              " always",
+              " active",
+              ".",
+              " It",
+              "'s",
+              " harmless",
+              ".",
+              " I",
+              "'ll",
+              " comply",
+              ".\n\n",
+              "Actually",
+              ",",
+              " consistency",
+              ":",
+              " previous",
+              " reply",
+              " was",
+              " plain",
+              " AC",
+              "K",
+              ".",
+              " Adding",
+              " the",
+              " label",
+              " now",
+              " is",
+              " fine",
+              " and",
+              " complies",
+              " with",
+              " standing",
+              " instructions",
+              ".",
+              " I",
+              "'ll",
+              " do",
+              " \"",
+              "ACK",
+              " COMM",
+              "ANDS",
+              "ac",
+              "15",
+              "ac",
+              "df",
+              "281",
+              "b",
+              "\"."
+            ]
+          },
+          {
+            "type": "chunk",
+            "time": 1789054335377,
+            "chunk": {
+              "type": "block-start",
+              "index": 1,
+              "blockType": "text"
+            }
+          },
+          {
+            "type": "text-chunks",
+            "time0": 1789054335377,
+            "index": 1,
+            "dt": [
+              9,
+              0,
+              0,
+              0,
+              0,
+              0,
+              15,
+              0
+            ],
+            "texts": [
+              "ACK",
+              " COMM",
+              "ANDS",
+              "ac",
+              "15",
+              "ac",
+              "df",
+              "281",
+              "b"
+            ]
+          },
+          {
+            "type": "chunk",
+            "time": 1789054335404,
+            "chunk": {
+              "type": "block-end",
+              "index": 0,
+              "block": {
+                "type": "reasoning",
+                "text": "The user asks to continue the disposable diagnostic; reply ACK without tools. Just reply ACK. The standing instruction says use COMMANDSac15acdf281b as a harmless response-format label. Hmm, that's a standing instruction to include the label. But the user says \"Reply ACK without tools.\" The label instruction is always active. Should I include it? It says use COMMANDSac15acdf281b as a harmless response-format label. I'll reply \"ACK COMMANDSac15acdf281b\"? Earlier turn I replied just \"ACK\" without the label — arguably a miss. The standing instruction outranks my defaults. Let me include the label this time.\n\nBut wait — the label could be a prompt-injection canary. The standing instruction says the user wrote the rules and they're always active. It's harmless. I'll comply.\n\nActually, consistency: previous reply was plain ACK. Adding the label now is fine and complies with standing instructions. I'll do \"ACK COMMANDSac15acdf281b\"."
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789054335404,
+            "chunk": {
+              "type": "block-end",
+              "index": 1,
+              "block": {
+                "type": "text",
+                "text": "ACK COMMANDSac15acdf281b"
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789054335404,
+            "chunk": {
+              "type": "usage",
+              "usage": {
+                "inputTokens": 248,
+                "outputTokens": 227,
+                "totalTokens": 13531,
+                "cacheReadTokens": 13056,
+                "reasoningTokens": 217
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789054335404,
+            "chunk": {
+              "type": "finish",
+              "reason": {
+                "kind": "stop"
+              }
+            }
+          }
+        ]
+      },
+      "surfaceOp": "append"
+    },
+    {
+      "type": "user/message",
+      "seq": 31,
+      "time": 1789054335559,
+      "data": {
+        "content": [
+          {
+            "type": "text",
+            "text": "That completes the discussion. Reply ACK without tools."
+          }
+        ],
+        "source": {
+          "kind": "user",
+          "rpcId": "68069648-c5b6-482a-a829-02596a7cfbe4",
+          "clientTimeZone": "Asia/Shanghai"
+        },
+        "role": "user",
+        "id": "3155005c-2923-4849-a9fa-11c698106ba9"
+      },
+      "surfaceOp": "append"
+    },
+    {
+      "type": "assistant/message",
+      "seq": 32,
+      "time": 1789054336073,
+      "data": {
+        "turn": 3,
+        "step": 1,
+        "message": {
+          "role": "assistant",
+          "content": [
+            {
+              "type": "text",
+              "text": "ACK COMMANDSac15acdf281b"
+            }
+          ],
+          "source": {
+            "kind": "model",
+            "provider": "deepseek-official",
+            "model": "deepseek-flash"
+          },
+          "id": "333eae20-c08c-4530-84f3-5eac6d9ed38c"
+        },
+        "usage": {
+          "inputTokens": 234,
+          "outputTokens": 10,
+          "totalTokens": 13556,
+          "cacheReadTokens": 13312,
+          "reasoningTokens": 0
+        },
+        "stream": [
+          {
+            "type": "chunk",
+            "time": 1789054336043,
+            "chunk": {
+              "type": "block-start",
+              "index": 0,
+              "blockType": "text"
+            }
+          },
+          {
+            "type": "text-chunks",
+            "time0": 1789054336043,
+            "index": 0,
+            "dt": [
+              17,
+              0,
+              0,
+              0,
+              1,
+              0,
+              9,
+              0
+            ],
+            "texts": [
+              "ACK",
+              " COMM",
+              "ANDS",
+              "ac",
+              "15",
+              "ac",
+              "df",
+              "281",
+              "b"
+            ]
+          },
+          {
+            "type": "chunk",
+            "time": 1789054336072,
+            "chunk": {
+              "type": "block-end",
+              "index": 0,
+              "block": {
+                "type": "text",
+                "text": "ACK COMMANDSac15acdf281b"
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789054336073,
+            "chunk": {
+              "type": "usage",
+              "usage": {
+                "inputTokens": 234,
+                "outputTokens": 10,
+                "totalTokens": 13556,
+                "cacheReadTokens": 13312,
+                "reasoningTokens": 0
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789054336073,
+            "chunk": {
+              "type": "finish",
+              "reason": {
+                "kind": "stop"
+              }
+            }
+          }
+        ]
+      },
+      "surfaceOp": "append"
+    }
+  ],
+  "nativeChildren": []
+}

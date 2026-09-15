@@ -58,6 +58,12 @@ export default function runtimeEdgeExtension(pi: any): void {
           if (String(error).includes('requires a native DSH port')) unavailable.push(name)
         }
       }
+      let customFallback: string | undefined
+      try {
+        await ctx.ui.custom(() => ({ render: () => ['terminal component'] }))
+      } catch (error) {
+        customFallback = (error as { capability?: string }).capability
+      }
       return {
         content: [{ type: 'text', text: JSON.stringify({
           args,
@@ -70,6 +76,7 @@ export default function runtimeEdgeExtension(pi: any): void {
           usage: ctx.getContextUsage(),
           systemPrompt: ctx.getSystemPrompt(),
           hasUI: ctx.hasUI,
+          customFallback,
           unavailable,
         }) }],
         details: { unavailable },

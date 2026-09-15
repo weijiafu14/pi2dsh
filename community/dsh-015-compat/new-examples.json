@@ -1,0 +1,288 @@
+{
+  "schemaVersion": 1,
+  "pi2dshCommit": "52f78417974a6847c5350b85b72e01a37aa8948f",
+  "dshCommit": "npm:@deepseek-ai/dsh@0.1.5-rc.1",
+  "results": {
+    "gatewayCompat": {
+      "engine": {
+        "version": "0.24.0",
+        "from": "local",
+        "spec": "file:<working-tree>",
+        "commit": "52f78417974a6847c5350b85b72e01a37aa8948f",
+        "dirty": true
+      },
+      "status": "passed",
+      "requests": 2,
+      "roles": [
+        "system",
+        "user",
+        "user"
+      ],
+      "maxTokensField": "max_tokens",
+      "store": null,
+      "reasoningEffort": "high",
+      "bodyKeys": [
+        "max_tokens",
+        "messages",
+        "model",
+        "reasoning_effort",
+        "stream",
+        "stream_options",
+        "tools"
+      ],
+      "previews": [
+        "system: You are an AI agent powered by DeepSeek Harness. You are a ",
+        "user: Reply with exactly: gateway-compat-ok",
+        "user: Current runtime context. This snapshot supersedes earlier ru"
+      ]
+    },
+    "alibabaTokenPlan": {
+      "status": "skipped",
+      "reason": "ALIBABA_TOKEN_PLAN_API_KEY not set"
+    },
+    "visionBridge": {
+      "status": "skipped",
+      "reason": "no complete OpenAI-compatible or Pi-registry vision model configured"
+    },
+    "persistentMemory": {
+      "status": "passed",
+      "engine": {
+        "version": "0.24.0",
+        "from": "local",
+        "spec": "file:<working-tree>",
+        "commit": "52f78417974a6847c5350b85b72e01a37aa8948f",
+        "dirty": true
+      },
+      "wroteVia": [
+        "memory_add"
+      ],
+      "recalledAcrossSessions": true,
+      "storeIsolatedToDshHome": true
+    },
+    "backgroundTasks": {
+      "status": "passed",
+      "engine": {
+        "version": "0.24.0",
+        "from": "local",
+        "spec": "file:<working-tree>",
+        "commit": "52f78417974a6847c5350b85b72e01a37aa8948f",
+        "dirty": true
+      },
+      "bgRunCalls": 1,
+      "bgLogsMidRunReads": 1
+    },
+    "memoryTasksWeb": {
+      "status": "passed",
+      "engine": {
+        "version": "0.24.0",
+        "from": "local",
+        "spec": "file:<working-tree>",
+        "commit": "52f78417974a6847c5350b85b72e01a37aa8948f",
+        "dirty": true
+      },
+      "memoryRecalledAcrossWebSessions": true,
+      "bgMidRunReadOnWeb": true,
+      "storeIsolatedToDshHome": true,
+      "screenshots": [
+        "01-memory-save-web.png",
+        "02-memory-recall-web.png",
+        "03-background-tasks-web.png"
+      ]
+    },
+    "workXMemoryTasks": {
+      "status": "passed",
+      "engine": {
+        "version": "0.24.0",
+        "from": "local",
+        "spec": "file:<working-tree>",
+        "commit": "52f78417974a6847c5350b85b72e01a37aa8948f",
+        "dirty": true
+      },
+      "memoryTabShowsStore": true,
+      "pinRoundTrip": true,
+      "dockKilledTask": true,
+      "screenshots": [
+        "01-memory-settings.png",
+        "02-tasks-chip-live.png",
+        "03-tasks-killed.png"
+      ]
+    },
+    "sideConversation": {
+      "status": "passed",
+      "engine": {
+        "version": "0.24.0",
+        "from": "local",
+        "spec": "file:<working-tree>",
+        "commit": "52f78417974a6847c5350b85b72e01a37aa8948f",
+        "dirty": true
+      },
+      "install": "dsh-work-x suite (bundles pi-btw)",
+      "sideAnswerIsolated": true,
+      "screenshots": [
+        "00-side-conversation-work-x.png"
+      ]
+    },
+    "visionBridgeWeb": {
+      "status": "skipped",
+      "reason": "no complete OpenAI-compatible or Pi-registry vision model configured"
+    },
+    "customGateways": {
+      "status": "passed",
+      "engine": {
+        "version": "0.24.0",
+        "from": "local",
+        "spec": "file:<working-tree>",
+        "commit": "52f78417974a6847c5350b85b72e01a37aa8948f",
+        "dirty": true
+      },
+      "seenByPackage": {
+        "provider": "my-gateway",
+        "id": "deepseek-chat",
+        "api": "faux",
+        "contextWindow": 131072
+      },
+      "requestedThroughGateway": true
+    },
+    "presentationSurfaces": {
+      "status": "passed",
+      "engine": {
+        "version": "0.24.0",
+        "from": "local",
+        "spec": "file:<working-tree>",
+        "commit": "52f78417974a6847c5350b85b72e01a37aa8948f",
+        "dirty": true
+      },
+      "install": "dsh-work-x suite + pi-powerline-footer",
+      "screenshots": [
+        "06-presentation-surfaces.png"
+      ]
+    },
+    "subscriptionLogin": {
+      "status": "failed",
+      "error": "Command failed: node /private<working-tree>/docs/posting-kit/capture-providers.mjs /var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-ex-login-yftsuy/provider-shots --url http://127.0.0.1:5416\npage console error: Failed to load resource: the server responded with a status of 401 (Unauthorized)\npage console error: Failed to load resource: the server responded with a status of 404 (Not Found)\npage console error: Failed to load resource: the server responded with a status of 401 (Unauthorized)\npage console error: Failed to load resource: the server responded with a status of 401 (Unauthorized)\nnode:internal/modules/run_main:123\n    triggerUncaughtException(\n    ^\n\nlocator.click: Timeout 60000ms exceeded.\nCall log:\n  - waiting for getByRole('button', { name: 'New session' }).first()\n\n    at /private<working-tree>/docs/posting-kit/capture-providers.mjs:21:65 {\n  log: [\n    \"  - waiting for getByRole('button', { name: 'New session' }).first()\"\n  ],\n  name: 'TimeoutError'\n}\n\nNode.js v22.22.0\n"
+    },
+    "codexImageGen": {
+      "status": "failed",
+      "error": "Command failed: node /private<working-tree>/scripts/verify-codex-image-gen-e2e.mjs /var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-ex-codex-image-5feyux/report.json\nnode:internal/errors:983\n  const err = new Error(message);\n              ^\n\nError: Command failed: /tmp/pi2dsh-hermes-20260910/cli/node_modules/.bin/dsh plugin --profile web add /var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-codex-image-FB4Ivg/dsh-work-x-0.4.0.tgz\n(node:77395) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.\n(Use `node --trace-warnings ...` to show where the warning was created)\ndsh: initialized profile web at /var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-codex-image-FB4Ivg/dsh-home/profiles/web\n(node:77396) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.\n(Use `node --trace-warnings ...` to show where the warning was created)\n(node:77396) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.\n(Use `node --trace-warnings ...` to show where the warning was created)\n(node:77396) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.\n(Use `node --trace-warnings ...` to show where the warning was created)\n(node:77396) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.\n(Use `node --trace-warnings ...` to show where the warning was created)\n(node:77396) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.\n(Use `node --trace-warnings ...` to show where the warning was created)\n(node:77396) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.\n(Use `node --trace-warnings ...` to show where the warning was created)\n(node:77396) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.\n(Use `node --trace-warnings ...` to show where the warning was created)\n(node:77396) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.\n(Use `node --trace-warnings ...` to show where the warning was created)\ndsh: pnpm failed in profile directory /var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-codex-image-FB4Ivg/dsh-home/profiles/web\n\n    at genericNodeError (node:internal/errors:983:15)\n    at wrappedFn (node:internal/errors:537:14)\n    at ChildProcess.exithandler (node:child_process:417:12)\n    at ChildProcess.emit (node:events:519:28)\n    at maybeClose (node:internal/child_process:1101:16)\n    at ChildProcess._handle.onexit (node:internal/child_process:304:5) {\n  code: 1,\n  killed: false,\n  signal: null,\n  cmd: '/tmp/pi2dsh-hermes-20260910/cli/node_modules/.bin/dsh plugin --profile web add /var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-codex-image-FB4Ivg/dsh-work-x-0.4.0.tgz',\n  stdout: 'Progress: resolved 0, reused 0, downloaded 1, added 0\\n' +\n    'Progress: resolved 15, reused 0, downloaded 1, added 0\\n' +\n    'Progress: resolved 78, reused 0, downloaded 1, added 0\\n' +\n    'Progress: resolved 158, reused 0, downloaded 1, added 0\\n' +\n    '[WARN] Issues with peer dependencies found. Run \"pnpm peers check\" to list them.\\n' +\n    '\\n' +\n    'dependencies:\\n' +\n    '+ dsh-work-x file:/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-codex-image-FB4Ivg/dsh-work-x-0.4.0.tgz\\n' +\n    '\\n' +\n    'Packages: +161\\n' +\n    '++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\\n' +\n    'Progress: resolved 173, reused 158, downloaded 1, added 61\\n' +\n    'Progress: resolved 173, reused 158, downloaded 1, added 161, done\\n' +\n    '[ERR_PNPM_IGNORED_BUILDS] Ignored build scripts: better-sqlite3@13.0.3\\n' +\n    '\\n' +\n    'Run \"pnpm approve-builds\" to pick which dependencies should be allowed to run scripts.\\n',\n  stderr: '(node:77395) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.\\n' +\n    '(Use `node --trace-warnings ...` to show where the warning was created)\\n' +\n    'dsh: initialized profile web at /var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-codex-image-FB4Ivg/dsh-home/profiles/web\\n' +\n    '(node:77396) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.\\n' +\n    '(Use `node --trace-warnings ...` to show where the warning was created)\\n' +\n    '(node:77396) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.\\n' +\n    '(Use `node --trace-warnings ...` to show where the warning was created)\\n' +\n    '(node:77396) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.\\n' +\n    '(Use `node --trace-warnings ...` to show where the warning was created)\\n' +\n    '(node:77396) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.\\n' +\n    '(Use `node --trace-warnings ...` to show where the warning was created)\\n' +\n    '(node:77396) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.\\n' +\n    '(Use `node --trace-warnings ...` to show where the warning was created)\\n' +\n    '(node:77396) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.\\n' +\n    '(Use `node --trace-warnings ...` to show where the warning was created)\\n' +\n    '(node:77396) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.\\n' +\n    '(Use `node --trace-warnings ...` to show where the warning was created)\\n' +\n    '(node:77396) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.\\n' +\n    '(Use `node --trace-warnings ...` to show where the warning was created)\\n' +\n    'dsh: pnpm failed in profile directory /var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-codex-image-FB4Ivg/dsh-home/profiles/web\\n'\n}\n\nNode.js v22.22.0\n"
+    },
+    "tuiMcp": {
+      "status": "passed",
+      "engine": {
+        "version": "0.24.0",
+        "from": "local",
+        "spec": "file:<working-tree>",
+        "commit": "52f78417974a6847c5350b85b72e01a37aa8948f",
+        "dirty": true
+      },
+      "profile": "dsh-tui",
+      "piPackage": "pi-mcp-adapter",
+      "piPackageVersion": "2.32.1",
+      "command": "/pi-mcp",
+      "nativeCommandPreserved": "/mcp",
+      "mcpServer": "@modelcontextprotocol/server-everything",
+      "transports": [
+        "stdio",
+        "streamable-http",
+        "sse"
+      ],
+      "capabilities": [
+        "manager",
+        "discovery",
+        "proxy",
+        "direct-tools",
+        "mcpScript",
+        "resources",
+        "prompts",
+        "images",
+        "structured-content",
+        "mcp-app-ui",
+        "approval",
+        "elicitation",
+        "sampling",
+        "cancellation",
+        "reconnect",
+        "session-restart"
+      ]
+    },
+    "subagents": {
+      "status": "passed",
+      "engine": "0.24.0",
+      "cli": "0.1.5-rc.1",
+      "scenarios": {
+        "steer": "passed",
+        "failureReport": "passed",
+        "resume": "passed",
+        "resumeArchive": "passed",
+        "stop": "passed",
+        "modelFollow": "passed",
+        "explicitModelThinking": "passed",
+        "childExtensions": "passed"
+      }
+    },
+    "dshX": {
+      "status": "passed",
+      "engine": {
+        "version": "0.24.0",
+        "from": "local",
+        "spec": "file:<working-tree>",
+        "commit": "52f78417974a6847c5350b85b72e01a37aa8948f",
+        "dirty": true
+      },
+      "suite": [
+        "pi-mcp-adapter",
+        "@tintinweb/pi-subagents",
+        "pi-btw",
+        "@crazygit/pi-codex-image-gen",
+        "pi-hermes-memory",
+        "pi-background-tasks"
+      ],
+      "sideChat": "answers in-window; inject + --save verified in the main session log",
+      "commands": {
+        "pi-mcp-adapter": "mcp",
+        "@tintinweb/pi-subagents": "agents",
+        "pi-btw": "btw"
+      }
+    },
+    "codeNavigation": {
+      "status": "failed",
+      "error": "Command failed: npm install --no-fund --no-audit\nnpm error code ENOSPC\nnpm error syscall write\nnpm error errno ENOSPC\nnpm error nospc Invalid response body while trying to fetch https://registry.npmjs.org/typescript: ENOSPC: no space left on device, write\nnpm error nospc There appears to be insufficient space on your system to finish.\nnpm error nospc Clear up some disk space and try again.\nnpm error A complete log of this run can be found in: /var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-ex-codenav-keKXGD/user-home/.npm/_logs/2026-09-10T13_35_03_501Z-debug-0.log\n"
+    },
+    "codeNavigationWeb": {
+      "status": "failed",
+      "error": "Command failed: npm install --no-fund --no-audit\nnpm error code ENOSPC\nnpm error syscall write\nnpm error errno ENOSPC\nnpm error nospc Invalid response body while trying to fetch https://registry.npmjs.org/typescript: ENOSPC: no space left on device, write\nnpm error nospc There appears to be insufficient space on your system to finish.\nnpm error nospc Clear up some disk space and try again.\nnpm error A complete log of this run can be found in: /var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-ex-codenav-web-lf8HEq/user-home/.npm/_logs/2026-09-10T13_35_40_127Z-debug-0.log\n"
+    },
+    "mcpAtScale": {
+      "status": "passed",
+      "engine": {
+        "version": "0.24.0",
+        "from": "local",
+        "spec": "file:<working-tree>",
+        "commit": "52f78417974a6847c5350b85b72e01a37aa8948f",
+        "dirty": true
+      },
+      "packages": [
+        "pi-mcp-adapter"
+      ],
+      "server": "many-tools (official MCP SDK, 51 tools, stdio)",
+      "discovery": "mcp proxy -> tool_037 -> LAUNCH-MARKER-7741-ZEBRA",
+      "timeout": "mcpScript timeoutMs 5000 on ~120s slow_task; turn ended in 16s; tool_001 answered after"
+    },
+    "mcpAtScaleWeb": {
+      "status": "passed",
+      "engine": {
+        "version": "0.24.0",
+        "from": "local",
+        "spec": "file:<working-tree>",
+        "commit": "52f78417974a6847c5350b85b72e01a37aa8948f",
+        "dirty": true
+      },
+      "packages": [
+        "pi-mcp-adapter"
+      ],
+      "screenshots": [
+        "12-mcp-at-scale-web.png"
+      ],
+      "discovery": "mcp proxy -> tool_037 -> LAUNCH-MARKER-7741-ZEBRA"
+    }
+  }
+}

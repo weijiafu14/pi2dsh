@@ -20,7 +20,7 @@ the file is named so a reader can re-run it.
 | [@kassing/pi-vision](https://www.npmjs.com/package/@kassing/pi-vision) | Image analysis delegated to a vision endpoint; image-admission companion route; context injection into a text-only model | CLI + web (screenshots in `assets/`) |
 | [pi-vision-tool](https://www.npmjs.com/package/pi-vision-tool) | Tool registration with a JSON-Schema shape DSH had to convert (`anyOf` → `oneOf`) | CLI + web |
 | [pi-approval-guardian](https://www.npmjs.com/package/pi-approval-guardian) | Every tool call reviewed by a separate model before execution; allow/deny both observed | CLI (bare environment, `danger-full-access`) |
-| [pi-hermes-memory](https://www.npmjs.com/package/pi-hermes-memory) | Cross-session memory: written in one process, read back in a second, fresh process | CLI |
+| [pi-hermes-memory](https://www.npmjs.com/package/pi-hermes-memory) | Local repository build: six tools, ten commands, background review/correction, skill lifecycle, context policies and consolidation tested. History uses a derived transcript; shutdown/compaction semantics remain limited. [Per-capability results](../plugin-validation-matrix.md#pi-hermes-memory) | CLI + web |
 | [pi-btw](https://www.npmjs.com/package/pi-btw) | Side conversation as a real child session: `/btw <question>`, `/btw-inject`, `/btw --save`; main thread stays clean | CLI + web (screenshots in `assets/`) |
 | [pi-fabric](https://www.npmjs.com/package/pi-fabric) | Tool-catalog wrapping through Pi's runner prototype | contract level |
 
