@@ -209,6 +209,21 @@ try {
     'NO_COLOR=1', dsh, '--profile', 'pi-tui')
   await waitFor('dsh-pi-tui composer', async () => /dsh-pi-tui[\s\S]*❯/u.test(await capture()), 120_000)
 
+  // The terminal chrome can render before the first Agent has finished
+  // mounting its extension commands. A real completed model turn proves
+  // that the conversation and its Pi command registry are ready.
+  const readyMarker = `PI2DSH_READY_${runTag}`
+  await sendLine(`Reply with exactly ${readyMarker}.`)
+  await waitFor('first native Agent turn and extension mounting', async () => {
+    for (const file of await walkJsonl(join(home, 'sessions'))) {
+      const records = (await readFile(file, 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line))
+      if (records.some(record => record.type === 'assistant/message'
+        && JSON.stringify(record.data?.message?.content ?? []).includes(readyMarker))
+        && records.some(record => record.type === 'turn/end')) return true
+    }
+    return false
+  }, 120_000)
+
   log('native /login + projected OpenAI Codex flow')
   await sendLine('/login')
   await waitFor('native login provider list', async () => /login · providers/u.test(await capture()), 30_000)

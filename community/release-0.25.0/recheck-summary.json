@@ -1,0 +1,22 @@
+[
+  {
+    "name": "pi-tui-old-recheck",
+    "exitCode": 0
+  },
+  {
+    "name": "tui-mcp-recheck",
+    "exitCode": 0
+  },
+  {
+    "name": "side-chat-recheck",
+    "exitCode": 0
+  },
+  {
+    "name": "code-nav-recheck",
+    "exitCode": 0
+  },
+  {
+    "name": "code-nav-web-recheck",
+    "exitCode": 0
+  }
+]

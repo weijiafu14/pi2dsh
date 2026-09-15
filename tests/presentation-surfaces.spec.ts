@@ -21,6 +21,8 @@ import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
 import CommandRuntime from '@deepseek-ai/dsh-commands'
+import UserQuestionService from '@deepseek-ai/dsh-user-questions'
+import { registerFixtureAnswerer } from './lib/dsh-compat.js'
 import { applyPiPackage } from '../src/runtime.js'
 import { manifestForInstalled } from '../src/host.js'
 import { resolvePiPackage } from '../src/source.js'
@@ -498,6 +500,8 @@ describe('full-screen custom UI on a browser composition', () => {
   // a browser composition takes Pi's own rpc degradation instead of painting
   // terminal frames into a modal.
   it('ui.custom on a browser composition resolves undefined — the web projects no TUI', async () => {
+    await ctx.plugin(UserQuestionService)
+    registerFixtureAnswerer(ctx, () => ({ answers: [] }))
     await run('s-scene-open')
     const view = await get(`/pi2dsh/browser-state?session=${SESSION}`)
     const statuses = (view.surfaces as Json[])[0]?.statuses as Json

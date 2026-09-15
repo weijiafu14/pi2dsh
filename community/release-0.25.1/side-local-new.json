@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "pi2dshCommit": "6fd34ed109e00892f003d3d221cdc7ad5f3f7da4",
+  "dshCommit": "npm:@deepseek-ai/dsh@0.1.5-rc.2",
+  "results": {
+    "sideConversation": {
+      "status": "passed",
+      "engine": {
+        "version": "0.25.1",
+        "from": "local",
+        "spec": "file:<working-tree>",
+        "commit": "6fd34ed109e00892f003d3d221cdc7ad5f3f7da4",
+        "dirty": true
+      },
+      "install": "dsh-work-x suite (bundles pi-btw)",
+      "sideAnswerIsolated": true,
+      "screenshots": [
+        "00-side-conversation-work-x.png"
+      ]
+    }
+  }
+}

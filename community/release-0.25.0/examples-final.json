@@ -1,0 +1,368 @@
+{
+  "schemaVersion": 1,
+  "pi2dshCommit": "6fd34ed109e00892f003d3d221cdc7ad5f3f7da4",
+  "dshCommit": "npm:@deepseek-ai/dsh@0.1.5-rc.2",
+  "results": {
+    "alibabaTokenPlan": {
+      "status": "skipped",
+      "reason": "ALIBABA_TOKEN_PLAN_API_KEY not set"
+    },
+    "gatewayCompat": {
+      "engine": {
+        "version": "0.25.0",
+        "from": "registry",
+        "spec": "pi2dsh@0.25.0"
+      },
+      "status": "passed",
+      "requests": 2,
+      "roles": [
+        "system",
+        "user",
+        "user"
+      ],
+      "maxTokensField": "max_tokens",
+      "store": null,
+      "reasoningEffort": "high",
+      "bodyKeys": [
+        "max_tokens",
+        "messages",
+        "model",
+        "reasoning_effort",
+        "stream",
+        "stream_options",
+        "tools"
+      ],
+      "previews": [
+        "system: You are an AI agent powered by DeepSeek Harness. You are a ",
+        "user: Reply with exactly: gateway-compat-ok",
+        "user: Current runtime context. This snapshot supersedes earlier ru"
+      ]
+    },
+    "persistentMemory": {
+      "status": "passed",
+      "engine": {
+        "version": "0.25.0",
+        "from": "registry",
+        "spec": "pi2dsh@0.25.0"
+      },
+      "wroteVia": [
+        "memory_add"
+      ],
+      "recalledAcrossSessions": true,
+      "storeIsolatedToDshHome": true
+    },
+    "visionBridge": {
+      "status": "passed",
+      "engine": {
+        "version": "0.25.0",
+        "from": "registry",
+        "spec": "pi2dsh@0.25.0"
+      },
+      "image": "solid-green.png",
+      "answeredGreen": true,
+      "readThroughVision": true,
+      "visionRoute": "openai-compatible"
+    },
+    "backgroundTasks": {
+      "status": "passed",
+      "engine": {
+        "version": "0.25.0",
+        "from": "registry",
+        "spec": "pi2dsh@0.25.0"
+      },
+      "bgRunCalls": 1,
+      "bgLogsMidRunReads": 1
+    },
+    "workXMemoryTasks": {
+      "status": "passed",
+      "engine": {
+        "version": "0.25.0",
+        "from": "registry",
+        "spec": "pi2dsh@0.25.0"
+      },
+      "memoryTabShowsStore": true,
+      "pinRoundTrip": true,
+      "dockKilledTask": true,
+      "screenshots": [
+        "01-memory-settings.png",
+        "02-tasks-chip-live.png",
+        "03-tasks-killed.png"
+      ]
+    },
+    "sideConversation": {
+      "status": "passed",
+      "engine": {
+        "version": "0.25.0",
+        "from": "registry",
+        "spec": "pi2dsh@0.25.0"
+      },
+      "install": "dsh-work-x suite (bundles pi-btw)",
+      "sideAnswerIsolated": true,
+      "screenshots": [
+        "00-side-conversation-work-x.png"
+      ]
+    },
+    "memoryTasksWeb": {
+      "status": "passed",
+      "engine": {
+        "version": "0.25.0",
+        "from": "registry",
+        "spec": "pi2dsh@0.25.0"
+      },
+      "memoryRecalledAcrossWebSessions": true,
+      "bgMidRunReadOnWeb": true,
+      "storeIsolatedToDshHome": true,
+      "screenshots": [
+        "01-memory-save-web.png",
+        "02-memory-recall-web.png",
+        "03-background-tasks-web.png"
+      ]
+    },
+    "customGateways": {
+      "status": "passed",
+      "engine": {
+        "version": "0.25.0",
+        "from": "registry",
+        "spec": "pi2dsh@0.25.0"
+      },
+      "seenByPackage": {
+        "provider": "my-gateway",
+        "id": "deepseek-chat",
+        "api": "faux",
+        "contextWindow": 131072
+      },
+      "requestedThroughGateway": true
+    },
+    "visionBridgeWeb": {
+      "status": "passed",
+      "engine": {
+        "version": "0.25.0",
+        "from": "registry",
+        "spec": "pi2dsh@0.25.0"
+      },
+      "screenshots": [
+        "00-side-conversation-work-x.png",
+        "05-vision-bridge-web.png"
+      ],
+      "readThroughVision": true,
+      "visionRoute": "openai-compatible"
+    },
+    "presentationSurfaces": {
+      "status": "passed",
+      "engine": {
+        "version": "0.25.0",
+        "from": "registry",
+        "spec": "pi2dsh@0.25.0"
+      },
+      "install": "dsh-work-x suite + pi-powerline-footer",
+      "screenshots": [
+        "00-side-conversation-work-x.png",
+        "05-vision-bridge-web.png",
+        "06-presentation-surfaces.png"
+      ]
+    },
+    "subscriptionLogin": {
+      "status": "passed",
+      "engine": {
+        "version": "0.25.0",
+        "from": "registry",
+        "spec": "pi2dsh@0.25.0"
+      },
+      "accountBacked": {
+        "provider": "openai-codex",
+        "loginDialog": true,
+        "modelPicker": true,
+        "screenshots": [
+          "00-side-conversation-work-x.png",
+          "05-vision-bridge-web.png",
+          "06-presentation-surfaces.png",
+          "10-login-dialog.png",
+          "11-model-picker-after-login.png"
+        ]
+      }
+    },
+    "tuiMcp": {
+      "status": "passed",
+      "engine": {
+        "version": "0.25.0",
+        "from": "registry",
+        "spec": "pi2dsh@0.25.0"
+      },
+      "profile": "dsh-tui",
+      "piPackage": "pi-mcp-adapter",
+      "piPackageVersion": "2.34.0",
+      "command": "/pi-mcp",
+      "nativeCommandPreserved": "/mcp",
+      "mcpServer": "@modelcontextprotocol/server-everything",
+      "transports": [
+        "stdio",
+        "streamable-http",
+        "sse"
+      ],
+      "capabilities": [
+        "manager",
+        "discovery",
+        "proxy",
+        "direct-tools",
+        "mcpScript",
+        "resources",
+        "prompts",
+        "images",
+        "structured-content",
+        "mcp-app-ui",
+        "approval",
+        "elicitation",
+        "sampling",
+        "cancellation",
+        "reconnect",
+        "session-restart"
+      ]
+    },
+    "codexImageGen": {
+      "schemaVersion": 1,
+      "status": "passed",
+      "engine": {
+        "name": "pi2dsh",
+        "version": "0.25.0",
+        "spec": "pi2dsh@0.25.0"
+      },
+      "plugin": {
+        "name": "@crazygit/pi-codex-image-gen",
+        "version": "0.2.2",
+        "spec": "@crazygit/pi-codex-image-gen@0.2.2"
+      },
+      "model": {
+        "provider": "openai-codex",
+        "id": "gpt-5.6-sol",
+        "auth": "oauth"
+      },
+      "generation": {
+        "surface": "headless",
+        "tool": "codex_generate_image",
+        "processShutdown": "terminated-after-durable-turn",
+        "image": {
+          "sha256": "de38002c719d51311f0a94fc5c7b65f27fccb102238ea2dfd55d968bd5f94c84",
+          "bytes": 871722,
+          "width": 1254,
+          "height": 1254
+        }
+      },
+      "edit": {
+        "surface": "web",
+        "tool": "codex_generate_image",
+        "approval": "DSH userQuestions -> Yes",
+        "referenceCount": 1,
+        "image": {
+          "sha256": "abfb496164e74997b1fdd3e8b74612ab995f78ab6ec1c05dd9c897d5a076d75c",
+          "bytes": 906033,
+          "width": 1254,
+          "height": 1254
+        }
+      }
+    },
+    "dshX": {
+      "status": "passed",
+      "engine": {
+        "version": "0.25.0",
+        "from": "registry",
+        "spec": "pi2dsh@0.25.0"
+      },
+      "suite": [
+        "pi-mcp-adapter",
+        "@tintinweb/pi-subagents",
+        "pi-btw",
+        "@crazygit/pi-codex-image-gen",
+        "pi-hermes-memory",
+        "pi-background-tasks"
+      ],
+      "sideChat": "answers in-window; inject + --save verified in the main session log",
+      "commands": {
+        "pi-mcp-adapter": "mcp",
+        "@tintinweb/pi-subagents": "agents",
+        "pi-btw": "btw"
+      }
+    },
+    "subagents": {
+      "status": "passed",
+      "engine": "0.25.0",
+      "cli": "0.1.5-rc.2",
+      "scenarios": {
+        "steer": "passed",
+        "failureReport": "passed",
+        "resume": "passed",
+        "resumeArchive": "passed",
+        "stop": "passed",
+        "modelFollow": "passed",
+        "explicitModelThinking": "passed",
+        "childExtensions": "passed"
+      }
+    },
+    "codeNavigation": {
+      "status": "passed",
+      "engine": {
+        "version": "0.25.0",
+        "from": "registry",
+        "spec": "pi2dsh@0.25.0"
+      },
+      "packages": {
+        "@ff-labs/pi-fff": "0.10.6",
+        "pi-lens": "4.1.6"
+      },
+      "search": "ffgrep -> notes/spec.md",
+      "diagnostics": "LSP diagnostic tool -> TS2322 on src/ledger.ts"
+    },
+    "codeNavigationWeb": {
+      "status": "passed",
+      "engine": {
+        "version": "0.25.0",
+        "from": "registry",
+        "spec": "pi2dsh@0.25.0"
+      },
+      "packages": {
+        "@ff-labs/pi-fff": "0.10.6",
+        "pi-lens": "4.1.6"
+      },
+      "screenshots": [
+        "06-code-navigation-web.png"
+      ],
+      "search": "ffgrep -> notes/spec.md",
+      "diagnostics": "LSP diagnostic tool -> TS2322 on src/ledger.ts"
+    },
+    "mcpAtScale": {
+      "status": "passed",
+      "engine": {
+        "version": "0.25.0",
+        "from": "registry",
+        "spec": "pi2dsh@0.25.0"
+      },
+      "packages": [
+        "pi-mcp-adapter"
+      ],
+      "server": "many-tools (official MCP SDK, 51 tools, stdio)",
+      "discovery": "mcp proxy -> tool_037 -> LAUNCH-MARKER-7741-ZEBRA",
+      "timeout": "mcpScript timeoutMs 5000 on ~120s slow_task; turn ended in 20s; tool_001 answered after"
+    },
+    "mcpAtScaleWeb": {
+      "status": "passed",
+      "engine": {
+        "version": "0.25.0",
+        "from": "registry",
+        "spec": "pi2dsh@0.25.0"
+      },
+      "packages": [
+        "pi-mcp-adapter"
+      ],
+      "screenshots": [
+        "00-side-conversation-work-x.png",
+        "05-vision-bridge-web.png",
+        "06-code-navigation-web.png",
+        "06-presentation-surfaces.png",
+        "10-login-dialog.png",
+        "11-model-picker-after-login.png",
+        "12-mcp-at-scale-web.png"
+      ],
+      "discovery": "mcp proxy -> tool_037 -> LAUNCH-MARKER-7741-ZEBRA"
+    }
+  },
+  "evidenceMethod": "Full published-package run plus separately retained targeted rechecks after verifier/example corrections. Original failures remain in examples-initial.json. Engine and suite artifacts were not changed or republished."
+}

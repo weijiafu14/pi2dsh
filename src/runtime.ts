@@ -969,6 +969,10 @@ function contextFor(
           options as PiCustomOptions | undefined,
         )
       }
+      // A declared browser product surface owns presentation (side threads,
+      // MCP pages, etc.). Keep its established RPC degradation; native
+      // question dialogs alone must not turn that into a command failure.
+      if (state.shared.browserSurfacesRouted === true) return undefined
       if (humanAnswererAvailable(userQuestions, agent, state.shared)) {
         const gap = {
           capability: 'ui.custom',

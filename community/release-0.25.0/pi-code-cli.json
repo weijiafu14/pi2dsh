@@ -1,0 +1,85 @@
+{
+  "settingsEnv": {
+    "pass": true,
+    "codeword": "ENVPROBE-6396"
+  },
+  "preToolUseHook": {
+    "pass": true,
+    "marker": "/private/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-picode-l3xj3c/hook-fired-1872"
+  },
+  "claudeMdImportCarrier": [
+    "request/header.system",
+    "request/header.system"
+  ],
+  "claudeMdImport": {
+    "pass": true,
+    "codeword": "IMPORTPROBE-2010"
+  },
+  "claudeSkillsCarrier": [
+    "{\"kind\":\"skill-catalog\",\"form\":\"catalog\",\"entries\":[{\"name\":\"demo-skill\",\"description\":\"A probe skill that explains the ",
+    "{\"kind\":\"skill-catalog\",\"form\":\"catalog\",\"entries\":[{\"name\":\"demo-skill\",\"description\":\"A probe skill that explains the ",
+    "{\"kind\":\"skill-catalog\",\"form\":\"catalog\",\"entries\":[{\"name\":\"demo-skill\",\"description\":\"A probe skill that explains the "
+  ],
+  "claudeSkillsDiscovered": {
+    "pass": true
+  },
+  "outputStyle": {
+    "pass": true,
+    "codeword": "STYLEPROBE-5113"
+  },
+  "rulesUnscoped": {
+    "pass": true,
+    "codeword": "RULEPROBE-8332"
+  },
+  "rulesScopedAttach": {
+    "pass": true,
+    "codeword": "SCOPEDRULE-6471"
+  },
+  "mcpJson": {
+    "pass": true,
+    "codeword": "MCPPROBE-7823"
+  },
+  "commandsViaTool": {
+    "pass": true
+  },
+  "taskSubagent": {
+    "pass": false,
+    "expected": "gap: pi-code spawns the Pi CLI for subagents",
+    "observed": [
+      "[{\"type\":\"tool-result\",\"toolCallId\":\"call_00_at35ld637amHsJnkFn2N1377\",\"content\":[{\"type\":\"text\",\"text\":\"Invalid parameters. Provide exactly one mode.\\nAvailable agents: Explore (builtin), general-purpose (builtin), Plan (builtin), echoer (project)\"}],\"isError\":false}]",
+      "[{\"type\":\"tool-result\",\"toolCallId\":\"call_00_iZQzzeDYqMHCzuh97Lkl1026\",\"content\":[{\"type\":\"text\",\"text\":\"Agent failed: error: --profile <name> is required\\n\"}],\"isError\":false}]",
+      "[{\"type\":\"tool-result\",\"toolCallId\":\"call_00_C6d78bLb8NIA8prebqtI0727\",\"content\":[{\"type\":\"text\",\"text\":\"Agent failed: error: --profile <name> is required\\n\"}],\"isError\":false}]",
+      "[{\"type\":\"tool-result\",\"toolCallId\":\"call_00_p5P8i4TunYksKizj40KG1467\",\"content\":[{\"type\":\"text\",\"text\":\"Agent failed: error: --profile <name> is required\\n\"}],\"isError\":false}]",
+      "[{\"type\":\"tool-result\",\"toolCallId\":\"call_00_DTJwYsdViUWhXIsudYCb5069\",\"content\":[{\"type\":\"text\",\"text\":\"Agent failed: error: --profile <name> is required\\n\"}],\"isError\":false}]"
+    ]
+  },
+  "loaderLines": [
+    "[pi2dsh] loaded pi2dsh-builtins: 0 tools, 1 commands, 0 skill roots",
+    "[pi2dsh engine] preparing 1 Pi package(s): pi-code",
+    "[pi2dsh] Pi flag --add-dir uses its default only; DSH CLI registration is unsupported",
+    "[pi2dsh] Pi flag --plan uses its default only; DSH CLI registration is unsupported",
+    "[pi2dsh] tool question: $.properties.options.minItems: constraint is not enforced by DSH and was dropped",
+    "[pi2dsh] tool question: $.properties.options.maxItems: constraint is not enforced by DSH and was dropped",
+    "[pi2dsh] tool question: $.properties.questions.minItems: constraint is not enforced by DSH and was dropped",
+    "[pi2dsh] tool question: $.properties.questions.maxItems: constraint is not enforced by DSH and was dropped",
+    "[pi2dsh] tool question: $.properties.questions.items.properties.options.minItems: constraint is not enforced by DSH and was dropped",
+    "[pi2dsh] tool question: $.properties.questions.items.properties.options.maxItems: constraint is not enforced by DSH and was dropped",
+    "[pi2dsh] tool subagent: $.properties.agentScope.~optional: constraint is not enforced by DSH and was dropped",
+    "[pi2dsh] loaded pi-code: 7 tools, 12 commands, 0 skill roots (host anchor)",
+    "[pi2dsh] Pi flag --add-dir uses its default only; DSH CLI registration is unsupported",
+    "[pi2dsh] Pi flag --plan uses its default only; DSH CLI registration is unsupported",
+    "[pi2dsh] tool question: $.properties.options.minItems: constraint is not enforced by DSH and was dropped",
+    "[pi2dsh] tool question: $.properties.options.maxItems: constraint is not enforced by DSH and was dropped",
+    "[pi2dsh] tool question: $.properties.questions.minItems: constraint is not enforced by DSH and was dropped",
+    "[pi2dsh] tool question: $.properties.questions.maxItems: constraint is not enforced by DSH and was dropped",
+    "[pi2dsh] tool question: $.properties.questions.items.properties.options.minItems: constraint is not enforced by DSH and was dropped",
+    "[pi2dsh] tool question: $.properties.questions.items.properties.options.maxItems: constraint is not enforced by DSH and was dropped",
+    "[pi2dsh] tool subagent: $.properties.agentScope.~optional: constraint is not enforced by DSH and was dropped",
+    "[pi2dsh] Rules loaded: global no, project 2",
+    "[pi2dsh] MCP: 1 tools from 1 servers",
+    "[pi2dsh] Output style: pirate",
+    "[pi2dsh] pi-code: resources_discover mounted 1 skill root(s) as pi2dsh-pi-code-discovered-1",
+    "[pi2dsh] loaded pi-code: 9 tools, 13 commands, 0 skill roots"
+  ],
+  "scratch": "/private/var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-picode-l3xj3c"
+}

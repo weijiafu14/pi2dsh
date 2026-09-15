@@ -190,6 +190,9 @@ export class BrowserSurfaces {
       // Showing them would make the panel a copy of the main thread.
       messages: thread.session.messages
         .filter(message => !thread.session.isCarriedContext(message as UnknownRecord))
+        // Host instructions and other non-presentational custom messages
+        // remain model context, but their Pi display flag forbids UI rows.
+        .filter(message => (message as UnknownRecord).display !== false)
         .map(message => ({ role: String((message as UnknownRecord).role ?? ''), text: messageText(message as UnknownRecord) }))
         // The bridge also re-materializes the seed as ONE durable carrier
         // message before the first prompt, so it is a real entry the WeakSet

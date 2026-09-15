@@ -1,0 +1,311 @@
+{
+  "schemaVersion": 1,
+  "pi2dshCommit": "6fd34ed109e00892f003d3d221cdc7ad5f3f7da4",
+  "dshCommit": "npm:@deepseek-ai/dsh@0.1.5-rc.2",
+  "results": {
+    "alibabaTokenPlan": {
+      "status": "skipped",
+      "reason": "ALIBABA_TOKEN_PLAN_API_KEY not set"
+    },
+    "gatewayCompat": {
+      "engine": {
+        "version": "0.25.0",
+        "from": "registry",
+        "spec": "pi2dsh@0.25.0"
+      },
+      "status": "passed",
+      "requests": 2,
+      "roles": [
+        "system",
+        "user",
+        "user"
+      ],
+      "maxTokensField": "max_tokens",
+      "store": null,
+      "reasoningEffort": "high",
+      "bodyKeys": [
+        "max_tokens",
+        "messages",
+        "model",
+        "reasoning_effort",
+        "stream",
+        "stream_options",
+        "tools"
+      ],
+      "previews": [
+        "system: You are an AI agent powered by DeepSeek Harness. You are a ",
+        "user: Reply with exactly: gateway-compat-ok",
+        "user: Current runtime context. This snapshot supersedes earlier ru"
+      ]
+    },
+    "persistentMemory": {
+      "status": "passed",
+      "engine": {
+        "version": "0.25.0",
+        "from": "registry",
+        "spec": "pi2dsh@0.25.0"
+      },
+      "wroteVia": [
+        "memory_add"
+      ],
+      "recalledAcrossSessions": true,
+      "storeIsolatedToDshHome": true
+    },
+    "visionBridge": {
+      "status": "passed",
+      "engine": {
+        "version": "0.25.0",
+        "from": "registry",
+        "spec": "pi2dsh@0.25.0"
+      },
+      "image": "solid-green.png",
+      "answeredGreen": true,
+      "readThroughVision": true,
+      "visionRoute": "openai-compatible"
+    },
+    "backgroundTasks": {
+      "status": "passed",
+      "engine": {
+        "version": "0.25.0",
+        "from": "registry",
+        "spec": "pi2dsh@0.25.0"
+      },
+      "bgRunCalls": 1,
+      "bgLogsMidRunReads": 1
+    },
+    "workXMemoryTasks": {
+      "status": "passed",
+      "engine": {
+        "version": "0.25.0",
+        "from": "registry",
+        "spec": "pi2dsh@0.25.0"
+      },
+      "memoryTabShowsStore": true,
+      "pinRoundTrip": true,
+      "dockKilledTask": true,
+      "screenshots": [
+        "01-memory-settings.png",
+        "02-tasks-chip-live.png",
+        "03-tasks-killed.png"
+      ]
+    },
+    "sideConversation": {
+      "status": "passed",
+      "engine": {
+        "version": "0.25.0",
+        "from": "registry",
+        "spec": "pi2dsh@0.25.0"
+      },
+      "install": "dsh-work-x suite (bundles pi-btw)",
+      "sideAnswerIsolated": true,
+      "screenshots": [
+        "00-side-conversation-work-x.png"
+      ]
+    },
+    "memoryTasksWeb": {
+      "status": "passed",
+      "engine": {
+        "version": "0.25.0",
+        "from": "registry",
+        "spec": "pi2dsh@0.25.0"
+      },
+      "memoryRecalledAcrossWebSessions": true,
+      "bgMidRunReadOnWeb": true,
+      "storeIsolatedToDshHome": true,
+      "screenshots": [
+        "01-memory-save-web.png",
+        "02-memory-recall-web.png",
+        "03-background-tasks-web.png"
+      ]
+    },
+    "customGateways": {
+      "status": "passed",
+      "engine": {
+        "version": "0.25.0",
+        "from": "registry",
+        "spec": "pi2dsh@0.25.0"
+      },
+      "seenByPackage": {
+        "provider": "my-gateway",
+        "id": "deepseek-chat",
+        "api": "faux",
+        "contextWindow": 131072
+      },
+      "requestedThroughGateway": true
+    },
+    "visionBridgeWeb": {
+      "status": "passed",
+      "engine": {
+        "version": "0.25.0",
+        "from": "registry",
+        "spec": "pi2dsh@0.25.0"
+      },
+      "screenshots": [
+        "00-side-conversation-work-x.png",
+        "05-vision-bridge-web.png"
+      ],
+      "readThroughVision": true,
+      "visionRoute": "openai-compatible"
+    },
+    "presentationSurfaces": {
+      "status": "passed",
+      "engine": {
+        "version": "0.25.0",
+        "from": "registry",
+        "spec": "pi2dsh@0.25.0"
+      },
+      "install": "dsh-work-x suite + pi-powerline-footer",
+      "screenshots": [
+        "00-side-conversation-work-x.png",
+        "05-vision-bridge-web.png",
+        "06-presentation-surfaces.png"
+      ]
+    },
+    "subscriptionLogin": {
+      "status": "passed",
+      "engine": {
+        "version": "0.25.0",
+        "from": "registry",
+        "spec": "pi2dsh@0.25.0"
+      },
+      "accountBacked": {
+        "provider": "openai-codex",
+        "loginDialog": true,
+        "modelPicker": true,
+        "screenshots": [
+          "00-side-conversation-work-x.png",
+          "05-vision-bridge-web.png",
+          "06-presentation-surfaces.png",
+          "10-login-dialog.png",
+          "11-model-picker-after-login.png"
+        ]
+      }
+    },
+    "tuiMcp": {
+      "status": "failed",
+      "error": "Command failed: node <home>/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/scripts/verify-tui-mcp-tool-e2e.mjs\n[pi2dsh] Pi command /login registered as /pi-login because the active terminal reserves /login for its native command (host commands win on collisions)\n[pi2dsh] Pi flag --mcp-config uses its default only; DSH CLI registration is unsupported\n[pi2dsh] Pi command /mcp registered as /pi-mcp because the active terminal reserves /mcp for its native command (host commands win on collisions)\n[pi2dsh] tool mcpScript: $.properties.timeoutMs.minimum: constraint is not enforced by DSH and was dropped\n[pi2dsh] tool mcp: $.properties.args.anyOf: converted to DSH exact-one oneOf semantics\n[pi2dsh] tool mcp: $.properties.limit.minimum: constraint is not enforced by DSH and was dropped\n[pi2dsh] tool mcp: $.properties.offset.minimum: constraint is not enforced by DSH and was dropped\n[pi2dsh] Pi command /mcp__legacySse__simple-prompt registered as /mcp__legacysse__simple-prompt to satisfy DSH command naming\n[pi2dsh] Pi command /mcp__legacySse__args-prompt registered as /mcp__legacysse__args-prompt to satisfy DSH command naming\n[pi2dsh] Pi command /mcp__legacySse__completable-prompt registered as /mcp__legacysse__completable-prompt to satisfy DSH command naming\n[pi2dsh] Pi command /mcp__legacySse__resource-prompt registered as /mcp__legacysse__resource-prompt to satisfy DSH command naming\nfile://<home>/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/scripts/verify-tui-mcp-tool-e2e.mjs:53\n  if (!value) throw new Error(message)\n                    ^\n\nError: MCP App host did not publish its scoped UI resource token\n    at invariant (file://<home>/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/scripts/verify-tui-mcp-tool-e2e.mjs:53:21)\n    at file://<home>/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/scripts/verify-tui-mcp-tool-e2e.mjs:449:3\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n\nNode.js v22.22.0\n"
+    },
+    "codexImageGen": {
+      "schemaVersion": 1,
+      "status": "passed",
+      "engine": {
+        "name": "pi2dsh",
+        "version": "0.25.0",
+        "spec": "pi2dsh@0.25.0"
+      },
+      "plugin": {
+        "name": "@crazygit/pi-codex-image-gen",
+        "version": "0.2.2",
+        "spec": "@crazygit/pi-codex-image-gen@0.2.2"
+      },
+      "model": {
+        "provider": "openai-codex",
+        "id": "gpt-5.6-sol",
+        "auth": "oauth"
+      },
+      "generation": {
+        "surface": "headless",
+        "tool": "codex_generate_image",
+        "processShutdown": "terminated-after-durable-turn",
+        "image": {
+          "sha256": "de38002c719d51311f0a94fc5c7b65f27fccb102238ea2dfd55d968bd5f94c84",
+          "bytes": 871722,
+          "width": 1254,
+          "height": 1254
+        }
+      },
+      "edit": {
+        "surface": "web",
+        "tool": "codex_generate_image",
+        "approval": "DSH userQuestions -> Yes",
+        "referenceCount": 1,
+        "image": {
+          "sha256": "abfb496164e74997b1fdd3e8b74612ab995f78ab6ec1c05dd9c897d5a076d75c",
+          "bytes": 906033,
+          "width": 1254,
+          "height": 1254
+        }
+      }
+    },
+    "dshX": {
+      "status": "passed",
+      "engine": {
+        "version": "0.25.0",
+        "from": "registry",
+        "spec": "pi2dsh@0.25.0"
+      },
+      "suite": [
+        "pi-mcp-adapter",
+        "@tintinweb/pi-subagents",
+        "pi-btw",
+        "@crazygit/pi-codex-image-gen",
+        "pi-hermes-memory",
+        "pi-background-tasks"
+      ],
+      "sideChat": "answers in-window; inject + --save verified in the main session log",
+      "commands": {
+        "pi-mcp-adapter": "mcp",
+        "@tintinweb/pi-subagents": "agents",
+        "pi-btw": "btw"
+      }
+    },
+    "subagents": {
+      "status": "passed",
+      "engine": "0.25.0",
+      "cli": "0.1.5-rc.2",
+      "scenarios": {
+        "steer": "passed",
+        "failureReport": "passed",
+        "resume": "passed",
+        "resumeArchive": "passed",
+        "stop": "passed",
+        "modelFollow": "passed",
+        "explicitModelThinking": "passed",
+        "childExtensions": "passed"
+      }
+    },
+    "codeNavigation": {
+      "status": "failed",
+      "error": "no lsp_diagnostics tool result in the session log:\n[pi2dsh] loaded pi2dsh-builtins: 0 tools, 1 commands, 0 skill roots\n[pi2dsh engine] preparing 2 Pi package(s): @ff-labs/pi-fff, pi-lens\n[pi2dsh] loaded @ff-labs/pi-fff: 0 tools, 3 commands, 0 skill roots (host anchor)\n[pi2dsh] loaded pi-lens: 13 tools, 9 commands, 2 skill roots (host anchor)\n[pi2dsh] loaded @ff-labs/pi-fff: 2 tools, 3 commands, 0 skill roots\n[pi2dsh] pi-lens: resources_discover mounted 1 skill root(s) as pi2dsh-pi-lens-discovered-1\n[pi2dsh] loaded pi-lens: 13 tools, 9 commands, 2 skill roots\nBoth tasks are complete.\n\n**Task 1 — `FROSTBITE-7741`**\n\nFound via ffgrep in:\n\n- `note"
+    },
+    "codeNavigationWeb": {
+      "status": "failed",
+      "error": "no lsp_diagnostics tool result in the session log:\n[pi2dsh] loaded pi2dsh-builtins: 0 tools, 1 commands, 0 skill roots\n[pi2dsh engine] preparing 2 Pi package(s): @ff-labs/pi-fff, pi-lens\n[pi2dsh] Pi flag --fff-mode uses its default only; DSH CLI registration is unsupported\n[pi2dsh] Pi flag --fff-frecency-db uses its default only; DSH CLI registration is unsupported\n[pi2dsh] Pi flag --fff-history-db uses its default only; DSH CLI registration is unsupported\n[pi2dsh] Pi flag --fff-enable-root-scan uses its default only; DSH CLI registration is unsupported\n[pi2dsh] Pi flag --fff-enable-home-scan uses its default only; DSH CLI registration is unsu"
+    },
+    "mcpAtScale": {
+      "status": "passed",
+      "engine": {
+        "version": "0.25.0",
+        "from": "registry",
+        "spec": "pi2dsh@0.25.0"
+      },
+      "packages": [
+        "pi-mcp-adapter"
+      ],
+      "server": "many-tools (official MCP SDK, 51 tools, stdio)",
+      "discovery": "mcp proxy -> tool_037 -> LAUNCH-MARKER-7741-ZEBRA",
+      "timeout": "mcpScript timeoutMs 5000 on ~120s slow_task; turn ended in 20s; tool_001 answered after"
+    },
+    "mcpAtScaleWeb": {
+      "status": "passed",
+      "engine": {
+        "version": "0.25.0",
+        "from": "registry",
+        "spec": "pi2dsh@0.25.0"
+      },
+      "packages": [
+        "pi-mcp-adapter"
+      ],
+      "screenshots": [
+        "00-side-conversation-work-x.png",
+        "05-vision-bridge-web.png",
+        "06-code-navigation-web.png",
+        "06-presentation-surfaces.png",
+        "10-login-dialog.png",
+        "11-model-picker-after-login.png",
+        "12-mcp-at-scale-web.png"
+      ],
+      "discovery": "mcp proxy -> tool_037 -> LAUNCH-MARKER-7741-ZEBRA"
+    }
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "pi2dshCommit": "6fd34ed109e00892f003d3d221cdc7ad5f3f7da4",
+  "dshCommit": "npm:@deepseek-ai/dsh@0.1.5-rc.2",
+  "results": {
+    "codeNavigationWeb": {
+      "status": "passed",
+      "engine": {
+        "version": "0.25.0",
+        "from": "registry",
+        "spec": "pi2dsh@0.25.0"
+      },
+      "packages": {
+        "@ff-labs/pi-fff": "0.10.6",
+        "pi-lens": "4.1.6"
+      },
+      "screenshots": [
+        "06-code-navigation-web.png"
+      ],
+      "search": "ffgrep -> notes/spec.md",
+      "diagnostics": "LSP diagnostic tool -> TS2322 on src/ledger.ts"
+    }
+  }
+}

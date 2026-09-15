@@ -1668,7 +1668,7 @@ async function removeScratch(scratch, label) {
 // The README's own prompt, shared by both lanes verbatim.
 const CODE_NAV_PROMPT = 'Two tasks in this project: '
   + '1) Use the ffgrep tool to find which file mentions FROSTBITE-7741 and report the file path. '
-  + '2) Use the lsp_diagnostics tool on src/ledger.ts and report every error it returns. '
+  + '2) Use lens_diagnostics with source="lsp", scope="paths", paths=["src/ledger.ts"] and severity="error", and report every error it returns. '
   + 'Do not use bash or any other tool for these two tasks.'
 
 /**
@@ -1717,7 +1717,11 @@ async function prepareCodeNavigation(scratch, profile) {
   const sampleDir = join(scratch, 'sample-project')
   await execFile('cp', ['-R', join(projectRoot, 'examples/code-navigation/sample-project'), sampleDir])
   await execFile('npm', ['install', '--no-fund', '--no-audit'], { cwd: sampleDir, env, timeout: 300_000 })
-  return { home, env, sampleDir, installLog: `${installedEngine.stdout}${installedEngine.stderr}${installedNav.stdout}${installedNav.stderr}` }
+  const packageVersions = {}
+  for (const name of ['@ff-labs/pi-fff', 'pi-lens']) {
+    packageVersions[name] = JSON.parse(await readFile(join(home, `profiles/${profile}/node_modules`, name, 'package.json'), 'utf8')).version
+  }
+  return { home, env, sampleDir, packageVersions, installLog: `${installedEngine.stdout}${installedEngine.stderr}${installedNav.stdout}${installedNav.stderr}` }
 }
 
 /**
@@ -1754,12 +1758,15 @@ function assertCodeNavigation(records, transcript) {
   //    TS2322. The file association lives in the CALL's arguments (the
   //    result text is per-file and names no path); degraded syntax-only
   //    checking (no local typescript) reports zero type errors and fails.
-  const diagnostics = resultsFor('lsp_diagnostics')
-  assert(diagnostics.length > 0, `no lsp_diagnostics tool result in the session log:\n${transcript.slice(0, 600)}`)
+  const diagnostics = [...resultsFor('lsp_diagnostics'), ...resultsFor('lens_diagnostics').filter(({ call }) => {
+    const args = typeof call.data?.arguments === 'string' ? JSON.parse(call.data.arguments) : call.data?.arguments
+    return args?.source === 'lsp'
+  })]
+  assert(diagnostics.length > 0, `no LSP diagnostic tool result in the session log:\n${transcript.slice(0, 600)}`)
   const diagnosticHit = diagnostics.find(({ call, block }) => block.isError !== true
     && /ledger\.ts/u.test(JSON.stringify(call.data?.arguments ?? ''))
     && /2322|not assignable/iu.test(JSON.stringify(block.content)))
-  assert(diagnosticHit !== undefined, `lsp_diagnostics ran but never reported the planted type error for ledger.ts:\n${
+  assert(diagnosticHit !== undefined, `LSP diagnostics ran but never reported the planted type error for ledger.ts:\n${
     JSON.stringify(diagnostics.map(({ call, block }) => ({ arguments: call.data?.arguments, result: block.content }))).slice(0, 900)}`)
 }
 
@@ -1770,7 +1777,7 @@ async function runCodeNavigation() {
   }
   const scratch = await mkdtemp(join(tmpdir(), 'pi2dsh-ex-codenav-'))
   try {
-    const { home, env, sampleDir, installLog } = await prepareCodeNavigation(scratch, 'headless')
+    const { home, env, sampleDir, packageVersions, installLog } = await prepareCodeNavigation(scratch, 'headless')
 
     // The turn must run with the sample project as its working directory —
     // fffind/ffgrep and pi-lens search the session cwd, exactly as the README
@@ -1795,9 +1802,9 @@ async function runCodeNavigation() {
     results.codeNavigation = {
       status: 'passed',
       engine: await installedEngineVersion(home, 'headless'),
-      packages: ['@ff-labs/pi-fff', 'pi-lens'],
+      packages: packageVersions,
       search: 'ffgrep -> notes/spec.md',
-      diagnostics: 'lsp_diagnostics -> TS2322 on src/ledger.ts',
+      diagnostics: 'LSP diagnostic tool -> TS2322 on src/ledger.ts',
     }
   } finally {
     if (process.env.PI2DSH_KEEP_SCRATCH === '1') {
@@ -1825,7 +1832,7 @@ async function runCodeNavigationWeb() {
   const scratch = await mkdtemp(join(tmpdir(), 'pi2dsh-ex-codenav-web-'))
   let web
   try {
-    const { home, env, sampleDir, installLog } = await prepareCodeNavigation(scratch, 'web')
+    const { home, env, sampleDir, packageVersions, installLog } = await prepareCodeNavigation(scratch, 'web')
 
     const port = Number(process.env.CODENAV_PORT ?? 5190)
     web = spawnWeb(port, env)
@@ -1871,10 +1878,10 @@ async function runCodeNavigationWeb() {
     results.codeNavigationWeb = {
       status: 'passed',
       engine: await installedEngineVersion(home, 'web'),
-      packages: ['@ff-labs/pi-fff', 'pi-lens'],
+      packages: packageVersions,
       screenshots: captured.sort(),
       search: 'ffgrep -> notes/spec.md',
-      diagnostics: 'lsp_diagnostics -> TS2322 on src/ledger.ts',
+      diagnostics: 'LSP diagnostic tool -> TS2322 on src/ledger.ts',
     }
   } finally {
     web?.kill('SIGTERM')

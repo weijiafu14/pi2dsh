@@ -565,6 +565,12 @@ API 读取使用公开 `snapshotEvents()`（旧代回退 `events`），文件消
 | 文件上下文 | attachments.fileHostPath、fs.processPathFromHostPath、llm.fileHandleText | Pi 侧看宿主生成的文件定位文本；未改写的定位文本回译成原文件引用，保留 DSH 的存储、展示和访问判断 |
 | 工具图片呈现 | tool.call.toolview 的 owner 提供 loadImage | 使用宿主授权加载器取得图片，不释放宿主持有的 URL；旧宿主保留 session.attachment 路径。附件存储与访问控制继续由 DSH 持有 |
 
+浏览器产品通过既有 `browserPresentation` 配置声明自行承载呈现时，`ui.custom`
+沿用 Pi RPC 的 `undefined` 返回，避免把已有产品面完成的操作误报为终端组件错误。
+仅有原生问答、没有声明产品呈现的 Web 组合仍抛出可捕获的能力错误，供原包执行其
+非终端 fallback。侧聊投影遵守 Pi 消息的 `display: false`，隐藏宿主上下文而不删改
+模型输入或原生日志；显式可见的自定义消息仍保留。
+
 版本分支由公开能力与回调参数识别，不依赖包名特判或 DSH 内部对象。
 用户已明确排除跨版本旧数据迁移；本轮验证新建数据及同版本重启，不实现旧 seq 引用重映射。
 
