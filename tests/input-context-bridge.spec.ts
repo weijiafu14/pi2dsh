@@ -43,7 +43,8 @@ const PROBE_EXTENSION = [
   "      message: { customType: 'test-bridge', content: 'bridge analysis result', display: true },",
   "    }",
   "  })",
-  "  pi.on('context', async (event: any) => {",
+  "  pi.on('context', async (event: any, ctx: any) => {",
+  "    record.hasPending = ctx.hasPendingMessages()",
   "    record.contextShapes = event.messages.map((m: any) => ({ role: m.role, customType: m.customType }))",
   "    return {",
   "      messages: event.messages.map((m: any) => {",
@@ -149,6 +150,19 @@ describe('input/context bridge in the real DSH runtime', () => {
     ) as unknown as { kind: string, messages: Array<{ content: Array<{ type: string, text?: string }>, source: Record<string, unknown> }> }
     return { decision, assembly }
   }
+
+  it.each([
+    [{ nextStep: [], nextTurn: [{ pending: true }] }, true],
+    [{ nextStep: [{ pending: true }], nextTurn: [] }, true],
+    [{ nextStep: [], nextTurn: [], hasPending: true }, false],
+    [{ hasPending: true }, true],
+  ])('reads pending work from the public inbox lists with a legacy fallback (%j)', async (inbox, expected) => {
+    const { ctx, typedCtx, agent } = await mountedContext()
+    Object.assign(agent, { inbox })
+    const entering = createUserMessage({ content: [{ type: 'text', text: 'hello' }], source: { kind: 'user' } })
+    await driveStep(ctx, typedCtx as never, agent, [entering])
+    expect(((globalThis as Record<string, unknown>).__icb as { hasPending: boolean }).hasPending).toBe(expected)
+  })
 
   it('runs before_agent_start during the assembly with the real prompt, injects the custom message, and applies the context transform', async () => {
     const { ctx, typedCtx, agent } = await mountedContext()

@@ -1,0 +1,512 @@
+{
+  "name": "project-two-save",
+  "status": "passed",
+  "build": {
+    "engineVersion": "0.24.0",
+    "engineDependency": "file:/tmp/pi2dsh-hermes-20260910/pi2dsh-hermes-final.tgz",
+    "engineDistSha256": "d5057a874413c945ca28c38a83bb1512f7aaeb6c20b2b8ce0953b28a1ae874f6",
+    "memoryVersion": "0.9.8"
+  },
+  "nativeSession": {
+    "type": "session",
+    "version": 3,
+    "id": "session-d90ed996-385f-460d-8241-39c46ebda462",
+    "createdAt": 1789052243132,
+    "cwd": "/private/tmp/pi2dsh-hermes-final-20260910/second-project",
+    "isSeeded": false,
+    "delegationDepth": 0
+  },
+  "events": [
+    {
+      "type": "user/message",
+      "seq": 8,
+      "time": 1789052243220,
+      "data": {
+        "content": [
+          {
+            "type": "text",
+            "text": "Use memory_add target=project to save \"The project convention marker is PROJECTTWO69b723ed7f21.\" Do not use other tools."
+          }
+        ],
+        "source": {
+          "kind": "user"
+        },
+        "role": "user",
+        "id": "1af9d089-0a44-435a-8b48-d319ac6e7c0c"
+      },
+      "surfaceOp": "append"
+    },
+    {
+      "type": "user/message",
+      "seq": 9,
+      "time": 1789052243221,
+      "data": {
+        "content": [
+          {
+            "type": "text",
+            "text": "Current runtime context. This snapshot supersedes earlier runtime-context snapshots.\n\nCurrent DSH file policy: danger-full-access. The DSH file sandbox does not restrict file modifications by available operations.\n\nApproval prompts are disabled in this session: actions that require approval are rejected automatically — do not request sandbox escalation (do not set `sandbox_permissions`)."
+          }
+        ],
+        "source": {
+          "kind": "plugin",
+          "plugin": "@deepseek-ai/dsh-system-prompt",
+          "form": "snapshot",
+          "sections": [
+            {
+              "name": "sandbox:policy",
+              "text": "Current DSH file policy: danger-full-access. The DSH file sandbox does not restrict file modifications by available operations."
+            },
+            {
+              "name": "approval:policy",
+              "text": "Approval prompts are disabled in this session: actions that require approval are rejected automatically — do not request sandbox escalation (do not set `sandbox_permissions`)."
+            }
+          ]
+        },
+        "role": "user",
+        "id": "55b435bd-1b0c-4454-b450-073959f3136b"
+      },
+      "surfaceOp": "append"
+    },
+    {
+      "type": "assistant/message",
+      "seq": 15,
+      "time": 1789052244439,
+      "data": {
+        "turn": 1,
+        "step": 1,
+        "message": {
+          "role": "assistant",
+          "content": [
+            {
+              "type": "reasoning",
+              "text": "The user wants me to save a memory entry. Let me do that."
+            },
+            {
+              "type": "tool-call",
+              "id": "call_00_X9q4p4wb6H8gblDhicJn0211",
+              "name": "memory_add",
+              "arguments": "{\"target\": \"project\", \"content\": \"The project convention marker is PROJECTTWO69b723ed7f21.\"}"
+            }
+          ],
+          "source": {
+            "kind": "model",
+            "provider": "deepseek-official",
+            "model": "deepseek-flash"
+          },
+          "id": "b8810a88-d33c-4dc9-9274-8774b0eba256"
+        },
+        "usage": {
+          "inputTokens": 10683,
+          "outputTokens": 83,
+          "totalTokens": 11534,
+          "cacheReadTokens": 768,
+          "reasoningTokens": 15
+        },
+        "stream": [
+          {
+            "type": "chunk",
+            "time": 1789052244115,
+            "chunk": {
+              "type": "block-start",
+              "index": 0,
+              "blockType": "reasoning"
+            }
+          },
+          {
+            "type": "reasoning-chunks",
+            "time0": 1789052244116,
+            "index": 0,
+            "dt": [
+              63,
+              16,
+              0,
+              1,
+              0,
+              1,
+              41,
+              1,
+              18,
+              1,
+              0,
+              0,
+              17,
+              1
+            ],
+            "texts": [
+              "The",
+              " user",
+              " wants",
+              " me",
+              " to",
+              " save",
+              " a",
+              " memory",
+              " entry",
+              ".",
+              " Let",
+              " me",
+              " do",
+              " that",
+              "."
+            ]
+          },
+          {
+            "type": "chunk",
+            "time": 1789052244276,
+            "chunk": {
+              "type": "block-start",
+              "index": 1,
+              "blockType": "tool-call"
+            }
+          },
+          {
+            "type": "tool-call-chunks",
+            "time0": 1789052244277,
+            "index": 1,
+            "dt": [
+              10,
+              0,
+              0,
+              0,
+              1,
+              13,
+              0,
+              0,
+              28,
+              1,
+              0,
+              0,
+              0,
+              51,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              18,
+              2,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              31
+            ],
+            "id": "call_00_X9q4p4wb6H8gblDhicJn0211",
+            "name": "memory_add",
+            "args": [
+              "",
+              "{",
+              "\"",
+              "target",
+              "\"",
+              ": ",
+              "\"",
+              "project",
+              "\"",
+              ", ",
+              "\"",
+              "content",
+              "\"",
+              ": ",
+              "\"",
+              "The",
+              " project",
+              " convention",
+              " marker",
+              " is",
+              " PROJECT",
+              "T",
+              "WO",
+              "69",
+              "b",
+              "723",
+              "ed",
+              "7",
+              "f",
+              "21",
+              ".",
+              "\"",
+              "}"
+            ]
+          },
+          {
+            "type": "chunk",
+            "time": 1789052244436,
+            "chunk": {
+              "type": "block-end",
+              "index": 0,
+              "block": {
+                "type": "reasoning",
+                "text": "The user wants me to save a memory entry. Let me do that."
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789052244436,
+            "chunk": {
+              "type": "block-end",
+              "index": 1,
+              "block": {
+                "type": "tool-call",
+                "id": "call_00_X9q4p4wb6H8gblDhicJn0211",
+                "name": "memory_add",
+                "arguments": "{\"target\": \"project\", \"content\": \"The project convention marker is PROJECTTWO69b723ed7f21.\"}"
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789052244436,
+            "chunk": {
+              "type": "usage",
+              "usage": {
+                "inputTokens": 10683,
+                "outputTokens": 83,
+                "totalTokens": 11534,
+                "cacheReadTokens": 768,
+                "reasoningTokens": 15
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789052244436,
+            "chunk": {
+              "type": "finish",
+              "reason": {
+                "kind": "tool-calls"
+              }
+            }
+          }
+        ]
+      },
+      "surfaceOp": "append"
+    },
+    {
+      "type": "tool/call",
+      "seq": 16,
+      "time": 1789052244441,
+      "data": {
+        "turn": 1,
+        "step": 1,
+        "callId": "call_00_X9q4p4wb6H8gblDhicJn0211",
+        "name": "memory_add",
+        "arguments": "{\"target\": \"project\", \"content\": \"The project convention marker is PROJECTTWO69b723ed7f21.\"}"
+      }
+    },
+    {
+      "type": "tool/result",
+      "seq": 17,
+      "time": 1789052244471,
+      "data": {
+        "turn": 1,
+        "step": 1,
+        "message": {
+          "source": {
+            "kind": "tool",
+            "callId": "call_00_X9q4p4wb6H8gblDhicJn0211"
+          },
+          "content": [
+            {
+              "type": "tool-result",
+              "toolCallId": "call_00_X9q4p4wb6H8gblDhicJn0211",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "{\"success\":true,\"target\":\"project\",\"usage\":\"2% — 101/5000 chars\",\"entry_count\":1,\"message\":\"Entry added.\"}"
+                }
+              ],
+              "isError": false
+            }
+          ],
+          "role": "user",
+          "id": "b4cf29b6-e4bf-4ed0-9b80-11c3610fa086"
+        },
+        "meta": {
+          "success": true,
+          "target": "project",
+          "usage": "2% — 101/5000 chars",
+          "entry_count": 1,
+          "message": "Entry added."
+        }
+      },
+      "sourceEventSeqs": [
+        16
+      ],
+      "surfaceOp": "append"
+    },
+    {
+      "type": "assistant/message",
+      "seq": 21,
+      "time": 1789052245587,
+      "data": {
+        "turn": 1,
+        "step": 2,
+        "message": {
+          "role": "assistant",
+          "content": [
+            {
+              "type": "text",
+              "text": "Saved to project memory:\n\n**The project convention marker is PROJECTTWO69b723ed7f21.**\n\nMemory usage: 2% (101/5000 chars), 1 entry."
+            }
+          ],
+          "source": {
+            "kind": "model",
+            "provider": "deepseek-official",
+            "model": "deepseek-flash"
+          },
+          "id": "05b4f95d-a470-4740-88a4-08af5ed34de0"
+        },
+        "usage": {
+          "inputTokens": 7225,
+          "outputTokens": 40,
+          "totalTokens": 11617,
+          "cacheReadTokens": 4352,
+          "reasoningTokens": 0
+        },
+        "stream": [
+          {
+            "type": "chunk",
+            "time": 1789052245431,
+            "chunk": {
+              "type": "block-start",
+              "index": 0,
+              "blockType": "text"
+            }
+          },
+          {
+            "type": "text-chunks",
+            "time0": 1789052245432,
+            "index": 0,
+            "dt": [
+              15,
+              10,
+              16,
+              0,
+              1,
+              0,
+              0,
+              0,
+              15,
+              0,
+              0,
+              0,
+              0,
+              1,
+              15,
+              0,
+              0,
+              0,
+              1,
+              0,
+              23,
+              0,
+              0,
+              0,
+              18,
+              0,
+              0,
+              0,
+              1,
+              12,
+              2,
+              0,
+              0,
+              0,
+              0,
+              10,
+              0,
+              0
+            ],
+            "texts": [
+              "Saved",
+              " to",
+              " project",
+              " memory",
+              ":\n\n",
+              "**",
+              "The",
+              " project",
+              " convention",
+              " marker",
+              " is",
+              " PROJECT",
+              "T",
+              "WO",
+              "69",
+              "b",
+              "723",
+              "ed",
+              "7",
+              "f",
+              "21",
+              ".**\n\n",
+              "Memory",
+              " usage",
+              ":",
+              " ",
+              "2",
+              "%",
+              " (",
+              "101",
+              "/",
+              "500",
+              "0",
+              " chars",
+              "),",
+              " ",
+              "1",
+              " entry",
+              "."
+            ]
+          },
+          {
+            "type": "chunk",
+            "time": 1789052245582,
+            "chunk": {
+              "type": "block-end",
+              "index": 0,
+              "block": {
+                "type": "text",
+                "text": "Saved to project memory:\n\n**The project convention marker is PROJECTTWO69b723ed7f21.**\n\nMemory usage: 2% (101/5000 chars), 1 entry."
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789052245582,
+            "chunk": {
+              "type": "usage",
+              "usage": {
+                "inputTokens": 7225,
+                "outputTokens": 40,
+                "totalTokens": 11617,
+                "cacheReadTokens": 4352,
+                "reasoningTokens": 0
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789052245582,
+            "chunk": {
+              "type": "finish",
+              "reason": {
+                "kind": "stop"
+              }
+            }
+          }
+        ]
+      },
+      "surfaceOp": "append"
+    }
+  ],
+  "nativeChildren": []
+}

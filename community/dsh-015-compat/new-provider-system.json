@@ -1,0 +1,12 @@
+{
+  "status": "passed",
+  "providerSpec": "pi-provider-litellm@2.3.0",
+  "model": "deepseek-flash",
+  "cliSpec": "@deepseek-ai/dsh@0.1.5-rc.1",
+  "systemPreservedOnWire": true,
+  "realToolRoundTrip": true,
+  "requests": 3,
+  "transport": "unmodified npm Pi provider",
+  "upstream": "https://api.deepseek.com",
+  "optionalGatewayProducts": "not tested"
+}

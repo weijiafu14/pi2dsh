@@ -1,0 +1,78 @@
+[
+  {
+    "kind": "foreground",
+    "startedAt": 1789054331728,
+    "completed": true,
+    "cancelled": false,
+    "status": 200,
+    "model": "deepseek-flash",
+    "thinking": {
+      "type": "enabled"
+    },
+    "reasoningEffort": "high",
+    "completedAt": 1789054332650
+  },
+  {
+    "kind": "foreground",
+    "startedAt": 1789054331733,
+    "completed": true,
+    "cancelled": false,
+    "status": 200,
+    "model": "deepseek-flash",
+    "thinking": {
+      "type": "disabled"
+    },
+    "completedAt": 1789054332299
+  },
+  {
+    "kind": "foreground",
+    "startedAt": 1789054333243,
+    "completed": true,
+    "cancelled": false,
+    "status": 200,
+    "model": "deepseek-flash",
+    "thinking": {
+      "type": "enabled"
+    },
+    "reasoningEffort": "high",
+    "completedAt": 1789054335404
+  },
+  {
+    "kind": "foreground",
+    "startedAt": 1789054335566,
+    "completed": true,
+    "cancelled": false,
+    "status": 200,
+    "model": "deepseek-flash",
+    "thinking": {
+      "type": "enabled"
+    },
+    "reasoningEffort": "high",
+    "completedAt": 1789054336072
+  },
+  {
+    "kind": "maintenance",
+    "startedAt": 1789054336080,
+    "completed": true,
+    "cancelled": false,
+    "status": 400,
+    "model": "missing-model-970c3770dc77",
+    "thinking": {
+      "type": "disabled"
+    },
+    "completedAt": 1789054336176
+  },
+  {
+    "kind": "maintenance",
+    "startedAt": 1789054336180,
+    "completed": true,
+    "cancelled": false,
+    "status": 200,
+    "model": "deepseek-flash",
+    "thinking": {
+      "type": "disabled"
+    },
+    "responseText": "{\"operations\":[]}",
+    "completedAt": 1789054336986
+  }
+]

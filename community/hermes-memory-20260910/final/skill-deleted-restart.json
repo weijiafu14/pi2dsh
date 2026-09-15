@@ -1,0 +1,674 @@
+{
+  "name": "skill-deleted-restart",
+  "status": "passed",
+  "build": {
+    "engineVersion": "0.24.0",
+    "engineDependency": "file:/tmp/pi2dsh-hermes-20260910/pi2dsh-hermes-final.tgz",
+    "engineDistSha256": "d5057a874413c945ca28c38a83bb1512f7aaeb6c20b2b8ce0953b28a1ae874f6",
+    "memoryVersion": "0.9.8"
+  },
+  "nativeSession": {
+    "type": "session",
+    "version": 3,
+    "id": "session-e7037111-a02d-4f75-98b2-bc782d89f99e",
+    "createdAt": 1789052233908,
+    "cwd": "/private/tmp/pi2dsh-hermes-final-20260910/project",
+    "isSeeded": false,
+    "delegationDepth": 0
+  },
+  "events": [
+    {
+      "type": "user/message",
+      "seq": 8,
+      "time": 1789052233989,
+      "data": {
+        "content": [
+          {
+            "type": "text",
+            "text": "For an acceptance check call the native skill tool with name=full-skill-79abc730fa1b once. Report its absence. Do not create any skill or use file tools."
+          }
+        ],
+        "source": {
+          "kind": "user"
+        },
+        "role": "user",
+        "id": "f03d0f2e-fb26-42d6-b414-fcbbc6acdd54"
+      },
+      "surfaceOp": "append"
+    },
+    {
+      "type": "user/message",
+      "seq": 9,
+      "time": 1789052233989,
+      "data": {
+        "content": [
+          {
+            "type": "text",
+            "text": "Current runtime context. This snapshot supersedes earlier runtime-context snapshots.\n\nCurrent DSH file policy: danger-full-access. The DSH file sandbox does not restrict file modifications by available operations.\n\nApproval prompts are disabled in this session: actions that require approval are rejected automatically — do not request sandbox escalation (do not set `sandbox_permissions`)."
+          }
+        ],
+        "source": {
+          "kind": "plugin",
+          "plugin": "@deepseek-ai/dsh-system-prompt",
+          "form": "snapshot",
+          "sections": [
+            {
+              "name": "sandbox:policy",
+              "text": "Current DSH file policy: danger-full-access. The DSH file sandbox does not restrict file modifications by available operations."
+            },
+            {
+              "name": "approval:policy",
+              "text": "Approval prompts are disabled in this session: actions that require approval are rejected automatically — do not request sandbox escalation (do not set `sandbox_permissions`)."
+            }
+          ]
+        },
+        "role": "user",
+        "id": "86860ac4-5102-4c4c-9898-c82492e7b06a"
+      },
+      "surfaceOp": "append"
+    },
+    {
+      "type": "assistant/message",
+      "seq": 15,
+      "time": 1789052235032,
+      "data": {
+        "turn": 1,
+        "step": 1,
+        "message": {
+          "role": "assistant",
+          "content": [
+            {
+              "type": "reasoning",
+              "text": "The user wants me to call the native skill tool with name=full-skill-79abc730fa1b once. Report its absence. Don't create any skill or use file tools.\n\nLet me call the skill tool."
+            },
+            {
+              "type": "tool-call",
+              "id": "call_00_VIgTUMGkbUgPYBX1Cuu06844",
+              "name": "skill",
+              "arguments": "{\"name\": \"full-skill-79abc730fa1b\"}"
+            }
+          ],
+          "source": {
+            "kind": "model",
+            "provider": "deepseek-official",
+            "model": "deepseek-flash"
+          },
+          "id": "d551e893-9c4d-4552-8f33-64c88d37f7b0"
+        },
+        "usage": {
+          "inputTokens": 322,
+          "outputTokens": 92,
+          "totalTokens": 11550,
+          "cacheReadTokens": 11136,
+          "reasoningTokens": 46
+        },
+        "stream": [
+          {
+            "type": "chunk",
+            "time": 1789052234732,
+            "chunk": {
+              "type": "block-start",
+              "index": 0,
+              "blockType": "reasoning"
+            }
+          },
+          {
+            "type": "reasoning-chunks",
+            "time0": 1789052234733,
+            "index": 0,
+            "dt": [
+              46,
+              15,
+              12,
+              0,
+              0,
+              0,
+              1,
+              0,
+              15,
+              1,
+              0,
+              0,
+              16,
+              0,
+              0,
+              0,
+              1,
+              7,
+              0,
+              0,
+              0,
+              1,
+              0,
+              10,
+              0,
+              0,
+              19,
+              1,
+              0,
+              0,
+              0,
+              0,
+              10,
+              1,
+              0,
+              0,
+              0,
+              11,
+              3,
+              0,
+              1,
+              0,
+              8,
+              1,
+              0
+            ],
+            "texts": [
+              "The",
+              " user",
+              " wants",
+              " me",
+              " to",
+              " call",
+              " the",
+              " native",
+              " skill",
+              " tool",
+              " with",
+              " name",
+              "=",
+              "full",
+              "-s",
+              "kill",
+              "-",
+              "79",
+              "abc",
+              "730",
+              "fa",
+              "1",
+              "b",
+              " once",
+              ".",
+              " Report",
+              " its",
+              " absence",
+              ".",
+              " Don",
+              "'t",
+              " create",
+              " any",
+              " skill",
+              " or",
+              " use",
+              " file",
+              " tools",
+              ".\n\n",
+              "Let",
+              " me",
+              " call",
+              " the",
+              " skill",
+              " tool",
+              "."
+            ]
+          },
+          {
+            "type": "chunk",
+            "time": 1789052234945,
+            "chunk": {
+              "type": "block-start",
+              "index": 1,
+              "blockType": "tool-call"
+            }
+          },
+          {
+            "type": "tool-call-chunks",
+            "time0": 1789052234946,
+            "index": 1,
+            "dt": [
+              10,
+              0,
+              1,
+              0,
+              0,
+              8,
+              0,
+              1,
+              0,
+              17,
+              0,
+              0,
+              0,
+              1,
+              0,
+              9,
+              0,
+              18
+            ],
+            "id": "call_00_VIgTUMGkbUgPYBX1Cuu06844",
+            "name": "skill",
+            "args": [
+              "",
+              "{",
+              "\"",
+              "name",
+              "\"",
+              ": ",
+              "\"",
+              "full",
+              "-s",
+              "kill",
+              "-",
+              "79",
+              "abc",
+              "730",
+              "fa",
+              "1",
+              "b",
+              "\"",
+              "}"
+            ]
+          },
+          {
+            "type": "chunk",
+            "time": 1789052235029,
+            "chunk": {
+              "type": "block-end",
+              "index": 0,
+              "block": {
+                "type": "reasoning",
+                "text": "The user wants me to call the native skill tool with name=full-skill-79abc730fa1b once. Report its absence. Don't create any skill or use file tools.\n\nLet me call the skill tool."
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789052235029,
+            "chunk": {
+              "type": "block-end",
+              "index": 1,
+              "block": {
+                "type": "tool-call",
+                "id": "call_00_VIgTUMGkbUgPYBX1Cuu06844",
+                "name": "skill",
+                "arguments": "{\"name\": \"full-skill-79abc730fa1b\"}"
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789052235029,
+            "chunk": {
+              "type": "usage",
+              "usage": {
+                "inputTokens": 322,
+                "outputTokens": 92,
+                "totalTokens": 11550,
+                "cacheReadTokens": 11136,
+                "reasoningTokens": 46
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789052235029,
+            "chunk": {
+              "type": "finish",
+              "reason": {
+                "kind": "tool-calls"
+              }
+            }
+          }
+        ]
+      },
+      "surfaceOp": "append"
+    },
+    {
+      "type": "tool/call",
+      "seq": 16,
+      "time": 1789052235035,
+      "data": {
+        "turn": 1,
+        "step": 1,
+        "callId": "call_00_VIgTUMGkbUgPYBX1Cuu06844",
+        "name": "skill",
+        "arguments": "{\"name\": \"full-skill-79abc730fa1b\"}"
+      }
+    },
+    {
+      "type": "tool/result",
+      "seq": 17,
+      "time": 1789052235059,
+      "data": {
+        "turn": 1,
+        "step": 1,
+        "message": {
+          "source": {
+            "kind": "tool",
+            "callId": "call_00_VIgTUMGkbUgPYBX1Cuu06844"
+          },
+          "content": [
+            {
+              "type": "tool-result",
+              "toolCallId": "call_00_VIgTUMGkbUgPYBX1Cuu06844",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Error: skill \"full-skill-79abc730fa1b\" is unknown or no longer available"
+                }
+              ],
+              "isError": true
+            }
+          ],
+          "role": "user",
+          "id": "92071977-13eb-490f-9fb7-360df7f830fc"
+        }
+      },
+      "sourceEventSeqs": [
+        16
+      ],
+      "surfaceOp": "append"
+    },
+    {
+      "type": "assistant/message",
+      "seq": 21,
+      "time": 1789052236216,
+      "data": {
+        "turn": 1,
+        "step": 2,
+        "message": {
+          "role": "assistant",
+          "content": [
+            {
+              "type": "reasoning",
+              "text": "The skill is absent. Report. No file tools used, no skill created."
+            },
+            {
+              "type": "text",
+              "text": "The native skill tool call for `full-skill-79abc730fa1b` returned an error:\n\n```\nError: skill \"full-skill-79abc730fa1b\" is unknown or no longer available\n```\n\nSo the skill is absent — it is neither loaded nor registered under that name. I made no file-tool calls and created no skill."
+            }
+          ],
+          "source": {
+            "kind": "model",
+            "provider": "deepseek-official",
+            "model": "deepseek-flash"
+          },
+          "id": "8f7af45a-41a5-460d-a049-9623230cbf0e"
+        },
+        "usage": {
+          "inputTokens": 447,
+          "outputTokens": 91,
+          "totalTokens": 11674,
+          "cacheReadTokens": 11136,
+          "reasoningTokens": 16
+        },
+        "stream": [
+          {
+            "type": "chunk",
+            "time": 1789052235772,
+            "chunk": {
+              "type": "block-start",
+              "index": 0,
+              "blockType": "reasoning"
+            }
+          },
+          {
+            "type": "reasoning-chunks",
+            "time0": 1789052235772,
+            "index": 0,
+            "dt": [
+              69,
+              12,
+              0,
+              18,
+              0,
+              8,
+              1,
+              0,
+              9,
+              1,
+              16,
+              14,
+              1,
+              0,
+              0
+            ],
+            "texts": [
+              "The",
+              " skill",
+              " is",
+              " absent",
+              ".",
+              " Report",
+              ".",
+              " No",
+              " file",
+              " tools",
+              " used",
+              ",",
+              " no",
+              " skill",
+              " created",
+              "."
+            ]
+          },
+          {
+            "type": "chunk",
+            "time": 1789052235921,
+            "chunk": {
+              "type": "block-start",
+              "index": 1,
+              "blockType": "text"
+            }
+          },
+          {
+            "type": "text-chunks",
+            "time0": 1789052235921,
+            "index": 1,
+            "dt": [
+              14,
+              11,
+              0,
+              0,
+              0,
+              10,
+              1,
+              0,
+              0,
+              0,
+              0,
+              16,
+              0,
+              0,
+              0,
+              0,
+              0,
+              17,
+              1,
+              0,
+              52,
+              1,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              8,
+              0,
+              1,
+              0,
+              0,
+              14,
+              0,
+              0,
+              17,
+              0,
+              1,
+              57,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              8,
+              1,
+              0,
+              4,
+              0,
+              22,
+              1,
+              7,
+              0,
+              19
+            ],
+            "texts": [
+              "The",
+              " native",
+              " skill",
+              " tool",
+              " call",
+              " for",
+              " `",
+              "full",
+              "-s",
+              "kill",
+              "-",
+              "79",
+              "abc",
+              "730",
+              "fa",
+              "1",
+              "b",
+              "`",
+              " returned",
+              " an",
+              " error",
+              ":\n\n",
+              "```\n",
+              "Error",
+              ":",
+              " skill",
+              " \"",
+              "full",
+              "-s",
+              "kill",
+              "-",
+              "79",
+              "abc",
+              "730",
+              "fa",
+              "1",
+              "b",
+              "\"",
+              " is",
+              " unknown",
+              " or",
+              " no",
+              " longer",
+              " available",
+              "\n",
+              "```\n\n",
+              "So",
+              " the",
+              " skill",
+              " is",
+              " absent",
+              " —",
+              " it",
+              " is",
+              " neither",
+              " loaded",
+              " nor",
+              " registered",
+              " under",
+              " that",
+              " name",
+              ".",
+              " I",
+              " made",
+              " no",
+              " file",
+              "-t",
+              "ool",
+              " calls",
+              " and",
+              " created",
+              " no",
+              " skill",
+              "."
+            ]
+          },
+          {
+            "type": "chunk",
+            "time": 1789052236208,
+            "chunk": {
+              "type": "block-end",
+              "index": 0,
+              "block": {
+                "type": "reasoning",
+                "text": "The skill is absent. Report. No file tools used, no skill created."
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789052236208,
+            "chunk": {
+              "type": "block-end",
+              "index": 1,
+              "block": {
+                "type": "text",
+                "text": "The native skill tool call for `full-skill-79abc730fa1b` returned an error:\n\n```\nError: skill \"full-skill-79abc730fa1b\" is unknown or no longer available\n```\n\nSo the skill is absent — it is neither loaded nor registered under that name. I made no file-tool calls and created no skill."
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789052236208,
+            "chunk": {
+              "type": "usage",
+              "usage": {
+                "inputTokens": 447,
+                "outputTokens": 91,
+                "totalTokens": 11674,
+                "cacheReadTokens": 11136,
+                "reasoningTokens": 16
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789052236208,
+            "chunk": {
+              "type": "finish",
+              "reason": {
+                "kind": "stop"
+              }
+            }
+          }
+        ]
+      },
+      "surfaceOp": "append"
+    }
+  ],
+  "nativeChildren": []
+}

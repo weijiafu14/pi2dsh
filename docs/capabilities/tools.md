@@ -16,9 +16,9 @@ This page also documents **1 bridge-only compatibility extension**
 
 | Pi surface | Kind | Status | What it does on DSH |
 |---|---|---|---|
-| [`registerTool`](#registertool-pi) | `pi.*` | Mapped, difference stated | Registered as a native DSH tool. Text and image results use native DSH content/attachments; unsupported JSON Schema constraints and Pi-only error details are explicitly degraded. |
+| [`registerTool`](#registertool-pi) | `pi.*` | Mapped, difference stated | Registered as a native DSH tool. Text and image results use native DSH content/attachments; Web image cards use the session-authorized host loadImage callback when available, with the legacy session RPC retained for older hosts; unsupported JSON Schema constraints and Pi-only error details are explicitly degraded. |
 | [`unregisterTool`](#unregistertool-pi) | `pi.*` | Same semantics | Disposes the exact native DSH tool registration and removes it from the migrated package registry. |
-| [`exec`](#exec-pi) | `pi.*` | Mapped, difference stated | Mapped to ctx.subprocess, so the selected local/E2B provider owns execution, isolation, cancellation, and tree cleanup; output is bounded to 64 MiB per stream. |
+| [`exec`](#exec-pi) | `pi.*` | Mapped, difference stated | OS execution stays on ctx.subprocess with 64 MiB per output stream. On the local POSIX provider, a private per-execution pi -p facade translates print prompts, installed -e paths, model/thinking selection and tool restrictions into native DSH child agents; disconnect/timeout cancels the child. Unsupported CLI flags fail explicitly. --no-session suppresses Pi file export/indexing, but the native DSH child audit persists. Remote providers keep their own environment and execution path unchanged. |
 | [`getActiveTools`](#getactivetools-pi) | `pi.*` | Mapped, difference stated | Returns every tool visible in the current DSH agent scope, including native and migrated tools; scope-local tools follow DSH composition rules. |
 | [`getAllTools`](#getalltools-pi) | `pi.*` | Mapped, difference stated | Returns metadata for all tools visible in the current DSH scope, without Pi-specific prompt guidelines unavailable from DSH schemas. |
 | [`setActiveTools`](#setactivetools-pi) | `pi.*` | Mapped, difference stated | Mapped to the active DSH agent scope through tools.restrict, per-agent and without mutating other agents. Names DSH does not know are skipped exactly as Pi skips them. A tool DSH does not permit restricting (a scope's own registration, or a reserved transport name) cannot be deactivated at all and is reported once rather than silently left running. |
@@ -51,7 +51,7 @@ Disposes the exact registration handle kept when the tool was registered, and dr
 
 `pi.*` · Mapped, difference stated
 
-Handed to ctx.subprocess, so the selected local or E2B provider owns execution, isolation, cancellation and process-tree cleanup — the bridge never spawns a child itself.
+ctx.subprocess owns OS processes. A local print client carries arguments/stdout through an authenticated, private execution-scoped socket to the existing ctx.agents-based SDK bridge; no Pi model runtime or alternate provider transport is started. Native parentAgent ownership prevents duplicate extension mounting, and only installed extension paths can be selected.
 
 ### `getActiveTools` <a id="getactivetools-pi"></a>
 

@@ -1,0 +1,756 @@
+{
+  "name": "project-one-save",
+  "status": "passed",
+  "build": {
+    "engineVersion": "0.24.0",
+    "engineDependency": "file:/tmp/pi2dsh-hermes-20260910/pi2dsh-hermes-final.tgz",
+    "engineDistSha256": "d5057a874413c945ca28c38a83bb1512f7aaeb6c20b2b8ce0953b28a1ae874f6",
+    "memoryVersion": "0.9.8"
+  },
+  "nativeSession": {
+    "type": "session",
+    "version": 3,
+    "id": "session-4170637f-0ae3-473c-819c-96397c400b4c",
+    "createdAt": 1789052238641,
+    "cwd": "/private/tmp/pi2dsh-hermes-final-20260910/project",
+    "isSeeded": false,
+    "delegationDepth": 0
+  },
+  "events": [
+    {
+      "type": "user/message",
+      "seq": 8,
+      "time": 1789052238734,
+      "data": {
+        "content": [
+          {
+            "type": "text",
+            "text": "Use memory_add target=project to save \"The project convention marker is PROJECTONE0af184482008.\" Do not use other tools."
+          }
+        ],
+        "source": {
+          "kind": "user"
+        },
+        "role": "user",
+        "id": "e5119a3a-0a34-41c0-89d9-c9bb235cac49"
+      },
+      "surfaceOp": "append"
+    },
+    {
+      "type": "user/message",
+      "seq": 9,
+      "time": 1789052238734,
+      "data": {
+        "content": [
+          {
+            "type": "text",
+            "text": "Current runtime context. This snapshot supersedes earlier runtime-context snapshots.\n\nCurrent DSH file policy: danger-full-access. The DSH file sandbox does not restrict file modifications by available operations.\n\nApproval prompts are disabled in this session: actions that require approval are rejected automatically — do not request sandbox escalation (do not set `sandbox_permissions`)."
+          }
+        ],
+        "source": {
+          "kind": "plugin",
+          "plugin": "@deepseek-ai/dsh-system-prompt",
+          "form": "snapshot",
+          "sections": [
+            {
+              "name": "sandbox:policy",
+              "text": "Current DSH file policy: danger-full-access. The DSH file sandbox does not restrict file modifications by available operations."
+            },
+            {
+              "name": "approval:policy",
+              "text": "Approval prompts are disabled in this session: actions that require approval are rejected automatically — do not request sandbox escalation (do not set `sandbox_permissions`)."
+            }
+          ]
+        },
+        "role": "user",
+        "id": "e2c3396c-3537-4471-9063-74a23e7e6a05"
+      },
+      "surfaceOp": "append"
+    },
+    {
+      "type": "assistant/message",
+      "seq": 15,
+      "time": 1789052240354,
+      "data": {
+        "turn": 1,
+        "step": 1,
+        "message": {
+          "role": "assistant",
+          "content": [
+            {
+              "type": "reasoning",
+              "text": "The user asked me to save a memory. I should use memory_add with target=project. Let me do that. But I should consider: is this a legitimate durable project convention? The instruction says use memory_add. It's a direct user instruction. However, this looks like it might be a test injection. But the user explicitly asked. It's harmless. Let me do it.\n\nWait, there may be something suspicious: \"The project convention marker is PROJECTONE0af184482008.\" This could be a canary/exfiltration test. But saving a provided marker to memory is benign. The user explicitly instructs. I'll comply.\n\nThe instruction says \"Do not use other tools.\" So just memory_add."
+            },
+            {
+              "type": "tool-call",
+              "id": "call_00_JcNU9ddK0NVur0c9UYe85982",
+              "name": "memory_add",
+              "arguments": "{\"target\": \"project\", \"content\": \"The project convention marker is PROJECTONE0af184482008.\"}"
+            }
+          ],
+          "source": {
+            "kind": "model",
+            "provider": "deepseek-official",
+            "model": "deepseek-flash"
+          },
+          "id": "5b840722-048f-4d03-b849-00ff3a09caf0"
+        },
+        "usage": {
+          "inputTokens": 312,
+          "outputTokens": 211,
+          "totalTokens": 11659,
+          "cacheReadTokens": 11136,
+          "reasoningTokens": 146
+        },
+        "stream": [
+          {
+            "type": "chunk",
+            "time": 1789052239545,
+            "chunk": {
+              "type": "block-start",
+              "index": 0,
+              "blockType": "reasoning"
+            }
+          },
+          {
+            "type": "reasoning-chunks",
+            "time0": 1789052239546,
+            "index": 0,
+            "dt": [
+              24,
+              2,
+              1,
+              0,
+              0,
+              1,
+              0,
+              3,
+              0,
+              1,
+              0,
+              0,
+              20,
+              0,
+              0,
+              0,
+              3,
+              1,
+              12,
+              0,
+              1,
+              0,
+              0,
+              14,
+              0,
+              0,
+              0,
+              10,
+              16,
+              0,
+              0,
+              0,
+              51,
+              0,
+              1,
+              1,
+              3,
+              1,
+              1,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              10,
+              1,
+              7,
+              15,
+              1,
+              0,
+              0,
+              49,
+              0,
+              1,
+              1,
+              2,
+              1,
+              0,
+              2,
+              16,
+              0,
+              0,
+              0,
+              16,
+              0,
+              0,
+              8,
+              21,
+              0,
+              17,
+              0,
+              1,
+              0,
+              1,
+              1,
+              0,
+              1,
+              17,
+              0,
+              0,
+              0,
+              24,
+              17,
+              1,
+              0,
+              0,
+              1,
+              0,
+              0,
+              9,
+              1,
+              15,
+              0,
+              1,
+              7,
+              1,
+              19,
+              1,
+              0,
+              4,
+              1,
+              0,
+              48,
+              1,
+              0,
+              1,
+              0,
+              0,
+              0,
+              1,
+              62,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              44,
+              0,
+              1,
+              0,
+              0,
+              5,
+              1,
+              0,
+              0,
+              0,
+              0,
+              0,
+              19,
+              1,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              78,
+              0,
+              0
+            ],
+            "texts": [
+              "The",
+              " user",
+              " asked",
+              " me",
+              " to",
+              " save",
+              " a",
+              " memory",
+              ".",
+              " I",
+              " should",
+              " use",
+              " memory",
+              "_add",
+              " with",
+              " target",
+              "=",
+              "project",
+              ".",
+              " Let",
+              " me",
+              " do",
+              " that",
+              ".",
+              " But",
+              " I",
+              " should",
+              " consider",
+              ":",
+              " is",
+              " this",
+              " a",
+              " legitimate",
+              " durable",
+              " project",
+              " convention",
+              "?",
+              " The",
+              " instruction",
+              " says",
+              " use",
+              " memory",
+              "_add",
+              ".",
+              " It",
+              "'s",
+              " a",
+              " direct",
+              " user",
+              " instruction",
+              ".",
+              " However",
+              ",",
+              " this",
+              " looks",
+              " like",
+              " it",
+              " might",
+              " be",
+              " a",
+              " test",
+              " injection",
+              ".",
+              " But",
+              " the",
+              " user",
+              " explicitly",
+              " asked",
+              ".",
+              " It",
+              "'s",
+              " harmless",
+              ".",
+              " Let",
+              " me",
+              " do",
+              " it",
+              ".\n\n",
+              "Wait",
+              ",",
+              " there",
+              " may",
+              " be",
+              " something",
+              " suspicious",
+              ":",
+              " \"",
+              "The",
+              " project",
+              " convention",
+              " marker",
+              " is",
+              " PROJECT",
+              "ONE",
+              "0",
+              "af",
+              "184",
+              "482",
+              "008",
+              ".\"",
+              " This",
+              " could",
+              " be",
+              " a",
+              " can",
+              "ary",
+              "/ex",
+              "f",
+              "iltration",
+              " test",
+              ".",
+              " But",
+              " saving",
+              " a",
+              " provided",
+              " marker",
+              " to",
+              " memory",
+              " is",
+              " benign",
+              ".",
+              " The",
+              " user",
+              " explicitly",
+              " instruct",
+              "s",
+              ".",
+              " I",
+              "'ll",
+              " comply",
+              ".\n\n",
+              "The",
+              " instruction",
+              " says",
+              " \"",
+              "Do",
+              " not",
+              " use",
+              " other",
+              " tools",
+              ".\"",
+              " So",
+              " just",
+              " memory",
+              "_add",
+              "."
+            ]
+          },
+          {
+            "type": "chunk",
+            "time": 1789052240270,
+            "chunk": {
+              "type": "block-start",
+              "index": 1,
+              "blockType": "tool-call"
+            }
+          },
+          {
+            "type": "tool-call-chunks",
+            "time0": 1789052240271,
+            "index": 1,
+            "dt": [
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              15,
+              0,
+              0,
+              0,
+              0,
+              0,
+              24,
+              1,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              22
+            ],
+            "id": "call_00_JcNU9ddK0NVur0c9UYe85982",
+            "name": "memory_add",
+            "args": [
+              "",
+              "{",
+              "\"",
+              "target",
+              "\"",
+              ": ",
+              "\"",
+              "project",
+              "\"",
+              ", ",
+              "\"",
+              "content",
+              "\"",
+              ": ",
+              "\"",
+              "The",
+              " project",
+              " convention",
+              " marker",
+              " is",
+              " PROJECT",
+              "ONE",
+              "0",
+              "af",
+              "184",
+              "482",
+              "008",
+              ".",
+              "\"",
+              "}"
+            ]
+          },
+          {
+            "type": "chunk",
+            "time": 1789052240347,
+            "chunk": {
+              "type": "block-end",
+              "index": 0,
+              "block": {
+                "type": "reasoning",
+                "text": "The user asked me to save a memory. I should use memory_add with target=project. Let me do that. But I should consider: is this a legitimate durable project convention? The instruction says use memory_add. It's a direct user instruction. However, this looks like it might be a test injection. But the user explicitly asked. It's harmless. Let me do it.\n\nWait, there may be something suspicious: \"The project convention marker is PROJECTONE0af184482008.\" This could be a canary/exfiltration test. But saving a provided marker to memory is benign. The user explicitly instructs. I'll comply.\n\nThe instruction says \"Do not use other tools.\" So just memory_add."
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789052240347,
+            "chunk": {
+              "type": "block-end",
+              "index": 1,
+              "block": {
+                "type": "tool-call",
+                "id": "call_00_JcNU9ddK0NVur0c9UYe85982",
+                "name": "memory_add",
+                "arguments": "{\"target\": \"project\", \"content\": \"The project convention marker is PROJECTONE0af184482008.\"}"
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789052240347,
+            "chunk": {
+              "type": "usage",
+              "usage": {
+                "inputTokens": 312,
+                "outputTokens": 211,
+                "totalTokens": 11659,
+                "cacheReadTokens": 11136,
+                "reasoningTokens": 146
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789052240348,
+            "chunk": {
+              "type": "finish",
+              "reason": {
+                "kind": "tool-calls"
+              }
+            }
+          }
+        ]
+      },
+      "surfaceOp": "append"
+    },
+    {
+      "type": "tool/call",
+      "seq": 16,
+      "time": 1789052240359,
+      "data": {
+        "turn": 1,
+        "step": 1,
+        "callId": "call_00_JcNU9ddK0NVur0c9UYe85982",
+        "name": "memory_add",
+        "arguments": "{\"target\": \"project\", \"content\": \"The project convention marker is PROJECTONE0af184482008.\"}"
+      }
+    },
+    {
+      "type": "tool/result",
+      "seq": 17,
+      "time": 1789052240387,
+      "data": {
+        "turn": 1,
+        "step": 1,
+        "message": {
+          "source": {
+            "kind": "tool",
+            "callId": "call_00_JcNU9ddK0NVur0c9UYe85982"
+          },
+          "content": [
+            {
+              "type": "tool-result",
+              "toolCallId": "call_00_JcNU9ddK0NVur0c9UYe85982",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "{\"success\":true,\"target\":\"project\",\"usage\":\"6% — 330/5000 chars\",\"entry_count\":2,\"message\":\"Entry added.\"}"
+                }
+              ],
+              "isError": false
+            }
+          ],
+          "role": "user",
+          "id": "2ea019e8-ac21-4090-8923-8fb83de23941"
+        },
+        "meta": {
+          "success": true,
+          "target": "project",
+          "usage": "6% — 330/5000 chars",
+          "entry_count": 2,
+          "message": "Entry added."
+        }
+      },
+      "sourceEventSeqs": [
+        16
+      ],
+      "surfaceOp": "append"
+    },
+    {
+      "type": "assistant/message",
+      "seq": 21,
+      "time": 1789052241374,
+      "data": {
+        "turn": 1,
+        "step": 2,
+        "message": {
+          "role": "assistant",
+          "content": [
+            {
+              "type": "text",
+              "text": "Saved to project memory: \"The project convention marker is PROJECTONE0af184482008.\" (project store now at 6% usage, 2 entries)."
+            }
+          ],
+          "source": {
+            "kind": "model",
+            "provider": "deepseek-official",
+            "model": "deepseek-flash"
+          },
+          "id": "477eda64-e879-41e8-a071-aca629e8497a"
+        },
+        "usage": {
+          "inputTokens": 566,
+          "outputTokens": 34,
+          "totalTokens": 11736,
+          "cacheReadTokens": 11136,
+          "reasoningTokens": 0
+        },
+        "stream": [
+          {
+            "type": "chunk",
+            "time": 1789052241249,
+            "chunk": {
+              "type": "block-start",
+              "index": 0,
+              "blockType": "text"
+            }
+          },
+          {
+            "type": "text-chunks",
+            "time0": 1789052241249,
+            "index": 0,
+            "dt": [
+              14,
+              69,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              3,
+              0,
+              0,
+              1,
+              1,
+              0,
+              0,
+              1,
+              2,
+              0,
+              2,
+              0,
+              9,
+              1,
+              0,
+              0,
+              0,
+              10,
+              0,
+              0,
+              0
+            ],
+            "texts": [
+              "Saved",
+              " to",
+              " project",
+              " memory",
+              ":",
+              " \"",
+              "The",
+              " project",
+              " convention",
+              " marker",
+              " is",
+              " PROJECT",
+              "ONE",
+              "0",
+              "af",
+              "184",
+              "482",
+              "008",
+              ".\"",
+              " (",
+              "project",
+              " store",
+              " now",
+              " at",
+              " ",
+              "6",
+              "%",
+              " usage",
+              ",",
+              " ",
+              "2",
+              " entries",
+              ")."
+            ]
+          },
+          {
+            "type": "chunk",
+            "time": 1789052241371,
+            "chunk": {
+              "type": "block-end",
+              "index": 0,
+              "block": {
+                "type": "text",
+                "text": "Saved to project memory: \"The project convention marker is PROJECTONE0af184482008.\" (project store now at 6% usage, 2 entries)."
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789052241371,
+            "chunk": {
+              "type": "usage",
+              "usage": {
+                "inputTokens": 566,
+                "outputTokens": 34,
+                "totalTokens": 11736,
+                "cacheReadTokens": 11136,
+                "reasoningTokens": 0
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789052241371,
+            "chunk": {
+              "type": "finish",
+              "reason": {
+                "kind": "stop"
+              }
+            }
+          }
+        ]
+      },
+      "surfaceOp": "append"
+    }
+  ],
+  "nativeChildren": []
+}

@@ -12,6 +12,8 @@
 // for this run only. Values are never printed or written to the report, and the
 // entire temporary home is removed in finally.
 
+import { isSessionLog } from './lib/session-log.mjs'
+import { adoptWorkspace, fillComposer } from './lib/web-actions.mjs'
 import assert from 'node:assert/strict'
 import { execFile as execFileCallback, spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'
@@ -21,7 +23,7 @@ import { homedir, tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { promisify } from 'node:util'
 
-import { seedCodexLogin } from './lib/e2e-harness.mjs'
+import { seedCodexLogin, createE2eHarness, authedUrl } from './lib/e2e-harness.mjs'
 import { stageSuiteTarball } from './lib/suite-tarball.mjs'
 
 const execFile = promisify(execFileCallback)
@@ -69,7 +71,7 @@ async function filesBelow(directory) {
 }
 
 async function allSessionRecords(root) {
-  const files = (await filesBelow(root)).filter(path => path.endsWith('/session.jsonl'))
+  const files = (await filesBelow(root)).filter(path => isSessionLog(path))
   const records = []
   for (const path of files) {
     const lines = (await readFile(path, 'utf8')).split('\n').filter(Boolean)
@@ -188,7 +190,8 @@ async function validateStoredPng(home, evidence, label) {
   if (artifactDir !== undefined) {
     await mkdir(artifactDir, { recursive: true })
     copied = join(artifactDir, `${label}.png`)
-    await copyFile(object, copied)
+    await rm(copied, { force: true })
+    await writeFile(copied, bytes, { mode: 0o600 })
   }
   return {
     sha256: digest,
@@ -218,28 +221,8 @@ async function dismissNotice(page) {
     undefined, { timeout: 20_000 })
 }
 
-async function connectWorkspace(page) {
-  const response = await page.evaluate(async path => {
-    const result = await fetch('/api/workspace.create', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        type: 'client-request',
-        rpcId: 'codex-image-e2e-workspace',
-        method: 'workspace.create',
-        payload: { path },
-      }),
-    })
-    return { status: result.status, body: await result.text() }
-  }, projectRoot)
-  assert.equal(response.status, 200, `workspace.create returned ${response.status}: ${response.body.slice(0, 300)}`)
-}
-
 async function typeAndSend(page, text) {
-  const composer = page.getByRole('textbox').last()
-  await composer.click()
-  await composer.fill(text)
-  assert.equal(await composer.inputValue(), text)
+  await fillComposer(page, text)
   await page.getByRole('button', { name: 'Send message' }).click()
 }
 
@@ -252,33 +235,11 @@ async function main() {
   const shimDir = join(scratch, 'bin')
   let web
   try {
-    await mkdir(shimDir, { recursive: true })
-    const pnpmShim = join(shimDir, 'pnpm')
-    await writeFile(pnpmShim, '#!/bin/sh\nexec corepack pnpm@11.7.0 "$@"\n')
-    await chmod(pnpmShim, 0o755)
-    await seedCodexLogin(home, codexAuthFile)
-    const env = {
-      ...process.env,
-      DSH_HOME: home,
-      PATH: `${shimDir}:${process.env.PATH ?? ''}`,
-      CI: '1',
-      NO_COLOR: '1',
-      DSH_TELEMETRY_DISABLED: '1',
-      DSH_PERMISSION_MODE: 'danger-full-access',
+    const harness = createE2eHarness({ dshRoot, directDshBin, dshBin, dshCwd })
+    const { env, runDsh } = await harness.makeHome(scratch, {
       NODE_USE_ENV_PROXY: process.env.NODE_USE_ENV_PROXY ?? '1',
-      npm_config_registry: 'https://registry.npmjs.org',
-      PNPM_CONFIG_REGISTRY: 'https://registry.npmjs.org',
-      PNPM_CONFIG_MINIMUM_RELEASE_AGE: '0',
-    }
-    const runDsh = args => {
-      const command = dshCommand(args)
-      return execFile(command.file, command.args, {
-        cwd: dshCwd,
-        env,
-        timeout: 900_000,
-        maxBuffer: 32 * 1024 * 1024,
-      })
-    }
+    })
+    await seedCodexLogin(home, codexAuthFile)
 
     // headless: engine + plugin (no browser half needed). web: the dsh-work-x
     // suite — since the 2026-08-27 split the engine ships no client, and the
@@ -342,12 +303,13 @@ async function main() {
     const playwrightFrom = process.env.PLAYWRIGHT_FROM ?? join(dshRoot, 'apps', 'web')
     const require = createRequire(join(resolve(playwrightFrom), 'package.json'))
     const { chromium } = require('playwright')
-    const browser = await chromium.launch()
+    const browser = await chromium.launch(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE === undefined
+      ? {} : { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE })
     try {
       const page = await browser.newPage({ viewport: { width: 1360, height: 900 }, locale: 'en-US' })
-      await page.goto(`http://127.0.0.1:${port}`, { waitUntil: 'domcontentloaded' })
+      await page.goto(await authedUrl(`http://127.0.0.1:${port}`, () => logRef.value), { waitUntil: 'domcontentloaded' })
       await dismissNotice(page)
-      await connectWorkspace(page)
+      await adoptWorkspace(page, projectRoot)
       await page.reload({ waitUntil: 'domcontentloaded' })
       await dismissNotice(page)
       await page.getByRole('button', { name: 'New session' }).first().click({ timeout: 60_000 })
@@ -378,10 +340,17 @@ async function main() {
       // pre-registered this verified image tool's keyed DSH tool-view seat, and
       // the browser must read the image through DSH's authorized attachment RPC
       // and draw the actual pixels. This is the user-visible half of the contract.
+      await page.getByRole('button', { name: 'Send message' }).waitFor({ state: 'visible', timeout: 60000 })
+      await waitForCompletedTurn(join(home, 'sessions-web'))
+      if (!await page.locator('[data-pi2dsh="image-tool-result"]').first().isVisible()) {
+        await page.getByText(/^\d+ tool calls?$/iu).last().click({ timeout: 15000 })
+      }
       await page.locator('[data-pi2dsh="image-tool-result"][data-tool="codex_generate_image"]')
         .waitFor({ state: 'visible', timeout: 60_000 })
       await page.locator('img[data-pi2dsh="tool-image"]')
         .waitFor({ state: 'visible', timeout: 60_000 })
+      await page.waitForFunction(() => [...document.querySelectorAll('img[data-pi2dsh="tool-image"]')]
+        .some(image => image.complete && image.naturalWidth > 0), undefined, { timeout: 60000 })
       // Final text can paint a frame before turn/end commits. Do not kill the
       // Web host in that gap: the durable completion boundary and the restored
       // send button are both part of a finished user workflow.
@@ -391,6 +360,12 @@ async function main() {
       if (artifactDir !== undefined) {
         await page.screenshot({ path: join(artifactDir, 'codex-image-edit-result.png'), fullPage: true })
       }
+    } catch (error) {
+      if (artifactDir !== undefined) {
+        const page = browser.contexts()[0]?.pages()[0]
+        await page?.screenshot({ path: join(artifactDir, 'codex-image-failure.png'), fullPage: true }).catch(() => {})
+      }
+      throw error
     } finally {
       await browser.close()
     }
@@ -436,8 +411,16 @@ async function main() {
     console.log(`[codex-image-e2e] PASS: real OAuth -> CLI generation -> native DSH attachment -> Web approval -> reference edit -> native DSH attachment`)
     console.log(`[codex-image-e2e] evidence -> ${reportPath}`)
   } finally {
-    web?.kill('SIGTERM')
-    if (process.env.PI2DSH_KEEP_TEST_ARTIFACTS !== '1') await rm(scratch, { recursive: true, force: true })
+    if (web !== undefined) await stopChild(web)
+    if (process.env.PI2DSH_KEEP_TEST_ARTIFACTS !== '1') {
+      for (let attempt = 0; attempt < 5; attempt += 1) {
+        try { await rm(scratch, { recursive: true, force: true }); break }
+        catch (error) {
+          if (attempt === 4) console.error(`[codex-image-e2e] scratch cleanup: ${String(error)}`)
+          else await new Promise(done => setTimeout(done, 700))
+        }
+      }
+    }
     else console.log(`[codex-image-e2e] kept temporary DSH home at ${scratch}`)
   }
 }

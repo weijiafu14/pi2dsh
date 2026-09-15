@@ -1,0 +1,28 @@
+{
+  "live": {
+    "providers": [
+      "deepseek-official"
+    ],
+    "settingsPresent": true
+  },
+  "route": {
+    "provider": "deepseek-official",
+    "model": "deepseek-flash"
+  },
+  "phase": "public-async-disposer",
+  "providers": [
+    "deepseek-official"
+  ],
+  "credentialResolved": true,
+  "settingsPresent": false,
+  "finish": {
+    "kind": "error",
+    "failure": {
+      "message": "no adapter registered for provider \"deepseek-official\"",
+      "code": "NO_ADAPTER"
+    }
+  },
+  "preparedFinish": {
+    "kind": "stop"
+  }
+}

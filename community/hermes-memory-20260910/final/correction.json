@@ -1,0 +1,366 @@
+{
+  "name": "correction",
+  "status": "passed",
+  "build": {
+    "engineVersion": "0.24.0",
+    "engineDependency": "file:/tmp/pi2dsh-hermes-20260910/pi2dsh-hermes-final.tgz",
+    "engineDistSha256": "d5057a874413c945ca28c38a83bb1512f7aaeb6c20b2b8ce0953b28a1ae874f6",
+    "memoryVersion": "0.9.8"
+  },
+  "nativeSession": {
+    "type": "session",
+    "version": 3,
+    "id": "session-edee2dde-62fe-48de-80e5-6870ad9939e1",
+    "createdAt": 1789052328697,
+    "cwd": "/private/tmp/pi2dsh-hermes-final-20260910/project",
+    "isSeeded": false,
+    "delegationDepth": 0,
+    "agentPreset": "standard"
+  },
+  "saved": [
+    {
+      "id": 10,
+      "target": "memory",
+      "project": "project",
+      "content": "The project permanently uses CORRECTe518dbe8123d as the release tool; never the old tool. Always use CORRECTe518dbe8123d for this project."
+    },
+    {
+      "id": 11,
+      "target": "failure",
+      "project": "project",
+      "content": "[correction] that is wrong. Our permanent release tool is CORRECTe518dbe8123d, never the old tool. Always use CORRECTe518dbe8123d for this project. For this reply say ACK only without calling tools. — Failed: User corrected the agent"
+    }
+  ],
+  "events": [
+    {
+      "type": "user/message",
+      "seq": 8,
+      "time": 1789052358935,
+      "data": {
+        "content": [
+          {
+            "type": "text",
+            "text": "No, that is wrong. Our permanent release tool is CORRECTe518dbe8123d, never the old tool. Always use CORRECTe518dbe8123d for this project. For this reply say ACK only without calling tools."
+          }
+        ],
+        "source": {
+          "kind": "user",
+          "rpcId": "35c90c45-75bd-4298-b7bc-2bad2c0c0b3d",
+          "clientTimeZone": "Asia/Shanghai"
+        },
+        "role": "user",
+        "id": "33242ab0-f4c3-4474-8edf-f7e600690348"
+      },
+      "surfaceOp": "append"
+    },
+    {
+      "type": "user/message",
+      "seq": 9,
+      "time": 1789052358937,
+      "data": {
+        "content": [
+          {
+            "type": "text",
+            "text": "Current runtime context. This snapshot supersedes earlier runtime-context snapshots.\n\nCurrent DSH file policy: danger-full-access. The DSH file sandbox does not restrict file modifications by available operations.\n\nApproval prompts are disabled in this session: actions that require approval are rejected automatically — do not request sandbox escalation (do not set `sandbox_permissions`)."
+          }
+        ],
+        "source": {
+          "kind": "plugin",
+          "plugin": "@deepseek-ai/dsh-system-prompt",
+          "form": "snapshot",
+          "sections": [
+            {
+              "name": "sandbox:policy",
+              "text": "Current DSH file policy: danger-full-access. The DSH file sandbox does not restrict file modifications by available operations."
+            },
+            {
+              "name": "approval:policy",
+              "text": "Approval prompts are disabled in this session: actions that require approval are rejected automatically — do not request sandbox escalation (do not set `sandbox_permissions`)."
+            }
+          ]
+        },
+        "role": "user",
+        "id": "eebd5975-ae57-44ca-b25a-a64a74d714fe"
+      },
+      "surfaceOp": "append"
+    },
+    {
+      "type": "assistant/message",
+      "seq": 15,
+      "time": 1789052360150,
+      "data": {
+        "turn": 1,
+        "step": 1,
+        "message": {
+          "role": "assistant",
+          "content": [
+            {
+              "type": "reasoning",
+              "text": "The user is correcting me about a release tool name. They want me to say ACK only without calling tools. But there's a memory policy encouraging saving corrections. However the user explicitly says \"For this reply say ACK only without calling tools.\" I must comply — no tools. Just ACK.\n\nShould I save memory? They explicitly said no tools for this reply. Comply."
+            },
+            {
+              "type": "text",
+              "text": "ACK"
+            }
+          ],
+          "source": {
+            "kind": "model",
+            "provider": "deepseek-official",
+            "model": "deepseek-flash"
+          },
+          "id": "8c09a02c-22f5-438c-9eb0-1074e2448957"
+        },
+        "usage": {
+          "inputTokens": 258,
+          "outputTokens": 80,
+          "totalTokens": 13138,
+          "cacheReadTokens": 12800,
+          "reasoningTokens": 78
+        },
+        "stream": [
+          {
+            "type": "chunk",
+            "time": 1789052359737,
+            "chunk": {
+              "type": "block-start",
+              "index": 0,
+              "blockType": "reasoning"
+            }
+          },
+          {
+            "type": "reasoning-chunks",
+            "time0": 1789052359738,
+            "index": 0,
+            "dt": [
+              86,
+              17,
+              0,
+              14,
+              0,
+              12,
+              0,
+              1,
+              0,
+              15,
+              0,
+              0,
+              1,
+              0,
+              0,
+              11,
+              0,
+              0,
+              0,
+              0,
+              10,
+              0,
+              0,
+              0,
+              17,
+              0,
+              0,
+              0,
+              14,
+              12,
+              13,
+              0,
+              0,
+              0,
+              0,
+              0,
+              13,
+              0,
+              16,
+              0,
+              0,
+              0,
+              1,
+              0,
+              11,
+              1,
+              0,
+              0,
+              0,
+              0,
+              10,
+              0,
+              17,
+              0,
+              0,
+              17,
+              9,
+              0,
+              18,
+              0,
+              0,
+              0,
+              0,
+              10,
+              0,
+              1,
+              12,
+              17,
+              0,
+              0,
+              0,
+              10,
+              0,
+              0,
+              0,
+              15,
+              0
+            ],
+            "texts": [
+              "The",
+              " user",
+              " is",
+              " correcting",
+              " me",
+              " about",
+              " a",
+              " release",
+              " tool",
+              " name",
+              ".",
+              " They",
+              " want",
+              " me",
+              " to",
+              " say",
+              " AC",
+              "K",
+              " only",
+              " without",
+              " calling",
+              " tools",
+              ".",
+              " But",
+              " there",
+              "'s",
+              " a",
+              " memory",
+              " policy",
+              " encouraging",
+              " saving",
+              " corrections",
+              ".",
+              " However",
+              " the",
+              " user",
+              " explicitly",
+              " says",
+              " \"",
+              "For",
+              " this",
+              " reply",
+              " say",
+              " AC",
+              "K",
+              " only",
+              " without",
+              " calling",
+              " tools",
+              ".\"",
+              " I",
+              " must",
+              " comply",
+              " —",
+              " no",
+              " tools",
+              ".",
+              " Just",
+              " AC",
+              "K",
+              ".\n\n",
+              "Should",
+              " I",
+              " save",
+              " memory",
+              "?",
+              " They",
+              " explicitly",
+              " said",
+              " no",
+              " tools",
+              " for",
+              " this",
+              " reply",
+              ".",
+              " Comp",
+              "ly",
+              "."
+            ]
+          },
+          {
+            "type": "chunk",
+            "time": 1789052360139,
+            "chunk": {
+              "type": "block-start",
+              "index": 1,
+              "blockType": "text"
+            }
+          },
+          {
+            "type": "text-chunks",
+            "time0": 1789052360139,
+            "index": 1,
+            "dt": [],
+            "texts": [
+              "ACK"
+            ]
+          },
+          {
+            "type": "chunk",
+            "time": 1789052360149,
+            "chunk": {
+              "type": "block-end",
+              "index": 0,
+              "block": {
+                "type": "reasoning",
+                "text": "The user is correcting me about a release tool name. They want me to say ACK only without calling tools. But there's a memory policy encouraging saving corrections. However the user explicitly says \"For this reply say ACK only without calling tools.\" I must comply — no tools. Just ACK.\n\nShould I save memory? They explicitly said no tools for this reply. Comply."
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789052360149,
+            "chunk": {
+              "type": "block-end",
+              "index": 1,
+              "block": {
+                "type": "text",
+                "text": "ACK"
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789052360149,
+            "chunk": {
+              "type": "usage",
+              "usage": {
+                "inputTokens": 258,
+                "outputTokens": 80,
+                "totalTokens": 13138,
+                "cacheReadTokens": 12800,
+                "reasoningTokens": 78
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789052360149,
+            "chunk": {
+              "type": "finish",
+              "reason": {
+                "kind": "stop"
+              }
+            }
+          }
+        ]
+      },
+      "surfaceOp": "append"
+    }
+  ],
+  "nativeChildren": []
+}

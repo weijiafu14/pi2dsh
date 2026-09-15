@@ -1,0 +1,569 @@
+{
+  "name": "model-override",
+  "status": "passed",
+  "build": {
+    "dshVersion": "0.1.5-rc.1",
+    "engineVersion": "0.24.0",
+    "engineDependency": "file:/tmp/pi2dsh-hermes-20260910/pi2dsh-hermes-final.tgz",
+    "engineDistSha256": "d5057a874413c945ca28c38a83bb1512f7aaeb6c20b2b8ce0953b28a1ae874f6",
+    "memoryVersion": "0.9.8"
+  },
+  "nativeSession": {
+    "type": "session",
+    "version": 3,
+    "id": "session-b336739a-10f4-49ea-9087-49b7ae71a096",
+    "createdAt": 1789054262735,
+    "cwd": "/private/tmp/pi2dsh-hermes-final-20260910/project",
+    "isSeeded": false,
+    "delegationDepth": 0,
+    "agentPreset": "standard"
+  },
+  "requests": [
+    {
+      "kind": "maintenance",
+      "startedAt": 1789054282524,
+      "completed": true,
+      "cancelled": false,
+      "status": 200,
+      "model": "deepseek-v4-pro",
+      "thinking": {
+        "type": "enabled"
+      },
+      "reasoningEffort": "low",
+      "responseText": "{\"operations\":[]}",
+      "completedAt": 1789054283957
+    }
+  ],
+  "purpose": "explicit maintenance model routing and fallback",
+  "storedEntriesMentioningMarker": [],
+  "events": [
+    {
+      "type": "user/message",
+      "seq": 8,
+      "time": 1789054278597,
+      "data": {
+        "content": [
+          {
+            "type": "text",
+            "text": "Disposable diagnostic sequence ROUTEDee6e8c490529; this is not a user preference or a project convention. Reply ACK without tools."
+          }
+        ],
+        "source": {
+          "kind": "user",
+          "rpcId": "e5205d78-59dc-4ac1-b97f-dbdc0181f167",
+          "clientTimeZone": "Asia/Shanghai"
+        },
+        "role": "user",
+        "id": "3b1d787b-5bd6-48f4-b3ba-5da3903e9c3b"
+      },
+      "surfaceOp": "append"
+    },
+    {
+      "type": "user/message",
+      "seq": 9,
+      "time": 1789054278599,
+      "data": {
+        "content": [
+          {
+            "type": "text",
+            "text": "Current runtime context. This snapshot supersedes earlier runtime-context snapshots.\n\nCurrent DSH file policy: danger-full-access. The DSH file sandbox does not restrict file modifications by available operations.\n\nApproval prompts are disabled in this session: actions that require approval are rejected automatically — do not request sandbox escalation (do not set `sandbox_permissions`)."
+          }
+        ],
+        "source": {
+          "kind": "plugin",
+          "plugin": "@deepseek-ai/dsh-system-prompt",
+          "form": "snapshot",
+          "sections": [
+            {
+              "name": "sandbox:policy",
+              "text": "Current DSH file policy: danger-full-access. The DSH file sandbox does not restrict file modifications by available operations."
+            },
+            {
+              "name": "approval:policy",
+              "text": "Approval prompts are disabled in this session: actions that require approval are rejected automatically — do not request sandbox escalation (do not set `sandbox_permissions`)."
+            }
+          ]
+        },
+        "role": "user",
+        "id": "bd300398-0d9f-45e7-8d76-aaa555663508"
+      },
+      "surfaceOp": "append"
+    },
+    {
+      "type": "user/message",
+      "seq": 10,
+      "time": 1789054278599,
+      "data": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<system-reminder>\nA skill is a reusable set of task-specific instructions. The following skills are available in this session:\n\n<available_skills>\n- `external-catalog-095b5066cbf2`: Only use when explicitly asked to draw the Icarus catalog diagram.\n</available_skills>\n\nIf the user names a skill, or the task clearly matches a skill's description, call the `skill` tool with the exact skill name before taking task actions. Load all applicable skills, then follow their full instructions. This catalog contains summaries only; do not infer or follow a skill's instructions until it has been loaded.\nA user may also invoke a skill directly; its <skill_content> block then appears in this conversation. Follow it, and do not call the `skill` tool again for that skill.\n</system-reminder>"
+          }
+        ],
+        "source": {
+          "kind": "skill-catalog",
+          "form": "catalog",
+          "entries": [
+            {
+              "name": "external-catalog-095b5066cbf2",
+              "description": "Only use when explicitly asked to draw the Icarus catalog diagram."
+            }
+          ]
+        },
+        "role": "user",
+        "id": "7388a2b9-ccb2-4bad-9c74-518285ab9a06"
+      },
+      "surfaceOp": "append"
+    },
+    {
+      "type": "assistant/message",
+      "seq": 16,
+      "time": 1789054279633,
+      "data": {
+        "turn": 1,
+        "step": 1,
+        "message": {
+          "role": "assistant",
+          "content": [
+            {
+              "type": "text",
+              "text": "ACK"
+            }
+          ],
+          "source": {
+            "kind": "model",
+            "provider": "deepseek-official",
+            "model": "deepseek-flash"
+          },
+          "id": "2a976894-76ff-489c-953e-2ea234ab90c7"
+        },
+        "usage": {
+          "inputTokens": 486,
+          "outputTokens": 2,
+          "totalTokens": 13288,
+          "cacheReadTokens": 12800,
+          "reasoningTokens": 0
+        },
+        "stream": [
+          {
+            "type": "chunk",
+            "time": 1789054279610,
+            "chunk": {
+              "type": "block-start",
+              "index": 0,
+              "blockType": "text"
+            }
+          },
+          {
+            "type": "text-chunks",
+            "time0": 1789054279613,
+            "index": 0,
+            "dt": [],
+            "texts": [
+              "ACK"
+            ]
+          },
+          {
+            "type": "chunk",
+            "time": 1789054279631,
+            "chunk": {
+              "type": "block-end",
+              "index": 0,
+              "block": {
+                "type": "text",
+                "text": "ACK"
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789054279631,
+            "chunk": {
+              "type": "usage",
+              "usage": {
+                "inputTokens": 486,
+                "outputTokens": 2,
+                "totalTokens": 13288,
+                "cacheReadTokens": 12800,
+                "reasoningTokens": 0
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789054279631,
+            "chunk": {
+              "type": "finish",
+              "reason": {
+                "kind": "stop"
+              }
+            }
+          }
+        ]
+      },
+      "surfaceOp": "append"
+    },
+    {
+      "type": "user/message",
+      "seq": 23,
+      "time": 1789054280176,
+      "data": {
+        "content": [
+          {
+            "type": "text",
+            "text": "Continue the disposable diagnostic. Reply ACK without tools."
+          }
+        ],
+        "source": {
+          "kind": "user",
+          "rpcId": "ac177fbc-021c-43cb-b301-ea71be36c50e",
+          "clientTimeZone": "Asia/Shanghai"
+        },
+        "role": "user",
+        "id": "5f0a01c3-71e2-49b7-a912-c45d92345803"
+      },
+      "surfaceOp": "append"
+    },
+    {
+      "type": "assistant/message",
+      "seq": 24,
+      "time": 1789054281209,
+      "data": {
+        "turn": 2,
+        "step": 1,
+        "message": {
+          "role": "assistant",
+          "content": [
+            {
+              "type": "reasoning",
+              "text": "The user says \"Continue the disposable diagnostic. Reply ACK without tools.\" This is a simple request to reply ACK without tools. No skill matches (the external-catalog skill is only for drawing the Icarus catalog diagram — not requested). Just reply ACK."
+            },
+            {
+              "type": "text",
+              "text": "ACK"
+            }
+          ],
+          "source": {
+            "kind": "model",
+            "provider": "deepseek-official",
+            "model": "deepseek-flash"
+          },
+          "id": "9ec811d0-cb9b-4460-be05-29a512d8f8b2"
+        },
+        "usage": {
+          "inputTokens": 247,
+          "outputTokens": 57,
+          "totalTokens": 13360,
+          "cacheReadTokens": 13056,
+          "reasoningTokens": 55
+        },
+        "stream": [
+          {
+            "type": "chunk",
+            "time": 1789054280874,
+            "chunk": {
+              "type": "block-start",
+              "index": 0,
+              "blockType": "reasoning"
+            }
+          },
+          {
+            "type": "reasoning-chunks",
+            "time0": 1789054280875,
+            "index": 0,
+            "dt": [
+              61,
+              16,
+              1,
+              13,
+              0,
+              0,
+              12,
+              0,
+              0,
+              0,
+              1,
+              0,
+              17,
+              1,
+              0,
+              21,
+              0,
+              0,
+              0,
+              13,
+              16,
+              0,
+              0,
+              0,
+              0,
+              0,
+              16,
+              0,
+              16,
+              11,
+              0,
+              38,
+              1,
+              0,
+              0,
+              0,
+              2,
+              0,
+              1,
+              14,
+              0,
+              0,
+              0,
+              0,
+              1,
+              16,
+              10,
+              0,
+              0,
+              0,
+              19,
+              1,
+              0,
+              0
+            ],
+            "texts": [
+              "The",
+              " user",
+              " says",
+              " \"",
+              "Continue",
+              " the",
+              " disposable",
+              " diagnostic",
+              ".",
+              " Reply",
+              " AC",
+              "K",
+              " without",
+              " tools",
+              ".\"",
+              " This",
+              " is",
+              " a",
+              " simple",
+              " request",
+              " to",
+              " reply",
+              " AC",
+              "K",
+              " without",
+              " tools",
+              ".",
+              " No",
+              " skill",
+              " matches",
+              " (",
+              "the",
+              " external",
+              "-c",
+              "atalog",
+              " skill",
+              " is",
+              " only",
+              " for",
+              " drawing",
+              " the",
+              " I",
+              "car",
+              "us",
+              " catalog",
+              " diagram",
+              " —",
+              " not",
+              " requested",
+              ").",
+              " Just",
+              " reply",
+              " AC",
+              "K",
+              "."
+            ]
+          },
+          {
+            "type": "chunk",
+            "time": 1789054281193,
+            "chunk": {
+              "type": "block-start",
+              "index": 1,
+              "blockType": "text"
+            }
+          },
+          {
+            "type": "text-chunks",
+            "time0": 1789054281193,
+            "index": 1,
+            "dt": [],
+            "texts": [
+              "ACK"
+            ]
+          },
+          {
+            "type": "chunk",
+            "time": 1789054281208,
+            "chunk": {
+              "type": "block-end",
+              "index": 0,
+              "block": {
+                "type": "reasoning",
+                "text": "The user says \"Continue the disposable diagnostic. Reply ACK without tools.\" This is a simple request to reply ACK without tools. No skill matches (the external-catalog skill is only for drawing the Icarus catalog diagram — not requested). Just reply ACK."
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789054281208,
+            "chunk": {
+              "type": "block-end",
+              "index": 1,
+              "block": {
+                "type": "text",
+                "text": "ACK"
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789054281208,
+            "chunk": {
+              "type": "usage",
+              "usage": {
+                "inputTokens": 247,
+                "outputTokens": 57,
+                "totalTokens": 13360,
+                "cacheReadTokens": 13056,
+                "reasoningTokens": 55
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789054281208,
+            "chunk": {
+              "type": "finish",
+              "reason": {
+                "kind": "stop"
+              }
+            }
+          }
+        ]
+      },
+      "surfaceOp": "append"
+    },
+    {
+      "type": "user/message",
+      "seq": 31,
+      "time": 1789054281772,
+      "data": {
+        "content": [
+          {
+            "type": "text",
+            "text": "That completes the discussion. Reply ACK without tools."
+          }
+        ],
+        "source": {
+          "kind": "user",
+          "rpcId": "792ca285-450b-4248-9ab0-3493dc6aabfe",
+          "clientTimeZone": "Asia/Shanghai"
+        },
+        "role": "user",
+        "id": "00969bc3-5e44-40f2-a7c5-e96db95ff8c5"
+      },
+      "surfaceOp": "append"
+    },
+    {
+      "type": "assistant/message",
+      "seq": 32,
+      "time": 1789054282511,
+      "data": {
+        "turn": 3,
+        "step": 1,
+        "message": {
+          "role": "assistant",
+          "content": [
+            {
+              "type": "text",
+              "text": "ACK"
+            }
+          ],
+          "source": {
+            "kind": "model",
+            "provider": "deepseek-official",
+            "model": "deepseek-flash"
+          },
+          "id": "6122fc71-aed9-4122-a982-ef4f45aa0665"
+        },
+        "usage": {
+          "inputTokens": 191,
+          "outputTokens": 2,
+          "totalTokens": 13377,
+          "cacheReadTokens": 13184,
+          "reasoningTokens": 0
+        },
+        "stream": [
+          {
+            "type": "chunk",
+            "time": 1789054282498,
+            "chunk": {
+              "type": "block-start",
+              "index": 0,
+              "blockType": "text"
+            }
+          },
+          {
+            "type": "text-chunks",
+            "time0": 1789054282499,
+            "index": 0,
+            "dt": [],
+            "texts": [
+              "ACK"
+            ]
+          },
+          {
+            "type": "chunk",
+            "time": 1789054282509,
+            "chunk": {
+              "type": "block-end",
+              "index": 0,
+              "block": {
+                "type": "text",
+                "text": "ACK"
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789054282509,
+            "chunk": {
+              "type": "usage",
+              "usage": {
+                "inputTokens": 191,
+                "outputTokens": 2,
+                "totalTokens": 13377,
+                "cacheReadTokens": 13184,
+                "reasoningTokens": 0
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789054282510,
+            "chunk": {
+              "type": "finish",
+              "reason": {
+                "kind": "stop"
+              }
+            }
+          }
+        ]
+      },
+      "surfaceOp": "append"
+    }
+  ],
+  "nativeChildren": []
+}

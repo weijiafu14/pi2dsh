@@ -1,6 +1,6 @@
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
@@ -95,6 +95,29 @@ describe("buildContextEntries is the model's view, not the whole log", () => {
 })
 
 describe('Pi session semantics over a DSH durable session', () => {
+  it('reads the native immutable snapshot API when the host has no events property', () => {
+    const events = [{ seq: 0, time: 1000, type: 'user/message', data: { content: [{ type: 'text', text: 'live snapshot fact' }] } }]
+    const native = { id: 'snapshot-host', snapshotEvents: () => events }
+    const bridge = new PiSessionBridge()
+    const manager = bridge.readonlySessionManager(native, scratch) as { getBranch(): unknown[]; getEntries(): unknown[] }
+    expect(JSON.stringify(manager.getBranch())).toContain('live snapshot fact')
+    events.push({ seq: 1, time: 2000, type: 'user/message', data: { content: [{ type: 'text', text: 'next snapshot fact' }] } })
+    expect(manager.getEntries()).toHaveLength(2)
+  })
+
+  it('does not misidentify host instructions as a human message for memory extraction', () => {
+    const data = (source: unknown, text: string) => ({ source, content: [{ type: 'text', text }] })
+    const session = dshSession('provenance', [
+      { seq: 0, time: 1000, type: 'user/message', data: data({ kind: 'runtime-context' }, 'Never ask for approval') },
+      { seq: 1, time: 2000, type: 'user/message', data: data({ kind: 'user' }, 'My preferred editor is vim') },
+      { seq: 2, time: 3000, type: 'user/message', data: data({ kind: 'plugin', form: 'relay' }, 'Start the profile interview') },
+      { seq: 3, time: 4000, type: 'user/message', data: data({ kind: 'plugin', piCustomType: 'plugin-note' }, 'A custom package note') },
+    ])
+    const entries = new PiSessionBridge().projectEntries(session)
+    expect(entries.map(e => e.type)).toEqual(['custom_message', 'message', 'message', 'custom_message'])
+    expect(entries[0]).toMatchObject({ customType: 'runtime-context', display: false })
+    expect(entries[3]).toMatchObject({ customType: 'plugin-note' })
+  })
   it('persists custom entries, labels, and names to the sidecar and survives a reload', () => {
     const writer = new PiSessionBridge()
     const entryId = writer.appendCustomEntry('sess-1', 'todo-state', { items: ['a'] })
@@ -190,6 +213,64 @@ describe('Pi session semantics over a DSH durable session', () => {
 })
 
 describe('the durable archive identity Pi consumers reopen a session by', () => {
+  it('exports complete native history for file readers without accepting it as authority', async () => {
+    const fs = await import('node:fs')
+    const { loadEntriesFromFile } = await import('../src/compat/vendor/pi-session-manager.js')
+    const session = dshSession('history-export', [
+      { seq: 0, time: 1000, type: 'user/message', data: { content: [{ type: 'text', text: 'remember saffron' }] } },
+      { seq: 1, time: 2000, type: 'assistant/message', data: { message: { content: [{ type: 'text', text: 'remembered' }] } } },
+    ])
+    const bridge = new PiSessionBridge()
+    const manager = bridge.readonlySessionManager(session, scratch) as { getSessionFile(): string; getSessionDir(): string; getEntries(): unknown[] }
+    const file = manager.getSessionFile()
+    expect(dirname(file)).toBe(manager.getSessionDir())
+    expect(JSON.stringify(loadEntriesFromFile(file))).toContain('remember saffron')
+    expect(bridge.sessionIdOfArchiveFile(file)).toBe(session.id)
+    const before = fs.statSync(file).mtimeMs
+    expect(manager.getSessionFile()).toBe(file)
+    expect(fs.statSync(file).mtimeMs).toBe(before)
+    fs.writeFileSync(file, fs.readFileSync(file, 'utf8').replace('remember saffron', 'forged transcript'))
+    expect(JSON.stringify(manager.getEntries())).not.toContain('forged transcript')
+    manager.getSessionFile()
+    expect(fs.readFileSync(file, 'utf8')).not.toContain('forged transcript')
+    session.events.push({ seq: 2, time: 3000, type: 'user/message', data: { content: [{ type: 'text', text: 'next turn' }] } })
+    manager.getSessionFile()
+    expect(JSON.stringify(loadEntriesFromFile(file))).toContain('next turn')
+    // A new bridge can identify the export for native resume, but never imports its messages.
+    const restarted = new PiSessionBridge()
+    expect(restarted.sessionIdOfArchiveFile(file)).toBe(session.id)
+    expect(restarted.projectEntries(dshSession(session.id))).toEqual([])
+    restarted.discardArchive(session.id)
+    expect(fs.existsSync(file)).toBe(false)
+  })
+
+  it('backfills cold history through both public persistence read generations and closes handles', async () => {
+    const fs = await import('node:fs')
+    const header = { id: 'cold-history', cwd: scratch, createdAt: 1000 }
+    const events = [{ seq: 0, time: 1000, type: 'user/message', data: { content: [{ type: 'text', text: 'cold archive fact' }] } }]
+    let closed = 0
+    const bridge = new PiSessionBridge()
+    await bridge.exportStoredSessions({
+      list: async () => [{ header, revision: '1' }],
+      open: async (_id, access) => {
+        expect(access).toBe('read')
+        return { header, read: async () => ({ events }), close: async () => { closed++ } }
+      },
+    })
+    expect(closed).toBe(1)
+    const manager = bridge.readonlySessionManager({ id: header.id, header, events }, scratch) as { getSessionFile(): string }
+    const file = manager.getSessionFile()
+    expect(fs.readFileSync(file, 'utf8')).toContain('cold archive fact')
+    fs.unlinkSync(file)
+    await bridge.exportStoredSessions({ list: async () => [header], inspect: async () => ({ meta: header, events }) })
+    expect(fs.readFileSync(file, 'utf8')).toContain('cold archive fact')
+    await expect(bridge.exportStoredSessions({ list: async () => { throw new Error('backend unavailable') } })).rejects.toThrow('backend unavailable')
+    expect(fs.existsSync(file)).toBe(true)
+    await bridge.exportStoredSessions({ list: async () => [{ id: header.id }] })
+    expect(fs.existsSync(file)).toBe(true)
+    await bridge.exportStoredSessions({ list: async () => [], inspect: async () => ({ meta: header, events }) })
+    expect(fs.existsSync(file)).toBe(false)
+  })
   // pi-subagents records session.sessionManager.getSessionFile() per child and
   // resurrects an evicted `@handle` by existsSync + SessionManager.open on that
   // exact path — a virtual path reads as "the conversation is gone".

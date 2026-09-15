@@ -1,0 +1,106 @@
+{
+  "dsh-agent": {
+    "versions": [
+      "0.1.5-rc.1",
+      "0.1.5-rc.2"
+    ],
+    "fileCount": 18,
+    "changedFiles": []
+  },
+  "dsh-agent-loop": {
+    "versions": [
+      "0.1.5-rc.1",
+      "0.1.5-rc.2"
+    ],
+    "fileCount": 10,
+    "changedFiles": []
+  },
+  "dsh-session": {
+    "versions": [
+      "0.1.5-rc.1",
+      "0.1.5-rc.2"
+    ],
+    "fileCount": 20,
+    "changedFiles": []
+  },
+  "dsh-llm": {
+    "versions": [
+      "0.1.5-rc.1",
+      "0.1.5-rc.2"
+    ],
+    "fileCount": 34,
+    "changedFiles": []
+  },
+  "dsh-tools": {
+    "versions": [
+      "0.1.5-rc.1",
+      "0.1.5-rc.2"
+    ],
+    "fileCount": 22,
+    "changedFiles": []
+  },
+  "dsh-system-prompt": {
+    "versions": [
+      "0.1.5-rc.1",
+      "0.1.5-rc.2"
+    ],
+    "fileCount": 4,
+    "changedFiles": []
+  },
+  "dsh-attachment": {
+    "versions": [
+      "0.1.5-rc.1",
+      "0.1.5-rc.2"
+    ],
+    "fileCount": 13,
+    "changedFiles": []
+  },
+  "dsh-subprocess": {
+    "versions": [
+      "0.1.5-rc.1",
+      "0.1.5-rc.2"
+    ],
+    "fileCount": 3,
+    "changedFiles": []
+  },
+  "dsh-subagent": {
+    "versions": [
+      "0.1.5-rc.1",
+      "0.1.5-rc.2"
+    ],
+    "fileCount": 52,
+    "changedFiles": []
+  },
+  "dsh-user-questions": {
+    "versions": [
+      "0.1.5-rc.1",
+      "0.1.5-rc.2"
+    ],
+    "fileCount": 5,
+    "changedFiles": []
+  },
+  "dsh-client-modules": {
+    "versions": [
+      "0.1.5-rc.1",
+      "0.1.5-rc.2"
+    ],
+    "fileCount": 8,
+    "changedFiles": []
+  },
+  "dsh-client-ui-tool": {
+    "versions": [
+      "0.1.5-rc.1",
+      "0.1.5-rc.2"
+    ],
+    "fileCount": 31,
+    "changedFiles": []
+  },
+  "dsh-client-ui-attachment": {
+    "versions": [
+      "0.1.5-rc.1",
+      "0.1.5-rc.2"
+    ],
+    "fileCount": 12,
+    "changedFiles": []
+  }
+}

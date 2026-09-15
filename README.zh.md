@@ -9,6 +9,11 @@ dsh plugin add pi2dsh          # 装一次
 dsh plugin add <任意 Pi 插件>   # 之后想装谁装谁，直接用 npm 原包
 ```
 
+pi2dsh `0.25.0` 以 Pi `0.84.1` 为目标，同一引擎适配 DSH `0.1.1-rc.2`
+和 `0.1.5-rc.1` / `0.1.5-rc.2`。具体通过场景和边界见
+[版本验收记录](community/dsh-015-compat/README.md)及
+[rc.2 核验](community/dsh-015-rc2-20260914/README.md)。本版不做跨版本旧数据迁移。
+
 ## 为什么有这个项目
 
 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（DSH）的
@@ -337,11 +342,11 @@ Pi 包能碰到的每一个面，以及它落到 DSH 的什么位置。下面这
 | [工具](docs/capabilities/tools.md) | 11 | 2 语义一致 · 9 已映射并写明差异 |
 | [命令、flag、编辑器输入](docs/capabilities/commands.md) | 13 | 13 已映射并写明差异 |
 | [消息、上下文、agent 循环](docs/capabilities/conversation.md) | 20 | 9 语义一致 · 11 已映射并写明差异 |
-| [会话与侧边对话](docs/capabilities/sessions.md) | 24 | 7 语义一致 · 17 已映射并写明差异 |
+| [会话与侧边对话](docs/capabilities/sessions.md) | 24 | 6 语义一致 · 18 已映射并写明差异 |
 | [模型、provider、凭证](docs/capabilities/models.md) | 15 | 1 语义一致 · 12 已映射并写明差异 · 2 不提供 |
 | [向用户提问与渲染](docs/capabilities/interaction.md) | 24 | 5 语义一致 · 19 已映射并写明差异 |
 | [项目环境与资源](docs/capabilities/environment.md) | 4 | 2 语义一致 · 1 已映射并写明差异 · 1 不提供 |
-| **合计** | **111** | **26 语义一致 · 82 已映射并写明差异 · 3 不提供** |
+| **合计** | **111** | **25 语义一致 · 83 已映射并写明差异 · 3 不提供** |
 <!-- capability-table:end -->
 
 另外还有 Pi 三个运行时包（`pi-coding-agent`、`pi-tui`、`pi-ai`）的 **203 个

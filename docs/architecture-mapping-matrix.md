@@ -134,6 +134,12 @@ client seam；两个数字都不表示“已经完整”。
 - 需要的公开 seam：`ctx.exec`、subprocess provider。
 - 理论判断：直接承接。
 
+非交互 `pi -p` 是额外的 CLI 协议叶子：本地 POSIX subprocess 的临时入口把参数交给
+既有 `ctx.agents.create` 子会话桥，模型、工具、权限和会话仍归 DSH。执行器保留原包的
+watchdog；超时或连接断开取消原生 child。只选择已经安装的扩展，不在运行时装包。
+远端执行 provider 不注入本机 PATH/socket。`--no-session` 的 Pi 文件与索引可抑制，
+但 DSH 原生审计仍存在，这一保留语义差异归 `DSH-ARCH-007`，不能声明真正不落盘。
+
 ### 命令与输入
 
 <a id="pi-commands-registry"></a>
@@ -146,6 +152,8 @@ client seam；两个数字都不表示“已经完整”。
   拥有原名，Pi 插件撞名时使用 `pi-` 来源前缀，两个普通 Pi 来源撞名时使用编号别名。
   pi2dsh 自带的兼容性兜底命令（例如 `/login`）在宿主已有同名命令且消费相同 DSH
   authorization 权威时不重复注册。所有权在注册前确定，不依赖插件加载顺序。
+- `getCommands()` 的文件型 skill 描述符由 `ctx.skills.list/get` 取得：使用实际文件路径，
+  在会话启动和命令边界刷新，不复制另一个 skill registry。无文件的 opaque skill 不造路径。
 - 理论判断：直接承接。
 
 <a id="pi-commands-controls"></a>
@@ -327,6 +335,13 @@ client seam；两个数字都不表示“已经完整”。
 - 需要的公开 seam：session service、workspace scope 与 Cordis reload。
 - 理论判断：组合承接。
 
+`getSessionFile()` 的文件消费者需要单独验证，不能拿 `getEntries()` 的实时投影替代。
+2026-09-10 的 pi-hermes-memory 消费者证明：只提供身份头不满足文件读取契约。修复后，
+API 读取使用公开 `snapshotEvents()`（旧代回退 `events`），文件消费者获得原生记录的
+完整 Pi 格式导出，历史通过公开 persistence `inspect` / read handle 回填。导出不是
+恢复权威，修改它不改变原生历史；但它仍是磁盘 sidecar，按本标准属于 **3 级适配**。
+这个文件契约问题是桥欠账，不是 DSH 缺会话数据。
+
 ### 模型
 
 <a id="pi-model-provider-registration"></a>
@@ -393,7 +408,8 @@ client seam；两个数字都不表示“已经完整”。
 #### 目录模型的指定调用
 
 - 当前接口叶子：`modelRegistry.complete`、`modelRegistry.getProvider()`、
-  `Provider.stream`、`Provider.streamSimple`、`getApiKeyAndHeaders`。
+  `Provider.stream`、`Provider.streamSimple`、`getApiKeyAndHeaders`、
+  `pi-ai/compat.completeSimple`、`pi-ai/compat.streamSimple`。
 - 理论对应：[DSH / 模型运行时](#dsh-model-runtime)与
   [DSH / 资源与附件](#dsh-resources)。
 - 需要的公开 seam：`llm.stream`、credentials、attachments，以及 Pi 内联图片与 DSH
@@ -410,6 +426,10 @@ client seam；两个数字都不表示“已经完整”。
   [DSH / 客户端与 Web](#dsh-client)。
 - 需要的公开 seam：权威模型目录与 request-level reasoning options。
 - 理论判断：组合承接。
+
+子代理的创建参数须在子代理自己的 `agent.ctx.on("agent/request", ...)` 公开 waterfall
+应用；新版 scope 不把子代理事件送给父作用域。`thinkingLevel=off` 是显式配置，
+不能当作缺省值丢弃。原包后台 `pi -p --thinking off` 已通过真实 request/header 验证。
 
 <a id="pi-model-wire"></a>
 #### Provider 网络请求生命周期
@@ -519,7 +539,9 @@ client seam；两个数字都不表示“已经完整”。
 - 理论对应：[DSH / 工作区资源](#dsh-resources)与
   [DSH / 插件组合](#dsh-composition)。
 - 需要的公开 seam：具有生命周期的 skill/MCP/resource providers。
-- 理论判断：组合承接；当前桥接仍待完成。
+- 理论判断：组合承接。当前仓库实现已把目录形式的 `skillPaths` 注册为官方 filesystem
+  provider；pi-hermes-memory 的全局/项目 skill 创建后跨进程发现和原生 `skill` 工具加载
+  已在 `52f7841` 本地构建上通过。npm `pi2dsh@0.24.0` 尚未包含此实现，不能混用结论。
 
 <a id="pi-events-bus"></a>
 #### 包内事件总线
@@ -528,6 +550,23 @@ client seam；两个数字都不表示“已经完整”。
 - 理论对应：[DSH / 插件组合](#dsh-composition)。
 - 需要的公开 seam：随插件 fiber 销毁的 package-scoped event bus。
 - 理论判断：直接承接。
+
+### DSH 0.1.5 的同契约承载（2026-09-10）
+
+仍对齐 Pi 0.84.1 的既有契约，不引入 Pi V2，也不新造架构分类。
+
+| 既有能力分支 | 0.1.5 的承载机制与公开 seam | 翻译与权威边界 |
+|---|---|---|
+| 模型调用、逐轮系统提示词 | LLM 消息序列中的 system message；一次性调用仍可用 GenerateOptions.system | Pi transport 只得到单个 systemPrompt；桥不声明其未实现的 in-history 能力，由 DSH 决定兼容的系统头表示 |
+| 会话读取与上下文 | Session.snapshotEvents / eventAt / seq | 读原生事件日志，不缓存另一份会话；旧宿主保留 events 数组/方法路径 |
+| 消息流 | agent/assistant-stream 的 start/chunk/end；完成态在原生日志 | 按 Agent/attempt 区分增量，重试重置，丢弃重复/过期片段；旧宿主继续消费 assistant/chunk。流式内容仍是已有的部分 Pi 消息投影 |
+| 子代理创建与生命周期 | setup(agentCtx, agent)、create/resume 的 parentAgent | 创建中的 Agent 显式传递；元数据 parentSession 与实时所有权分别保留，工具和委托策略进入子作用域 |
+| Agent 队列 | agent.inbox.nextStep / nextTurn | 从公开队列判断 pending；claim 留在驱动器，不复制队列 |
+| 文件上下文 | attachments.fileHostPath、fs.processPathFromHostPath、llm.fileHandleText | Pi 侧看宿主生成的文件定位文本；未改写的定位文本回译成原文件引用，保留 DSH 的存储、展示和访问判断 |
+| 工具图片呈现 | tool.call.toolview 的 owner 提供 loadImage | 使用宿主授权加载器取得图片，不释放宿主持有的 URL；旧宿主保留 session.attachment 路径。附件存储与访问控制继续由 DSH 持有 |
+
+版本分支由公开能力与回调参数识别，不依赖包名特判或 DSH 内部对象。
+用户已明确排除跨版本旧数据迁移；本轮验证新建数据及同版本重启，不实现旧 seq 引用重映射。
 
 ### 当前尚未归类 / 待继续审计
 
@@ -641,6 +680,22 @@ provider 或 waterfall 参与。DSH 官方引用的 Cordis 论文
   `dsh.client.inject` 声明的是客户
   端**包依赖**，客户端源码导出的 `inject` 才声明 `slots` 等 Cordis 运行时 service；
   `dsh.client.external` 只用于动态模块图中的外部包，不能拿 service 名来填。
+
+### DSH 0.1.5 的同契约承载（2026-09-10）
+
+仍对齐 Pi 0.84.1 的既有契约，不引入 Pi V2，也不新造架构分类。
+
+| 既有能力分支 | 0.1.5 的承载机制与公开 seam | 翻译与权威边界 |
+|---|---|---|
+| 模型调用、逐轮系统提示词 | LLM 消息序列中的 system message；一次性调用仍可用 GenerateOptions.system | Pi transport 只得到单个 systemPrompt；桥不声明其未实现的 in-history 能力，由 DSH 决定兼容的系统头表示 |
+| 会话读取与上下文 | Session.snapshotEvents / eventAt / seq | 读原生事件日志，不缓存另一份会话；旧宿主保留 events 数组/方法路径 |
+| 消息流 | agent/assistant-stream 的 start/chunk/end；完成态在原生日志 | 按 Agent/attempt 区分增量，重试重置，丢弃重复/过期片段；旧宿主继续消费 assistant/chunk。流式内容仍是已有的部分 Pi 消息投影 |
+| 子代理创建与生命周期 | setup(agentCtx, agent)、create/resume 的 parentAgent | 创建中的 Agent 显式传递；元数据 parentSession 与实时所有权分别保留，工具和委托策略进入子作用域 |
+| Agent 队列 | agent.inbox.nextStep / nextTurn | 从公开队列判断 pending；claim 留在驱动器，不复制队列 |
+| 文件上下文 | attachments.fileHostPath、fs.processPathFromHostPath、llm.fileHandleText | Pi 侧看宿主生成的文件定位文本；未改写的定位文本回译成原文件引用，保留 DSH 的存储、展示和访问判断 |
+
+版本分支由公开能力与回调参数识别，不依赖包名特判或 DSH 内部对象。
+用户已明确排除跨版本旧数据迁移；本轮验证新建数据及同版本重启，不实现旧 seq 引用重映射。
 
 ### 当前尚未归类 / 待继续审计
 

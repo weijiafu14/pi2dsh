@@ -1,6 +1,6 @@
 {
   "name": "dsh-work-x",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Batteries-included capability suite for DeepSeek Harness: MCP manager with lazy proxy + OAuth, parallel steerable subagents, side conversations, image generation \u2014 one install, every piece verified end to end.",
   "license": "MIT",
   "author": "pi2dsh contributors",
@@ -55,7 +55,7 @@
     "pi-btw": "0.4.1",
     "pi-hermes-memory": "0.9.7",
     "pi-mcp-adapter": "2.27.0",
-    "pi2dsh": "^0.24.0"
+    "pi2dsh": "^0.25.0"
   },
   "scripts": {
     "prepack": "node -e \"require('fs').accessSync('client.js')\" || (echo 'dsh-x/client.js missing \u2014 run pnpm build at the repo root first' && exit 1)"

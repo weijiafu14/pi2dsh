@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "pi2dshCommit": "52f78417974a6847c5350b85b72e01a37aa8948f",
+  "dshCommit": "npm:@deepseek-ai/dsh@0.1.5-rc.1",
+  "results": {
+    "codeNavigationWeb": {
+      "status": "passed",
+      "engine": {
+        "version": "0.24.0",
+        "from": "local",
+        "spec": "file:<working-tree>",
+        "commit": "52f78417974a6847c5350b85b72e01a37aa8948f",
+        "dirty": true
+      },
+      "packages": [
+        "@ff-labs/pi-fff",
+        "pi-lens"
+      ],
+      "screenshots": [
+        "06-code-navigation-web.png"
+      ],
+      "search": "ffgrep -> notes/spec.md",
+      "diagnostics": "lsp_diagnostics -> TS2322 on src/ledger.ts"
+    }
+  }
+}

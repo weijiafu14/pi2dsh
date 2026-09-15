@@ -1,0 +1,112 @@
+{
+  "codeword": "AZURE9427a61c3fcd",
+  "revised": "CORAL561a0510666a",
+  "skill": "hermes-proof-767ef9b2",
+  "secret": "ORCHID65c3b5708f0c",
+  "startedAt": "2026-09-10T16:09:26.521Z",
+  "status": "passed",
+  "engineSpec": "file:/tmp/pi2dsh-hermes-20260910/pi2dsh-hermes-final4.tgz",
+  "versions": {
+    "dsh": "0.1.5-rc.1",
+    "pi2dsh": "0.24.0",
+    "memory": "0.9.8"
+  },
+  "sessionCount": 7,
+  "checks": [
+    {
+      "name": "memory-add",
+      "status": "passed"
+    },
+    {
+      "name": "skill-create",
+      "status": "passed"
+    },
+    {
+      "name": "project-skill-create",
+      "status": "passed"
+    },
+    {
+      "name": "fresh-process-memory-search",
+      "status": "passed"
+    },
+    {
+      "name": "prior-session-search",
+      "status": "passed"
+    },
+    {
+      "name": "native-skill-discovery-and-load",
+      "status": "passed"
+    },
+    {
+      "name": "memory-replace",
+      "status": "passed"
+    },
+    {
+      "name": "replacement-persists",
+      "status": "passed"
+    },
+    {
+      "name": "memory-remove",
+      "status": "passed"
+    },
+    {
+      "name": "removal-persists",
+      "status": "passed"
+    }
+  ],
+  "sessions": [
+    {
+      "path": "/tmp/pi2dsh-hermes-clean-20260911/home/sessions/--private-tmp-pi2dsh-hermes-clean-20260911-project--/session-06736e81-c1a8-43e8-8938-713912371fbf/session.v3.jsonl",
+      "calls": [
+        "skill",
+        "skill",
+        "memory_replace",
+        "memory_search"
+      ]
+    },
+    {
+      "path": "/tmp/pi2dsh-hermes-clean-20260911/home/sessions/--private-tmp-pi2dsh-hermes-clean-20260911-project--/session-0bf18327-547e-415f-8ecb-c38b25d1cd43/session.v3.jsonl",
+      "calls": [
+        "skill",
+        "skill",
+        "memory_search",
+        "session_search"
+      ]
+    },
+    {
+      "path": "/tmp/pi2dsh-hermes-clean-20260911/home/sessions/--private-tmp-pi2dsh-hermes-clean-20260911-project--/session-84cfafb6-d9b9-486c-9d56-679ff6f13a3d/session.v3.jsonl",
+      "calls": [
+        "skill",
+        "skill"
+      ]
+    },
+    {
+      "path": "/tmp/pi2dsh-hermes-clean-20260911/home/sessions/--private-tmp-pi2dsh-hermes-clean-20260911-project--/session-bddb9324-b36e-4965-8018-6fd175f2d602/session.v3.jsonl",
+      "calls": [
+        "skill_manage"
+      ]
+    },
+    {
+      "path": "/tmp/pi2dsh-hermes-clean-20260911/home/sessions/--private-tmp-pi2dsh-hermes-clean-20260911-project--/session-d671f027-4f4a-4c75-8215-b559a2ed7a84/session.v3.jsonl",
+      "calls": [
+        "memory_add",
+        "skill_manage"
+      ]
+    },
+    {
+      "path": "/tmp/pi2dsh-hermes-clean-20260911/home/sessions/--private-tmp-pi2dsh-hermes-clean-20260911-project--/session-d88fa9a6-0fe0-4fb0-98c9-c79eba52e428/session.v3.jsonl",
+      "calls": [
+        "memory_search"
+      ]
+    },
+    {
+      "path": "/tmp/pi2dsh-hermes-clean-20260911/home/sessions/--private-tmp-pi2dsh-hermes-clean-20260911-project--/session-ec2be465-f47b-47e6-bd9c-f78db62594ed/session.v3.jsonl",
+      "calls": [
+        "skill",
+        "skill",
+        "memory_search",
+        "memory_remove"
+      ]
+    }
+  ]
+}

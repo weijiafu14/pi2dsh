@@ -1,0 +1,40 @@
+{
+  "name": "native-shutdown-seam",
+  "status": "model-error",
+  "build": {
+    "engineVersion": "0.24.0",
+    "engineDependency": "file:/tmp/pi2dsh-hermes-20260910/pi2dsh-hermes-final.tgz",
+    "engineDistSha256": "d5057a874413c945ca28c38a83bb1512f7aaeb6c20b2b8ce0953b28a1ae874f6",
+    "memoryVersion": "0.9.8"
+  },
+  "observation": {
+    "live": {
+      "providers": [
+        "deepseek-official"
+      ],
+      "settingsPresent": true
+    },
+    "route": {
+      "provider": "deepseek-official",
+      "model": "deepseek-flash"
+    },
+    "phase": "public-async-disposer",
+    "providers": [
+      "deepseek-official"
+    ],
+    "credentialResolved": true,
+    "settingsPresent": false,
+    "finish": {
+      "kind": "error",
+      "failure": {
+        "message": "no adapter registered for provider \"deepseek-official\"",
+        "code": "NO_ADAPTER"
+      }
+    },
+    "preparedFinish": {
+      "kind": "stop"
+    }
+  },
+  "events": [],
+  "nativeChildren": []
+}

@@ -1,0 +1,1868 @@
+{
+  "name": "memory-domains",
+  "status": "passed",
+  "build": {
+    "engineVersion": "0.24.0",
+    "engineDependency": "file:/tmp/pi2dsh-hermes-20260910/pi2dsh-hermes-final.tgz",
+    "engineDistSha256": "d5057a874413c945ca28c38a83bb1512f7aaeb6c20b2b8ce0953b28a1ae874f6",
+    "memoryVersion": "0.9.8"
+  },
+  "nativeSession": {
+    "type": "session",
+    "version": 3,
+    "id": "session-cf081cc0-51eb-4272-8398-87d96e3aa33b",
+    "createdAt": 1789052200631,
+    "cwd": "/private/tmp/pi2dsh-hermes-final-20260910/project",
+    "isSeeded": false,
+    "delegationDepth": 0
+  },
+  "events": [
+    {
+      "type": "user/message",
+      "seq": 8,
+      "time": 1789052200705,
+      "data": {
+        "content": [
+          {
+            "type": "text",
+            "text": "Use memory_add to save four separate durable entries, one each in target memory, user, project, and failure. Each entry must contain DOMAINS02e254c83985 and its target name. The failure entry should use category=correction and explain that an incorrect test path was corrected. Then use memory_search query=DOMAINS02e254c83985 to find them. Do not use other tools."
+          }
+        ],
+        "source": {
+          "kind": "user"
+        },
+        "role": "user",
+        "id": "04d7e906-0d70-49b9-8111-aa2985e89001"
+      },
+      "surfaceOp": "append"
+    },
+    {
+      "type": "user/message",
+      "seq": 9,
+      "time": 1789052200706,
+      "data": {
+        "content": [
+          {
+            "type": "text",
+            "text": "Current runtime context. This snapshot supersedes earlier runtime-context snapshots.\n\nCurrent DSH file policy: danger-full-access. The DSH file sandbox does not restrict file modifications by available operations.\n\nApproval prompts are disabled in this session: actions that require approval are rejected automatically — do not request sandbox escalation (do not set `sandbox_permissions`)."
+          }
+        ],
+        "source": {
+          "kind": "plugin",
+          "plugin": "@deepseek-ai/dsh-system-prompt",
+          "form": "snapshot",
+          "sections": [
+            {
+              "name": "sandbox:policy",
+              "text": "Current DSH file policy: danger-full-access. The DSH file sandbox does not restrict file modifications by available operations."
+            },
+            {
+              "name": "approval:policy",
+              "text": "Approval prompts are disabled in this session: actions that require approval are rejected automatically — do not request sandbox escalation (do not set `sandbox_permissions`)."
+            }
+          ]
+        },
+        "role": "user",
+        "id": "6708576b-0d32-4920-bb3a-8421371c41ad"
+      },
+      "surfaceOp": "append"
+    },
+    {
+      "type": "assistant/message",
+      "seq": 15,
+      "time": 1789052202827,
+      "data": {
+        "turn": 1,
+        "step": 1,
+        "message": {
+          "role": "assistant",
+          "content": [
+            {
+              "type": "reasoning",
+              "text": "I need to save four memory entries with the identifier DOMAINS02e254c83985 and its target name, each with specific target types. Let me make those calls now."
+            },
+            {
+              "type": "text",
+              "text": "I'll save the four entries in parallel."
+            },
+            {
+              "type": "tool-call",
+              "id": "call_00_Rhao9VDUHIE4ebH9Tgln8648",
+              "name": "memory_add",
+              "arguments": "{\"target\": \"memory\", \"content\": \"Durable marker DOMAINS02e254c83985 stored in target=memory. This global note records that the marker DOMAINS02e254c83985 belongs to the memory target for later retrieval.\"}"
+            },
+            {
+              "type": "tool-call",
+              "id": "call_01_UkmlnmDuh4ULBh1kFCnB2194",
+              "name": "memory_add",
+              "arguments": "{\"target\": \"user\", \"content\": \"User-scoped marker DOMAINS02e254c83985 stored in target=user. This entry records that the marker DOMAINS02e254c83985 is associated with the user target.\"}"
+            },
+            {
+              "type": "tool-call",
+              "id": "call_02_JXgz4JGaPQYBa6UagdYl0724",
+              "name": "memory_add",
+              "arguments": "{\"target\": \"project\", \"content\": \"Project-scoped marker DOMAINS02e254c83985 stored in target=project. This entry records that the marker DOMAINS02e254c83985 is associated with the project target for this repository.\"}"
+            },
+            {
+              "type": "tool-call",
+              "id": "call_03_8kFW6CdIjgm4pi7n9VO29012",
+              "name": "memory_add",
+              "arguments": "{\"target\": \"failure\", \"category\": \"correction\", \"content\": \"Marker DOMAINS02e254c83985 stored in target=failure with category=correction. Correction: an incorrect test path was previously used and was corrected to the proper test path. The wrong path caused the test run to target the wrong location; the corrected path resolved it.\", \"failure_reason\": \"An incorrect test path was used and had to be corrected.\"}"
+            }
+          ],
+          "source": {
+            "kind": "model",
+            "provider": "deepseek-official",
+            "model": "deepseek-flash"
+          },
+          "id": "225706be-d2ae-400a-b684-42a2b9b6e906"
+        },
+        "usage": {
+          "inputTokens": 369,
+          "outputTokens": 454,
+          "totalTokens": 11959,
+          "cacheReadTokens": 11136,
+          "reasoningTokens": 37
+        },
+        "stream": [
+          {
+            "type": "chunk",
+            "time": 1789052201340,
+            "chunk": {
+              "type": "block-start",
+              "index": 0,
+              "blockType": "reasoning"
+            }
+          },
+          {
+            "type": "reasoning-chunks",
+            "time0": 1789052201341,
+            "index": 0,
+            "dt": [
+              46,
+              1,
+              0,
+              1,
+              1,
+              21,
+              0,
+              0,
+              0,
+              17,
+              1,
+              0,
+              0,
+              1,
+              0,
+              7,
+              0,
+              1,
+              0,
+              0,
+              0,
+              10,
+              1,
+              0,
+              0,
+              17,
+              7,
+              0,
+              12,
+              0,
+              1,
+              0,
+              13,
+              13,
+              1,
+              16
+            ],
+            "texts": [
+              "I",
+              " need",
+              " to",
+              " save",
+              " four",
+              " memory",
+              " entries",
+              " with",
+              " the",
+              " identifier",
+              " DOM",
+              "A",
+              "INS",
+              "02",
+              "e",
+              "254",
+              "c",
+              "839",
+              "85",
+              " and",
+              " its",
+              " target",
+              " name",
+              ",",
+              " each",
+              " with",
+              " specific",
+              " target",
+              " types",
+              ".",
+              " Let",
+              " me",
+              " make",
+              " those",
+              " calls",
+              " now",
+              "."
+            ]
+          },
+          {
+            "type": "chunk",
+            "time": 1789052201529,
+            "chunk": {
+              "type": "block-start",
+              "index": 1,
+              "blockType": "text"
+            }
+          },
+          {
+            "type": "text-chunks",
+            "time0": 1789052201530,
+            "index": 1,
+            "dt": [
+              0,
+              0,
+              11,
+              0,
+              0,
+              1,
+              0,
+              13
+            ],
+            "texts": [
+              "I",
+              "'ll",
+              " save",
+              " the",
+              " four",
+              " entries",
+              " in",
+              " parallel",
+              "."
+            ]
+          },
+          {
+            "type": "chunk",
+            "time": 1789052201567,
+            "chunk": {
+              "type": "block-start",
+              "index": 2,
+              "blockType": "tool-call"
+            }
+          },
+          {
+            "type": "tool-call-chunks",
+            "time0": 1789052201568,
+            "index": 2,
+            "dt": [
+              11,
+              1,
+              0,
+              16,
+              0,
+              1,
+              0,
+              7,
+              13,
+              1,
+              0,
+              0,
+              0,
+              16,
+              0,
+              13,
+              0,
+              0,
+              1,
+              11,
+              0,
+              0,
+              1,
+              0,
+              0,
+              14,
+              1,
+              11,
+              1,
+              0,
+              0,
+              0,
+              11,
+              0,
+              14,
+              1,
+              14,
+              0,
+              0,
+              21,
+              15,
+              0,
+              0,
+              0,
+              0,
+              0,
+              16,
+              0,
+              0,
+              0,
+              0,
+              0,
+              13,
+              1,
+              10,
+              16,
+              11,
+              0,
+              0
+            ],
+            "id": "call_00_Rhao9VDUHIE4ebH9Tgln8648",
+            "name": "memory_add",
+            "args": [
+              "",
+              "{",
+              "\"",
+              "target",
+              "\"",
+              ": ",
+              "\"",
+              "memory",
+              "\"",
+              ", ",
+              "\"",
+              "content",
+              "\"",
+              ": ",
+              "\"",
+              "D",
+              "urable",
+              " marker",
+              " DOM",
+              "A",
+              "INS",
+              "02",
+              "e",
+              "254",
+              "c",
+              "839",
+              "85",
+              " stored",
+              " in",
+              " target",
+              "=",
+              "memory",
+              ".",
+              " This",
+              " global",
+              " note",
+              " records",
+              " that",
+              " the",
+              " marker",
+              " DOM",
+              "A",
+              "INS",
+              "02",
+              "e",
+              "254",
+              "c",
+              "839",
+              "85",
+              " belongs",
+              " to",
+              " the",
+              " memory",
+              " target",
+              " for",
+              " later",
+              " retrieval",
+              ".",
+              "\"",
+              "}"
+            ]
+          },
+          {
+            "type": "chunk",
+            "time": 1789052201857,
+            "chunk": {
+              "type": "block-start",
+              "index": 3,
+              "blockType": "tool-call"
+            }
+          },
+          {
+            "type": "tool-call-chunks",
+            "time0": 1789052201857,
+            "index": 3,
+            "dt": [
+              12,
+              1,
+              0,
+              0,
+              0,
+              13,
+              0,
+              0,
+              29,
+              0,
+              0,
+              0,
+              1,
+              13,
+              0,
+              0,
+              12,
+              0,
+              17,
+              0,
+              0,
+              0,
+              0,
+              0,
+              9,
+              1,
+              0,
+              0,
+              0,
+              0,
+              17,
+              1,
+              0,
+              0,
+              0,
+              8,
+              0,
+              0,
+              0,
+              2,
+              21,
+              0,
+              1,
+              0,
+              0,
+              0,
+              3,
+              0,
+              0,
+              12,
+              1,
+              0,
+              0,
+              0,
+              12,
+              0,
+              0
+            ],
+            "id": "call_01_UkmlnmDuh4ULBh1kFCnB2194",
+            "name": "memory_add",
+            "args": [
+              "",
+              "{",
+              "\"",
+              "target",
+              "\"",
+              ": ",
+              "\"",
+              "user",
+              "\"",
+              ", ",
+              "\"",
+              "content",
+              "\"",
+              ": ",
+              "\"",
+              "User",
+              "-sc",
+              "oped",
+              " marker",
+              " DOM",
+              "A",
+              "INS",
+              "02",
+              "e",
+              "254",
+              "c",
+              "839",
+              "85",
+              " stored",
+              " in",
+              " target",
+              "=",
+              "user",
+              ".",
+              " This",
+              " entry",
+              " records",
+              " that",
+              " the",
+              " marker",
+              " DOM",
+              "A",
+              "INS",
+              "02",
+              "e",
+              "254",
+              "c",
+              "839",
+              "85",
+              " is",
+              " associated",
+              " with",
+              " the",
+              " user",
+              " target",
+              ".",
+              "\"",
+              "}"
+            ]
+          },
+          {
+            "type": "chunk",
+            "time": 1789052202071,
+            "chunk": {
+              "type": "block-start",
+              "index": 4,
+              "blockType": "tool-call"
+            }
+          },
+          {
+            "type": "tool-call-chunks",
+            "time0": 1789052202071,
+            "index": 4,
+            "dt": [
+              16,
+              0,
+              1,
+              0,
+              0,
+              10,
+              1,
+              0,
+              16,
+              0,
+              38,
+              0,
+              1,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              7,
+              1,
+              0,
+              0,
+              0,
+              0,
+              16,
+              1,
+              0,
+              0,
+              0,
+              0,
+              11,
+              0,
+              0,
+              0,
+              1,
+              0,
+              15,
+              0,
+              0,
+              0,
+              1,
+              0,
+              12,
+              0,
+              0,
+              0,
+              9,
+              26,
+              1,
+              0,
+              0,
+              0,
+              11,
+              0,
+              0,
+              4,
+              0,
+              0
+            ],
+            "id": "call_02_JXgz4JGaPQYBa6UagdYl0724",
+            "name": "memory_add",
+            "args": [
+              "",
+              "{",
+              "\"",
+              "target",
+              "\"",
+              ": ",
+              "\"",
+              "project",
+              "\"",
+              ", ",
+              "\"",
+              "content",
+              "\"",
+              ": ",
+              "\"",
+              "Project",
+              "-sc",
+              "oped",
+              " marker",
+              " DOM",
+              "A",
+              "INS",
+              "02",
+              "e",
+              "254",
+              "c",
+              "839",
+              "85",
+              " stored",
+              " in",
+              " target",
+              "=",
+              "project",
+              ".",
+              " This",
+              " entry",
+              " records",
+              " that",
+              " the",
+              " marker",
+              " DOM",
+              "A",
+              "INS",
+              "02",
+              "e",
+              "254",
+              "c",
+              "839",
+              "85",
+              " is",
+              " associated",
+              " with",
+              " the",
+              " project",
+              " target",
+              " for",
+              " this",
+              " repository",
+              ".",
+              "\"",
+              "}"
+            ]
+          },
+          {
+            "type": "chunk",
+            "time": 1789052202298,
+            "chunk": {
+              "type": "block-start",
+              "index": 5,
+              "blockType": "tool-call"
+            }
+          },
+          {
+            "type": "tool-call-chunks",
+            "time0": 1789052202298,
+            "index": 5,
+            "dt": [
+              13,
+              1,
+              0,
+              0,
+              0,
+              14,
+              0,
+              0,
+              37,
+              3,
+              2,
+              0,
+              6,
+              5,
+              0,
+              0,
+              0,
+              12,
+              0,
+              22,
+              0,
+              0,
+              0,
+              14,
+              0,
+              19,
+              0,
+              0,
+              0,
+              0,
+              0,
+              14,
+              0,
+              0,
+              0,
+              0,
+              0,
+              23,
+              0,
+              16,
+              0,
+              0,
+              0,
+              0,
+              0,
+              23,
+              0,
+              0,
+              0,
+              0,
+              0,
+              16,
+              22,
+              0,
+              0,
+              0,
+              14,
+              0,
+              0,
+              19,
+              0,
+              0,
+              10,
+              0,
+              10,
+              0,
+              11,
+              1,
+              0,
+              14,
+              0,
+              15,
+              0,
+              0,
+              12,
+              16,
+              0,
+              0,
+              0,
+              12,
+              12,
+              0,
+              30,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              11,
+              0,
+              0,
+              0,
+              0,
+              1,
+              15,
+              0,
+              15,
+              0,
+              18,
+              1,
+              0
+            ],
+            "id": "call_03_8kFW6CdIjgm4pi7n9VO29012",
+            "name": "memory_add",
+            "args": [
+              "",
+              "{",
+              "\"",
+              "target",
+              "\"",
+              ": ",
+              "\"",
+              "failure",
+              "\"",
+              ", ",
+              "\"",
+              "category",
+              "\"",
+              ": ",
+              "\"",
+              "cor",
+              "rection",
+              "\"",
+              ", ",
+              "\"",
+              "content",
+              "\"",
+              ": ",
+              "\"",
+              "Marker",
+              " DOM",
+              "A",
+              "INS",
+              "02",
+              "e",
+              "254",
+              "c",
+              "839",
+              "85",
+              " stored",
+              " in",
+              " target",
+              "=f",
+              "ailure",
+              " with",
+              " category",
+              "=",
+              "cor",
+              "rection",
+              ".",
+              " Correction",
+              ":",
+              " an",
+              " incorrect",
+              " test",
+              " path",
+              " was",
+              " previously",
+              " used",
+              " and",
+              " was",
+              " corrected",
+              " to",
+              " the",
+              " proper",
+              " test",
+              " path",
+              ".",
+              " The",
+              " wrong",
+              " path",
+              " caused",
+              " the",
+              " test",
+              " run",
+              " to",
+              " target",
+              " the",
+              " wrong",
+              " location",
+              ";",
+              " the",
+              " corrected",
+              " path",
+              " resolved",
+              " it",
+              ".",
+              "\"",
+              ", ",
+              "\"",
+              "failure",
+              "_re",
+              "ason",
+              "\"",
+              ": ",
+              "\"",
+              "An",
+              " incorrect",
+              " test",
+              " path",
+              " was",
+              " used",
+              " and",
+              " had",
+              " to",
+              " be",
+              " corrected",
+              ".",
+              "\"",
+              "}"
+            ]
+          },
+          {
+            "type": "chunk",
+            "time": 1789052202826,
+            "chunk": {
+              "type": "block-end",
+              "index": 0,
+              "block": {
+                "type": "reasoning",
+                "text": "I need to save four memory entries with the identifier DOMAINS02e254c83985 and its target name, each with specific target types. Let me make those calls now."
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789052202826,
+            "chunk": {
+              "type": "block-end",
+              "index": 1,
+              "block": {
+                "type": "text",
+                "text": "I'll save the four entries in parallel."
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789052202826,
+            "chunk": {
+              "type": "block-end",
+              "index": 2,
+              "block": {
+                "type": "tool-call",
+                "id": "call_00_Rhao9VDUHIE4ebH9Tgln8648",
+                "name": "memory_add",
+                "arguments": "{\"target\": \"memory\", \"content\": \"Durable marker DOMAINS02e254c83985 stored in target=memory. This global note records that the marker DOMAINS02e254c83985 belongs to the memory target for later retrieval.\"}"
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789052202826,
+            "chunk": {
+              "type": "block-end",
+              "index": 3,
+              "block": {
+                "type": "tool-call",
+                "id": "call_01_UkmlnmDuh4ULBh1kFCnB2194",
+                "name": "memory_add",
+                "arguments": "{\"target\": \"user\", \"content\": \"User-scoped marker DOMAINS02e254c83985 stored in target=user. This entry records that the marker DOMAINS02e254c83985 is associated with the user target.\"}"
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789052202826,
+            "chunk": {
+              "type": "block-end",
+              "index": 4,
+              "block": {
+                "type": "tool-call",
+                "id": "call_02_JXgz4JGaPQYBa6UagdYl0724",
+                "name": "memory_add",
+                "arguments": "{\"target\": \"project\", \"content\": \"Project-scoped marker DOMAINS02e254c83985 stored in target=project. This entry records that the marker DOMAINS02e254c83985 is associated with the project target for this repository.\"}"
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789052202826,
+            "chunk": {
+              "type": "block-end",
+              "index": 5,
+              "block": {
+                "type": "tool-call",
+                "id": "call_03_8kFW6CdIjgm4pi7n9VO29012",
+                "name": "memory_add",
+                "arguments": "{\"target\": \"failure\", \"category\": \"correction\", \"content\": \"Marker DOMAINS02e254c83985 stored in target=failure with category=correction. Correction: an incorrect test path was previously used and was corrected to the proper test path. The wrong path caused the test run to target the wrong location; the corrected path resolved it.\", \"failure_reason\": \"An incorrect test path was used and had to be corrected.\"}"
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789052202826,
+            "chunk": {
+              "type": "usage",
+              "usage": {
+                "inputTokens": 369,
+                "outputTokens": 454,
+                "totalTokens": 11959,
+                "cacheReadTokens": 11136,
+                "reasoningTokens": 37
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789052202826,
+            "chunk": {
+              "type": "finish",
+              "reason": {
+                "kind": "tool-calls"
+              }
+            }
+          }
+        ]
+      },
+      "surfaceOp": "append"
+    },
+    {
+      "type": "tool/call",
+      "seq": 16,
+      "time": 1789052202829,
+      "data": {
+        "turn": 1,
+        "step": 1,
+        "callId": "call_00_Rhao9VDUHIE4ebH9Tgln8648",
+        "name": "memory_add",
+        "arguments": "{\"target\": \"memory\", \"content\": \"Durable marker DOMAINS02e254c83985 stored in target=memory. This global note records that the marker DOMAINS02e254c83985 belongs to the memory target for later retrieval.\"}"
+      }
+    },
+    {
+      "type": "tool/result",
+      "seq": 17,
+      "time": 1789052202852,
+      "data": {
+        "turn": 1,
+        "step": 1,
+        "message": {
+          "source": {
+            "kind": "tool",
+            "callId": "call_00_Rhao9VDUHIE4ebH9Tgln8648"
+          },
+          "content": [
+            {
+              "type": "tool-result",
+              "toolCallId": "call_00_Rhao9VDUHIE4ebH9Tgln8648",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "{\"success\":true,\"target\":\"memory\",\"usage\":\"4% — 215/5000 chars\",\"entry_count\":1,\"message\":\"Entry added.\"}"
+                }
+              ],
+              "isError": false
+            }
+          ],
+          "role": "user",
+          "id": "925685dd-09ae-4e35-be22-2a330b1be5a3"
+        },
+        "meta": {
+          "success": true,
+          "target": "memory",
+          "usage": "4% — 215/5000 chars",
+          "entry_count": 1,
+          "message": "Entry added."
+        }
+      },
+      "sourceEventSeqs": [
+        16
+      ],
+      "surfaceOp": "append"
+    },
+    {
+      "type": "tool/call",
+      "seq": 18,
+      "time": 1789052202853,
+      "data": {
+        "turn": 1,
+        "step": 1,
+        "callId": "call_01_UkmlnmDuh4ULBh1kFCnB2194",
+        "name": "memory_add",
+        "arguments": "{\"target\": \"user\", \"content\": \"User-scoped marker DOMAINS02e254c83985 stored in target=user. This entry records that the marker DOMAINS02e254c83985 is associated with the user target.\"}"
+      }
+    },
+    {
+      "type": "tool/result",
+      "seq": 19,
+      "time": 1789052202865,
+      "data": {
+        "turn": 1,
+        "step": 1,
+        "message": {
+          "source": {
+            "kind": "tool",
+            "callId": "call_01_UkmlnmDuh4ULBh1kFCnB2194"
+          },
+          "content": [
+            {
+              "type": "tool-result",
+              "toolCallId": "call_01_UkmlnmDuh4ULBh1kFCnB2194",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "{\"success\":true,\"target\":\"user\",\"usage\":\"3% — 197/5000 chars\",\"entry_count\":1,\"message\":\"Entry added.\"}"
+                }
+              ],
+              "isError": false
+            }
+          ],
+          "role": "user",
+          "id": "13a77d41-9236-45ef-bbb4-eda6e57f1f87"
+        },
+        "meta": {
+          "success": true,
+          "target": "user",
+          "usage": "3% — 197/5000 chars",
+          "entry_count": 1,
+          "message": "Entry added."
+        }
+      },
+      "sourceEventSeqs": [
+        18
+      ],
+      "surfaceOp": "append"
+    },
+    {
+      "type": "tool/call",
+      "seq": 20,
+      "time": 1789052202865,
+      "data": {
+        "turn": 1,
+        "step": 1,
+        "callId": "call_02_JXgz4JGaPQYBa6UagdYl0724",
+        "name": "memory_add",
+        "arguments": "{\"target\": \"project\", \"content\": \"Project-scoped marker DOMAINS02e254c83985 stored in target=project. This entry records that the marker DOMAINS02e254c83985 is associated with the project target for this repository.\"}"
+      }
+    },
+    {
+      "type": "tool/result",
+      "seq": 21,
+      "time": 1789052202882,
+      "data": {
+        "turn": 1,
+        "step": 1,
+        "message": {
+          "source": {
+            "kind": "tool",
+            "callId": "call_02_JXgz4JGaPQYBa6UagdYl0724"
+          },
+          "content": [
+            {
+              "type": "tool-result",
+              "toolCallId": "call_02_JXgz4JGaPQYBa6UagdYl0724",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "{\"success\":true,\"target\":\"project\",\"usage\":\"4% — 226/5000 chars\",\"entry_count\":1,\"message\":\"Entry added.\"}"
+                }
+              ],
+              "isError": false
+            }
+          ],
+          "role": "user",
+          "id": "d66e7593-8208-4f1e-8463-e5b275331f4b"
+        },
+        "meta": {
+          "success": true,
+          "target": "project",
+          "usage": "4% — 226/5000 chars",
+          "entry_count": 1,
+          "message": "Entry added."
+        }
+      },
+      "sourceEventSeqs": [
+        20
+      ],
+      "surfaceOp": "append"
+    },
+    {
+      "type": "tool/call",
+      "seq": 22,
+      "time": 1789052202882,
+      "data": {
+        "turn": 1,
+        "step": 1,
+        "callId": "call_03_8kFW6CdIjgm4pi7n9VO29012",
+        "name": "memory_add",
+        "arguments": "{\"target\": \"failure\", \"category\": \"correction\", \"content\": \"Marker DOMAINS02e254c83985 stored in target=failure with category=correction. Correction: an incorrect test path was previously used and was corrected to the proper test path. The wrong path caused the test run to target the wrong location; the corrected path resolved it.\", \"failure_reason\": \"An incorrect test path was used and had to be corrected.\"}"
+      }
+    },
+    {
+      "type": "tool/result",
+      "seq": 23,
+      "time": 1789052202895,
+      "data": {
+        "turn": 1,
+        "step": 1,
+        "message": {
+          "source": {
+            "kind": "tool",
+            "callId": "call_03_8kFW6CdIjgm4pi7n9VO29012"
+          },
+          "content": [
+            {
+              "type": "tool-result",
+              "toolCallId": "call_03_8kFW6CdIjgm4pi7n9VO29012",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "{\"success\":true,\"target\":\"failure\",\"usage\":\"3% — 397/10000 chars\",\"entry_count\":1,\"message\":\"Failure memory saved: correction\"}"
+                }
+              ],
+              "isError": false
+            }
+          ],
+          "role": "user",
+          "id": "1c2fe77f-565c-4ed7-b20e-005226191b52"
+        },
+        "meta": {
+          "success": true,
+          "target": "failure",
+          "usage": "3% — 397/10000 chars",
+          "entry_count": 1,
+          "message": "Failure memory saved: correction"
+        }
+      },
+      "sourceEventSeqs": [
+        22
+      ],
+      "surfaceOp": "append"
+    },
+    {
+      "type": "assistant/message",
+      "seq": 27,
+      "time": 1789052203849,
+      "data": {
+        "turn": 1,
+        "step": 2,
+        "message": {
+          "role": "assistant",
+          "content": [
+            {
+              "type": "text",
+              "text": "All four entries saved. Now searching for the marker."
+            },
+            {
+              "type": "tool-call",
+              "id": "call_00_ET_LrPpQBquTg7QklifvSQV0312",
+              "name": "memory_search",
+              "arguments": "{\"query\": \"DOMAINS02e254c83985\"}"
+            }
+          ],
+          "source": {
+            "kind": "model",
+            "provider": "deepseek-official",
+            "model": "deepseek-flash"
+          },
+          "id": "09451785-20f8-4f89-b2ee-152df2340491"
+        },
+        "usage": {
+          "inputTokens": 986,
+          "outputTokens": 56,
+          "totalTokens": 12178,
+          "cacheReadTokens": 11136,
+          "reasoningTokens": 0
+        },
+        "stream": [
+          {
+            "type": "chunk",
+            "time": 1789052203748,
+            "chunk": {
+              "type": "block-start",
+              "index": 0,
+              "blockType": "text"
+            }
+          },
+          {
+            "type": "text-chunks",
+            "time0": 1789052203748,
+            "index": 0,
+            "dt": [
+              1,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0
+            ],
+            "texts": [
+              "All",
+              " four",
+              " entries",
+              " saved",
+              ".",
+              " Now",
+              " searching",
+              " for",
+              " the",
+              " marker",
+              "."
+            ]
+          },
+          {
+            "type": "chunk",
+            "time": 1789052203764,
+            "chunk": {
+              "type": "block-start",
+              "index": 1,
+              "blockType": "tool-call"
+            }
+          },
+          {
+            "type": "tool-call-chunks",
+            "time0": 1789052203764,
+            "index": 1,
+            "dt": [
+              15,
+              0,
+              0,
+              1,
+              0,
+              14,
+              1,
+              0,
+              0,
+              26,
+              1,
+              0,
+              0,
+              0,
+              0,
+              0,
+              17
+            ],
+            "id": "call_00_ET_LrPpQBquTg7QklifvSQV0312",
+            "name": "memory_search",
+            "args": [
+              "",
+              "{",
+              "\"",
+              "query",
+              "\"",
+              ": ",
+              "\"",
+              "DOM",
+              "A",
+              "INS",
+              "02",
+              "e",
+              "254",
+              "c",
+              "839",
+              "85",
+              "\"",
+              "}"
+            ]
+          },
+          {
+            "type": "chunk",
+            "time": 1789052203847,
+            "chunk": {
+              "type": "block-end",
+              "index": 0,
+              "block": {
+                "type": "text",
+                "text": "All four entries saved. Now searching for the marker."
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789052203847,
+            "chunk": {
+              "type": "block-end",
+              "index": 1,
+              "block": {
+                "type": "tool-call",
+                "id": "call_00_ET_LrPpQBquTg7QklifvSQV0312",
+                "name": "memory_search",
+                "arguments": "{\"query\": \"DOMAINS02e254c83985\"}"
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789052203847,
+            "chunk": {
+              "type": "usage",
+              "usage": {
+                "inputTokens": 986,
+                "outputTokens": 56,
+                "totalTokens": 12178,
+                "cacheReadTokens": 11136,
+                "reasoningTokens": 0
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789052203848,
+            "chunk": {
+              "type": "finish",
+              "reason": {
+                "kind": "tool-calls"
+              }
+            }
+          }
+        ]
+      },
+      "surfaceOp": "append"
+    },
+    {
+      "type": "tool/call",
+      "seq": 28,
+      "time": 1789052203851,
+      "data": {
+        "turn": 1,
+        "step": 2,
+        "callId": "call_00_ET_LrPpQBquTg7QklifvSQV0312",
+        "name": "memory_search",
+        "arguments": "{\"query\": \"DOMAINS02e254c83985\"}"
+      }
+    },
+    {
+      "type": "tool/result",
+      "seq": 29,
+      "time": 1789052203868,
+      "data": {
+        "turn": 1,
+        "step": 2,
+        "message": {
+          "source": {
+            "kind": "tool",
+            "callId": "call_00_ET_LrPpQBquTg7QklifvSQV0312"
+          },
+          "content": [
+            {
+              "type": "tool-result",
+              "toolCallId": "call_00_ET_LrPpQBquTg7QklifvSQV0312",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Found 4 memories matching \"DOMAINS02e254c83985\":\n\n👤 scope=global [target=user] User-scoped marker DOMAINS02e254c83985 stored in target=user. This entry records that the marker DOMAINS02e254c83985 is associated with the user target.\n   Created: 2026-09-10 | Last used: 2026-09-10\n\n🧠 scope=global [target=memory] Durable marker DOMAINS02e254c83985 stored in target=memory. This global note records that the marker DOMAINS02e254c83985 belongs to the memory target for later retrieval.\n   Created: 2026-09-10 | Last used: 2026-09-10\n\n🧠 scope=project:project [target=project] Project-scoped marker DOMAINS02e254c83985 stored in target=project. This entry records that the marker DOMAINS02e254c83985 is associated with the project target for this repository.\n   Created: 2026-09-10 | Last used: 2026-09-10\n\n⚠️ scope=global [target=failure] [correction] [correction] Marker DOMAINS02e254c83985 stored in target=failure with category=correction. Correction: an incorrect test path was previously used and was corrected to the proper test path. The wrong path caused the test run to target the wrong location; the corrected path resolved it. — Failed: An incorrect test path was used and had to be corrected.\n   Created: 2026-09-10 | Last used: 2026-09-10"
+                }
+              ],
+              "isError": false
+            }
+          ],
+          "role": "user",
+          "id": "b94a284e-ab0e-4994-bb8e-e627613d96c2"
+        },
+        "meta": {
+          "success": true,
+          "count": 4,
+          "output": "Found 4 memories matching \"DOMAINS02e254c83985\":\n\n👤 scope=global [target=user] User-scoped marker DOMAINS02e254c83985 stored in target=user. This entry records that the marker DOMAINS02e254c83985 is associated with the user target.\n   Created: 2026-09-10 | Last used: 2026-09-10\n\n🧠 scope=global [target=memory] Durable marker DOMAINS02e254c83985 stored in target=memory. This global note records that the marker DOMAINS02e254c83985 belongs to the memory target for later retrieval.\n   Created: 2026-09-10 | Last used: 2026-09-10\n\n🧠 scope=project:project [target=project] Project-scoped marker DOMAINS02e254c83985 stored in target=project. This entry records that the marker DOMAINS02e254c83985 is associated with the project target for this repository.\n   Created: 2026-09-10 | Last used: 2026-09-10\n\n⚠️ scope=global [target=failure] [correction] [correction] Marker DOMAINS02e254c83985 stored in target=failure with category=correction. Correction: an incorrect test path was previously used and was corrected to the proper test path. The wrong path caused the test run to target the wrong location; the corrected path resolved it. — Failed: An incorrect test path was used and had to be corrected.\n   Created: 2026-09-10 | Last used: 2026-09-10"
+        }
+      },
+      "sourceEventSeqs": [
+        28
+      ],
+      "surfaceOp": "append"
+    },
+    {
+      "type": "assistant/message",
+      "seq": 32,
+      "time": 1789052205651,
+      "data": {
+        "turn": 1,
+        "step": 3,
+        "message": {
+          "role": "assistant",
+          "content": [
+            {
+              "type": "text",
+              "text": "Done. All four durable entries were saved with the marker `DOMAINS02e254c83985`, and the search returned all four:\n\n| Target | Scope | Contains marker | Notes |\n|---|---|---|---|\n| `memory` | global | ✅ | Global note |\n| `user` | global | ✅ | User-scoped |\n| `project` | project | ✅ | Project-scoped |\n| `failure` | global | ✅ | `category=correction`, records that an incorrect test path was corrected |\n\nThe `memory_search` for `DOMAINS02e254c83985` matched exactly these 4 memories — one per requested target — with the failure entry flagged as `[correction]` and its failure reason (\"An incorrect test path was used and had to be corrected.\")."
+            }
+          ],
+          "source": {
+            "kind": "model",
+            "provider": "deepseek-official",
+            "model": "deepseek-flash"
+          },
+          "id": "253f2bcf-05e2-4888-bb5d-e22db798ef74"
+        },
+        "usage": {
+          "inputTokens": 384,
+          "outputTokens": 164,
+          "totalTokens": 12708,
+          "cacheReadTokens": 12160,
+          "reasoningTokens": 0
+        },
+        "stream": [
+          {
+            "type": "chunk",
+            "time": 1789052205081,
+            "chunk": {
+              "type": "block-start",
+              "index": 0,
+              "blockType": "text"
+            }
+          },
+          {
+            "type": "text-chunks",
+            "time0": 1789052205081,
+            "index": 0,
+            "dt": [
+              16,
+              0,
+              0,
+              0,
+              10,
+              0,
+              0,
+              22,
+              1,
+              0,
+              7,
+              0,
+              0,
+              0,
+              15,
+              0,
+              0,
+              0,
+              0,
+              0,
+              11,
+              0,
+              0,
+              0,
+              18,
+              0,
+              0,
+              0,
+              0,
+              0,
+              11,
+              0,
+              9,
+              0,
+              0,
+              0,
+              15,
+              19,
+              0,
+              0,
+              0,
+              0,
+              0,
+              12,
+              0,
+              0,
+              0,
+              0,
+              8,
+              16,
+              0,
+              0,
+              17,
+              0,
+              1,
+              0,
+              0,
+              6,
+              0,
+              0,
+              0,
+              0,
+              0,
+              25,
+              0,
+              8,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              9,
+              14,
+              1,
+              0,
+              0,
+              0,
+              13,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              14,
+              0,
+              0,
+              0,
+              15,
+              0,
+              0,
+              0,
+              0,
+              0,
+              9,
+              0,
+              1,
+              0,
+              16,
+              0,
+              0,
+              0,
+              1,
+              0,
+              7,
+              1,
+              0,
+              0,
+              0,
+              17,
+              0,
+              1,
+              0,
+              0,
+              0,
+              14,
+              1,
+              0,
+              0,
+              0,
+              8,
+              24,
+              14,
+              1,
+              0,
+              10,
+              0,
+              0,
+              1,
+              16,
+              0,
+              10,
+              0,
+              0,
+              14,
+              1,
+              0,
+              0,
+              11,
+              0,
+              1,
+              0,
+              0,
+              0,
+              14,
+              1,
+              0,
+              16,
+              12,
+              2,
+              0,
+              0,
+              0,
+              1,
+              10,
+              0,
+              0,
+              0,
+              1,
+              0,
+              17
+            ],
+            "texts": [
+              "Done",
+              ".",
+              " All",
+              " four",
+              " durable",
+              " entries",
+              " were",
+              " saved",
+              " with",
+              " the",
+              " marker",
+              " `",
+              "DOM",
+              "A",
+              "INS",
+              "02",
+              "e",
+              "254",
+              "c",
+              "839",
+              "85",
+              "`,",
+              " and",
+              " the",
+              " search",
+              " returned",
+              " all",
+              " four",
+              ":\n\n",
+              "|",
+              " Target",
+              " |",
+              " Scope",
+              " |",
+              " Contains",
+              " marker",
+              " |",
+              " Notes",
+              " |\n",
+              "|---|---",
+              "|---|---",
+              "|\n",
+              "|",
+              " `",
+              "memory",
+              "`",
+              " |",
+              " global",
+              " |",
+              " ✅",
+              " |",
+              " Global",
+              " note",
+              " |\n",
+              "|",
+              " `",
+              "user",
+              "`",
+              " |",
+              " global",
+              " |",
+              " ✅",
+              " |",
+              " User",
+              "-sc",
+              "oped",
+              " |\n",
+              "|",
+              " `",
+              "project",
+              "`",
+              " |",
+              " project",
+              " |",
+              " ✅",
+              " |",
+              " Project",
+              "-sc",
+              "oped",
+              " |\n",
+              "|",
+              " `",
+              "failure",
+              "`",
+              " |",
+              " global",
+              " |",
+              " ✅",
+              " |",
+              " `",
+              "category",
+              "=",
+              "cor",
+              "rection",
+              "`,",
+              " records",
+              " that",
+              " an",
+              " incorrect",
+              " test",
+              " path",
+              " was",
+              " corrected",
+              " |\n\n",
+              "The",
+              " `",
+              "memory",
+              "_search",
+              "`",
+              " for",
+              " `",
+              "DOM",
+              "A",
+              "INS",
+              "02",
+              "e",
+              "254",
+              "c",
+              "839",
+              "85",
+              "`",
+              " matched",
+              " exactly",
+              " these",
+              " ",
+              "4",
+              " memories",
+              " —",
+              " one",
+              " per",
+              " requested",
+              " target",
+              " —",
+              " with",
+              " the",
+              " failure",
+              " entry",
+              " flagged",
+              " as",
+              " `",
+              "[",
+              "cor",
+              "rection",
+              "]",
+              "`",
+              " and",
+              " its",
+              " failure",
+              " reason",
+              " (\"",
+              "An",
+              " incorrect",
+              " test",
+              " path",
+              " was",
+              " used",
+              " and",
+              " had",
+              " to",
+              " be",
+              " corrected",
+              ".\"",
+              ")."
+            ]
+          },
+          {
+            "type": "chunk",
+            "time": 1789052205648,
+            "chunk": {
+              "type": "block-end",
+              "index": 0,
+              "block": {
+                "type": "text",
+                "text": "Done. All four durable entries were saved with the marker `DOMAINS02e254c83985`, and the search returned all four:\n\n| Target | Scope | Contains marker | Notes |\n|---|---|---|---|\n| `memory` | global | ✅ | Global note |\n| `user` | global | ✅ | User-scoped |\n| `project` | project | ✅ | Project-scoped |\n| `failure` | global | ✅ | `category=correction`, records that an incorrect test path was corrected |\n\nThe `memory_search` for `DOMAINS02e254c83985` matched exactly these 4 memories — one per requested target — with the failure entry flagged as `[correction]` and its failure reason (\"An incorrect test path was used and had to be corrected.\")."
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789052205649,
+            "chunk": {
+              "type": "usage",
+              "usage": {
+                "inputTokens": 384,
+                "outputTokens": 164,
+                "totalTokens": 12708,
+                "cacheReadTokens": 12160,
+                "reasoningTokens": 0
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789052205649,
+            "chunk": {
+              "type": "finish",
+              "reason": {
+                "kind": "stop"
+              }
+            }
+          }
+        ]
+      },
+      "surfaceOp": "append"
+    }
+  ],
+  "nativeChildren": []
+}

@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "status": "passed",
+  "engine": {
+    "name": "pi2dsh",
+    "version": "0.24.0",
+    "spec": "file:<working-tree>"
+  },
+  "plugin": {
+    "name": "@crazygit/pi-codex-image-gen",
+    "version": "0.2.2",
+    "spec": "@crazygit/pi-codex-image-gen@0.2.2"
+  },
+  "model": {
+    "provider": "openai-codex",
+    "id": "gpt-5.6-sol",
+    "auth": "oauth"
+  },
+  "generation": {
+    "surface": "headless",
+    "tool": "codex_generate_image",
+    "processShutdown": "terminated-after-durable-turn",
+    "image": {
+      "sha256": "9c65db748b58dda27b397ff4347e18f3df460f174615cbe64c03012a82cb904f",
+      "bytes": 895103,
+      "width": 1254,
+      "height": 1254,
+      "copied": "/tmp/pi2dsh-dsh-audit-20260910-4hEN8x/screenshots/new-codex-image/codex-generated.png"
+    }
+  },
+  "edit": {
+    "surface": "web",
+    "tool": "codex_generate_image",
+    "approval": "DSH userQuestions -> Yes",
+    "referenceCount": 1,
+    "image": {
+      "sha256": "b4dc2cf538b9bb69fc355c620a7213fbf5d2b1a5bd2a28b9c7e4651563891bfe",
+      "bytes": 919423,
+      "width": 1254,
+      "height": 1254,
+      "copied": "/tmp/pi2dsh-dsh-audit-20260910-4hEN8x/screenshots/new-codex-image/codex-edited.png"
+    }
+  }
+}

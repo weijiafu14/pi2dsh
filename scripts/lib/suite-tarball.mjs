@@ -17,6 +17,9 @@ const execFile = promisify(execFileCallback)
  * @returns absolute path to the staged tarball.
  */
 export async function stageSuiteTarball(projectRoot, engineSpec, scratch, env) {
+  // Release acceptance installs the actual published suite; a staged local
+  // client bundle cannot prove that the published browser half is correct.
+  if (env.PI2DSH_SUITE_SPEC) return env.PI2DSH_SUITE_SPEC
   const suiteDir = join(scratch, 'dsh-x')
   await mkdir(suiteDir, { recursive: true })
   const manifest = JSON.parse(await readFile(join(projectRoot, 'dsh-x/package.json'), 'utf8'))

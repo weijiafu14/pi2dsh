@@ -30,7 +30,10 @@ export default defineConfig([
     deps: { neverBundle: [/^@deepseek-ai\//, /^@xmoon76\/dsh-pi-tui(?:\/|$)/] },
     // Pi's license ships next to the vendored Pi code; the file must be in the
     // npm artifact (dist is the only published directory).
-    copy: [{ from: 'src/compat/vendor/PI-LICENSE', to: 'dist/compat/vendor' }],
+    copy: [
+      { from: 'src/compat/vendor/PI-LICENSE', to: 'dist/compat/vendor' },
+      { from: 'src/pi-cli-client.mjs', to: 'dist' },
+    ],
     banner: ({ fileName }) => fileName.includes('cli') ? '#!/usr/bin/env node' : undefined,
   },
   // The dsh-x suite's browser half — THE web renderer for the Pi surfaces.

@@ -1,0 +1,132 @@
+{
+  "generatedAt": "2026-09-10T12:56:03.252Z",
+  "startedAt": "2026-09-10T12:50:09.188Z",
+  "scenario": "pi-subagents-lifecycle (steer / resume / stop / model-follow / explicit-model-thinking)",
+  "cliSpec": "@deepseek-ai/dsh@0.1.5-rc.1",
+  "engineSpec": "file:<working-tree>",
+  "subagentsSpec": "@tintinweb/pi-subagents@0.18.0",
+  "status": "passed",
+  "scenarios": {
+    "steer": {
+      "status": "passed",
+      "problems": [],
+      "steeredLanded": true,
+      "alphaAlsoLanded": false,
+      "spawnTaskVerbatim": true,
+      "parentToolCalls": [
+        "Agent",
+        "steer_subagent",
+        "get_subagent_result"
+      ],
+      "childFile": "/tmp/pi2dsh-dsh-audit-20260910-4hEN8x/subagents-new/dsh-home/sessions/--private-tmp-pi2dsh-dsh-audit-20260910-4hEN8x-subagents-new-workspace--/pi2dsh-sub-mtvj0gto-1/session.v3.jsonl"
+    },
+    "failureReport": {
+      "status": "passed",
+      "problems": [],
+      "reportCarried": true,
+      "childFile": "/tmp/pi2dsh-dsh-audit-20260910-4hEN8x/subagents-new/dsh-home/sessions/--private-tmp-pi2dsh-dsh-audit-20260910-4hEN8x-subagents-new-workspace--/pi2dsh-sub-mtvj1ayr-1/session.v3.jsonl"
+    },
+    "resume": {
+      "status": "passed",
+      "problems": [],
+      "attempt": 1,
+      "recalled": true,
+      "childSessionFile": "/tmp/pi2dsh-dsh-audit-20260910-4hEN8x/subagents-new/dsh-home/sessions/--private-tmp-pi2dsh-dsh-audit-20260910-4hEN8x-subagents-new-workspace--/pi2dsh-sub-mtvj1hgz-1/session.v3.jsonl",
+      "childTurns": 2,
+      "matchedChildLogs": 1
+    },
+    "resumeArchive": {
+      "status": "passed",
+      "problems": [],
+      "recalled": true,
+      "archive": "/tmp/pi2dsh-dsh-audit-20260910-4hEN8x/subagents-new/dsh-home/pi2dsh/agent/session-entries/pi2dsh-sub-mtvj1r7q-1.jsonl",
+      "childSessionFile": "/tmp/pi2dsh-dsh-audit-20260910-4hEN8x/subagents-new/dsh-home/sessions/--private-tmp-pi2dsh-dsh-audit-20260910-4hEN8x-subagents-new-workspace--/pi2dsh-sub-mtvj1r7q-1/session.v3.jsonl",
+      "childTurns": 2
+    },
+    "stopChildTurnEnds": [
+      "{\"kind\":\"aborted\",\"reason\":{\"kind\":\"hook\",\"reason\":\"pi2dsh subagent abort()\"}}"
+    ],
+    "stopPaneTail": " █▄▄▄▀\n      ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀              deepseek-chat · Max effort\n        ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▄             /private/tmp/pi2dsh-dsh-audit-20260910-4hEN8x/subagents-new/workspace\n           ▀▀▀▀▀▀▀▀▀▀▀  ▀▀▀▀▀▀▀             提示：/permission 弹出由 DSH registry 提供的权限预设选择器 · /tips 更多技巧\n                                            ⚠ dsh 引擎为 0.1.5-rc.1，比本界面验证过的 0.1.2-rc.1 新，可能出现兼容问题；求稳可执行 npm i -g @deepseek-ai/dsh@0.1.2-rc.1 降级，或等待\n                                            dsh-tui 适配新版。\n\n              探索未至之境！\n\n  ❯ Call the Agent tool exactly once: subagent_type general-purpose, name \"sleeper\", run_in_background false, prompt: \"Run the bash command `sleep 90` in the FOREGROUND and\n    wait for it to finish — do not set run_in_background, do not append &. When it finishes, write the file\n    /tmp/pi2dsh-dsh-audit-20260910-4hEN8x/subagents-new/workspace/stopped-agent-output-MTVIYV8K.txt containing SHOULD_NOT_EXIST_MTVIYV8K using bash, then reply done.\" Do not\n    run bash yourself.\n\n  ✗ Agent({\"subagent_type\":\"general-purpose\",\"name\":\"sleeper\",\"run_in_background\":false,\"description\":\"Sleep then write marker file\",\"prompt\":\"Run the bash command `sleep…) · 3s\n   ⎿ AbortError: ABORTED — Error: tool call aborted\n     ⌘t 看完整轨迹\n\n  已打断 · 接下来想让 DeepSeek 做什么？\n\n\n\n\n\n\n\n\n\n\n\n\n\n  ╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮\n  ❯                                                                                                                                                                              ⛶\n  ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯\n   deepseek-chat · max · 缓存 0.0% · workspace                                                                                                                ctx 8.3% (11k/131k)\n\n\n",
+    "stopManagerScreen": ".5-rc.1，比本界面验证过的 0.1.2-rc.1 新，可能出现兼容问题；求稳可执行 npm i -g @deepseek-ai/dsh@0.1.2-rc.1 降级，或等待\n                                            dsh-tui 适配新版。\n\n              探索未至之境！\n\n  ❯ Call the Agent tool exactly once: subagent_type general-purpose, name \"sleeper\", run_in_background false, prompt: \"Run the bash command `sleep 90` in the FOREGROUND and\n    wait for it to finish — do not set run_in_background, do not append &. When it finishes, write the file\n    /tmp/pi2dsh-dsh-audit-20260910-4hEN8x/subagents-new/workspace/stopped-agent-output-MTVIYV8K.txt containing SHOULD_NOT_EXIST_MTVIYV8K using bash, then reply done.\" Do not\n    run bash yourself.\n\n  ✗ Agent({\"subagent_type\":\"general-purpose\",\"name\":\"sleeper\",\"run_in_background\":false,\"description\":\"Sleep then write marker file\",\"prompt\":\"Run the bash command `sleep…) · 3s\n   ⎿ AbortError: ABORTED — Error: tool call aborted\n     ⌘t 看完整轨迹\n\n  已打断 · 接下来想让 DeepSeek 做什么？\n\n\n\n    ──────────────────────────────────────────────────────────────────────────  📋 提问 · 第 1/1 题  ───────────────────────────────────────────────────────────────────────────\n\n    Agents\n\n\n    ❯● Running agents (1) — 0 running, 0 done\n     ○ Agent types (3)\n     ○ Scheduled jobs (0)\n     ○ Create new agent\n     ○ Settings\n     ✎ 自定义回答：直接输入…\n\n    ↑/↓ 选择 · Ctrl+V 粘贴 · 输入文字附带回答 · Enter 提交 · Esc 中断\n   deepseek-chat · max · 缓存 0.0% · workspace                                                                                                                ctx 8.3% (11k/131k)\n\n\n",
+    "stop": {
+      "status": "passed",
+      "problems": [],
+      "tuiVersion": "0.10.0",
+      "interrupted": true,
+      "outputFileAbsentAfterWindow": true
+    },
+    "modelFollowPickerScreen": "                                                           模型已切换为 Work Gateway Model\n  ╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮\n  ❯                                                                                                                                                                              ⛶\n  ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯\n   deepseek-chat · max · 缓存 0.0% · workspace                                                                                                                ctx 1.1% (11k/1.0m)\n\n\n",
+    "modelFollow": {
+      "status": "passed",
+      "problems": [],
+      "defaultProvider": "deepseek-official",
+      "parentRoutes": [
+        {
+          "provider": "deepseek-official",
+          "model": "deepseek-v4-flash"
+        },
+        {
+          "provider": "work-gw",
+          "model": "deepseek-chat"
+        }
+      ],
+      "childRoutes": [
+        {
+          "provider": "work-gw",
+          "model": "deepseek-chat"
+        }
+      ],
+      "markerLanded": true
+    },
+    "explicitModelThinking": {
+      "status": "passed",
+      "problems": [],
+      "parentConfigs": [
+        {
+          "provider": "deepseek-official",
+          "model": "deepseek-v4-flash",
+          "reasoningEffort": "max",
+          "maxTokens": 256000
+        },
+        {
+          "provider": "work-gw",
+          "model": "deepseek-chat"
+        }
+      ],
+      "agentArguments": {
+        "description": "explicit route and effort probe",
+        "name": "explicit-probe",
+        "model": "deepseek-official/deepseek-v4-flash",
+        "prompt": "Run one bash command that writes the single word EXPLICIT_MTVIYV8K into /tmp/pi2dsh-dsh-audit-20260910-4hEN8x/subagents-new/workspace/explicit-model-thinking-MTVIYV8K.txt, then reply done.",
+        "run_in_background": false,
+        "subagent_type": "general-purpose",
+        "thinking": "max"
+      },
+      "childConfigs": [
+        {
+          "provider": "deepseek-official",
+          "model": "deepseek-v4-flash",
+          "maxTokens": 256000,
+          "reasoningEffort": "max"
+        }
+      ],
+      "childToolCalls": [
+        "bash",
+        "read"
+      ],
+      "markerLanded": true
+    },
+    "childExtensions": {
+      "status": "passed",
+      "problems": [],
+      "touched": true,
+      "positiveChild": "/tmp/pi2dsh-dsh-audit-20260910-4hEN8x/subagents-new/dsh-home/sessions/--private-tmp-pi2dsh-dsh-audit-20260910-4hEN8x-subagents-new-workspace--/pi2dsh-sub-mtvj65hg-1/session.v3.jsonl",
+      "negativeChild": "/tmp/pi2dsh-dsh-audit-20260910-4hEN8x/subagents-new/dsh-home/sessions/--private-tmp-pi2dsh-dsh-audit-20260910-4hEN8x-subagents-new-workspace--/pi2dsh-sub-mtvj6e1v-1/session.v3.jsonl"
+    },
+    "stack": {
+      "cliVersion": "0.1.5-rc.1",
+      "engineVersion": "0.24.0",
+      "scratch": "/tmp/pi2dsh-dsh-audit-20260910-4hEN8x/subagents-new"
+    }
+  }
+}

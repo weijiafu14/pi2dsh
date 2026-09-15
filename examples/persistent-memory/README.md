@@ -1,17 +1,14 @@
 # Persistent memory across sessions: pi-hermes-memory on DSH
 
-DSH sessions forget everything when they end. The Pi ecosystem's
-[`pi-hermes-memory`](https://www.npmjs.com/package/pi-hermes-memory) fixes that
-— durable facts, corrections and preferences that survive across sessions,
-plus full-text search over past conversations — and it runs unmodified on DSH
-through pi2dsh.
+[`pi-hermes-memory`](https://www.npmjs.com/package/pi-hermes-memory) adds
+cross-session facts, preferences, corrections, skills, and conversation search.
+The original package runs through pi2dsh using DSH's model and tool services.
 
-What the bridge carries for this package: its five tools (`memory_add`,
-`memory_replace`, `memory_remove`, `memory_search`, `session_search`), its ten
-`/memory-*` commands, its `before_agent_start` system-prompt injection (the
-memory context every new session starts with), and its background review
-loop. Its store lives in the bridge's redirected Pi agent directory, so it
-never collides with a real Pi installation on the same machine.
+The September 10 acceptance covers the six tools and ten commands in 0.9.8,
+including automatic review, correction capture, skill maintenance and overflow
+consolidation. These fixes require **pi2dsh 0.25.0 or later**.
+See the [versioned capability results](../../docs/plugin-validation-matrix.md#pi-hermes-memory)
+and [evidence](../../community/hermes-memory-20260910/final/README.md).
 
 ## Install
 
@@ -69,5 +66,12 @@ sessions for `session_search`), `/learn-memory-tool`, `/memory-insights`,
 
 - The package's own secret scanner refuses to store things that look like
   API keys or tokens; that is its behavior, not the bridge's.
-- Background review runs on the package's own cadence (every ~10 turns); the
-  two-session proof above uses the explicit save path, which is deterministic.
+- Background review uses the package's cadence and DSH's native model route.
+  The two-session example exercises explicit saving; background review has a
+  separate test with no foreground write tools.
+- Conversation search consumes a derived Pi-format transcript; DSH remains the
+  restore authority. This is graded as a sidecar translation.
+- Bare Web uses the package's read-only fallback for terminal-only managers.
+- A successful compaction flush does not provide Pi's awaited veto/replace
+  contract. Full-process shutdown cannot guarantee a fresh model call finishes
+  before DSH closes its services; save important facts during the session.

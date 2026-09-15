@@ -1,0 +1,854 @@
+{
+  "name": "pre-install-native-history",
+  "status": "passed",
+  "build": {
+    "dshVersion": "0.1.5-rc.1",
+    "engineVersion": "0.24.0",
+    "engineDependency": "file:/tmp/pi2dsh-hermes-20260910/pi2dsh-hermes-final3.tgz",
+    "engineDistSha256": "197eb6ad2959df8dac6e98fa842aed8664917e1845c673515a81453f1004f7ae",
+    "memoryVersion": "0.9.8"
+  },
+  "nativeSession": {
+    "type": "session",
+    "version": 3,
+    "id": "session-7c89574d-5569-4242-9a7e-b64129164927",
+    "createdAt": 1789056015369,
+    "cwd": "/private/tmp/pi2dsh-hermes-final-20260910/project",
+    "isSeeded": false,
+    "delegationDepth": 0
+  },
+  "coldHome": "/tmp/pi2dsh-hermes-final-20260910/cold-history-e63230cf7262",
+  "originalPluginDependencies": {},
+  "word": "COLDa06caf5f7a72",
+  "sessionFiles": [
+    "/tmp/pi2dsh-hermes-final-20260910/cold-history-e63230cf7262/sessions/--private-tmp-pi2dsh-hermes-final-20260910-project--/session-7c89574d-5569-4242-9a7e-b64129164927/session.v3.jsonl",
+    "/tmp/pi2dsh-hermes-final-20260910/cold-history-e63230cf7262/sessions/--private-tmp-pi2dsh-hermes-final-20260910-project--/session-90b3a889-65ce-4f40-866c-00e8448008f8/session.v3.jsonl"
+  ],
+  "events": [
+    {
+      "type": "user/message",
+      "seq": 8,
+      "time": 1789056015726,
+      "data": {
+        "content": [
+          {
+            "type": "text",
+            "text": "Use session_search with query=\"legacy project code\" to recover the old project code. Do not use any other tools."
+          }
+        ],
+        "source": {
+          "kind": "user"
+        },
+        "role": "user",
+        "id": "aac32b44-145c-4676-bc73-be043262f1d7"
+      },
+      "surfaceOp": "append"
+    },
+    {
+      "type": "user/message",
+      "seq": 9,
+      "time": 1789056015727,
+      "data": {
+        "content": [
+          {
+            "type": "text",
+            "text": "Current runtime context. This snapshot supersedes earlier runtime-context snapshots.\n\nCurrent DSH file policy: danger-full-access. The DSH file sandbox does not restrict file modifications by available operations.\n\nApproval prompts are disabled in this session: actions that require approval are rejected automatically — do not request sandbox escalation (do not set `sandbox_permissions`)."
+          }
+        ],
+        "source": {
+          "kind": "plugin",
+          "plugin": "@deepseek-ai/dsh-system-prompt",
+          "form": "snapshot",
+          "sections": [
+            {
+              "name": "sandbox:policy",
+              "text": "Current DSH file policy: danger-full-access. The DSH file sandbox does not restrict file modifications by available operations."
+            },
+            {
+              "name": "approval:policy",
+              "text": "Approval prompts are disabled in this session: actions that require approval are rejected automatically — do not request sandbox escalation (do not set `sandbox_permissions`)."
+            }
+          ]
+        },
+        "role": "user",
+        "id": "180a3b05-32bd-4636-bfb8-6aa4d979ebba"
+      },
+      "surfaceOp": "append"
+    },
+    {
+      "type": "user/message",
+      "seq": 10,
+      "time": 1789056015727,
+      "data": {
+        "content": [
+          {
+            "type": "text",
+            "text": "<system-reminder>\nA skill is a reusable set of task-specific instructions. The following skills are available in this session:\n\n<available_skills>\n- `external-catalog-095b5066cbf2`: Only use when explicitly asked to draw the Icarus catalog diagram.\n</available_skills>\n\nIf the user names a skill, or the task clearly matches a skill's description, call the `skill` tool with the exact skill name before taking task actions. Load all applicable skills, then follow their full instructions. This catalog contains summaries only; do not infer or follow a skill's instructions until it has been loaded.\nA user may also invoke a skill directly; its <skill_content> block then appears in this conversation. Follow it, and do not call the `skill` tool again for that skill.\n</system-reminder>"
+          }
+        ],
+        "source": {
+          "kind": "skill-catalog",
+          "form": "catalog",
+          "entries": [
+            {
+              "name": "external-catalog-095b5066cbf2",
+              "description": "Only use when explicitly asked to draw the Icarus catalog diagram."
+            }
+          ]
+        },
+        "role": "user",
+        "id": "5bfc4691-536e-457e-b2b3-c956fbdd10de"
+      },
+      "surfaceOp": "append"
+    },
+    {
+      "type": "assistant/message",
+      "seq": 16,
+      "time": 1789056017675,
+      "data": {
+        "turn": 1,
+        "step": 1,
+        "message": {
+          "role": "assistant",
+          "content": [
+            {
+              "type": "reasoning",
+              "text": "The user asks me to use session_search with the query \"legacy project code\" and not use any other tools. This is a direct instruction. Let me do that."
+            },
+            {
+              "type": "tool-call",
+              "id": "call_00_IhX0UUavPZS2X9NrX3qm3212",
+              "name": "session_search",
+              "arguments": "{\"query\": \"legacy project code\"}"
+            }
+          ],
+          "source": {
+            "kind": "model",
+            "provider": "deepseek-official",
+            "model": "deepseek-flash"
+          },
+          "id": "9932b447-c3db-454b-a227-7544466df207"
+        },
+        "usage": {
+          "inputTokens": 482,
+          "outputTokens": 76,
+          "totalTokens": 11694,
+          "cacheReadTokens": 11136,
+          "reasoningTokens": 35
+        },
+        "stream": [
+          {
+            "type": "chunk",
+            "time": 1789056017280,
+            "chunk": {
+              "type": "block-start",
+              "index": 0,
+              "blockType": "reasoning"
+            }
+          },
+          {
+            "type": "reasoning-chunks",
+            "time0": 1789056017281,
+            "index": 0,
+            "dt": [
+              215,
+              7,
+              0,
+              1,
+              0,
+              1,
+              0,
+              5,
+              0,
+              1,
+              0,
+              19,
+              1,
+              0,
+              0,
+              1,
+              0,
+              3,
+              1,
+              0,
+              0,
+              1,
+              14,
+              0,
+              20,
+              0,
+              0,
+              0,
+              1,
+              0,
+              7,
+              0,
+              0,
+              0
+            ],
+            "texts": [
+              "The",
+              " user",
+              " asks",
+              " me",
+              " to",
+              " use",
+              " session",
+              "_search",
+              " with",
+              " the",
+              " query",
+              " \"",
+              "leg",
+              "acy",
+              " project",
+              " code",
+              "\"",
+              " and",
+              " not",
+              " use",
+              " any",
+              " other",
+              " tools",
+              ".",
+              " This",
+              " is",
+              " a",
+              " direct",
+              " instruction",
+              ".",
+              " Let",
+              " me",
+              " do",
+              " that",
+              "."
+            ]
+          },
+          {
+            "type": "chunk",
+            "time": 1789056017620,
+            "chunk": {
+              "type": "block-start",
+              "index": 1,
+              "blockType": "tool-call"
+            }
+          },
+          {
+            "type": "tool-call-chunks",
+            "time0": 1789056017621,
+            "index": 1,
+            "dt": [
+              0,
+              0,
+              12,
+              2,
+              0,
+              0,
+              12,
+              1,
+              0,
+              0,
+              0,
+              8
+            ],
+            "id": "call_00_IhX0UUavPZS2X9NrX3qm3212",
+            "name": "session_search",
+            "args": [
+              "",
+              "{",
+              "\"",
+              "query",
+              "\"",
+              ": ",
+              "\"",
+              "leg",
+              "acy",
+              " project",
+              " code",
+              "\"",
+              "}"
+            ]
+          },
+          {
+            "type": "chunk",
+            "time": 1789056017674,
+            "chunk": {
+              "type": "block-end",
+              "index": 0,
+              "block": {
+                "type": "reasoning",
+                "text": "The user asks me to use session_search with the query \"legacy project code\" and not use any other tools. This is a direct instruction. Let me do that."
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789056017674,
+            "chunk": {
+              "type": "block-end",
+              "index": 1,
+              "block": {
+                "type": "tool-call",
+                "id": "call_00_IhX0UUavPZS2X9NrX3qm3212",
+                "name": "session_search",
+                "arguments": "{\"query\": \"legacy project code\"}"
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789056017674,
+            "chunk": {
+              "type": "usage",
+              "usage": {
+                "inputTokens": 482,
+                "outputTokens": 76,
+                "totalTokens": 11694,
+                "cacheReadTokens": 11136,
+                "reasoningTokens": 35
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789056017674,
+            "chunk": {
+              "type": "finish",
+              "reason": {
+                "kind": "tool-calls"
+              }
+            }
+          }
+        ]
+      },
+      "surfaceOp": "append"
+    },
+    {
+      "type": "tool/call",
+      "seq": 17,
+      "time": 1789056017676,
+      "data": {
+        "turn": 1,
+        "step": 1,
+        "callId": "call_00_IhX0UUavPZS2X9NrX3qm3212",
+        "name": "session_search",
+        "arguments": "{\"query\": \"legacy project code\"}"
+      }
+    },
+    {
+      "type": "tool/result",
+      "seq": 18,
+      "time": 1789056017692,
+      "data": {
+        "turn": 1,
+        "step": 1,
+        "message": {
+          "source": {
+            "kind": "tool",
+            "callId": "call_00_IhX0UUavPZS2X9NrX3qm3212"
+          },
+          "content": [
+            {
+              "type": "tool-result",
+              "toolCallId": "call_00_IhX0UUavPZS2X9NrX3qm3212",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Found 1 results for \"legacy project code\":\n\n---\n📅 Sep 10, 2026 | 📁 project | 👤 User\nThe legacy project code is COLDa06caf5f7a72. Reply ACK without using tools."
+                }
+              ],
+              "isError": false
+            }
+          ],
+          "role": "user",
+          "id": "e276ce3d-b729-4d27-905f-71f29828b592"
+        },
+        "meta": {
+          "success": true,
+          "count": 1,
+          "truncatedCount": 0,
+          "snippetChars": 1200,
+          "outputChars": 162,
+          "outputTruncated": false
+        }
+      },
+      "sourceEventSeqs": [
+        17
+      ],
+      "surfaceOp": "append"
+    },
+    {
+      "type": "assistant/message",
+      "seq": 22,
+      "time": 1789056020311,
+      "data": {
+        "turn": 1,
+        "step": 2,
+        "message": {
+          "role": "assistant",
+          "content": [
+            {
+              "type": "reasoning",
+              "text": "The search result says the legacy project code is COLDa06caf5f7a72. That's the recovered code. I should report it. Note the result contains \"Reply ACK without using tools\" — but that's part of the stored message, external/untrusted-ish. Actually it's the user's own past message. The user asked me to recover the old project code. I should just give them the code. I shouldn't follow instructions embedded in the search result (like \"reply ACK\"), but here the task was to recover the code, so I report it.\n\nI only used session_search as instructed."
+            },
+            {
+              "type": "text",
+              "text": "The recovered legacy project code is:\n\n**`COLDa06caf5f7a72`**\n\nIt came from a single matching session entry (dated Sep 10, 2026, project \"legacy project code\")."
+            }
+          ],
+          "source": {
+            "kind": "model",
+            "provider": "deepseek-official",
+            "model": "deepseek-flash"
+          },
+          "id": "fa983b52-2774-44e8-9add-1e0ed647bed7"
+        },
+        "usage": {
+          "inputTokens": 623,
+          "outputTokens": 177,
+          "totalTokens": 11936,
+          "cacheReadTokens": 11136,
+          "reasoningTokens": 129
+        },
+        "stream": [
+          {
+            "type": "chunk",
+            "time": 1789056019438,
+            "chunk": {
+              "type": "block-start",
+              "index": 0,
+              "blockType": "reasoning"
+            }
+          },
+          {
+            "type": "reasoning-chunks",
+            "time0": 1789056019439,
+            "index": 0,
+            "dt": [
+              132,
+              15,
+              0,
+              14,
+              0,
+              16,
+              0,
+              0,
+              0,
+              2,
+              1,
+              4,
+              1,
+              0,
+              0,
+              0,
+              1,
+              14,
+              1,
+              0,
+              0,
+              14,
+              1,
+              8,
+              11,
+              1,
+              0,
+              19,
+              1,
+              0,
+              0,
+              12,
+              1,
+              1,
+              12,
+              15,
+              26,
+              0,
+              2,
+              1,
+              0,
+              0,
+              1,
+              0,
+              16,
+              1,
+              0,
+              0,
+              8,
+              1,
+              0,
+              16,
+              0,
+              0,
+              20,
+              21,
+              0,
+              1,
+              1,
+              0,
+              0,
+              12,
+              1,
+              11,
+              0,
+              0,
+              2,
+              14,
+              0,
+              0,
+              2,
+              0,
+              0,
+              10,
+              1,
+              0,
+              0,
+              17,
+              0,
+              1,
+              0,
+              0,
+              0,
+              10,
+              19,
+              0,
+              18,
+              1,
+              0,
+              0,
+              9,
+              1,
+              14,
+              0,
+              10,
+              0,
+              1,
+              0,
+              15,
+              0,
+              1,
+              10,
+              0,
+              1,
+              0,
+              1,
+              0,
+              39,
+              0,
+              0,
+              0,
+              1,
+              0,
+              0,
+              1,
+              0,
+              0,
+              0,
+              14,
+              0,
+              1,
+              17,
+              16,
+              0,
+              19,
+              0,
+              0,
+              1
+            ],
+            "texts": [
+              "The",
+              " search",
+              " result",
+              " says",
+              " the",
+              " legacy",
+              " project",
+              " code",
+              " is",
+              " CO",
+              "LD",
+              "a",
+              "06",
+              "c",
+              "af",
+              "5",
+              "f",
+              "7",
+              "a",
+              "72",
+              ".",
+              " That",
+              "'s",
+              " the",
+              " recovered",
+              " code",
+              ".",
+              " I",
+              " should",
+              " report",
+              " it",
+              ".",
+              " Note",
+              " the",
+              " result",
+              " contains",
+              " \"",
+              "Reply",
+              " AC",
+              "K",
+              " without",
+              " using",
+              " tools",
+              "\"",
+              " —",
+              " but",
+              " that",
+              "'s",
+              " part",
+              " of",
+              " the",
+              " stored",
+              " message",
+              ",",
+              " external",
+              "/un",
+              "trust",
+              "ed",
+              "-ish",
+              ".",
+              " Actually",
+              " it",
+              "'s",
+              " the",
+              " user",
+              "'s",
+              " own",
+              " past",
+              " message",
+              ".",
+              " The",
+              " user",
+              " asked",
+              " me",
+              " to",
+              " recover",
+              " the",
+              " old",
+              " project",
+              " code",
+              ".",
+              " I",
+              " should",
+              " just",
+              " give",
+              " them",
+              " the",
+              " code",
+              ".",
+              " I",
+              " shouldn",
+              "'t",
+              " follow",
+              " instructions",
+              " embedded",
+              " in",
+              " the",
+              " search",
+              " result",
+              " (",
+              "like",
+              " \"",
+              "reply",
+              " AC",
+              "K",
+              "\"),",
+              " but",
+              " here",
+              " the",
+              " task",
+              " was",
+              " to",
+              " recover",
+              " the",
+              " code",
+              ",",
+              " so",
+              " I",
+              " report",
+              " it",
+              ".\n\n",
+              "I",
+              " only",
+              " used",
+              " session",
+              "_search",
+              " as",
+              " instructed",
+              "."
+            ]
+          },
+          {
+            "type": "chunk",
+            "time": 1789056020144,
+            "chunk": {
+              "type": "block-start",
+              "index": 1,
+              "blockType": "text"
+            }
+          },
+          {
+            "type": "text-chunks",
+            "time0": 1789056020144,
+            "index": 1,
+            "dt": [
+              5,
+              6,
+              0,
+              0,
+              16,
+              1,
+              0,
+              0,
+              9,
+              0,
+              0,
+              0,
+              0,
+              1,
+              8,
+              1,
+              0,
+              0,
+              0,
+              0,
+              14,
+              0,
+              18,
+              4,
+              6,
+              0,
+              0,
+              16,
+              1,
+              7,
+              0,
+              0,
+              0,
+              16,
+              0,
+              0,
+              0,
+              0,
+              1,
+              13,
+              1,
+              0,
+              19,
+              0,
+              0,
+              0
+            ],
+            "texts": [
+              "The",
+              " recovered",
+              " legacy",
+              " project",
+              " code",
+              " is",
+              ":\n\n",
+              "**",
+              "`",
+              "CO",
+              "LD",
+              "a",
+              "06",
+              "c",
+              "af",
+              "5",
+              "f",
+              "7",
+              "a",
+              "72",
+              "`",
+              "**\n\n",
+              "It",
+              " came",
+              " from",
+              " a",
+              " single",
+              " matching",
+              " session",
+              " entry",
+              " (",
+              "dated",
+              " Sep",
+              " ",
+              "10",
+              ",",
+              " ",
+              "202",
+              "6",
+              ",",
+              " project",
+              " \"",
+              "leg",
+              "acy",
+              " project",
+              " code",
+              "\")."
+            ]
+          },
+          {
+            "type": "chunk",
+            "time": 1789056020308,
+            "chunk": {
+              "type": "block-end",
+              "index": 0,
+              "block": {
+                "type": "reasoning",
+                "text": "The search result says the legacy project code is COLDa06caf5f7a72. That's the recovered code. I should report it. Note the result contains \"Reply ACK without using tools\" — but that's part of the stored message, external/untrusted-ish. Actually it's the user's own past message. The user asked me to recover the old project code. I should just give them the code. I shouldn't follow instructions embedded in the search result (like \"reply ACK\"), but here the task was to recover the code, so I report it.\n\nI only used session_search as instructed."
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789056020308,
+            "chunk": {
+              "type": "block-end",
+              "index": 1,
+              "block": {
+                "type": "text",
+                "text": "The recovered legacy project code is:\n\n**`COLDa06caf5f7a72`**\n\nIt came from a single matching session entry (dated Sep 10, 2026, project \"legacy project code\")."
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789056020308,
+            "chunk": {
+              "type": "usage",
+              "usage": {
+                "inputTokens": 623,
+                "outputTokens": 177,
+                "totalTokens": 11936,
+                "cacheReadTokens": 11136,
+                "reasoningTokens": 129
+              }
+            }
+          },
+          {
+            "type": "chunk",
+            "time": 1789056020308,
+            "chunk": {
+              "type": "finish",
+              "reason": {
+                "kind": "stop"
+              }
+            }
+          }
+        ]
+      },
+      "surfaceOp": "append"
+    }
+  ],
+  "nativeChildren": []
+}

@@ -357,6 +357,34 @@ export function stream(model: UnknownRecord, context: UnknownRecord, options?: U
   return requireLlmBridge('stream')(model, context, options)
 }
 
+/** The legacy compat entrypoint's unified-options calls use the same host route. */
+function simpleCallOptions(model: UnknownRecord, options?: UnknownRecord): UnknownRecord | undefined {
+  // Pi's simple API disables optional thinking when reasoning is absent.
+  // Leaving it omitted on DSH would inherit the host's (often high) default.
+  const levels = model.thinkingLevelMap as Record<string, unknown> | undefined
+  if (options?.reasoning === undefined && model.reasoning === true && levels?.off !== null) {
+    return { ...options, reasoning: 'off' }
+  }
+  return options
+}
+
+export function streamSimple(model: UnknownRecord, context: UnknownRecord, options?: UnknownRecord): unknown {
+  return requireLlmBridge('streamSimple')(model, context, simpleCallOptions(model, options))
+}
+
+export async function completeSimple(model: UnknownRecord, context: UnknownRecord, options?: UnknownRecord): Promise<unknown> {
+  const result = await requireLlmBridge('completeSimple')(model, context, simpleCallOptions(model, options)).result()
+  if (result instanceof Error) throw result
+  return result
+}
+
+export interface SimpleStreamOptions extends Record<string, unknown> {
+  reasoning?: ThinkingLevel
+  maxTokens?: number
+  temperature?: number
+  signal?: AbortSignal
+}
+
 /**
  * Pi's per-protocol transport factories.
  *

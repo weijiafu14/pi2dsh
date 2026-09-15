@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import {
   __createPiAiRuntimeRegistry,
   __runWithPiAiRuntime,
+  completeSimple,
+  streamSimple,
   envApiKeyAuth,
   getApiProvider,
   getProvider,
@@ -37,6 +39,27 @@ import {
 } from '../src/compat/pi-tui.js'
 
 describe('dependency-light Pi host shims', () => {
+  it('exports both compat simple-call entrypoints on the owning agent model route', async () => {
+    const seen: unknown[] = []
+    const reply = { role: 'assistant', content: [{ type: 'text', text: 'simple reply' }], stopReason: 'stop' }
+    const eventStream = { result: async () => reply, [Symbol.asyncIterator]: async function* () { yield { type: 'done', message: reply } } }
+    const bridge = (model: unknown, context: unknown, options: unknown) => { seen.push({ model, context, options }); return eventStream }
+    const model = { id: 'm', provider: 'p' }
+    const context = { messages: [{ role: 'user', content: 'hello' }] }
+    const signal = new AbortController().signal
+    const options = { reasoning: 'low', maxTokens: 64, signal }
+    await __runWithPiAiRuntime(bridge as never, __createPiAiRuntimeRegistry(), async () => {
+      expect(await completeSimple(model, context, options)).toEqual(reply)
+      expect(streamSimple(model, context, options)).toBe(eventStream)
+    })
+    expect(seen).toEqual([{ model, context, options }, { model, context, options }])
+    await __runWithPiAiRuntime(bridge as never, __createPiAiRuntimeRegistry(), async () => {
+      await completeSimple({ ...model, reasoning: true, thinkingLevelMap: { off: 'off' } }, context)
+      await completeSimple({ ...model, reasoning: true, thinkingLevelMap: { off: null } }, context)
+    })
+    expect(seen[2]).toMatchObject({ options: { reasoning: 'off' } })
+    expect(seen[3]).toMatchObject({ options: undefined })
+  })
   it('preserves defineTool identity and bounded head truncation', () => {
     const tool = { name: 'fixture' }
     expect(defineTool(tool)).toBe(tool)

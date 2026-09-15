@@ -1,0 +1,67 @@
+[
+  {
+    "kind": "foreground",
+    "startedAt": 1789054278714,
+    "completed": true,
+    "cancelled": false,
+    "status": 200,
+    "model": "deepseek-flash",
+    "thinking": {
+      "type": "enabled"
+    },
+    "reasoningEffort": "high",
+    "completedAt": 1789054279630
+  },
+  {
+    "kind": "foreground",
+    "startedAt": 1789054278719,
+    "completed": true,
+    "cancelled": false,
+    "status": 200,
+    "model": "deepseek-flash",
+    "thinking": {
+      "type": "disabled"
+    },
+    "completedAt": 1789054279116
+  },
+  {
+    "kind": "foreground",
+    "startedAt": 1789054280185,
+    "completed": true,
+    "cancelled": false,
+    "status": 200,
+    "model": "deepseek-flash",
+    "thinking": {
+      "type": "enabled"
+    },
+    "reasoningEffort": "high",
+    "completedAt": 1789054281208
+  },
+  {
+    "kind": "foreground",
+    "startedAt": 1789054281781,
+    "completed": true,
+    "cancelled": false,
+    "status": 200,
+    "model": "deepseek-flash",
+    "thinking": {
+      "type": "enabled"
+    },
+    "reasoningEffort": "high",
+    "completedAt": 1789054282508
+  },
+  {
+    "kind": "maintenance",
+    "startedAt": 1789054282524,
+    "completed": true,
+    "cancelled": false,
+    "status": 200,
+    "model": "deepseek-v4-pro",
+    "thinking": {
+      "type": "enabled"
+    },
+    "reasoningEffort": "low",
+    "responseText": "{\"operations\":[]}",
+    "completedAt": 1789054283957
+  }
+]

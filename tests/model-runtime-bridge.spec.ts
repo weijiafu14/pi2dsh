@@ -5,7 +5,7 @@
 import { describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import LlmRuntime, { LlmAdapter, type GenerateOptions, type StreamChunk } from '@deepseek-ai/dsh-llm'
-import { ModelCatalog, llmOf, piRequestToDshMessages, streamViaDshLlm } from '../src/model-bridge.js'
+import { ModelCatalog, llmOf, piRequestToDshMessages, streamViaDshLlm, dshRequestToPiContext } from '../src/model-bridge.js'
 
 class FixtureAdapter extends LlmAdapter {
   lastOptions: Record<string, unknown> | undefined
@@ -102,7 +102,7 @@ describe('model runtime bridge', () => {
           { role: 'toolResult', toolCallId: 'call-1', content: [{ type: 'text', text: 'tool says hi' }], isError: false },
         ],
       },
-      options: { maxTokens: 128, temperature: 0.2 },
+      options: { maxTokens: 128, temperature: 0.2, reasoning: 'high' },
     })
 
     const events: Array<Record<string, unknown>> = []
@@ -119,7 +119,7 @@ describe('model runtime bridge', () => {
 
     // The adapter saw a fully-translated DSH request: system slot, tool-result
     // message, explicit route.
-    expect(adapter.lastOptions).toMatchObject({ provider: 'fixture', model: 'fx-mini', system: 'be terse', maxTokens: 128, temperature: 0.2 })
+    expect(adapter.lastOptions).toMatchObject({ provider: 'fixture', model: 'fx-mini', system: 'be terse', maxTokens: 128, temperature: 0.2, reasoningEffort: 'high' })
     const messages = adapter.lastOptions?.messages as Array<Record<string, unknown>>
     expect(messages).toHaveLength(3)
     expect(messages[0]).toMatchObject({ role: 'user', source: { kind: 'user' } })
@@ -167,5 +167,29 @@ describe('model runtime bridge', () => {
     expect(catalog.all()).toEqual([])
     expect(catalog.find('any', 'thing')).toBeUndefined()
     expect(await catalog.resolve('any', 'thing')).toBeUndefined()
+  })
+})
+
+
+describe('DSH system-message requests projected to Pi transports', () => {
+  const user = { role: 'user', content: [{ type: 'text', text: 'hello' }] }
+  const system = { role: 'system', content: [{ type: 'text', text: 'follow project instructions' }] }
+
+  it('preserves the system prompt from a modern loop without leaking its message into Pi history', async () => {
+    const projected = await dshRequestToPiContext({ messages: [system, user] })
+    expect(projected.systemPrompt).toBe('follow project instructions')
+    expect(projected.messages).toEqual([user])
+  })
+
+  it('preserves legacy and one-shot system prompts, including an explicit clear', async () => {
+    expect(await dshRequestToPiContext({ system: 'legacy prompt', messages: [user] }))
+      .toMatchObject({ systemPrompt: 'legacy prompt', messages: [user] })
+    expect(await dshRequestToPiContext({ system: '', messages: [user] }))
+      .not.toHaveProperty('systemPrompt')
+  })
+
+  it('rejects in-history system updates that the Pi transport cannot represent', async () => {
+    await expect(dshRequestToPiContext({ messages: [system, user, system] }))
+      .rejects.toThrow('in-history system prompt')
   })
 })

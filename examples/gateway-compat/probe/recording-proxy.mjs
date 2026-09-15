@@ -58,6 +58,11 @@ createServer((req, res) => {
         model: parsed.model,
         // supportsDeveloperRole: `system` here means the plugin's flag won.
         roles: messages?.map(message => message.role) ?? null,
+        ...(process.env.PROXY_EXPECT_SYSTEM === undefined ? {} : {
+          systemMarkerPresent: (messages ?? []).some(message =>
+            ['system', 'developer'].includes(message.role)
+            && JSON.stringify(message.content).includes(process.env.PROXY_EXPECT_SYSTEM)),
+        }),
         // maxTokensField: which spelling the request used.
         maxTokensField: parsed.max_completion_tokens !== undefined
           ? 'max_completion_tokens'

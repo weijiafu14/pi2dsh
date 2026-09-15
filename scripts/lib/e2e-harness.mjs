@@ -3,14 +3,55 @@
 // battery both build homes this way; the overrides block below is load-bearing
 // (2026-08-25 upstream `latest`-tag breakage) and a hand-copied second version
 // is exactly how one consumer would keep running old pins.
+import { isSessionLog } from './session-log.mjs'
 import assert from 'node:assert/strict'
-import { existsSync } from 'node:fs'
+import { existsSync, readFileSync, realpathSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import { execFile as execFileCallback } from 'node:child_process'
 import { chmod, mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
-import { join, resolve } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
 import { promisify } from 'node:util'
 
 const execFile = promisify(execFileCallback)
+
+/** Resolve the running CLI's actual dependency graph in npm and pnpm layouts. */
+export function installedCoreVersions(bin) {
+  let dir = dirname(realpathSync(bin))
+  const sibling = resolve(bin, '..', '..', '@deepseek-ai/dsh/package.json')
+  let manifest = existsSync(sibling) ? sibling : undefined
+  while (manifest === undefined) {
+    const candidate = join(dir, 'package.json')
+    if (existsSync(candidate) && JSON.parse(readFileSync(candidate, 'utf8')).name === '@deepseek-ai/dsh') {
+      manifest = candidate
+      break
+    }
+    const parent = dirname(dir)
+    if (parent === dir) throw new Error(`Cannot locate the installed DSH manifest for ${bin}`)
+    dir = parent
+  }
+  const core = new Map()
+  const seen = new Set()
+  const pending = [manifest]
+  while (pending.length > 0) {
+    const file = realpathSync(pending.pop())
+    if (seen.has(file)) continue
+    seen.add(file)
+    const pkg = JSON.parse(readFileSync(file, 'utf8'))
+    const previous = core.get(pkg.name)
+    assert(previous === undefined || previous === pkg.version, `CLI mixes ${pkg.name}@${previous} and ${pkg.version}`)
+    core.set(pkg.name, pkg.version)
+    const require = createRequire(file)
+    for (const name of new Set([...Object.keys(pkg.dependencies ?? {}), ...Object.keys(pkg.peerDependencies ?? {})])) {
+      if (!name.startsWith('@deepseek-ai/dsh')) continue
+      const found = (require.resolve.paths(name) ?? [])
+        .map(root => join(root, name, 'package.json')).find(existsSync)
+      if (found === undefined && !Object.hasOwn(pkg.dependencies ?? {}, name)) continue
+      assert(found !== undefined, `CLI dependency is missing: ${name}`)
+      pending.push(found)
+    }
+  }
+  return core
+}
 
 export async function filesBelow(directory) {
   const output = []
@@ -95,6 +136,7 @@ export function createE2eHarness({ dshRoot, directDshBin, dshBin, dshCwd }) {
             'allowBuilds:',
             "  '@google/genai': false",
             '  protobufjs: false',
+            '  esbuild: true',
             // pi-hermes-memory needs its native store actually built — unlike
             // the two above, declaring-without-running would break the plugin.
             // README of examples/persistent-memory tells users the same thing
@@ -112,8 +154,8 @@ export function createE2eHarness({ dshRoot, directDshBin, dshBin, dshCwd }) {
           // an alpha CLI's profiles to rc core — exactly the mixed-generation
           // install CLAUDE.md's E2E notes call an incident (caught 2026-08-31
           // when the alpha.2 regression inherited rc.2 pins).
-          const core = new Map()
-          if (existsSync(pnpmStore)) {
+          const core = directDshBin === undefined ? new Map() : installedCoreVersions(directDshBin)
+          if (directDshBin === undefined && existsSync(pnpmStore)) {
             for (const entry of await readdir(pnpmStore)) {
               if (!entry.startsWith('@deepseek-ai+dsh')) continue
               const bare = entry.slice('@deepseek-ai+'.length)
@@ -224,7 +266,7 @@ export function createE2eHarness({ dshRoot, directDshBin, dshBin, dshCwd }) {
     // lane ran something it did not intend to. A multi-turn scenario passes
     // its own expectation (mcp-at-scale runs two prompts = two sessions) and
     // gets every session's records back, in file order.
-    const files = (await filesBelow(join(home, 'sessions'))).filter(path => path.endsWith('/session.jsonl')).sort()
+    const files = (await filesBelow(join(home, 'sessions'))).filter(path => isSessionLog(path)).sort()
     assert.equal(files.length, expect, `expected ${expect} session log(s), found ${files.length}:\n  ${files.join('\n  ')}`)
     const all = []
     for (const file of files) {
@@ -262,4 +304,38 @@ export async function seedCodexLogin(home, authFile) {
     },
   })}\n`, { mode: 0o600 })
   await chmod(target, 0o600)
+}
+
+
+/**
+ * The url a BROWSER should open for this server. The 0.1.2 line prints a
+ * one-time launch token into the server log and answers uncookied index
+ * reads with 401; opening the printed `?token=` url once exchanges it for
+ * the session cookie. rc lines print no token and the url passes through.
+ * @param url - the bare origin url.
+ * @param webLog - captured server stdout+stderr so far.
+ * @returns the url for the capture's page.goto().
+ */
+export async function authedUrl(url, webLog) {
+  // A string snapshot races the server: the 401 gate answers readiness
+  // probes BEFORE the token line reaches the log, and a capture launched in
+  // that gap opens the bare origin and stalls on the auth wall ("New
+  // session" never appears — dsh-x, 2026-08-31). Callers pass a getter over
+  // their growing log; when the server is actually gated the token MUST
+  // appear, so its absence is a loud failure, never a silent tokenless url.
+  const read = typeof webLog === 'function' ? webLog : () => webLog
+  const gated = await fetch(url).then(response => response.status === 401).catch(() => false)
+  // 90s, not less: under a parallel full run the token line can trail the
+  // 401 gate by well over 30s (mcp-at-scale-web false-failed at 30s on
+  // 2026-08-31 while passing solo).
+  const deadline = Date.now() + (gated ? 90_000 : 0)
+  for (;;) {
+    const token = /[?&]token=([A-Za-z0-9_-]+)/u.exec(read())
+    if (token !== null) return `${url}/?token=${token[1]}`
+    if (Date.now() > deadline) {
+      if (gated) throw new Error('dsh web answers 401 (launch-token gate) but printed no ?token= url in its log')
+      return url
+    }
+    await new Promise(done => setTimeout(done, 500))
+  }
 }
