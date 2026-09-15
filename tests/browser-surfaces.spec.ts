@@ -126,6 +126,24 @@ describe('side panel registry', () => {
       { role: 'user', text: 'a plain string body' },
     ])
   })
+
+  it('keeps hidden host context out of the panel while retaining visible custom notices', () => {
+    const registry = new BrowserSurfaces()
+    registry.track('parent', {
+      id: 'child', label: 'Side chat', package: undefined,
+      session: fakeThreadSession([
+        { role: 'user', content: text('question') },
+        { role: 'custom', display: false, content: text('private host instructions') },
+        { role: 'custom', display: true, content: text('visible notice') },
+        { role: 'assistant', content: text('answer') },
+      ]),
+    })
+    expect(registry.snapshot('parent')[0]?.messages).toEqual([
+      { role: 'user', text: 'question' },
+      { role: 'custom', text: 'visible notice' },
+      { role: 'assistant', text: 'answer' },
+    ])
+  })
 })
 
 describe('presentation surfaces', () => {

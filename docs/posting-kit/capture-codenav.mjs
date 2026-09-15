@@ -13,7 +13,7 @@ import { openApp } from './web-drive.mjs'
 
 const PROMPT = 'Two tasks in this project: '
   + '1) Use the ffgrep tool to find which file mentions FROSTBITE-7741 and report the file path. '
-  + '2) Use the lsp_diagnostics tool on src/ledger.ts and report every error it returns. '
+  + '2) Use lens_diagnostics with source="lsp", scope="paths", paths=["src/ledger.ts"] and severity="error", and report every error it returns. '
   + 'Do not use bash or any other tool for these two tasks.'
 
 const { page, browser, shot, send, UI } = await openApp()

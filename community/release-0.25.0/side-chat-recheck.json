@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "pi2dshCommit": "6fd34ed109e00892f003d3d221cdc7ad5f3f7da4",
+  "dshCommit": "npm:@deepseek-ai/dsh@0.1.5-rc.2",
+  "results": {
+    "sideConversation": {
+      "status": "passed",
+      "engine": {
+        "version": "0.25.0",
+        "from": "registry",
+        "spec": "pi2dsh@0.25.0"
+      },
+      "install": "dsh-work-x suite (bundles pi-btw)",
+      "sideAnswerIsolated": true,
+      "screenshots": [
+        "00-side-conversation-work-x.png"
+      ]
+    }
+  }
+}

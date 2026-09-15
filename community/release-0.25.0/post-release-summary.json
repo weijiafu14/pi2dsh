@@ -1,0 +1,26 @@
+[
+  {
+    "name": "examples",
+    "exitCode": 1
+  },
+  {
+    "name": "seams",
+    "exitCode": 0
+  },
+  {
+    "name": "provider",
+    "exitCode": 0
+  },
+  {
+    "name": "pi-code-cli",
+    "exitCode": 0
+  },
+  {
+    "name": "pi-code-web",
+    "exitCode": 0
+  },
+  {
+    "name": "pi-tui-old",
+    "exitCode": 1
+  }
+]

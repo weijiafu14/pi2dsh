@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "pi2dshCommit": "6fd34ed109e00892f003d3d221cdc7ad5f3f7da4",
+  "dshCommit": "npm:@deepseek-ai/dsh@0.1.5-rc.2",
+  "results": {
+    "tuiMcp": {
+      "status": "passed",
+      "engine": {
+        "version": "0.25.0",
+        "from": "registry",
+        "spec": "pi2dsh@0.25.0"
+      },
+      "profile": "dsh-tui",
+      "piPackage": "pi-mcp-adapter",
+      "piPackageVersion": "2.34.0",
+      "command": "/pi-mcp",
+      "nativeCommandPreserved": "/mcp",
+      "mcpServer": "@modelcontextprotocol/server-everything",
+      "transports": [
+        "stdio",
+        "streamable-http",
+        "sse"
+      ],
+      "capabilities": [
+        "manager",
+        "discovery",
+        "proxy",
+        "direct-tools",
+        "mcpScript",
+        "resources",
+        "prompts",
+        "images",
+        "structured-content",
+        "mcp-app-ui",
+        "approval",
+        "elicitation",
+        "sampling",
+        "cancellation",
+        "reconnect",
+        "session-restart"
+      ]
+    }
+  }
+}

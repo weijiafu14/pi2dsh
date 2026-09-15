@@ -1,0 +1,15 @@
+{
+  "generatedAt": "2026-09-15T04:00:50.829Z",
+  "scenario": "dsh-pi-tui + pi2dsh + Pi MCP + Pi Subagents",
+  "specs": {
+    "dsh": "@deepseek-ai/dsh@0.1.1-rc.2",
+    "tui": "@xmoon76/dsh-pi-tui@0.3.4",
+    "engine": "pi2dsh@0.25.0",
+    "mcp": "pi-mcp-adapter@2.27.0",
+    "subagents": "@tintinweb/pi-subagents@0.18.0"
+  },
+  "status": "failed",
+  "error": "timed out waiting for everything MCP manager readiness",
+  "lastScreen": "🐋  dsh-pi-tui · MCP command handling [dsh-0.1.1-rc.2 · tui-v0.3.4]\n\n\n❯ /pi-mcp\n\n📦  Context injection @deepseek-ai/dsh-system-prompt (ctrl+o to expand)\n\n📎  Context injection skill-catalog (ctrl+o to expand)\n\n\n\n\n▸ Thinking\n  Let me just run mcp({}) to show server status.\n  (click to expand)\n\n🛠️  Tool call mcp · {} [ok] — MCP: 1/1 servers, 23 tools  ✓ everything (23 tools)\n\n▸ Thinking\n  The user typed \"/pi-mcp\" — perhaps they want the MCP overview. Let me provide the status and maybe list tools. I'll show the server status summary. Should I list the tools? Poss…\n  (click to expand)\n\n🐋  MCP status: 1/1 servers connected — 23 tools\n\n    ✓ everything (23 tools)\n\n    Want me to list the tools on everything, or search for a specific capability?\n\n\n\n\n\n\n\n\n\n\n\n🐋  Working...\n────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────\n❯ [pi2dsh] loaded @tintinweb/pi-subagents: 3 tools, 1 commands, 0 skill rootsrced by DSH and was dropped\n🐳  Working...\n[pi2dsh] tool mcpScript: $.properties.timeoutMs.minimum: constraint is not enforced by DSH and was dropped0/s0\n[p[pi2dsh] MCP: 1 servers connected (23 tools)ommands, 1 skill rootsne oneOf semantics\n\n[pi2dsh] tool everything_get-resource-links: $.properties.count.maximum: constraint is not enforced by DSH and was droppedg to 1 servers...  t0/s0\n[pi2dsh] tool everything_gzip-file-as-resource: $.properties.data.format: constraint is not enforced by DSH and was dropped\n[pi2dsh] tool everything_trigger-url-elicitation: $.properties.url.format: constraint is not enforced by DSH and was dropped\n[workspace-write]  [deepseek-official/deepseek-v4-flash]  pi2dsh-release-025-20260915-BRJVtR/pi-tui-old  [░░░░░░░░░░░░] 2%  🔌 MCP: 1 server enabled (1 connected)  t1/s2\n↑24k ↓214 R1.0k CH4.1% | LLM 6.1s · TTFB 2.6s · 235 tok/s\n",
+  "scratch": "<release-workspace>/pi-tui-old"
+}

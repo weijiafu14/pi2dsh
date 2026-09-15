@@ -18,6 +18,7 @@
 import { spawn } from 'node:child_process'
 import { chmod, mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { createServer } from 'node:net'
+import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { isAbsolute, join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -445,15 +446,37 @@ try {
     return response.text()
   })
   invariant(appHostHtml.includes('id="mcp-app"') && appHostHtml.includes('PostMessageTransport'), 'MCP App host did not serve its AppBridge shell')
-  const resourceToken = /const UI_RESOURCE_TOKEN = ("(?:[^"\\]|\\.)*");/u.exec(appHostHtml)?.[1]
-  invariant(resourceToken !== undefined, 'MCP App host did not publish its scoped UI resource token')
-  const appResourceUrl = new URL('/ui-app', appUrl)
-  appResourceUrl.searchParams.set('resource', JSON.parse(resourceToken))
-  const appHtml = await fetch(appResourceUrl).then(response => {
-    invariant(response.ok, `MCP App resource returned HTTP ${response.status}`)
-    return response.text()
-  })
-  invariant(appHtml.includes('PI2DSH_MCP_APP_HTML_OK'), 'MCP App host did not serve the MCP UI resource HTML')
+  // Recent adapters isolate provider HTML behind a sandbox proxy. Exercise
+  // the real browser navigation and rendered resource, rather than depending
+  // on the adapter's former private UI_RESOURCE_TOKEN JavaScript variable.
+  const playwrightFrom = process.env.PLAYWRIGHT_FROM ?? resolve(new URL('../../deepseek-harness/apps/web', import.meta.url).pathname)
+  const { chromium } = createRequire(join(playwrightFrom, 'package.json'))('playwright')
+  const appBrowser = await chromium.launch(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE === undefined
+    ? {} : { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE })
+  try {
+    const appPage = await appBrowser.newPage({ viewport: { width: 1280, height: 860 } })
+    await appPage.goto(appUrl, { waitUntil: 'domcontentloaded' })
+    let resourceRendered = false
+    const deadline = Date.now() + 30_000
+    while (!resourceRendered && Date.now() < deadline) {
+      for (const frame of appPage.frames()) {
+        const marker = frame.locator('#marker')
+        if (await marker.isVisible().catch(() => false)
+          && await marker.textContent().catch(() => '') === 'PI2DSH_MCP_APP_HTML_OK') {
+          resourceRendered = true
+          break
+        }
+      }
+      if (!resourceRendered) await delay(200)
+    }
+    invariant(resourceRendered, 'MCP App resource did not visibly render through its browser host')
+    if (process.env.PI2DSH_SHOT_DIR) {
+      await mkdir(process.env.PI2DSH_SHOT_DIR, { recursive: true })
+      await appPage.screenshot({ path: join(process.env.PI2DSH_SHOT_DIR, 'mcp-app-resource.png') })
+    }
+  } finally {
+    await appBrowser.close()
+  }
 
   // Prompt metadata becomes a DSH slash command and sends the actual prompt
   // into the same agent, not a notification-only approximation.

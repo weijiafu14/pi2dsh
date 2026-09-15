@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "packageName": "@pi2dsh-e2e/step-seams",
+  "installPath": "engine (dsh plugin add pi2dsh, then the package) — no conversion",
+  "dshCommit": "npm:@deepseek-ai/dsh@0.1.5-rc.2",
+  "pi2dshCommit": "6fd34ed109e00892f003d3d221cdc7ad5f3f7da4",
+  "profile": "headless",
+  "prompt": "Call the pi_repeat tool exactly once with word \"ok\" and times 7, then reply with the tool output verbatim.",
+  "seams": {
+    "argumentGate": {
+      "modelSent": 7,
+      "modelSentType": "number",
+      "gateReceivedType": "string",
+      "toolReceived": 7,
+      "toolReceivedType": "number",
+      "optionalNullRemoved": true
+    },
+    "beforeAgentStartOverride": {
+      "appliedToOwnTurn": true,
+      "marker": "PI2DSH-E2E-OVERRIDE-MARKER"
+    },
+    "handlerOrder": [
+      "agent_start",
+      "before_agent_start",
+      "turn_start:0",
+      "tool_execution_end:pi_repeat",
+      "turn_end:0",
+      "turn_start:1",
+      "turn_end:1",
+      "agent_end"
+    ],
+    "turns": [
+      {
+        "turnIndex": 0,
+        "toolResultCount": 1,
+        "toolResultRoles": [
+          "toolResult"
+        ],
+        "finalRole": "assistant"
+      },
+      {
+        "turnIndex": 1,
+        "toolResultCount": 0,
+        "toolResultRoles": [],
+        "finalRole": "assistant"
+      }
+    ]
+  }
+}

@@ -556,6 +556,33 @@ pi-code 在 session_start 请求项目信任、读 settings.json、注册 hooks�
 [Web](../community/hermes-memory-20260910/published-web.json)。
 这是一组逐能力结果；核心 CRUD 或上游单测全绿都不能代表整个包无语义缺口。
 
+## 0.25.1 侧聊显示修复（2026-09-15）
+
+沿用[会话上下文](architecture-mapping-matrix.md#pi-session-host-context)、
+[交互组件](architecture-mapping-matrix.md#pi-ui-custom)和
+[客户端](architecture-mapping-matrix.md#dsh-client)分支。原包 pi-btw 创建侧会话后调用
+`ui.custom` → 桥依据既有 `browserPresentation` 声明保留 RPC 返回，并按 Pi
+`display: false` 过滤呈现 → 自有 BrowserSurfaces 路由和 DSH Web slot → 原生子会话
+仍持有完整上下文/回答 → 主命令正常完成，侧窗仅显示问答，主会话不含侧答。
+
+修复前 `0.25.0` 的数据断言虽过，截图暴露了隐藏上下文和错误提示；负面证据保留在
+`community/release-0.25.0/`，不覆盖成成功。修复后同一路径已在 stock DSH
+`0.1.1-rc.2` 与 `0.1.5-rc.2` 本地构建上执行、检查日志并目检截图，见
+[双版本证据](../community/release-0.25.1/README.md)。呈现维持 **2 级可靠翻译**，
+此项为桥欠账修复，不新增 DSH 缺口或第二套权威状态。裸 Web 没有声明产品呈现时
+仍保留可捕获的终端组件错误，Hermes 的非终端 fallback 不受影响。
+
+### 发布回归的插件接口更新
+
+pi-lens `4.1.6` 将 `lsp_diagnostics` 合入 `lens_diagnostics(source=lsp)`；
+`registerTool` → 通用参数/结果翻译 → DSH tools → 原包 LSP 与原生日志 → CLI/Web
+真实返回 `src/ledger.ts` 的 TS2322，工具注册和结果路径沿用原有判断。
+pi-mcp-adapter `2.34.0` 把应用资源移入沙箱代理；Pi exec → DSH subprocess →
+原包会话授权的 AppBridge 服务 → 真实浏览器内嵌资源显示。验证改为实际渲染，
+不再解析已删除的私有 JavaScript 变量。此项只证明资源打开/加载；协议内部与
+sampling fixture 的服务契约检查不冒充完整原生模型回合，真实 CLI MCP/子代理
+证据另见旧宿主 Pi TUI 回归。
+
 ## 继续新增记录时
 
 复制一个插件块，补齐“使用的架构分支、理论对应、实际五层、逐项等级、结论、证据”。

@@ -1,0 +1,5 @@
+{
+  "version": "0.4.1",
+  "dist.integrity": "sha512-Q81qXvqL7WAL3az9k2Vf1RRCY42tYKl8jObinfsgOEHi0dSxqqw3K3l/8mgvEnVa1oB9ReWVX0zaM17d1rqYvw==",
+  "dependencies.pi2dsh": "^0.25.0"
+}

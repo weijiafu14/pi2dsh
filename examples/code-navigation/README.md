@@ -5,7 +5,7 @@ file/content search (**@ff-labs/pi-fff**) and AST search, symbol navigation and
 real language-server diagnostics (**pi-lens**) — all as native DSH tools the
 model calls in an ordinary turn. This is the "the agent burns tokens scanning
 my whole tree" fix: one indexed `ffgrep` call replaces dozens of `bash`
-traversals, and `lsp_diagnostics` shows the model the same errors your editor
+traversals, and `lens_diagnostics` with `source=lsp` shows the model the same errors your editor
 sees, right after it edits.
 
 Everything below is copy-paste runnable against the bundled
@@ -33,11 +33,6 @@ run `pnpm approve-builds` inside the profile directory the error names,
 approve `@ast-grep/cli`, and re-run the same `dsh plugin add` line. The failed
 first attempt leaves a partial install; the re-run completes it.
 
-> **Do not install `@narumitw/pi-lsp` into the same profile as `pi-lens`.**
-> Both register a tool named `lsp_diagnostics`; pi-lens already covers LSP
-> diagnostics and navigation, so co-installing them only creates a name
-> collision. If you want pi-lsp's `lsp_fix`, use a separate profile.
-
 ## 2. Prepare the sample project
 
 ```sh
@@ -58,7 +53,7 @@ From `sample-project/` (the session's working directory is the workspace the
 tools search):
 
 ```sh
-dsh --profile headless "Two tasks in this project: 1) Use the ffgrep tool to find which file mentions FROSTBITE-7741 and report the file path. 2) Use the lsp_diagnostics tool on src/ledger.ts and report every error it returns. Do not use bash or any other tool for these two tasks."
+dsh --profile headless 'Two tasks in this project: 1) Use the ffgrep tool to find which file mentions FROSTBITE-7741 and report the file path. 2) Use lens_diagnostics with source="lsp", scope="paths", paths=["src/ledger.ts"] and severity="error", and report every error it returns. Do not use bash or any other tool for these two tasks.'
 ```
 
 What you should see in the answer:
@@ -74,17 +69,17 @@ prompt.
 ## What else is in the box
 
 The exact toolset is what these packages register through the bridge, not a
-pi2dsh feature list. As of the versions pinned by this example's regression:
+pi2dsh feature list. With pi-lens 4.1.6:
 `@ff-labs/pi-fff` adds `fffind`/`ffgrep` plus `/fff-health`, `/fff-mode`,
 `/fff-rescan`; `pi-lens` adds AST search/replace (`ast_grep_*`), symbol tools
 (`symbol_search`, `read_symbol`, `read_enclosing`), project/module reports,
-`lsp_diagnostics`/`lsp_navigation`, and a `/lens-*` command family. Run
+`lens_diagnostics`/`lsp_navigation`, and a `/lens-*` command family. Run
 `/fff-health` or `/lens-health` in the composer to see each package's own
 status page.
 
 ## Troubleshooting
 
-- **First `lsp_diagnostics` call is slow** — pi-lens may be installing its
+- **First LSP diagnostics call is slow** — pi-lens may be installing its
   managed toolchain (its own documented behavior): the auxiliary scanners
   (typos-lsp, opengrep) download from GitHub on first use. The local
   `npm install` in step 2 already covers the primary TypeScript server; if
@@ -94,5 +89,5 @@ status page.
   directory. Start `dsh` from `sample-project/` (or your real project root),
   not from the profile or home directory.
 - **Diagnostics tool answers but reports zero errors for `ledger.ts`** — check
-  that step 2 ran (`node_modules/typescript` present). A missing toolchain can
+  that `source=lsp` was selected and step 2 ran (`node_modules/typescript` present). A missing toolchain can
   degrade to syntax-only checks, which do not include type errors.
