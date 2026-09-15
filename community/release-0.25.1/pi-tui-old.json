@@ -1,0 +1,27 @@
+{
+  "generatedAt": "2026-09-15T04:45:15.892Z",
+  "scenario": "dsh-pi-tui + pi2dsh + Pi MCP + Pi Subagents",
+  "specs": {
+    "dsh": "@deepseek-ai/dsh@0.1.1-rc.2",
+    "tui": "@xmoon76/dsh-pi-tui@0.3.4",
+    "engine": "pi2dsh@0.25.1",
+    "mcp": "pi-mcp-adapter@2.27.0",
+    "subagents": "@tintinweb/pi-subagents@0.18.0"
+  },
+  "status": "passed",
+  "versions": {
+    "dsh": "0.1.1-rc.2",
+    "tui": "0.3.4",
+    "engine": "0.25.1",
+    "mcp": "2.27.0",
+    "subagents": "0.18.0"
+  },
+  "assertions": {
+    "nativeLogin": true,
+    "mcpManager": true,
+    "agentsSurface": true,
+    "subagentToolResult": "sessions/--private-tmp-pi2dsh-release-0251-20260915-pi-tui-old--/session-3ee78b4d-4ec8-4e37-a30c-97b7af3f1f10/session.jsonl",
+    "mcpToolResult": "sessions/--private-tmp-pi2dsh-release-0251-20260915-pi-tui-old--/session-3ee78b4d-4ec8-4e37-a30c-97b7af3f1f10/session.jsonl",
+    "duplicateCommandErrors": 0
+  }
+}

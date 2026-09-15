@@ -1,0 +1,10 @@
+{
+  "pi2dsh": {
+    "version": "0.25.1",
+    "dist.integrity": "sha512-FZJcI5BESKrKMbTkptclBN78XbDXdyKer75nimQZu7eyEIE9cQJtqGsaEfKghJkRowhzP5xH8NdLiyLq1asL8g=="
+  },
+  "dsh-work-x": {
+    "version": "0.4.2",
+    "dist.integrity": "sha512-h4h7HqRh33U7YJ66aPk2MzdvnVpxJA5uYP4j03uTVagj1vlEy+HTBhvhrevKyYVV4vxWCWREZ7cVW+2mYjSsEQ=="
+  }
+}
