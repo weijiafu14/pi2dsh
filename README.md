@@ -2,12 +2,22 @@
 
 **English** | [中文](README.zh.md)
 
-**Run the Pi ecosystem's plugins on DeepSeek Harness, unmodified.**
+**Move a Pi setup to DeepSeek Harness without rebuilding it.** The
+extensions, MCP manager, subagents, memory and background tasks you use on Pi
+install on DSH as the same npm packages and run unmodified — web, terminal
+and headless.
 
 ```sh
-dsh plugin add pi2dsh          # once
-dsh plugin add <any-pi-plugin> # then any Pi plugin, straight from npm
+dsh plugin add pi2dsh            # once
+dsh plugin add pi-mcp-adapter    # then the Pi packages you already use, straight from npm
 ```
+
+MCP is the deepest-verified path: the full protocol surface — OAuth,
+resources, prompts, MCP Apps, elicitation, sampling, cancellation — runs
+through DSH's own approval and rendering
+([evidence matrix](docs/mcp-compatibility.md)). What has been verified end to
+end is listed in [What actually works today](#what-actually-works-today);
+nothing outside that table is claimed.
 
 pi2dsh `0.25.1` targets Pi `0.84.1` and uses one engine for DSH `0.1.1-rc.2`
 and `0.1.5-rc.1` / `0.1.5-rc.2`. Exact tested workflows and exclusions are in
@@ -19,18 +29,16 @@ migration is outside this release.
 
 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) is built
 on ideas worth betting on — a durable, reconstructable session log, a clean
-service composition, an agent loop you can actually reason about. What it does
-not have yet is a large plugin ecosystem: it is early, and the plugins people
-want on day one — web search, memory, code navigation, subagents, vision — are
-mostly not written for it yet.
-
-[Pi](https://pi.dev/) has that ecosystem already, and it is mature: hundreds
-of published packages, many with real users.
+service composition, an agent loop you can actually reason about. Its plugin
+ecosystem is young. [Pi](https://pi.dev/) has a mature one: hundreds of
+published packages, many with real users.
 
 pi2dsh is one compatibility layer that implements Pi's public extension ABI on
 top of DSH's native services, so a Pi package runs on DSH **as published** —
-no fork, no patch, no per-package adapter. You install a Pi plugin the same
-way you install anything else in DSH, and it works.
+no fork, no patch, no per-package adapter. For a Pi user or team that means
+switching hosts without rebuilding the toolchain; for a Pi plugin author it
+means a second host with no port to maintain. To the user everything looks
+like DSH; to the plugin everything looks like Pi.
 
 At the same time, pi2dsh is an ongoing, full-surface, real-world test of DSH's
 architecture. Instead of patching individual plugins, it asks whether the

@@ -2,12 +2,19 @@
 
 [English](README.md) | **中文**
 
-**让 Pi 生态的插件原样跑在 DeepSeek Harness 上。**
+**把 Pi 上的一套工具链整体搬到 DeepSeek Harness，不用重建。** 你在 Pi 上用的
+扩展、MCP 管理面、子代理、记忆、后台任务，在 DSH 上装的是同一个 npm 包，原样
+运行——web、终端、headless 都一样。
 
 ```sh
-dsh plugin add pi2dsh          # 装一次
-dsh plugin add <任意 Pi 插件>   # 之后想装谁装谁，直接用 npm 原包
+dsh plugin add pi2dsh            # 装一次
+dsh plugin add pi-mcp-adapter    # 之后装你在 Pi 上已经在用的包，直接用 npm 原包
 ```
+
+MCP 是验证得最深的一条：完整协议面——OAuth、resources、prompts、MCP Apps、
+elicitation、sampling、cancellation——经 DSH 自己的审批和渲染跑通
+（[证据矩阵](docs/mcp-compatibility.md)）。端到端验证过的清单在
+[现在到底哪些真能用](#现在到底哪些真能用)，表外的不作声明。
 
 pi2dsh `0.25.1` 以 Pi `0.84.1` 为目标，同一引擎适配 DSH `0.1.1-rc.2`
 和 `0.1.5-rc.1` / `0.1.5-rc.2`。具体通过场景和边界见
@@ -18,14 +25,13 @@ pi2dsh `0.25.1` 以 Pi `0.84.1` 为目标，同一引擎适配 DSH `0.1.1-rc.2`
 
 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)（DSH）的
 理念值得押注——可重建的持久会话日志、干净的服务组合、一条真能讲清楚的 agent
-循环。它现在缺的是插件生态：还处在早期，而大家开箱就想要的那些能力——联网搜索、
-记忆、代码导航、子代理、看图——大多还没人为它写。
-
-[Pi](https://pi.dev/) 的生态已经成熟：几百个已发布的包，很多都有真实用户。
+循环。它的插件生态还年轻。[Pi](https://pi.dev/) 的生态已经成熟：几百个已发布的包，
+很多都有真实用户。
 
 pi2dsh 是一层兼容层，把 Pi 的公开扩展 ABI 实现在 DSH 的原生服务之上，让 Pi 包
-**以发布的原样**跑在 DSH 上——不 fork、不打补丁、不为每个包写适配器。你像装任何
-DSH 插件一样装一个 Pi 插件，它就能用。
+**以发布的原样**跑在 DSH 上——不 fork、不打补丁、不为每个包写适配器。对 Pi 的用户
+或团队，这意味着换宿主不用重建工具链；对 Pi 插件作者，这意味着多一个宿主而不用
+维护移植。对用户，一切是 DSH；对插件，一切是 Pi。
 
 同时，pi2dsh 也是对 DSH 架构的一次覆盖完整能力面的持续实战检验。我们不是为单个插件
 打补丁，而是在检验：Pi 插件依赖的模型、工具、会话、交互、资源和客户端能力，能否
