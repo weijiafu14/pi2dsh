@@ -189,6 +189,18 @@ pi2dsh：通用 Pi Host ABI 兼容层，让 Pi 生态插件原样跑在 DeepSeek
   处置：vendored 同一 commit 的纯逻辑（同 ProjectTrustStore 来源）+ 契约测试 + 规则。
   判据：inspect 报 `host-import(...)` 为 unsupported 时，先分"懒用"（调用时才缺，走
   能力缺口分级）与"载入即缺"（具名导入，整包不可用），后者必须补导出。
+- **投影对象少一个 Pi 公开方法 = 调到它的包对该 Agent 整包失效，而且启动日志照样报
+  "loaded N tools"**（2026-09-21 pi-background-tasks 2.6 事故）：`ctx.modelRegistry` 实现了 Pi
+  0.84.1 `ModelRegistry` 18 个公开方法中的 15 个，缺 `registerProvider`/`unregisterProvider`/
+  `getRegisteredNativeProvider`；插件当天发的新版在 `session_start` 里调到第三个，TypeError 让
+  逐 Agent 挂载失败、11 个工具全不进请求，而那行 "loaded" 是零会话宿主锚的挂载（不触发
+  session_start）。处置：两个注册入口收成一条路径（`registerPiProvider`），按 Pi 的两本账
+  （按名 legacy / pi-ai 原生对象，同 id 互相顶替）回读；契约测试 tests/model-registry-registration.spec.ts。
+  判据：**给插件的每个投影对象都要对着 Pi 源码的公开方法清单逐个点名**，不是"用到哪个补哪个"；
+  已实测表里的包是 `^` 装的，上游当天发版就能把"已验证"变成"坏的"——发现形状是"模型说没有
+  这个工具"，先读 stderr 里的 `failed to mount`，别先怀疑宿主。同一次真机还抓到：Pi 的
+  `sendMessage`/`sendUserMessage` 声明为 void、包从不 await，退出期投递失败会变成未处理异常，
+  DSH CLI 报 fatal 并以非零码退出——桥对这类投递失败只告警（`reportUnawaitedDelivery`）。
 - **扩展目录扫描规则以 Pi 为准，不递归**（同日事故）：Pi 对目录项只取一层 `*.ts|*.js`，
   子目录只认 `index.ts|index.js` 或自带 `pi.extensions` 清单（package-manager.ts
   `collectAutoExtensionEntries`）；我们旧的 `dir/**/*.ts` 把 pi-code 的 40 个共享模块
