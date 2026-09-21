@@ -207,6 +207,8 @@ interface RuntimeState {
   entryRenderers: Map<string, unknown>
   markdownTransformer?: unknown
   providers: Map<string, UnknownRecord>
+  /** Ids in `providers` registered as pi-ai native Provider objects (Pi's second ledger). */
+  nativeProviders: Set<string>
   // Pi-format auth.json store, created on first OAuth use; per-provider
   // serialized writes, atomic 0600 persistence (see oauth-bridge).
   autocompleteProviders: unknown[]
@@ -1187,7 +1189,21 @@ function contextFor(
       if (result instanceof Error) throw result
       return result
     },
-    getRegisteredProviderConfig: (provider: string) => providerConfig(provider),
+    // Pi's ModelRegistry registration surface (model-registry.ts): the same
+    // runtime as pi.registerProvider, so it is the same path here. The string
+    // form requires a config, exactly like Pi.
+    registerProvider: (providerOrName: unknown, config?: UnknownRecord) => {
+      if (typeof providerOrName === 'string' && config === undefined) {
+        throw new Error('Provider config is required when registering by name')
+      }
+      registerPiProvider(ctx, state, providerOrName, config)
+    },
+    unregisterProvider: (provider: string) => unregisterPiProvider(ctx, state, provider),
+    // Pi reads the legacy and native ledgers separately; ids are their union.
+    getRegisteredProviderConfig: (provider: string) =>
+      state.nativeProviders.has(provider) ? undefined : providerConfig(provider),
+    getRegisteredNativeProvider: (provider: string) =>
+      state.nativeProviders.has(provider) ? providerConfig(provider) : undefined,
     getRegisteredProviderIds: () => [...state.providers.keys()],
     getProviderDisplayName: (provider: string) => {
       const config = providerConfig(provider)
@@ -1236,7 +1252,7 @@ function contextFor(
       ctx, state, message.content, deliveryMode(options), sessionOverride,
       typeof message.customType === 'string' ? message.customType : undefined,
     ),
-    sendUserMessage: (content: unknown) => sendPiMessage(ctx, state, content, 'followup', sessionOverride),
+    sendUserMessage: (content: unknown) => reportUnawaitedDelivery(ctx, state, 'sendUserMessage', sendPiMessage(ctx, state, content, 'followup', sessionOverride)),
     appendEntry: (customType: string, data?: unknown) => {
       state.bridge.appendCustomEntry(String(sessionOverride.id ?? ''), customType, data)
     },
@@ -4410,6 +4426,21 @@ function deliverAgentMessage(agent: DshAgent, message: unknown, mode: 'inject' |
 }
 
 /**
+ * Pi declares sendMessage / sendUserMessage as returning void, so packages call
+ * them without awaiting. A delivery that fails — typically a completion
+ * notice sent while the host is already tearing the agent down — would
+ * otherwise surface as an unhandled rejection, which the DSH CLI reports as a
+ * fatal failure and a non-zero exit. The failure is reported once, as a
+ * warning naming the package; a caller that does await still receives it.
+ */
+function reportUnawaitedDelivery(ctx: Context, state: RuntimeState, api: string, delivery: Promise<void>): Promise<void> {
+  delivery.catch((error: unknown) => {
+    logger(ctx).warn(`[pi2dsh] ${state.packageName}: ${api} was not delivered: ${error instanceof Error ? error.message : String(error)}`)
+  })
+  return delivery
+}
+
+/**
  * Pi's `sendMessage` / `sendUserMessage`, on DSH.
  *
  * Two things this has to get right that a plain `deliverAgentMessage` does not:
@@ -4924,6 +4955,92 @@ async function runPiPrintRequest(ctx: Context, state: RuntimeState, parent: Unkn
   }
 }
 
+/**
+ * The ONE provider registration path. Pi exposes it twice — `pi.registerProvider`
+ * and `ctx.modelRegistry.registerProvider` (model-registry.ts) — over the same
+ * runtime, so both surfaces land here. A string first argument is Pi's legacy
+ * (name, config) form; an object is a pi-ai native Provider. Pi keeps the two in
+ * separate ledgers that replace each other per id, which is what
+ * getRegisteredProviderConfig / getRegisteredNativeProvider read back.
+ */
+function registerPiProvider(ctx: Context, state: RuntimeState, providerOrName: unknown, config?: UnknownRecord): void {
+  // pi-ai createProvider() objects are keyed by id in Pi's registry
+  // (name is the display name); extension-generation calls pass the key
+  // explicitly as the first argument.
+  const name = typeof providerOrName === 'string'
+    ? providerOrName
+    : String((providerOrName as UnknownRecord | undefined)?.id
+      ?? (providerOrName as UnknownRecord | undefined)?.name ?? 'unnamed')
+  const value = typeof providerOrName === 'string' ? config ?? {} : providerOrName as UnknownRecord
+  state.providers.set(name, value)
+  if (typeof providerOrName === 'string') state.nativeProviders.delete(name)
+  else state.nativeProviders.add(name)
+  // Pi's layered ledger: this registration merges into the package's slot
+  // (defined fields over the previous registration), the canonical is
+  // recomposed as builtin base + package overlays in load order, and a
+  // changed shape retires the existing route so it is rebuilt from the
+  // new canonical — partial overlays keep the builtin OAuth base instead
+  // of discarding it, later packages override earlier ones, and an
+  // idempotent re-registration from another agent's instance changes
+  // nothing (same fingerprint keeps the existing canonical and route).
+  recordPackageProviderRegistration(state.shared, state.packageName, name, value)
+  if (recomposeSharedProvider(state.shared, name)) {
+    retireSharedProviderRoute(state.shared, name)
+  }
+  const canonical = state.shared.providers.get(name) ?? value
+  if (providerSupportsOAuth(canonical)) {
+    // Pi hosts expose /login <provider> for oauth-capable providers; the
+    // package's own login flow runs, credentials land in auth.json.
+    ensureLoginCommand(ctx, state)
+    // 0.1.1-line hosts additionally show it on their native sign-in
+    // surface through the official authorization seam.
+    maybeProjectAuthorizationFlow(ctx, state, name)
+    logger(ctx).info(`[pi2dsh] Pi provider ${JSON.stringify(name)} supports OAuth — log in with /login ${name}`)
+  }
+  // A provider carrying its own transport becomes a REAL DSH llm route:
+  // the loop and child agents route to it natively, with credentials
+  // resolved through Pi's own chain per request.
+  const routeDisposer = registerSharedProviderRoute(ctx, state, name, canonical)
+  if (routeDisposer !== undefined) {
+    void state.modelCatalog?.refresh()
+    // Only the transport-carrying path is registered by the time this
+    // returns. The catalog-only path mounts DSH's official adapter
+    // asynchronously and reports its OWN outcome, so announcing success
+    // here claimed a route that could still fail a moment later — which is
+    // exactly what a fake credential produced: "registered as a native DSH
+    // llm route" immediately followed by "could not be served".
+    if (providerCarriesTransport(canonical)) {
+      logger(ctx).info(`[pi2dsh] Pi provider ${JSON.stringify(name)} registered as a native DSH llm route`)
+    }
+  } else if (!providerSupportsOAuth(canonical)) {
+    logger(ctx).info(`[pi2dsh] recorded Pi provider ${JSON.stringify(name)}; model calls stay on DSH llm adapters`)
+  }
+  // Pi hosts refresh a registered provider's dynamic model catalog
+  // (fetchModels against its gateway); best-effort and non-blocking.
+  void discoverProviderModels(ctx, state, name, canonical)
+}
+
+function unregisterPiProvider(ctx: Context, state: RuntimeState, name: string): void {
+  state.providers.delete(name)
+  state.nativeProviders.delete(name)
+  releaseSharedProviderRoute(state, name)
+  // Pi's unregisterProvider deletes the extension layer and recomposes so
+  // the builtin base is restored. Adapted to the slotted ledger: this
+  // package's slot is removed (other packages' overlays survive — in Pi
+  // every unregister nukes the whole extension entry, but that contract
+  // exists only inside one short-lived session runtime; on a long-lived
+  // host it would let one package erase another's registration).
+  const slots = state.shared.providerPackages?.get(name)
+  if (slots?.delete(state.packageName) === true && recomposeSharedProvider(state.shared, name)) {
+    retireSharedProviderRoute(state.shared, name)
+    // Pi's recompose updates the directory entry in place; our route is an
+    // explicit registration, so the restored composition (builtin base or
+    // the remaining packages' overlays) must be re-published.
+    const restored = state.shared.providers.get(name)
+    if (restored !== undefined) registerSharedProviderRoute(ctx, state, name, restored)
+  }
+}
+
 function createPiApi(ctx: Context, state: RuntimeState): UnknownRecord {
   return {
     on(event: string, handler: PiHandler) {
@@ -4951,79 +5068,8 @@ function createPiApi(ctx: Context, state: RuntimeState): UnknownRecord {
       logger(ctx).warn(`[pi2dsh] Pi flag --${name} uses its default only; DSH CLI registration is unsupported`)
     },
     getFlag: (name: string) => state.flags.get(name),
-    registerProvider(providerOrName: unknown, config?: UnknownRecord) {
-      // pi-ai createProvider() objects are keyed by id in Pi's registry
-      // (name is the display name); extension-generation calls pass the key
-      // explicitly as the first argument.
-      const name = typeof providerOrName === 'string'
-        ? providerOrName
-        : String((providerOrName as UnknownRecord | undefined)?.id
-          ?? (providerOrName as UnknownRecord | undefined)?.name ?? 'unnamed')
-      const value = typeof providerOrName === 'string' ? config ?? {} : providerOrName as UnknownRecord
-      state.providers.set(name, value)
-      // Pi's layered ledger: this registration merges into the package's slot
-      // (defined fields over the previous registration), the canonical is
-      // recomposed as builtin base + package overlays in load order, and a
-      // changed shape retires the existing route so it is rebuilt from the
-      // new canonical — partial overlays keep the builtin OAuth base instead
-      // of discarding it, later packages override earlier ones, and an
-      // idempotent re-registration from another agent's instance changes
-      // nothing (same fingerprint keeps the existing canonical and route).
-      recordPackageProviderRegistration(state.shared, state.packageName, name, value)
-      if (recomposeSharedProvider(state.shared, name)) {
-        retireSharedProviderRoute(state.shared, name)
-      }
-      const canonical = state.shared.providers.get(name) ?? value
-      if (providerSupportsOAuth(canonical)) {
-        // Pi hosts expose /login <provider> for oauth-capable providers; the
-        // package's own login flow runs, credentials land in auth.json.
-        ensureLoginCommand(ctx, state)
-        // 0.1.1-line hosts additionally show it on their native sign-in
-        // surface through the official authorization seam.
-        maybeProjectAuthorizationFlow(ctx, state, name)
-        logger(ctx).info(`[pi2dsh] Pi provider ${JSON.stringify(name)} supports OAuth — log in with /login ${name}`)
-      }
-      // A provider carrying its own transport becomes a REAL DSH llm route:
-      // the loop and child agents route to it natively, with credentials
-      // resolved through Pi's own chain per request.
-      const routeDisposer = registerSharedProviderRoute(ctx, state, name, canonical)
-      if (routeDisposer !== undefined) {
-        void state.modelCatalog?.refresh()
-        // Only the transport-carrying path is registered by the time this
-        // returns. The catalog-only path mounts DSH's official adapter
-        // asynchronously and reports its OWN outcome, so announcing success
-        // here claimed a route that could still fail a moment later — which is
-        // exactly what a fake credential produced: "registered as a native DSH
-        // llm route" immediately followed by "could not be served".
-        if (providerCarriesTransport(canonical)) {
-          logger(ctx).info(`[pi2dsh] Pi provider ${JSON.stringify(name)} registered as a native DSH llm route`)
-        }
-      } else if (!providerSupportsOAuth(canonical)) {
-        logger(ctx).info(`[pi2dsh] recorded Pi provider ${JSON.stringify(name)}; model calls stay on DSH llm adapters`)
-      }
-      // Pi hosts refresh a registered provider's dynamic model catalog
-      // (fetchModels against its gateway); best-effort and non-blocking.
-      void discoverProviderModels(ctx, state, name, canonical)
-    },
-    unregisterProvider(name: string) {
-      state.providers.delete(name)
-      releaseSharedProviderRoute(state, name)
-      // Pi's unregisterProvider deletes the extension layer and recomposes so
-      // the builtin base is restored. Adapted to the slotted ledger: this
-      // package's slot is removed (other packages' overlays survive — in Pi
-      // every unregister nukes the whole extension entry, but that contract
-      // exists only inside one short-lived session runtime; on a long-lived
-      // host it would let one package erase another's registration).
-      const slots = state.shared.providerPackages?.get(name)
-      if (slots?.delete(state.packageName) === true && recomposeSharedProvider(state.shared, name)) {
-        retireSharedProviderRoute(state.shared, name)
-        // Pi's recompose updates the directory entry in place; our route is an
-        // explicit registration, so the restored composition (builtin base or
-        // the remaining packages' overlays) must be re-published.
-        const restored = state.shared.providers.get(name)
-        if (restored !== undefined) registerSharedProviderRoute(ctx, state, name, restored)
-      }
-    },
+    registerProvider: (providerOrName: unknown, config?: UnknownRecord) => registerPiProvider(ctx, state, providerOrName, config),
+    unregisterProvider: (name: string) => unregisterPiProvider(ctx, state, name),
     // Renderer registrations are accepted verbatim; DSH owns presentation, so
     // they are never invoked — matching Pi's own non-TUI surfaces.
     registerMessageRenderer(customType: string, renderer: unknown) {
@@ -5037,12 +5083,12 @@ function createPiApi(ctx: Context, state: RuntimeState): UnknownRecord {
     },
     sendMessage(message: UnknownRecord, options: UnknownRecord = {}) {
       requireAgent(state, 'sendMessage')
-      return sendPiMessage(ctx, state, message.content, deliveryMode(options), undefined,
-        typeof message.customType === 'string' ? message.customType : undefined)
+      return reportUnawaitedDelivery(ctx, state, 'sendMessage', sendPiMessage(ctx, state, message.content, deliveryMode(options), undefined,
+        typeof message.customType === 'string' ? message.customType : undefined))
     },
     sendUserMessage(content: unknown, options: UnknownRecord = {}) {
       requireAgent(state, 'sendUserMessage')
-      return sendPiMessage(ctx, state, content, options.deliverAs === 'steer' ? 'steer' : 'followup')
+      return reportUnawaitedDelivery(ctx, state, 'sendUserMessage', sendPiMessage(ctx, state, content, options.deliverAs === 'steer' ? 'steer' : 'followup'))
     },
     appendEntry(customType: string, data?: unknown) {
       const session = requireSession(state, 'appendEntry')
@@ -5433,6 +5479,7 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
     messageRenderers: new Map(),
     entryRenderers: new Map(),
     providers: new Map(),
+    nativeProviders: new Set(),
     autocompleteProviders: [],
     editorBuffers: new WeakMap(),
     toolsExpanded: false,

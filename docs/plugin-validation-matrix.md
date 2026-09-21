@@ -583,6 +583,22 @@ pi-mcp-adapter `2.34.0` 把应用资源移入沙箱代理；Pi exec → DSH subp
 sampling fixture 的服务契约检查不冒充完整原生模型回合，真实 CLI MCP/子代理
 证据另见旧宿主 Pi TUI 回归。
 
+## pi-background-tasks 2.6.2 复验（2026-09-21）
+
+上游当天连发 2.6.0–2.6.2（此前实测的是 2.5.0）。新版的 attribution 扩展在 `session_start` 里用
+`ctx.modelRegistry` 的快照/安装/还原协议（`getRegisteredProviderConfig`、
+`getRegisteredNativeProvider`、`getRegisteredProviderIds`、`registerProvider`、`unregisterProvider`）。
+
+| 项 | 修复前 | 修复后 |
+|---|---|---|
+| 逐 Agent 挂载 | 失败：`registry.getRegisteredNativeProvider is not a function`；请求工具表里没有任何 `bg_*` | 成功 |
+| `bg_run` / 运行中 `bg_logs` | 模型改用宿主 `bash` + `job_output` | 各 1 次，日志读到进行中的 tick |
+| headless 退出 | —— | 退出码 0（此前退出期完成通知投递失败 → CLI fatal） |
+
+宿主：stock npm DSH `0.1.5-rc.2` 与 `0.1.6-alpha.2`，全新 DSH_HOME，真模型，断言读会话日志。
+归因：两处都是 pi2dsh 欠账（兼容面缺方法、未等待的投递失败未收口），不是插件缺陷，也不是宿主缺口。
+判级不变：工具注册 2 级（可靠翻译）。
+
 ## 继续新增记录时
 
 复制一个插件块，补齐“使用的架构分支、理论对应、实际五层、逐项等级、结论、证据”。
