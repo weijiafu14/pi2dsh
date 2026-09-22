@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "pi2dshCommit": "cb849dfbc559bd6a6e565dfa2c3c5e57c5910236",
+  "dshCommit": "npm:@deepseek-ai/dsh@0.1.5-rc.2",
+  "results": {
+    "backgroundTasks": {
+      "status": "passed",
+      "engine": {
+        "version": "0.25.1",
+        "from": "local",
+        "spec": "file:<working-tree>",
+        "commit": "cb849dfbc559bd6a6e565dfa2c3c5e57c5910236",
+        "dirty": true
+      },
+      "bgRunCalls": 1,
+      "bgLogsMidRunReads": 1
+    }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "pi2dshCommit": "39c7c3f8f2f0e4fbb9587c0aadf5162261aaca52",
+  "dshCommit": "npm:@deepseek-ai/dsh@0.1.5-rc.2",
+  "results": {
+    "presentationSurfaces": {
+      "status": "passed",
+      "engine": {
+        "version": "0.25.2",
+        "from": "registry",
+        "spec": "pi2dsh@0.25.2"
+      },
+      "install": "dsh-work-x suite + pi-powerline-footer",
+      "screenshots": [
+        "06-presentation-surfaces.png"
+      ]
+    }
+  }
+}

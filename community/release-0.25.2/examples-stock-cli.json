@@ -1,0 +1,176 @@
+{
+  "schemaVersion": 1,
+  "pi2dshCommit": "39c7c3f8f2f0e4fbb9587c0aadf5162261aaca52",
+  "dshCommit": "npm:@deepseek-ai/dsh@0.1.5-rc.2",
+  "results": {
+    "alibabaTokenPlan": {
+      "status": "skipped",
+      "reason": "ALIBABA_TOKEN_PLAN_API_KEY not set"
+    },
+    "visionBridge": {
+      "status": "skipped",
+      "reason": "no complete OpenAI-compatible or Pi-registry vision model configured"
+    },
+    "gatewayCompat": {
+      "engine": {
+        "version": "0.25.2",
+        "from": "registry",
+        "spec": "pi2dsh@0.25.2"
+      },
+      "status": "passed",
+      "requests": 2,
+      "roles": [
+        "system",
+        "user",
+        "user"
+      ],
+      "maxTokensField": "max_tokens",
+      "store": null,
+      "reasoningEffort": "high",
+      "bodyKeys": [
+        "max_tokens",
+        "messages",
+        "model",
+        "reasoning_effort",
+        "stream",
+        "stream_options",
+        "tools"
+      ],
+      "previews": [
+        "system: You are an AI agent powered by DeepSeek Harness. You are a ",
+        "user: Reply with exactly: gateway-compat-ok",
+        "user: Current runtime context. This snapshot supersedes earlier ru"
+      ]
+    },
+    "memoryTasksWeb": {
+      "status": "failed",
+      "error": "Command failed: node /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/docs/posting-kit/capture-memory-tasks.mjs /var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-ex-memtasks-web-qUuPGf/shots --url http://127.0.0.1:5191/?token=KDAHSl3WlNBEDIGvYEvSbfaiY5FCeMLwnhDLrcFILOI --codeword NIMBUS-4873\nnode:internal/modules/run_main:123\n    triggerUncaughtException(\n    ^\n\nbrowserType.launch: Executable doesn't exist at /Users/weijiafu8/Library/Caches/ms-playwright/chromium_headless_shell-1228/chrome-headless-shell-mac-arm64/chrome-headless-shell\n╔════════════════════════════════════════════════════════════╗\n║ Looks like Playwright was just installed or updated.       ║\n║ Please run the following command to download new browsers: ║\n║                                                            ║\n║     npx playwright install                                 ║\n║                                                            ║\n║ <3 Playwright Team                                         ║\n╚════════════════════════════════════════════════════════════╝\n    at openApp (/Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/docs/posting-kit/web-drive.mjs:57:34)\n    at async file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/docs/posting-kit/capture-memory-tasks.mjs:19:33 {\n  log: [],\n  name: 'Error'\n}\n\nNode.js v22.22.0\n"
+    },
+    "persistentMemory": {
+      "status": "passed",
+      "engine": {
+        "version": "0.25.2",
+        "from": "registry",
+        "spec": "pi2dsh@0.25.2"
+      },
+      "wroteVia": [
+        "memory_add"
+      ],
+      "recalledAcrossSessions": true,
+      "storeIsolatedToDshHome": true
+    },
+    "visionBridgeWeb": {
+      "status": "skipped",
+      "reason": "no complete OpenAI-compatible or Pi-registry vision model configured"
+    },
+    "workXMemoryTasks": {
+      "status": "failed",
+      "error": "Command failed: node /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/docs/posting-kit/capture-workx-memory-tasks.mjs /var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-ex-workx-mt-YPjwx7/shots --url http://127.0.0.1:5195/?token=-8p0u6M205RPDecvTrOTEYQ4R-k8ajax6icuWu6wb_Q --codeword AURORA-5199 --pin Always answer with the release codename AURORA-5199 first\nnode:internal/modules/run_main:123\n    triggerUncaughtException(\n    ^\n\nbrowserType.launch: Executable doesn't exist at /Users/weijiafu8/Library/Caches/ms-playwright/chromium_headless_shell-1228/chrome-headless-shell-mac-arm64/chrome-headless-shell\n╔════════════════════════════════════════════════════════════╗\n║ Looks like Playwright was just installed or updated.       ║\n║ Please run the following command to download new browsers: ║\n║                                                            ║\n║     npx playwright install                                 ║\n║                                                            ║\n║ <3 Playwright Team                                         ║\n╚════════════════════════════════════════════════════════════╝\n    at openApp (/Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/docs/posting-kit/web-drive.mjs:57:34)\n    at async file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/docs/posting-kit/capture-workx-memory-tasks.mjs:21:39 {\n  log: [],\n  name: 'Error'\n}\n\nNode.js v22.22.0\n"
+    },
+    "customGateways": {
+      "status": "passed",
+      "engine": {
+        "version": "0.25.2",
+        "from": "registry",
+        "spec": "pi2dsh@0.25.2"
+      },
+      "seenByPackage": {
+        "provider": "my-gateway",
+        "id": "deepseek-chat",
+        "api": "faux",
+        "contextWindow": 131072
+      },
+      "requestedThroughGateway": true
+    },
+    "sideConversation": {
+      "status": "failed",
+      "error": "Command failed: node /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/docs/posting-kit/capture-side-chat.mjs /var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-ex-side-ncUOUz/shots --url http://127.0.0.1:5187/?token=5eRAnNyWnLpCs9SQ3N3xHSnCH7Sv--RyjGjSIDVGOSw\nnode:internal/modules/run_main:123\n    triggerUncaughtException(\n    ^\n\nbrowserType.launch: Executable doesn't exist at /Users/weijiafu8/Library/Caches/ms-playwright/chromium_headless_shell-1228/chrome-headless-shell-mac-arm64/chrome-headless-shell\n╔════════════════════════════════════════════════════════════╗\n║ Looks like Playwright was just installed or updated.       ║\n║ Please run the following command to download new browsers: ║\n║                                                            ║\n║     npx playwright install                                 ║\n║                                                            ║\n║ <3 Playwright Team                                         ║\n╚════════════════════════════════════════════════════════════╝\n    at openApp (/Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/docs/posting-kit/web-drive.mjs:57:34)\n    at async file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/docs/posting-kit/capture-side-chat.mjs:15:39 {\n  log: [],\n  name: 'Error'\n}\n\nNode.js v22.22.0\n"
+    },
+    "codexImageGen": {
+      "status": "skipped",
+      "reason": "CODEX_AUTH_FILE not set"
+    },
+    "subscriptionLogin": {
+      "status": "partial",
+      "engine": {
+        "version": "0.25.2",
+        "from": "registry",
+        "spec": "pi2dsh@0.25.2"
+      },
+      "note": "pre-login discovery and native route passed; set CODEX_AUTH_FILE to verify the post-login model picker"
+    },
+    "presentationSurfaces": {
+      "status": "failed",
+      "error": "Command failed: node /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/docs/posting-kit/capture-surfaces.mjs /var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-ex-surfaces-rXVia3/shots --url http://127.0.0.1:5189/?token=I9S75LZQExpkkdg2mB5Z3WPuie1oy4CaMAeFu4z3eQA\nnode:internal/modules/run_main:123\n    triggerUncaughtException(\n    ^\n\nbrowserType.launch: Executable doesn't exist at /Users/weijiafu8/Library/Caches/ms-playwright/chromium_headless_shell-1228/chrome-headless-shell-mac-arm64/chrome-headless-shell\n╔════════════════════════════════════════════════════════════╗\n║ Looks like Playwright was just installed or updated.       ║\n║ Please run the following command to download new browsers: ║\n║                                                            ║\n║     npx playwright install                                 ║\n║                                                            ║\n║ <3 Playwright Team                                         ║\n╚════════════════════════════════════════════════════════════╝\n    at openApp (/Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/docs/posting-kit/web-drive.mjs:57:34)\n    at async file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/docs/posting-kit/capture-surfaces.mjs:21:43 {\n  log: [],\n  name: 'Error'\n}\n\nNode.js v22.22.0\n"
+    },
+    "dshX": {
+      "status": "failed",
+      "error": "Command failed: node /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/scripts/dsh-x-web-probe.mjs /var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-ex-dshx-3nzn1G/shots --url http://127.0.0.1:5193\nnode:internal/modules/run_main:123\n    triggerUncaughtException(\n    ^\n\nbrowserType.launch: Executable doesn't exist at /Users/weijiafu8/Library/Caches/ms-playwright/chromium_headless_shell-1228/chrome-headless-shell-mac-arm64/chrome-headless-shell\n╔════════════════════════════════════════════════════════════╗\n║ Looks like Playwright was just installed or updated.       ║\n║ Please run the following command to download new browsers: ║\n║                                                            ║\n║     npx playwright install                                 ║\n║                                                            ║\n║ <3 Playwright Team                                         ║\n╚════════════════════════════════════════════════════════════╝\n    at openApp (/Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/docs/posting-kit/web-drive.mjs:57:34)\n    at async file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/scripts/dsh-x-web-probe.mjs:25:43 {\n  log: [],\n  name: 'Error'\n}\n\nNode.js v22.22.0\n"
+    },
+    "tuiMcp": {
+      "status": "failed",
+      "error": "Command failed: node /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/scripts/verify-tui-mcp-tool-e2e.mjs\n[pi2dsh] Pi command /login registered as /pi-login because the active terminal reserves /login for its native command (host commands win on collisions)\n[pi2dsh] Pi flag --mcp-config uses its default only; DSH CLI registration is unsupported\n[pi2dsh] Pi command /mcp registered as /pi-mcp because the active terminal reserves /mcp for its native command (host commands win on collisions)\n[pi2dsh] tool mcpScript: $.properties.timeoutMs.minimum: constraint is not enforced by DSH and was dropped\n[pi2dsh] tool mcp: $.properties.args.anyOf: converted to DSH exact-one oneOf semantics\n[pi2dsh] tool mcp: $.properties.limit.minimum: constraint is not enforced by DSH and was dropped\n[pi2dsh] tool mcp: $.properties.offset.minimum: constraint is not enforced by DSH and was dropped\n[pi2dsh] Pi command /mcp__legacySse__simple-prompt registered as /mcp__legacysse__simple-prompt to satisfy DSH command naming\n[pi2dsh] Pi command /mcp__legacySse__args-prompt registered as /mcp__legacysse__args-prompt to satisfy DSH command naming\n[pi2dsh] Pi command /mcp__legacySse__completable-prompt registered as /mcp__legacysse__completable-prompt to satisfy DSH command naming\n[pi2dsh] Pi command /mcp__legacySse__resource-prompt registered as /mcp__legacysse__resource-prompt to satisfy DSH command naming\nnode:internal/modules/run_main:123\n    triggerUncaughtException(\n    ^\n\nbrowserType.launch: Executable doesn't exist at /Users/weijiafu8/Library/Caches/ms-playwright/chromium_headless_shell-1228/chrome-headless-shell-mac-arm64/chrome-headless-shell\n╔════════════════════════════════════════════════════════════╗\n║ Looks like Playwright was just installed or updated.       ║\n║ Please run the following command to download new browsers: ║\n║                                                            ║\n║     npx playwright install                                 ║\n║                                                            ║\n║ <3 Playwright Team                                         ║\n╚════════════════════════════════════════════════════════════╝\n    at /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/scripts/verify-tui-mcp-tool-e2e.mjs:454:37 {\n  log: [],\n  name: 'Error'\n}\n\nNode.js v22.22.0\n"
+    },
+    "codeNavigation": {
+      "status": "passed",
+      "engine": {
+        "version": "0.25.2",
+        "from": "registry",
+        "spec": "pi2dsh@0.25.2"
+      },
+      "packages": {
+        "@ff-labs/pi-fff": "0.11.0",
+        "pi-lens": "4.2.1"
+      },
+      "search": "ffgrep -> notes/spec.md",
+      "diagnostics": "LSP diagnostic tool -> TS2322 on src/ledger.ts"
+    },
+    "mcpAtScale": {
+      "status": "passed",
+      "engine": {
+        "version": "0.25.2",
+        "from": "registry",
+        "spec": "pi2dsh@0.25.2"
+      },
+      "packages": [
+        "pi-mcp-adapter"
+      ],
+      "server": "many-tools (official MCP SDK, 51 tools, stdio)",
+      "discovery": "mcp proxy -> tool_037 -> LAUNCH-MARKER-7741-ZEBRA",
+      "timeout": "mcpScript timeoutMs 5000 on ~120s slow_task; turn ended in 15s; tool_001 answered after"
+    },
+    "mcpAtScaleWeb": {
+      "status": "failed",
+      "error": "Command failed: node /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/docs/posting-kit/capture-mcp-scale.mjs /var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-ex-mcpscale-web-IyZta8/shots --url http://127.0.0.1:5192/?token=O-fDd9d7t8cBqem39KcJKjauqBrhfSIL4YT5wXjJL38\nnode:internal/modules/run_main:123\n    triggerUncaughtException(\n    ^\n\nbrowserType.launch: Executable doesn't exist at /Users/weijiafu8/Library/Caches/ms-playwright/chromium_headless_shell-1228/chrome-headless-shell-mac-arm64/chrome-headless-shell\n╔════════════════════════════════════════════════════════════╗\n║ Looks like Playwright was just installed or updated.       ║\n║ Please run the following command to download new browsers: ║\n║                                                            ║\n║     npx playwright install                                 ║\n║                                                            ║\n║ <3 Playwright Team                                         ║\n╚════════════════════════════════════════════════════════════╝\n    at openApp (/Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/docs/posting-kit/web-drive.mjs:57:34)\n    at async file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/docs/posting-kit/capture-mcp-scale.mjs:14:43 {\n  log: [],\n  name: 'Error'\n}\n\nNode.js v22.22.0\n"
+    },
+    "backgroundTasks": {
+      "status": "passed",
+      "engine": {
+        "version": "0.25.2",
+        "from": "registry",
+        "spec": "pi2dsh@0.25.2"
+      },
+      "bgRunCalls": 1,
+      "bgLogsMidRunReads": 1
+    },
+    "subagents": {
+      "status": "passed",
+      "engine": "0.25.2",
+      "cli": "0.1.1-rc.2",
+      "scenarios": {
+        "steer": "passed",
+        "failureReport": "passed",
+        "resume": "passed",
+        "resumeArchive": "passed",
+        "stop": "passed",
+        "modelFollow": "passed",
+        "explicitModelThinking": "passed",
+        "childExtensions": "passed"
+      }
+    },
+    "codeNavigationWeb": {
+      "status": "failed",
+      "error": "Command failed: node /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/docs/posting-kit/capture-codenav.mjs /var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-ex-codenav-web-swvPL8/shots --url http://127.0.0.1:5190/?token=UtuYv-3uBRfxzc6_Xob-zaxWPWOFMEO9KcTtLgqye2k\nnode:internal/modules/run_main:123\n    triggerUncaughtException(\n    ^\n\nbrowserType.launch: Executable doesn't exist at /Users/weijiafu8/Library/Caches/ms-playwright/chromium_headless_shell-1228/chrome-headless-shell-mac-arm64/chrome-headless-shell\n╔════════════════════════════════════════════════════════════╗\n║ Looks like Playwright was just installed or updated.       ║\n║ Please run the following command to download new browsers: ║\n║                                                            ║\n║     npx playwright install                                 ║\n║                                                            ║\n║ <3 Playwright Team                                         ║\n╚════════════════════════════════════════════════════════════╝\n    at openApp (/Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/docs/posting-kit/web-drive.mjs:57:34)\n    at async file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/docs/posting-kit/capture-codenav.mjs:19:43 {\n  log: [],\n  name: 'Error'\n}\n\nNode.js v22.22.0\n"
+    }
+  }
+}

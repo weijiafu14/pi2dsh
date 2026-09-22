@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "pi2dshCommit": "39c7c3f8f2f0e4fbb9587c0aadf5162261aaca52",
+  "dshCommit": "npm:@deepseek-ai/dsh@0.1.5-rc.2",
+  "results": {
+    "mcpAtScaleWeb": {
+      "status": "passed",
+      "engine": {
+        "version": "0.25.2",
+        "from": "registry",
+        "spec": "pi2dsh@0.25.2"
+      },
+      "packages": [
+        "pi-mcp-adapter"
+      ],
+      "screenshots": [
+        "12-mcp-at-scale-web.png"
+      ],
+      "discovery": "mcp proxy -> tool_037 -> LAUNCH-MARKER-7741-ZEBRA"
+    }
+  }
+}

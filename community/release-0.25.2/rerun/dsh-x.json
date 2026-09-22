@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "pi2dshCommit": "39c7c3f8f2f0e4fbb9587c0aadf5162261aaca52",
+  "dshCommit": "npm:@deepseek-ai/dsh@0.1.5-rc.2",
+  "results": {
+    "dshX": {
+      "status": "passed",
+      "engine": {
+        "version": "0.25.2",
+        "from": "registry",
+        "spec": "pi2dsh@0.25.2"
+      },
+      "suite": [
+        "pi-mcp-adapter",
+        "@tintinweb/pi-subagents",
+        "pi-btw",
+        "@crazygit/pi-codex-image-gen",
+        "pi-hermes-memory",
+        "pi-background-tasks"
+      ],
+      "sideChat": "answers in-window; inject + --save verified in the main session log",
+      "commands": {
+        "pi-mcp-adapter": "mcp",
+        "@tintinweb/pi-subagents": "agents",
+        "pi-btw": "btw"
+      }
+    }
+  }
+}
