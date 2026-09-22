@@ -1,0 +1,12 @@
+{
+  "pi2dsh": {
+    "version": "0.25.2",
+    "dist.integrity": "sha512-9rElJGR0xDPQ3JrN81XVp6RyC7IUScZp1pq8SDkKwUAMwDMA93Zs9aZXEoVJfDlqZRWzkt/TDxfinwxuaxk+7A==",
+    "publishedAt": "2026-09-22",
+    "tag": "latest"
+  },
+  "dsh-work-x": {
+    "version": "0.4.2",
+    "note": "unchanged; depends on ^0.25.1 which resolves to 0.25.2"
+  }
+}

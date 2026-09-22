@@ -704,6 +704,15 @@ pnpm verify:release   # verify + 全部 examples（装 npm 上刚发的那版）
   `pnpm-workspace.yaml: minimumReleaseAge: 0`（.npmrc 的
   minimum-release-age 不生效）；build 脚本要 allowBuilds
   node-pty/koffi/@deepseek-ai/dsh-subprocess-local。
+- **发版姿势（2026-09-22 从 codex 会话里挖出来，之前仓库无记载）**：`~/.npmrc` 的 npm token
+  已失效且与发布无关；发布用专用凭证文件 `~/.config/npm/account-publish-agent-2026-11-26.npmrc`
+  经 `--userconfig` 传入（文件内容永不读、不回显）。步骤：`npm pack --ignore-scripts` 出 tarball →
+  `npm --userconfig=<该文件> publish <tgz> --access public --tag latest --ignore-scripts` →
+  `npm view <pkg>@<v> dist.integrity` 与本地 tarball sha512 比对 → push main + tag v<版本> →
+  `verify-examples-e2e` 必须传 `PI2DSH_DSH_BIN/CWD` 指向 npm CLI（漏传就回落到本地 checkout，
+  15 场景在安装阶段齐挂、零信息量）→ 证据归档 `community/release-<版本>/`。web 场景挂在
+  `browserType.launch` = 本机 `~/Library/Caches/ms-playwright` 被清，在 deepseek-harness/apps/web
+  下 `npx playwright install chromium`，与产品无关。
 - **install/npm 类失败先 `df -h` 再定性**（2026-08-28 事故：code-navigation-web 的
   `npm install` 连挂两轮，我当网络抖动重跑，真因是磁盘 99%——ENOSPC 藏在
   "Invalid response body" 后面）。E2E 装置会留大量残骸：/tmp/pi2dsh-*（lifecycle
