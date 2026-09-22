@@ -16,7 +16,7 @@ elicitation、sampling、cancellation——经 DSH 自己的审批和渲染跑�
 （[证据矩阵](docs/mcp-compatibility.md)）。端到端验证过的清单在
 [现在到底哪些真能用](#现在到底哪些真能用)，表外的不作声明。
 
-pi2dsh `0.25.1` 以 Pi `0.84.1` 为目标，同一引擎适配 DSH `0.1.1-rc.2`
+pi2dsh `0.25.2` 以 Pi `0.84.1` 为目标，同一引擎适配 DSH `0.1.1-rc.2`
 和 `0.1.5-rc.1` / `0.1.5-rc.2`。具体通过场景和边界见
 [版本验收记录](community/dsh-015-compat/README.md)及
 [rc.2 核验](community/dsh-015-rc2-20260914/README.md)。本版不做跨版本旧数据迁移。
