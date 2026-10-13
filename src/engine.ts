@@ -212,21 +212,10 @@ interface AgentRegistryLike {
  * the same semantics hold on the TUI, web, headless, ACP and config-declared
  * agents alike:
  *
- *   - `agent/created` fires on every publication path before the loop can run
- *     a first turn; it eagerly starts that agent's mount.
- *   - `system-prompt/assemble` (awaited waterfall, runs in every step's
- *     preStep) gates the assembly on the mount and patches the pre-waterfall
- *     tools snapshot from the official scoped projection `tools.schemas()` —
- *     stock DSH collects `assembly.tools` before dispatching the waterfall,
- *     so a mount that lands during the wait would otherwise miss turn one.
- *   - `tools/pre-execute` (awaited waterfall) closes the same window for
- *     direct executions that bypass assembly.
- *
- * `agent/session-start` deliberately is NOT the trigger: DSH documents it as a
- * veto-less notification that cannot gate startup. The waterfalls above are
- * the officially awaited seams, and the exact pattern of registering onto a
- * foreign agent's ctx from a lifecycle event is what DSH's own schedule
- * plugin ships.
+ * DSH 0.2 serially awaits agent/created before releasing the new Agent's
+ * initialization activity. Returning the per-Agent mount promise here makes
+ * tools, commands and lifecycle state ready before the first assembly or
+ * direct execution. No later assembly rewrite is needed.
  *
  * A mount failure never takes the Agent down: the agent keeps running as a
  * plain DSH agent, the failure is reported loudly once, and only the Pi
@@ -236,7 +225,7 @@ export function installAgentScopedMounts(
   ctx: Context,
   preparedPackages: Promise<readonly PreparedPiHostPackage[]>,
   report: { warn(message: string): void },
-): void {
+): Promise<void> {
   const host = ctx as unknown as EngineHostContext
   const mounts = new WeakMap<object, AgentScopedMount>()
 
@@ -271,7 +260,7 @@ export function installAgentScopedMounts(
         try {
           await applyPreparedPiHost(agent.ctx, prepared, agent as unknown as Record<string, unknown>)
         } catch (error) {
-          // Loud, once per agent; the gates resolve so the plain DSH agent
+          // Loud, once per agent; initialization settles so the plain DSH agent
           // keeps working. Faking success is forbidden — the message names
           // what is missing.
           started.failure = error instanceof Error ? error.message : String(error)
@@ -284,52 +273,17 @@ export function installAgentScopedMounts(
     return mount
   }
 
-  // Eager start on publication. `agent/created` reaches host-level listeners
-  // on every create/resume/config path, before the loop can open a turn.
-  host.on('agent/created', ((payload: { agent: AgentLike }) => {
-    if (isRootAgent(payload.agent)) ensureMount(payload.agent)
+  host.on('agent/created', (async (payload: { agent: AgentLike }) => {
+    if (isRootAgent(payload.agent)) await ensureMount(payload.agent).ready
   }) as never)
 
-  // Correctness boundary #1: no prompt assembly for a root agent proceeds
-  // before its Pi runtime is mounted, and the tools snapshot taken before
-  // this waterfall is reconciled against the official scoped projection.
-  host.on('system-prompt/assemble', (async (
-    assembly: { tools: Array<{ name: string }> },
-    context: { agent?: AgentLike },
-    next: () => Promise<unknown>,
-  ) => {
-    const agent = context.agent
-    if (agent !== undefined && isRootAgent(agent)) {
-      await ensureMount(agent).ready
-      const schemas = host.tools?.schemas
-      if (typeof schemas === 'function') {
-        const present = new Set(assembly.tools.map(tool => tool.name))
-        for (const schema of schemas.call(host.tools, agent)) {
-          if (!present.has(schema.name)) assembly.tools.push(schema)
-        }
-      }
-    }
-    return next()
-  }) as never)
-
-  // Correctness boundary #2: tool execution for a root agent waits for the
-  // same mount (serially awaited by the tool runtime before dispatch).
-  host.on('tools/pre-execute', (async (
-    exec: { agent?: AgentLike },
-    next: () => Promise<unknown>,
-  ) => {
-    if (exec.agent !== undefined && isRootAgent(exec.agent)) await ensureMount(exec.agent).ready
-    return next()
-  }) as never)
-
-  // Backfill: agents published before this plugin finished loading (a surface
-  // that skips the official await-the-loader pattern DSH's headless runner
-  // uses). Their next assembly still passes the gates above.
-  void preparedPackages.then(() => {
+  // A plugin enabled after Agent creation explicitly backfills live roots.
+  // Engine apply awaits this work; creation-time instances share the same map.
+  return preparedPackages.then(async () => {
     const agents = registry()
     const roots = agents?.roots
     if (typeof roots !== 'function') return
-    for (const agent of roots.call(agents)) ensureMount(agent)
+    await Promise.all(roots.call(agents).map(agent => ensureMount(agent).ready))
   })
 }
 
@@ -360,7 +314,7 @@ export const BRIDGE_CHILD_SESSION_ID_PREFIX = 'pi2dsh-sub-'
  * and there is no second registration path to drift out of sync.
  *
  * Partition with the root-mount path: agents the registry reports as runtime
- * roots are installAgentScopedMounts' territory (it gates them the same way
+ * roots are installAgentScopedMounts' territory (it initializes them the same way
  * this path does). Live delegation shows a DSH-native child of a top-level
  * session CAN be a runtime root — serving it here as well raced two mount
  * passes onto the same scope (each package survived via the prompt-section
@@ -374,13 +328,8 @@ export const BRIDGE_CHILD_SESSION_ID_PREFIX = 'pi2dsh-sub-'
  * agent object: a re-announced agent for the same session reuses the scope,
  * and the dedupe must key on what the mount actually lands in.
  *
- * First-turn gates mirror the root path's exactly: the child's first prompt
- * assembly and its direct tool executions await the mount, and the
- * pre-waterfall tools snapshot is reconciled against the official scoped
- * projection. Without the gate a mount that lands after the first turn's
- * snapshot leaves the child's first (and sometimes only) turn tool-less —
- * proven live at depth 2, where the child's grandchild saw zero extension
- * tools because its mount raced its first model call.
+ * The serial agent/created listener owns readiness, exactly as it does for
+ * roots. DSH does not release the child's driver until this mount settles.
  *
  * A mount failure never takes the child down: the same capability-gap
  * discipline as root mounting — the child keeps running as a plain DSH agent
@@ -396,7 +345,7 @@ export function installNativeSubagentMounts(
   const host = ctx as unknown as EngineHostContext
 
   // The root path's own predicate, applied at the same event it applies its
-  // (see installAgentScopedMounts): a runtime root is served — and gated —
+  // (see installAgentScopedMounts): a runtime root is initialized
   // there. Failing closed keeps the partition exact when roots() is absent.
   const isRootAgent = (agent: object): boolean => {
     let agents: AgentRegistryLike | undefined
@@ -447,7 +396,7 @@ export function installNativeSubagentMounts(
     return ready
   }
 
-  const handle = (agent: AgentLike): void => {
+  const handle = async (agent: AgentLike): Promise<void> => {
     // The single lineage check: DSH-native subagents only. Pi-origin
     // (bridge) children are already served by the creator's per-spawn loader
     // mount; the `pi2dsh-sub-` prefix identifies them on creation AND on a
@@ -458,46 +407,11 @@ export function installNativeSubagentMounts(
     // Runtime roots are the root-mount path's territory; serving them here
     // would race a second mount onto the same scope.
     if (isRootAgent(agent)) return
-    void ensureMount(agent)
+    await ensureMount(agent)
   }
 
-  host.on('agent/created', ((payload: { agent: AgentLike }) => {
-    if (payload.agent !== undefined) handle(payload.agent)
-  }) as never)
-
-  // Correctness boundary #1 (mirror of the root path's): no prompt assembly
-  // for a served child proceeds before its mount lands, and the pre-waterfall
-  // tools snapshot is reconciled against the official scoped projection.
-  host.on('system-prompt/assemble', (async (
-    assembly: { tools: Array<{ name: string }> },
-    context: { agent?: AgentLike },
-    next: () => Promise<unknown>,
-  ) => {
-    const agent = context.agent
-    const ready = agent === undefined ? undefined : mounts.get(agent.ctx)
-    if (ready !== undefined) {
-      await ready
-      const schemas = host.tools?.schemas
-      if (typeof schemas === 'function') {
-        const present = new Set(assembly.tools.map(tool => tool.name))
-        for (const schema of schemas.call(host.tools, agent)) {
-          if (!present.has(schema.name)) assembly.tools.push(schema)
-        }
-      }
-    }
-    return next()
-  }) as never)
-
-  // Correctness boundary #2 (mirror of the root path's): direct tool
-  // executions for a served child wait for the same mount.
-  host.on('tools/pre-execute', (async (
-    exec: { agent?: AgentLike },
-    next: () => Promise<unknown>,
-  ) => {
-    const agent = exec.agent
-    const ready = agent === undefined ? undefined : mounts.get(agent.ctx)
-    if (ready !== undefined) await ready
-    return next()
+  host.on('agent/created', (async (payload: { agent: AgentLike }) => {
+    if (payload.agent !== undefined) await handle(payload.agent)
   }) as never)
 }
 
@@ -536,15 +450,14 @@ export async function apply(ctx: Context, config: EngineConfig = {}): Promise<vo
     throw new Error('pi2dsh engine: no DSH profile root (cordis.yml + package.json) above the installed engine — is pi2dsh installed via `dsh plugin add pi2dsh`?')
   }
 
-  // The single mount path, before any await: gates and lifecycle listeners
-  // must exist the moment a surface can publish its first Agent. Package
-  // preparation resolves behind this promise; the gates hold each agent's
-  // first assembly until its own mount lands.
+  // Register the single lifecycle mount path before any await. Package
+  // preparation resolves behind this promise; DSH's serial agent/created
+  // delivery awaits each Agent's mount before releasing its initialization.
   let resolvePrepared!: (prepared: readonly PreparedPiHostPackage[]) => void
   const preparedPackages = new Promise<readonly PreparedPiHostPackage[]>(resolve => {
     resolvePrepared = resolve
   })
-  installAgentScopedMounts(ctx, preparedPackages, { warn })
+  const existingRootsReady = installAgentScopedMounts(ctx, preparedPackages, { warn })
   installNativeSubagentMounts(ctx, preparedPackages, config.serveNativeSubagents === true, { warn })
 
   registerVisionCompanions(ctx, config.visionCompanions)
@@ -632,6 +545,7 @@ export async function apply(ctx: Context, config: EngineConfig = {}): Promise<vo
       : prepared
     await applyPreparedPiHost(ctx, presented, undefined, { hostAnchor: true })
     resolvePrepared(presented)
+    await existingRootsReady
   } catch (error) {
     // The gates must never hang on a failed preparation; agents keep running
     // as plain DSH agents while the engine failure propagates loudly.

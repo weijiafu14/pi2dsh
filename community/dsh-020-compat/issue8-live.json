@@ -1,0 +1,15 @@
+{
+  "target": "DSH 0.2.0-rc.2 + pi-subagents 0.20.0",
+  "status": "passed",
+  "scratch": "/tmp/pi2dsh-host020-live-OAsp0C",
+  "engineVersion": "0.26.0",
+  "childModelRequests": 1,
+  "childToolCalls": [
+    "write",
+    "read",
+    "bash"
+  ],
+  "parentReceivedChildOutput": true,
+  "cliExited": true,
+  "outputContainsMarker": true
+}

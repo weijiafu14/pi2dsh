@@ -21,7 +21,6 @@ interface ThreadView {
   messages: ThreadMessage[]
 }
 
-type SessionsHook = <T>(selector: (state: { current: string }) => T) => T
 
 const SIDE_PACKAGE = 'pi-btw'
 
@@ -130,11 +129,11 @@ async function runSideCommand(
 }
 
 /** The suite's floating side-chat window over the active session. */
-export function SideChatWindow({ useSessions }: { useSessions: SessionsHook }): ReactNode {
+export function SideChatWindow(): ReactNode {
   // On stage, not merely selected: the 0.1.2 draft view keeps `current` on
   // the previous session, and this window showing that session's thread over
   // the empty New Session screen was the reported leak (2026-08-29).
-  const session = useOnStage(useSessions as never)
+  const session = useOnStage()
   const [threads, setThreads] = useState<ThreadView[]>([])
   const [mode, setMode] = useState<'dot' | 'panel' | 'max'>('dot')
   const [opened, setOpened] = useState(false)

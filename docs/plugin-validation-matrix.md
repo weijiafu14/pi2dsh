@@ -1,5 +1,20 @@
 # 真实插件验证
 
+## DSH 0.2 候选版验收（2026-10-13，未发布）
+
+373 个契约测试通过；完整示例 15 passed / 1 partial / 4 skipped / 0 failed。
+两种 TUI、Web、headless 的最终证据和凭证缺失边界见
+[0.2 验收记录](../community/dsh-020-compat/README.md)。
+
+`pi-subagents@0.20.0` 的父模型 Agent 工具 → Pi createAgentSession →
+pi2dsh 子代理桥 → DSH agents.create / 原生文件工具 / 原生 session log →
+父模型收到子代理结果，已在 stock npm `0.2.0-rc.2` 的全新 profile 跑通。
+对应 [扩展实例作用域](architecture-mapping-matrix.md#pi-extension-instance-scope)
+与 [Agent 生命周期](architecture-mapping-matrix.md#pi-agent-lifecycle)。
+本次逐 Agent 等待使用原生串行创建事件（1 级）；Pi 消息与终态仍为可靠翻译（2 级）。
+失败终态和 V4 工具消息另有公开服务契约测试。其余插件和 Web 表现面的本轮状态
+只以 [0.2 验收目录](../community/dsh-020-compat/README.md)为准，不能套用下文旧版证据。
+
 本页按真实插件逐块记录，不生成总分。每块都从
 [`architecture-mapping-matrix.md`](architecture-mapping-matrix.md) 引用架构分支，沿
 “Pi 调用 → pi2dsh 翻译 → DSH 公开 seam → DSH 权威状态 → 用户结果”五层取证，再按

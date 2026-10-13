@@ -84,9 +84,9 @@ try {
   const configPath = join(scratch, 'litellm-config.yaml')
   await writeFile(configPath, [
     'model_list:',
-    '  - model_name: deepseek-chat',
+    '  - model_name: deepseek-flash',
     '    litellm_params:',
-    '      model: deepseek/deepseek-chat',
+    '      model: deepseek/deepseek-flash',
     '      api_key: os.environ/DEEPSEEK_API_KEY',
     'general_settings:',
     `  master_key: ${masterKey}`,
@@ -132,7 +132,7 @@ try {
     `const BASE = ${JSON.stringify(`http://127.0.0.1:${port}/v1`)}`,
     'export default function (pi) {',
     "  pi.registerProvider('litellm', { id: 'litellm', name: 'liteLLM Proxy', api: 'openai-completions', baseUrl: BASE, apiKey: '$LITELLM_VIRTUAL_KEY', models: [{",
-    "    id: 'deepseek-chat', name: 'DeepSeek via liteLLM', provider: 'litellm', api: 'openai-completions', baseUrl: BASE,",
+    "    id: 'deepseek-flash', name: 'DeepSeek via liteLLM', provider: 'litellm', api: 'openai-completions', baseUrl: BASE,",
     "    reasoning: false, input: ['text'], cost: { input: 0, output: 0 }, contextWindow: 128000, maxTokens: 8192,",
     '  }] })',
     '}',
@@ -140,7 +140,7 @@ try {
   ].join('\n'))
   await runDsh(['plugin', '--profile', 'headless', 'add', `file:${fixture}`])
   await harness.useJsonlSessions(home, 'headless')
-  await harness.useDefaultModel(home, 'litellm', 'deepseek-chat')
+  await harness.useDefaultModel(home, 'litellm', 'deepseek-flash')
 
   const engineVersion = JSON.parse(await readFile(
     join(home, 'profiles', 'headless', 'node_modules', 'pi2dsh', 'package.json'), 'utf8')).version
@@ -157,7 +157,7 @@ try {
   const turnEnd = records.find(record => record.type === 'turn/end')
   assert.equal(turnEnd?.data?.reason?.kind, 'completed', `turn did not complete: ${JSON.stringify(turnEnd?.data?.reason)}`)
   // The proxy really served the completion (its log names the model call).
-  assert(/deepseek-chat/u.test(litellmLog), 'liteLLM log never mentioned the model — the turn may not have gone through the proxy')
+  assert(/deepseek-flash/u.test(litellmLog), 'liteLLM log never mentioned the model — the turn may not have gone through the proxy')
 
   report.meta = {
     when: new Date().toISOString(),

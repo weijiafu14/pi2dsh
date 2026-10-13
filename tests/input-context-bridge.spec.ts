@@ -195,7 +195,7 @@ describe('input/context bridge in the real DSH runtime', () => {
     // The context transform rewrote the step's user message in place.
     expect(user.content[0]?.text).toBe('What color fills [image handled] ?')
     // The injected message entered with Pi's custom identity and the prefix.
-    expect(custom.source).toMatchObject({ kind: 'plugin', piCustomType: 'test-bridge' })
+    expect(custom.source).toMatchObject({ kind: 'pi2dsh', piCustomType: 'test-bridge' })
     expect(custom.content[0]?.text).toBe('[prefixed] bridge analysis result')
   })
 

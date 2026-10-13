@@ -1132,29 +1132,7 @@ function contextFor(
           ...(auth.baseUrl === undefined && config.baseUrl === undefined ? {} : { baseUrl: auth.baseUrl ?? config.baseUrl }),
         }
       }
-      // A DSH adapter route: its credential reference lives in the public
-      // configurable-provider directory (settingsNs/settingsPath), the
-      // profile's apiKeyEnv, and the credentials service — three public
-      // seams, no name guessing. Any missing step answers not-ok honestly.
-      try {
-        const llm = llmOf(ctx) as unknown as { listConfigurableProviders?(): Array<{ provider: string, settingsNs: string, settingsPath: readonly string[] }> } | undefined
-        const entry = llm?.listConfigurableProviders?.()?.find(candidate => candidate.provider === provider)
-        if (entry === undefined) return { ok: false }
-        const settings = (ctx as unknown as { get(name: string): unknown }).get('settings') as { get(ns: string): unknown } | undefined
-        const section = settings?.get(entry.settingsNs)
-        const profile = entry.settingsPath.reduce<unknown>(
-          (node, key) => (typeof node === 'object' && node !== null ? (node as UnknownRecord)[key] : undefined),
-          section,
-        ) as UnknownRecord | undefined
-        const ref = profile?.apiKeyEnv
-        if (typeof ref !== 'string' || ref.length === 0) return { ok: false }
-        const credentials = (ctx as unknown as { get(name: string): unknown }).get('credentials') as { resolve(ref: string): Promise<{ value?: string } | undefined> } | undefined
-        const resolved = await credentials?.resolve(ref)
-        if (typeof resolved?.value !== 'string' || resolved.value.length === 0) return { ok: false }
-        return { ok: true, apiKey: resolved.value }
-      } catch {
-        return { ok: false }
-      }
+      return resolveHostModelAuth(ctx, provider)
     },
     getProviderAuthStatus: (provider: string) =>
       providerSupportsOAuth(providerConfig(provider)) ? 'oauth' : 'none',
@@ -1788,13 +1766,11 @@ async function messageFromSessionEvent(ctx: Context, event: UnknownRecord): Prom
   }
   if (type === 'tool/result') {
     const message = record.message as UnknownRecord | undefined
-    const blocks = (message?.content ?? []) as Array<UnknownRecord>
-    const tool = blocks.find(block => block.type === 'tool-result')
     return {
       role: 'toolResult',
-      toolCallId: tool?.toolCallId,
-      content: await dshToPiContent(ctx, (tool?.content ?? []) as ContentBlock[]),
-      isError: tool?.isError === true,
+      toolCallId: message?.toolCallId,
+      content: await dshToPiContent(ctx, (message?.content ?? []) as ContentBlock[]),
+      isError: message?.isError === true,
     }
   }
   return undefined
@@ -1807,12 +1783,9 @@ function sourceReason(value: unknown): string {
 /**
  * Claim Pi's once-per-session `session_start` event.
  *
- * dsh-TUI can execute a slash command before DSH starts the first model turn,
- * so `agent/session-start` has not necessarily been announced yet. Pi, by
- * contrast, announces `session_start` before the user can execute a command.
- * The command bridge uses this same claim before invoking a Pi command; when
- * DSH later announces the real agent lifecycle, the durable session id keeps
- * the second path from restarting the extension.
+ * Normal engine mounts complete inside DSH's serial agent/created event.
+ * The same idempotent claim also protects direct runtime users and reloads:
+ * command/tool entry must not restart an already initialized Pi extension.
  */
 function claimPiSessionStart(state: RuntimeState, agent: UnknownRecord | undefined): boolean {
   const id = agentSession(agent)?.id
@@ -1931,7 +1904,7 @@ async function startPiSession(
     const transitionReason = replacing ? replacementReason(reason) : reason
 
     // DSH deliberately overlaps physical Agents during an atomic switch:
-    // B is fully created (and announces agent/session-start) before A is
+    // B is fully created (and announces agent/created) before A is
     // disposed. Pi deliberately exposes one linear extension runtime:
     // session_shutdown(A) must settle before session_start(B). Serialize that
     // semantic handoff here; the later physical disposal of A is then only a
@@ -1977,7 +1950,7 @@ function subscribeLifecycle(ctx: Context, state: RuntimeState): void {
   }
   const warn = (event: string, error: unknown) => logger(ctx).warn(`[pi2dsh] ${event} handler failed: ${String(error)}`)
 
-  cordis.on('agent/session-start', (payload: UnknownRecord) => {
+  cordis.on('agent/created', async (payload: UnknownRecord) => {
     const agent = payload.agent as UnknownRecord
     if (!acceptsAgent(state, agent)) return
     state.activeAgents.add(agent)
@@ -1995,8 +1968,7 @@ function subscribeLifecycle(ctx: Context, state: RuntimeState): void {
       state.pendingSessionStarts.set(agent, sourceReason(payload.source))
       return
     }
-    void startPiSession(ctx, state, agent, sourceReason(payload.source), undefined)
-      .catch(error => warn('session_start', error))
+    await startPiSession(ctx, state, agent, sourceReason(payload.source), payload.signal as AbortSignal | undefined)
   })
   cordis.on('agent/disposed', (payload: UnknownRecord) => {
     const agent = payload.agent as UnknownRecord
@@ -2276,10 +2248,9 @@ function subscribeLifecycle(ctx: Context, state: RuntimeState): void {
 
 async function flushPendingSessionStarts(ctx: Context, state: RuntimeState): Promise<void> {
   state.extensionsReady = true
-  // A per-Agent mount happens AFTER DSH published the Agent: its
-  // agent/session-start fired before this instance existed, so no listener
-  // could even buffer it. The owner's session has started by definition —
-  // deliver the missed start now, exactly as Pi hosts run session_start
+  // A per-Agent mount happens INSIDE agent/created delivery. Its new listener
+  // cannot observe the dispatch already in progress. Initialize the explicit
+  // owner here, exactly as Pi hosts run session_start
   // before the first turn (a default-on status package draws from it; the
   // lazy first-execution gate alone would leave it blank until the first
   // command, and a toggle command would then flip it OFF instead of ON).
@@ -2334,7 +2305,7 @@ async function flushPendingSessionStarts(ctx: Context, state: RuntimeState): Pro
  * session guard must deliberately NOT suppress this replay: from the new
  * instance's point of view this is its first `session_start`. The command's
  * AsyncLocalStorage agent is included because a lean composition can execute
- * a Pi command without publishing DSH's optional agent/session-start event.
+ * a Pi command through the runtime directly, outside engine-managed creation.
  */
 async function restartReloadedPiSessions(ctx: Context, state: RuntimeState): Promise<void> {
   state.extensionsReady = true
@@ -2783,7 +2754,7 @@ async function runBeforeAgentStart(
       // piCustomType rides the merge-extensible source so the durable log
       // (and every later projection) keeps Pi's role:"custom" identity.
       source: {
-        kind: 'plugin', plugin: state.messageSource,
+        kind: 'pi2dsh', plugin: state.messageSource,
         ...(typeof message.customType === 'string' ? { piCustomType: message.customType } : {}),
       },
     }) as unknown as UnknownRecord)
@@ -2957,7 +2928,7 @@ async function applyPiContextTransform(
     }
     rebuilt.push(createUserMessage({
       content: blocks.map(block => block.type === 'text' ? files.get(block.text) ?? block : block),
-      source: (original.source ?? { kind: 'plugin', plugin: state.messageSource }) as never,
+      source: (original.source ?? { kind: 'pi2dsh', plugin: state.messageSource }) as never,
     }) as unknown as UnknownRecord)
   }
   return rebuilt
@@ -3047,6 +3018,7 @@ interface SharedHostState {
   modelCatalog?: ModelCatalog
   catalogSubscribed?: boolean
   loginCommandRegistered?: boolean
+  retireLoginCommand?: () => void
   oauthRefreshHooked?: boolean
   companionSweepSubscribed?: boolean
   oauthStore?: FileCredentialStore
@@ -3495,6 +3467,10 @@ function ensureLoginCommand(ctx: Context, state: RuntimeState): void {
   // shape. Capability judgement, never a package-name special case.
   if (!shouldRegisterCompatibilityCommand('login', state.tuiSurfaces?.nativeCommands)
     && optionalService(ctx, 'authorization') !== undefined) {
+    // The engine's host half can load before a terminal's optional services.
+    // A later Agent mount sees the complete composition: withdraw our earlier
+    // fallback so it cannot shadow the terminal's authorization-backed login.
+    state.shared.retireLoginCommand?.()
     logger(ctx).debug('[pi2dsh] native terminal owns /login and the authorization service is composed; Pi OAuth flows are available through it')
     return
   }
@@ -3513,7 +3489,32 @@ function ensureLoginCommand(ctx: Context, state: RuntimeState): void {
     // The registration lives on THIS package's activation; when that package
     // unmounts (remove, /reload remount) the command goes with it, so the
     // host flag must clear for the next mount to re-register.
-    ctx.effect(() => () => { state.shared.loginCommandRegistered = false })
+    const retire = (): void => {
+      state.commandDisposers.get('login')?.()
+      state.commandDisposers.delete('login')
+      state.commands.delete('login')
+      for (const [name, owner] of state.dshCommandOwners) {
+        if (owner === 'login') state.dshCommandOwners.delete(name)
+      }
+      if (state.shared.retireLoginCommand === retire) {
+        delete state.shared.retireLoginCommand
+        state.shared.loginCommandRegistered = false
+      }
+    }
+    state.shared.retireLoginCommand = retire
+    ctx.effect(() => retire)
+    // Host builtins may be the only mounted Pi runtime (zero Pi packages),
+    // so reconciliation cannot depend on another Agent/package mounting.
+    // Cordis's public injection seam observes optional services arriving.
+    ctx.inject(['piTuiExtensions', 'authorization'], async inner => {
+      const terminal = await createPiTuiExtensionSurfaceAdapter(
+        inner as unknown as TuiSurfaceContext, state.packageName,
+      )
+      if (terminal === undefined) return
+      try {
+        if (!shouldRegisterCompatibilityCommand('login', terminal.nativeCommands)) retire()
+      } finally { terminal.dispose() }
+    })
   } catch (error) {
     state.shared.loginCommandRegistered = false
     logger(ctx).warn(`[pi2dsh] /login could not be registered; provider logins remain available on the host's own sign-in surface (${error instanceof Error ? error.message : String(error)})`)
@@ -4172,12 +4173,9 @@ function registerTool(ctx: Context, state: RuntimeState, tool: PiTool): void {
       // Live ledger resolution (see the re-registration note above).
       const live = state.tools.get(tool.name) ?? tool
       const agent = exec.agent as unknown as UnknownRecord | undefined
-      // A DSH surface may replace its Agent without publishing the optional
-      // agent/session-start event first (dsh-TUI /new does exactly that).
-      // Pi initializes session-owned tools such as MCP before any tool can be
-      // invoked, so the tool boundary must share the same once-per-session
-      // start gate as the slash-command boundary. Without it the first MCP
-      // call in a fresh TUI session reaches the adapter as "not initialized".
+      // Engine-managed Agents are already initialized by agent/created.
+      // Keep this idempotent check for direct runtime callers and reloads;
+      // Pi requires session_start before a session-owned tool can execute.
       await ensurePiSessionStarted(ctx, state, agent, exec.signal)
       const mutated = state.argMutations.get(exec as unknown as object)
       if (mutated !== undefined) state.argMutations.delete(exec as unknown as object)
@@ -4475,7 +4473,7 @@ async function sendPiMessage(
   const message = createUserMessage({
     content: blocks,
     source: {
-      kind: 'plugin', plugin: state.messageSource,
+      kind: 'pi2dsh', plugin: state.messageSource,
       ...(customType === undefined ? { form: 'relay' as const } : { piCustomType: customType }),
     },
   })
@@ -5279,7 +5277,7 @@ async function registerPromptCommands(ctx: Context, state: RuntimeState, rootDir
         }
         invocationAgent.steer(createUserMessage({
           content: [{ type: 'text', text: expandPrompt(text, rawInput) }],
-          source: { kind: 'plugin', plugin: `pi2dsh:${manifest.package.name}`, form: 'relay' },
+          source: { kind: 'pi2dsh', plugin: `pi2dsh:${manifest.package.name}`, form: 'relay' },
         }))
       },
     })
@@ -6145,7 +6143,31 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
   logger(ctx).info(`[pi2dsh] loaded ${options.manifest.package.name}: ${state.tools.size} tools, ${state.commands.size} commands, ${options.manifest.skillDirs.length} skill roots${healthSuffix}${state.hostAnchor ? ' (host anchor)' : ''}`)
 }
 
+/** Resolve a host-owned route through its public config descriptor and credential reference. */
+async function resolveHostModelAuth(ctx: { get(name: string): unknown }, provider: string): Promise<UnknownRecord> {
+  try {
+    const llm = ctx.get('llm') as { listConfigurableProviders(): Array<{ provider: string, settingsNs: string, settingsPath: readonly string[] }> } | undefined
+    const entry = llm?.listConfigurableProviders().find(candidate => candidate.provider === provider)
+    if (entry === undefined) return { ok: false }
+    const settings = ctx.get('settings') as { describe(options?: { redactSecrets?: boolean }): Array<{ ns: string, value: unknown }> } | undefined
+    const section = settings?.describe({ redactSecrets: true }).find(item => item.ns === entry.settingsNs)?.value
+    const profile = entry.settingsPath.reduce<unknown>(
+      (node, key) => typeof node === 'object' && node !== null ? (node as UnknownRecord)[key] : undefined,
+      section,
+    ) as UnknownRecord | undefined
+    const ref = profile?.apiKeyEnv
+    if (typeof ref !== 'string' || ref.length === 0) return { ok: false }
+    const credentials = ctx.get('credentials') as { resolve(ref: string): Promise<{ value?: string } | undefined> } | undefined
+    const resolved = await credentials?.resolve(ref)
+    return typeof resolved?.value === 'string' && resolved.value.length > 0
+      ? { ok: true, apiKey: resolved.value } : { ok: false }
+  } catch (error) {
+    return { ok: false, error: `Host credential resolution failed: ${error instanceof Error ? error.message : String(error)}` }
+  }
+}
+
 export const runtimeInternals = {
+  resolveHostModelAuth,
   compactionReason,
   resolveOfferedChoice,
   currentPiModel,

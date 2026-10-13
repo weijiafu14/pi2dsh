@@ -38,8 +38,8 @@ export VISION_BRIDGE_MODEL=qwen/qwen2.5-vl-72b-instruct
 export VISION_BRIDGE_API_KEY=$OPENROUTER_API_KEY     # $VAR references are supported
 ```
 
-Or configure the vision endpoint as a DSH gateway route (the `llm-pi-ai:`
-section of `$DSH_HOME/settings.yaml`, see the
+Or configure the vision endpoint as a DSH gateway route (the `llm-pi-ai`
+entry in the active profile's `cordis.patch.yml`, see the
 [`custom-gateways`](../custom-gateways/) example) — that also puts the
 vision model into DSH's own model picker.
 
@@ -96,7 +96,7 @@ To turn companions off, or to limit them to specific routes/models, set
   config:
     visionCompanions:              # …or only this route + model
       deepseek-official:
-        - deepseek-v4-flash
+        - deepseek-flash
 ```
 
 Without the vision plugin (or when it is unconfigured), the companion

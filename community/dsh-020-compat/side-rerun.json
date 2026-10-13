@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "pi2dshCommit": "b63c8c232bdb4c6f213540f549b56649dad7a12a",
+  "dshCommit": "npm:@deepseek-ai/dsh@0.2.0-rc.2",
+  "results": {
+    "sideConversation": {
+      "status": "failed",
+      "error": "Command failed: node /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/docs/posting-kit/capture-side-chat.mjs /var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-ex-side-oQfQWk/shots --url http://127.0.0.1:5187/?token=[redacted]\n(node:79740) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.\n(Use `node --trace-warnings ...` to show where the warning was created)\nnode:internal/modules/run_main:123\n    triggerUncaughtException(\n    ^\n\nlocator.waitFor: Timeout 120000ms exceeded.\nCall log:\n  - waiting for locator('[data-dsh-x=\"side-chat\"]') to be visible\n\n    at /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/docs/posting-kit/capture-side-chat.mjs:31:13 {\n  log: [\n    `  - waiting for locator('[data-dsh-x=\"side-chat\"]') to be visible`\n  ],\n  name: 'TimeoutError'\n}\n\nNode.js v22.22.0\n"
+    }
+  }
+}

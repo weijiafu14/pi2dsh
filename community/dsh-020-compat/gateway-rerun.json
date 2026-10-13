@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "pi2dshCommit": "b63c8c232bdb4c6f213540f549b56649dad7a12a",
+  "dshCommit": "npm:@deepseek-ai/dsh@0.2.0-rc.2",
+  "results": {
+    "gatewayCompat": {
+      "engine": {
+        "version": "0.26.0",
+        "from": "local-tarball",
+        "spec": "file:<tarball>",
+        "sha256": "9ffe08de15628d723b472fc2aed9ce01b15e1504d4b8fe95318a2d5a8ab59c40"
+      },
+      "status": "passed",
+      "requests": 2,
+      "roles": [
+        "system",
+        "user",
+        "user"
+      ],
+      "maxTokensField": "max_tokens",
+      "store": null,
+      "reasoningEffort": "high",
+      "bodyKeys": [
+        "max_tokens",
+        "messages",
+        "model",
+        "reasoning_effort",
+        "stream",
+        "stream_options",
+        "tools"
+      ],
+      "previews": [
+        "system: You are an AI agent powered by DeepSeek Harness. You are a ",
+        "user: Reply with exactly: gateway-compat-ok",
+        "user: Current runtime context. This snapshot supersedes earlier ru"
+      ]
+    }
+  }
+}

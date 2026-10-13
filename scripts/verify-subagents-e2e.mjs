@@ -30,9 +30,9 @@ const execFile = promisify(execFileCallback)
 const projectRoot = resolve(new URL('..', import.meta.url).pathname)
 const outPath = resolve(process.argv[2] ?? 'community/subagents-e2e.json')
 
-const DSH_CLI_SPEC = process.env.PI2DSH_DSH_CLI_SPEC ?? '@deepseek-ai/dsh@0.1.1-rc.2'
+const DSH_CLI_SPEC = process.env.PI2DSH_DSH_CLI_SPEC ?? '@deepseek-ai/dsh@0.2.0-rc.2'
 const ENGINE_SPEC = process.env.PI2DSH_ENGINE_SPEC ?? projectRoot
-const SUBAGENTS_SPEC = process.env.PI2DSH_SUBAGENTS_SPEC ?? '@tintinweb/pi-subagents@0.18.0'
+const SUBAGENTS_SPEC = process.env.PI2DSH_SUBAGENTS_SPEC ?? '@tintinweb/pi-subagents@0.20.0'
 const RUN_TAG = Date.now().toString(36).toUpperCase()
 const MARKER = `PI2DSH_SUBAGENT_TOOLS_${RUN_TAG}`
 
@@ -72,7 +72,7 @@ if (apiKey === undefined) {
 
 const root = process.env.PI2DSH_SUBAGENTS_E2E_ROOT ?? await mkdtemp('/tmp/pi2dsh-subagents-e2e.')
 const home = join(root, 'dsh-home')
-const cliDir = join(root, 'cli')
+const cliDir = resolve(process.env.PI2DSH_DSH_CWD ?? join(root, 'cli'))
 const workDir = join(root, 'workspace')
 await mkdir(workDir, { recursive: true })
 log(`scratch: ${root}`)
@@ -287,7 +287,19 @@ try {
       const composerDeadline = Date.now() + 120_000
       for (;;) {
         const screen = await capture()
-        if (/(Ctrl|\/help|❯|›|deepseek)/iu.test(screen)) break
+        if (/Esc skip the guide/iu.test(screen)) {
+          await execFile('tmux', ['send-keys', '-t', TMUX_SESSION, 'Escape'])
+          await delay(500)
+          continue
+        }
+        if (/(Ctrl|\/help|❯|›|deepseek)/iu.test(screen)) {
+          await delay(1000)
+          if (/Esc skip the guide/iu.test(await capture())) {
+            await execFile('tmux', ['send-keys', '-t', TMUX_SESSION, 'Escape'])
+            continue
+          }
+          break
+        }
         if (Date.now() > composerDeadline) throw new Error('TUI composer never appeared')
         await delay(1500)
       }

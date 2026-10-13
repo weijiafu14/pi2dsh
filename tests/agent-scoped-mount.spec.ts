@@ -9,18 +9,17 @@ import ToolRuntime from '@deepseek-ai/dsh-tools'
 
 /**
  * Mechanism probe for the single-path per-Agent architecture, run against the
- * exact stock npm packages the engine pins (dsh-agent/agent-loop/... rc.8).
+ * exact stock npm packages the engine pins (DSH 0.2.0-rc.2).
  *
  * Pillars under test:
  *  1. A root (host-level) `agent/created` listener fires for every registry
- *     creation, synchronously before `agents.create()` resolves, and hands the
+ *     creation, serially awaited before `agents.create()` resolves, and hands the
  *     listener the published Agent with its public `agent.ctx` scope.
  *  2. Asynchronous mounting into `agent.ctx` (the Pi-package case) started from
  *     that listener lands agent-scoped: tools registered there are visible to
  *     prompt assembly for that agent and unwind on agent disposal.
- *  3. A root `system-prompt/assemble` waterfall listener runs inside the scoped
- *     assemble dispatch, receives `context.agent`, and can await the mount's
- *     readiness — guaranteeing the first assembly never races the mount.
+ *  3. The first assembly uses the registered scoped tools directly; no
+ *     assembly-time readiness listener or tool snapshot repair is installed.
  *  4. A root `tools/pre-execute` waterfall listener runs before execution with
  *     the calling agent, and is awaited.
  *  5. Two live agents own two independent instances; disposing one leaves the
@@ -64,7 +63,7 @@ function probeTool(name: string, log: string[]): Record<string, unknown> {
 }
 
 describe('per-agent mount on stock rc.8 core events and waterfalls', () => {
-  it('mounts one runtime per agent from agent/created and gates first assembly on readiness', async () => {
+  it('awaits one runtime per agent in agent/created before create resolves', async () => {
     const ctx = await buildRuntime()
     const log: string[] = []
     interface MountState {
@@ -76,7 +75,7 @@ describe('per-agent mount on stock rc.8 core events and waterfalls', () => {
     // Pillar 1: root listener, async per-agent mount kicked off inside it.
     ;(ctx as never as {
       on(name: string, listener: (payload: { agent: LooseAgent }) => void): void
-    }).on('agent/created', ({ agent }) => {
+    }).on('agent/created', async ({ agent }) => {
       log.push('created')
       const state: MountState = { schemas: [], ready: Promise.resolve() }
       const toolName = `pi_probe_${mounts.size + 1}`
@@ -93,34 +92,8 @@ describe('per-agent mount on stock rc.8 core events and waterfalls', () => {
         log.push('mounted')
       })()
       mounts.set(agent as never, state)
+      await state.ready
     })
-    ;(ctx as never as {
-      on(name: string, listener: (payload: { agent: LooseAgent, source: string }) => void): void
-    }).on('agent/session-start', ({ source }) => {
-      log.push(`session-start:${source}`)
-    })
-
-    // Pillar 3: root assemble gate. `assembly.tools` is snapshotted from the
-    // scoped providers BEFORE this waterfall runs (stock rc.8 assemble), so a
-    // mount landing during the wait patches the racing snapshot with its own
-    // schemas — the same authoritative-return move the bridge already uses for
-    // Pi's setActiveTools. Later assemblies see the tools through the normal
-    // provider path and the patch becomes a no-op.
-    ;(ctx as never as {
-      on(name: string, listener: (assembly: { tools: Array<{ name: string }> }, context: { agent?: object }, next: () => Promise<unknown>) => Promise<unknown>): void
-    }).on('system-prompt/assemble', async (assembly, context, next) => {
-      log.push(`assemble:${context.agent !== undefined ? 'with-agent' : 'no-agent'}`)
-      const state = context.agent === undefined ? undefined : mounts.get(context.agent)
-      if (state !== undefined) {
-        await state.ready
-        const present = new Set(assembly.tools.map(tool => tool.name))
-        for (const schema of state.schemas) {
-          if (!present.has(schema.name)) assembly.tools.push(schema as never)
-        }
-      }
-      return next()
-    })
-
     // Pillar 4: root pre-execute listener, awaited, sees the calling agent.
     ;(ctx as never as {
       on(name: string, listener: (exec: { agent?: object, name: string }, next: () => Promise<unknown>) => Promise<unknown>): void
@@ -138,14 +111,11 @@ describe('per-agent mount on stock rc.8 core events and waterfalls', () => {
 
     const a = await registry.create({ sessionId: SessionId('probe-a') })
 
-    // Ordering facts: created + session-start(startup) both delivered before
-    // create() resolved; the mount is still pending at this instant.
+    // Both the event and asynchronous mount complete before create resolves.
     expect(log).toContain('created')
-    expect(log).toContain('session-start:startup')
-    expect(log).not.toContain('mounted')
+    expect(log).toContain('mounted')
 
-    // Pillar 2+3: assemble immediately — the worst-case first-turn race. The
-    // gate must hold assembly until the slow mount lands its tool.
+    // Assemble immediately: no assembly repair or readiness gate is needed.
     const assemblyA = await (ctx as never as {
       systemPrompt: { assemble(context: unknown): Promise<{ tools: Array<{ name: string }> }> }
     }).systemPrompt.assemble(assembleContextFor(a.agent as never))
@@ -177,9 +147,8 @@ describe('per-agent mount on stock rc.8 core events and waterfalls', () => {
 
     await a.dispose()
     // …and after disposal A's tool is gone while B still assembles and runs.
-    // Drop B's patch state first: this assembly must find pi_probe_2 through
-    // the normal scoped provider path alone, proving agent.ctx registration
-    // really reaches scope-filtered assembly (not just our snapshot patch).
+    // Drop the test's bookkeeping: tool visibility comes from agent.ctx,
+    // not an assembly snapshot patch.
     mounts.delete(b.agent as never)
     const assemblyB2 = await (ctx as never as {
       systemPrompt: { assemble(context: unknown): Promise<{ tools: Array<{ name: string }> }> }

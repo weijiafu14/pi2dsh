@@ -18,11 +18,11 @@ import { setTimeout as delay } from 'node:timers/promises'
 const execFile = promisify(execFileCallback)
 const projectRoot = resolve(new URL('..', import.meta.url).pathname)
 const resultPath = resolve(process.argv[2] ?? 'community/pi-tui-ecosystem-e2e.json')
-const DSH_SPEC = process.env.PI2DSH_DSH_CLI_SPEC ?? '@deepseek-ai/dsh@0.1.1-rc.2'
-const TUI_SPEC = process.env.PI2DSH_PI_TUI_SPEC ?? '@xmoon76/dsh-pi-tui@0.3.4'
+const DSH_SPEC = process.env.PI2DSH_DSH_CLI_SPEC ?? '@deepseek-ai/dsh@0.2.0-rc.2'
+const TUI_SPEC = process.env.PI2DSH_PI_TUI_SPEC ?? '@xmoon76/dsh-pi-tui@0.5.1'
 const ENGINE_SPEC = process.env.PI2DSH_ENGINE_SPEC ?? projectRoot
 const MCP_SPEC = process.env.PI2DSH_MCP_ADAPTER_SPEC ?? 'pi-mcp-adapter@2.27.0'
-const SUBAGENTS_SPEC = process.env.PI2DSH_SUBAGENTS_SPEC ?? '@tintinweb/pi-subagents@0.18.0'
+const SUBAGENTS_SPEC = process.env.PI2DSH_SUBAGENTS_SPEC ?? '@tintinweb/pi-subagents@0.20.0'
 const EVERYTHING_SPEC = '@modelcontextprotocol/server-everything@2026.8.18'
 const runTag = Date.now().toString(36).toUpperCase()
 const MCP_MARKER = `PI2DSH_PITUI_MCP_${runTag}`
@@ -55,6 +55,9 @@ async function capture() {
 }
 
 async function sendLine(text, doubleEnter = false) {
+  // Cancelling a command dialog restores its invocation in the new editor.
+  // Replace that draft; otherwise /login + /pi-mcp becomes a model prompt.
+  await tmux('send-keys', '-t', TMUX, 'C-u')
   await tmux('send-keys', '-t', TMUX, '-l', text)
   await delay(250)
   await tmux('send-keys', '-t', TMUX, 'Enter')
@@ -102,14 +105,18 @@ async function successfulToolResult(home, toolName, marker) {
   for (const path of await walkJsonl(join(home, 'sessions'))) {
     const text = await readFile(path, 'utf8')
     if (!text.includes(marker) || !text.includes(toolName)) continue
-    for (const line of text.split('\n')) {
-      if (!line.includes(marker)) continue
-      let record
-      try { record = JSON.parse(line) } catch { continue }
-      if (record.type !== 'tool/result') continue
-      if (record.isError === true || JSON.stringify(record).includes('"isError":true')) {
+    const events = text.split('\n').filter(Boolean).flatMap(line => {
+      try { return [JSON.parse(line)] } catch { return [] }
+    })
+    for (const record of events) {
+      if (record.type !== 'tool/result' || !JSON.stringify(record.data.message.content).includes(marker)) continue
+      const call = events.find(event => event.type === 'tool/call'
+        && event.data.name === toolName && event.data.callId === record.data.message.toolCallId)
+      if (call === undefined) continue
+      if (record.data.message.isError === true) {
         throw new Error(`${toolName} result containing ${marker} was an error`)
       }
+      if (!events.some(event => event.type === 'turn/end' && event.data.turn === call.data.turn)) continue
       return path
     }
   }
@@ -136,7 +143,7 @@ if (apiKey === undefined) {
 
 const root = process.env.PI2DSH_PI_TUI_E2E_ROOT ?? await mkdtemp('/tmp/pi2dsh-pi-tui-e2e.')
 const home = join(root, 'dsh-home')
-const cliRoot = join(root, 'cli')
+const cliRoot = resolve(process.env.PI2DSH_DSH_CWD ?? join(root, 'cli'))
 const piAgentDir = join(root, 'pi-agent')
 const shimDir = join(root, 'bin')
 const baseEnv = {
@@ -156,6 +163,7 @@ try {
   await mkdir(shimDir, { recursive: true })
   await writeFile(join(shimDir, 'pnpm'), '#!/bin/sh\nexec corepack pnpm@11.7.0 "$@"\n')
   await chmod(join(shimDir, 'pnpm'), 0o755)
+  if (process.env.PI2DSH_DSH_CWD === undefined) {
   await mkdir(cliRoot, { recursive: true })
   const at = DSH_SPEC.lastIndexOf('@')
   await writeFile(join(cliRoot, 'package.json'), `${JSON.stringify({
@@ -174,6 +182,7 @@ try {
   ].join('\n'))
   log(`installing ${DSH_SPEC}`)
   await execFile('corepack', ['pnpm@11.7.0', 'install'], { cwd: cliRoot, env: baseEnv, timeout: 300_000 })
+  }
   const dsh = join(cliRoot, 'node_modules', '.bin', 'dsh')
 
   log('installing stock four-package profile')
@@ -256,12 +265,13 @@ try {
     const screen = await capture()
     // The TUI intentionally truncates long tool summaries to the terminal
     // width, so assert the semantic card state rather than its trailing copy.
-    return /Tool call Agent[^\n]*\[ok\]/u.test(screen) && screen.includes(SUBAGENT_MARKER) ? screen : undefined
+    return /Tool call Agent/u.test(screen) && screen.includes(SUBAGENT_MARKER)
+      && await successfulToolResult(home, 'Agent', SUBAGENT_MARKER) ? screen : undefined
   }, 180_000, 2000)
   const subagentLog = await waitFor('durable successful Agent tool result', () => successfulToolResult(home, 'Agent', SUBAGENT_MARKER), 60_000)
 
   log('real MCP direct-tool round')
-  await sendLine(`Use the everything_echo MCP tool exactly once with message ${MCP_MARKER}. Then reply with the echoed text only.`, true)
+  await sendLine(`Call the registered tool named everything_echo directly exactly once with message ${MCP_MARKER}. Do not call the mcp proxy tool, do not search or describe tools. If everything_echo is unavailable, say so without using a substitute. Then reply with the echoed text only.`, true)
   await waitFor('MCP final answer', async () => {
     const screen = await capture()
     return screen.includes('Tool call everything_echo') && screen.includes(MCP_MARKER) ? screen : undefined

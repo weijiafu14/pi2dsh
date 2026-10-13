@@ -26,7 +26,7 @@ const llmModule = await import('@deepseek-ai/dsh-llm')
 const piAiAdapter = await import('@deepseek-ai/dsh-llm-pi-ai')
 const bridge = await jiti.import(join(projectRoot, 'src/model-bridge.ts'))
 
-const model = process.argv[2] ?? 'deepseek-chat'
+const model = process.argv[2] ?? 'deepseek-flash'
 const ctx = new Context()
 await ctx.plugin(llmModule.default ?? llmModule.LlmRuntime)
 await ctx.plugin(piAiAdapter, {

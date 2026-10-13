@@ -193,15 +193,15 @@ describe('session control on a real DSH composition', () => {
     // session the command ran in is untouched. This is the whole point: the
     // live agent still belongs to the calling turn, so routing through it put
     // the message in the wrong conversation — worse than not implementing it.
-    type LoggedSession = { id: unknown, events: Array<{ type: string, data: unknown }> }
+    type LoggedSession = { id: unknown, snapshotEvents(): Array<{ type: string, data: unknown }> }
     const sessionsWithLogs = typed.sessions!.list() as unknown as LoggedSession[]
     const replacement = sessionsWithLogs.find(session => String(session.id) === String(parsed.replacedSessionId))
     expect(replacement).toBeDefined()
-    const seeded = replacement!.events.filter(event => event.type === 'user/message')
+    const seeded = replacement!.snapshotEvents().filter(event => event.type === 'user/message')
     expect(seeded).toHaveLength(1)
     expect(JSON.stringify(seeded[0]!.data)).toContain('seeded into the replacement')
     const origin = sessionsWithLogs.find(session => String(session.id) === 'pi2dsh-capability-probe')
-    expect(origin!.events.filter(event => event.type === 'user/message')).toHaveLength(0)
+    expect(origin!.snapshotEvents().filter(event => event.type === 'user/message')).toHaveLength(0)
     expect(parsed.fork).toEqual({ cancelled: false })
     expect(parsed.navigateTree).toEqual({ cancelled: false })
     expect(parsed.shutdownThrew).toBe(false)

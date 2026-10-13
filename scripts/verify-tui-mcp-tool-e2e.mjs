@@ -27,7 +27,7 @@ import { Context } from '@deepseek-ai/cordis'
 import LocalAttachmentStore from '@deepseek-ai/dsh-attachment-local'
 import CommandRuntime from '@deepseek-ai/dsh-commands'
 import LlmRuntime, { LlmAdapter } from '@deepseek-ai/dsh-llm'
-import { CallId } from '@deepseek-ai/dsh-llm'
+import { ToolCallId as CallId } from '@deepseek-ai/dsh-llm'
 import { createScope } from '@deepseek-ai/dsh-scope'
 import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
 import SkillRegistry from '@deepseek-ai/dsh-skill'
@@ -209,8 +209,8 @@ ctx.provide('userQuestions', {
   },
 })
 ctx.provide('settings', {
-  get(namespace) {
-    return namespace === 'mcp-sampling-fixture' ? { apiKeyEnv: 'MCP_SAMPLING_FIXTURE_KEY' } : undefined
+  describe() {
+    return [{ ns: 'mcp-sampling-fixture', value: { apiKeyEnv: 'MCP_SAMPLING_FIXTURE_KEY' } }]
   },
 })
 ctx.provide('credentials', {
@@ -317,7 +317,7 @@ try {
       await applyPiPackage(inner, { rootUrl: pathToFileURL(`${adapterRoot}/`), manifest })
     },
   })
-  ctx.emit('agent/session-start', { agent, source: 'fresh' })
+  await ctx.serial('agent/created', { agent, source: 'fresh' })
 
   let callSequence = 0
   const executeTool = async (name, arguments_, signal = new AbortController().signal) => {
@@ -421,7 +421,10 @@ try {
   const imageBlock = image.content.find(block => block.type === 'image')
   invariant(imageBlock?.attachment !== undefined, `MCP image did not become a DSH attachment: ${JSON.stringify(image.content)}`)
   const storedImage = await ctx.attachments.readImage(imageBlock.attachment)
-  invariant(storedImage.data.byteLength > 100 && storedImage.ref.mediaType === 'image/png', 'stored MCP image bytes are invalid')
+  // DSH 0.2 normalizes images; PNG input need not remain PNG on disk.
+  invariant(storedImage.data.byteLength > 0 && storedImage.ref.width > 0 && storedImage.ref.height > 0,
+    'stored MCP image bytes or dimensions are invalid')
+  await ctx.attachments.validateImage({ data: storedImage.data, mediaType: storedImage.ref.mediaType })
 
   const resource = await executeOk('everything_read_architecture_md', {})
   invariant(textOf(resource).toLowerCase().includes('architecture'), `MCP resource tool did not return the document: ${textOf(resource)}`)
@@ -548,7 +551,7 @@ try {
     inbox: {},
     status: 'idle',
   }
-  ctx.emit('agent/session-start', { agent, source: 'resume' })
+  await ctx.serial('agent/created', { agent, source: 'resume' })
   const afterRestart = await executeMcp({ tool: 'everything_echo', args: { message: `${stdioMarker}_RESTART` } })
   invariant(textOf(afterRestart).includes(`${stdioMarker}_RESTART`), 'MCP call failed after Pi session restart')
 

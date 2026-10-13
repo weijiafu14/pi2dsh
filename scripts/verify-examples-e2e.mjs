@@ -53,7 +53,7 @@ import { join, resolve } from 'node:path'
 import { promisify } from 'node:util'
 
 import { stageSuiteTarball } from './lib/suite-tarball.mjs'
-import { createE2eHarness, filesBelow, seedCodexLogin, authedUrl } from './lib/e2e-harness.mjs'
+import { writeHostConfig, createE2eHarness, filesBelow, seedCodexLogin, authedUrl } from './lib/e2e-harness.mjs'
 
 const execFile = promisify(execFileCallback)
 const projectRoot = resolve(new URL('..', import.meta.url).pathname)
@@ -67,6 +67,8 @@ const dshBin = directDshBin ?? join(dshRoot, 'apps/cli/src/bin.ts')
 const dshCwd = resolve(process.env.PI2DSH_DSH_CWD ?? dshRoot)
 const { makeHome, useJsonlSessions, useDefaultModel, sessionRecords } = createE2eHarness({ dshRoot, directDshBin, dshBin, dshCwd })
 const outputPath = resolve(process.argv[2] ?? 'community/examples-e2e.json')
+const suiteManifest = JSON.parse(await readFile(join(projectRoot, 'dsh-x/package.json'), 'utf8'))
+const suitePackageSpec = name => `${name}@${suiteManifest.dependencies[name]}`
 const apiKey = process.env.DEEPSEEK_API_KEY
 const alibabaTokenPlanKey = process.env.ALIBABA_TOKEN_PLAN_API_KEY
 // Which pi2dsh a run installs. The default is this working tree, because that
@@ -107,7 +109,14 @@ async function installedEngineVersion(home, profile, via) {
   assert(wanted === undefined || wanted === version,
     `asked for pi2dsh@${wanted} but the profile installed ${version}`
     + ' — pnpm served stale registry metadata; clear it or pin the version')
-  return { version, ...await engineOrigin() }
+  let suite
+  if (via !== undefined && process.env.PI2DSH_SUITE_SPEC) {
+    const installed = JSON.parse(await readFile(join(home, 'profiles', profile, 'node_modules', via, 'package.json'), 'utf8'))
+    assert.equal(`${installed.name}@${installed.version}`, process.env.PI2DSH_SUITE_SPEC,
+      'suite release regression installed a different package/version')
+    suite = { version: installed.version, from: 'registry', spec: process.env.PI2DSH_SUITE_SPEC }
+  }
+  return { version, ...await engineOrigin(), ...(suite === undefined ? {} : { suite }) }
 }
 
 /**
@@ -266,8 +275,8 @@ function assertVisionReallyRead(records, transcript) {
   const failed = []
   for (const call of reads) {
     const result = records.find(record => record.type === 'tool/result'
-      && (record.data?.message?.content ?? []).some(block => block.toolCallId === call.data.callId))
-    const block = (result?.data?.message?.content ?? []).find(item => item.toolCallId === call.data.callId)
+      && record.data?.message?.toolCallId === call.data.callId)
+    const block = result?.data?.message
     if (block?.isError === true) failed.push(`${call.data.name}: ${JSON.stringify(block.content).slice(0, 200)}`)
   }
   assert.equal(failed.length, 0,
@@ -332,7 +341,7 @@ async function runGatewayCompat() {
     await runDsh(['plugin', '--profile', 'headless', 'add',
       `file:${join(projectRoot, 'examples/gateway-compat/probe/pi-probe-provider')}`])
     await useJsonlSessions(home, 'headless')
-    await useDefaultModel(home, 'probe', 'deepseek-chat', 'xhigh')
+    await useDefaultModel(home, 'probe', 'deepseek-flash', 'xhigh')
 
     const run = await runDsh(['--profile', 'headless', 'Reply with exactly: gateway-compat-ok'])
     const recorded = (await readFile(recordPath, 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line))
@@ -545,7 +554,7 @@ async function runPersistentMemory() {
   try {
     const { home, env, runDsh } = await makeHome(scratch)
     const installed = await runDsh(['plugin', '--profile', 'headless', 'add', engineSpec])
-    const installedMemory = await runDsh(['plugin', '--profile', 'headless', 'add', 'pi-hermes-memory'])
+    const installedMemory = await runDsh(['plugin', '--profile', 'headless', 'add', suitePackageSpec('pi-hermes-memory')])
     await useJsonlSessions(home, 'headless')
 
     // The falsifiable design: the codeword exists ONLY in session A's user
@@ -581,8 +590,8 @@ async function runPersistentMemory() {
     assert(writes.length > 0, `session A never called the memory write tool:\n${JSON.stringify(a.filter(r => r.type === 'tool/call').map(r => r.data?.name))}`)
     for (const call of writes) {
       const result = a.find(record => record.type === 'tool/result'
-        && (record.data?.message?.content ?? []).some(block => block.toolCallId === call.data.callId))
-      const block = (result?.data?.message?.content ?? []).find(item => item.toolCallId === call.data.callId)
+        && record.data?.message?.toolCallId === call.data.callId)
+      const block = result?.data?.message
       assert(block?.isError !== true, `memory write failed: ${JSON.stringify(block?.content).slice(0, 300)}`)
     }
 
@@ -631,7 +640,7 @@ async function runBackgroundTasks() {
   try {
     const { home, runDsh } = await makeHome(scratch)
     const installed = await runDsh(['plugin', '--profile', 'headless', 'add', engineSpec])
-    const installedBg = await runDsh(['plugin', '--profile', 'headless', 'add', 'pi-background-tasks'])
+    const installedBg = await runDsh(['plugin', '--profile', 'headless', 'add', suitePackageSpec('pi-background-tasks')])
     await useJsonlSessions(home, 'headless')
 
     // The falsifiable design: the job ticks once per second for 60s, far
@@ -652,8 +661,8 @@ async function runBackgroundTasks() {
 
     const resultFor = call => {
       const record = records.find(item => item.type === 'tool/result'
-        && (item.data?.message?.content ?? []).some(block => block.toolCallId === call.data.callId))
-      return (record?.data?.message?.content ?? []).find(block => block.toolCallId === call.data.callId)
+        && item.data?.message?.toolCallId === call.data.callId)
+      return record?.data?.message
     }
     const textOf = block => JSON.stringify(block?.content ?? '')
 
@@ -702,8 +711,8 @@ async function runMemoryTasksWeb() {
   try {
     const { home, env, runDsh } = await makeHome(scratch)
     await runDsh(['plugin', '--profile', 'web', 'add', engineSpec])
-    await runDsh(['plugin', '--profile', 'web', 'add', 'pi-hermes-memory'])
-    await runDsh(['plugin', '--profile', 'web', 'add', 'pi-background-tasks'])
+    await runDsh(['plugin', '--profile', 'web', 'add', suitePackageSpec('pi-hermes-memory')])
+    await runDsh(['plugin', '--profile', 'web', 'add', suitePackageSpec('pi-background-tasks')])
     await useJsonlSessions(home, 'web')
 
     const port = Number(process.env.MEMTASKS_PORT ?? 5191)
@@ -748,8 +757,8 @@ async function runMemoryTasksWeb() {
       .filter(block => block.type === 'text').map(block => String(block.text ?? '')).join('\n')
     const resultFor = (records, call) => {
       const record = records.find(item => item.type === 'tool/result'
-        && (item.data?.message?.content ?? []).some(block => block.toolCallId === call.data.callId))
-      return (record?.data?.message?.content ?? []).find(block => block.toolCallId === call.data.callId)
+        && item.data?.message?.toolCallId === call.data.callId)
+      return record?.data?.message
     }
 
     // Memory: A saved through the plugin's tool; B (codeword absent from every
@@ -1011,10 +1020,10 @@ async function runCustomGateways() {
     await runDsh(['plugin', '--profile', 'headless', 'add', `file:${source}`])
     await useJsonlSessions(home, 'headless')
     // The README's own settings shape, pointed at the local endpoint.
-    await writeFile(join(home, 'settings.yaml'), [
+    await writeHostConfig(home, [
       'agent-default-model:',
       '  provider: my-gateway',
-      '  model: deepseek-chat',
+      '  model: deepseek-flash',
       'llm-pi-ai:',
       '  providers:',
       '    my-gateway:',
@@ -1023,7 +1032,7 @@ async function runCustomGateways() {
       '      baseURL: https://api.deepseek.com/v1',
       '      apiKeyEnv: DEEPSEEK_API_KEY',
       '      models:',
-      '        - id: deepseek-chat',
+      '        - id: deepseek-flash',
       '          name: Gateway Model',
       '          contextWindow: 131072',
       '',
@@ -1045,11 +1054,10 @@ async function runCustomGateways() {
     const call = records.find(record => record.type === 'tool/call' && record.data?.name === 'pi_registry_probe')
     assert(call !== undefined, `the probe tool never ran:\n${run.stdout}\n${run.stderr}`)
     const result = records.find(record => record.type === 'tool/result'
-      && (record.data?.message?.content ?? []).some(block => block.toolCallId === call.data.callId))
+      && record.data?.message?.toolCallId === call.data.callId)
     assert(result !== undefined,
       `the probe ran but logged no result:\n${run.stdout}\n${run.stderr}`)
     const text = (result.data.message.content ?? [])
-      .flatMap(block => Array.isArray(block.content) ? block.content : [])
       .filter(part => part.type === 'text')
       .map(part => part.text)
       .join('')
@@ -1063,12 +1071,12 @@ async function runCustomGateways() {
     assert(entry !== undefined,
       `the host-configured route never reached the package's modelRegistry; it saw ${JSON.stringify(seen)}`)
     // The Pi-shaped fields survive the round trip, which is the example's point.
-    assert.equal(entry.id, 'deepseek-chat')
+    assert.equal(entry.id, 'deepseek-flash')
     assert.equal(entry.contextWindow, 131072)
     const request = records.find(record => record.type === 'request/header')
     assert.equal(request?.data?.header?.config?.provider, 'my-gateway',
       `the probe turn did not actually use the configured route: ${JSON.stringify(request?.data?.header?.config)}`)
-    assert.equal(request?.data?.header?.config?.model, 'deepseek-chat')
+    assert.equal(request?.data?.header?.config?.model, 'deepseek-flash')
     assert.match(`${run.stdout}`, /my-gateway/u,
       `the real gateway-backed turn did not complete with the probe output:\n${run.stdout}\n${run.stderr}`)
     results.customGateways = {
@@ -1271,9 +1279,9 @@ async function runTuiMcp() {
     // Pinned: dsh-TUI 0.9.1/0.9.2 (2026-08-25) declare release-range deps
     // (>=0.1.1) that match no published rc of the DSH core line — they are
     // uninstallable upstream bugs; 0.9.0 is the last installable version.
-    await runDsh(['plugin', '--profile', 'dsh-tui', 'add', process.env.PI2DSH_TUI_SPEC ?? '@deepseek-harness-tui/dsh-tui@0.9.0'])
+    await runDsh(['plugin', '--profile', 'dsh-tui', 'add', process.env.PI2DSH_TUI_SPEC ?? '@deepseek-harness-tui/dsh-tui@0.14.0'])
     await runDsh(['plugin', '--profile', 'dsh-tui', 'add', engineSpec])
-    await runDsh(['plugin', '--profile', 'dsh-tui', 'add', 'pi-mcp-adapter'])
+    await runDsh(['plugin', '--profile', 'dsh-tui', 'add', suitePackageSpec('pi-mcp-adapter')])
     const profileRoot = join(home, 'profiles', 'dsh-tui')
     const profile = JSON.parse(await readFile(join(profileRoot, 'package.json'), 'utf8'))
     const piMcpManifest = JSON.parse(await readFile(join(profileRoot, 'node_modules', 'pi-mcp-adapter', 'package.json'), 'utf8'))
@@ -1741,8 +1749,8 @@ function assertCodeNavigation(records, transcript) {
     .filter(record => record.type === 'tool/call' && record.data?.name === name)
     .map(call => {
       const result = records.find(record => record.type === 'tool/result'
-        && (record.data?.message?.content ?? []).some(block => block.toolCallId === call.data.callId))
-      return { call, block: (result?.data?.message?.content ?? []).find(block => block.toolCallId === call.data.callId) }
+        && record.data?.message?.toolCallId === call.data.callId)
+      return { call, block: result?.data?.message }
     })
     .filter(pair => pair.block !== undefined)
 
@@ -1918,7 +1926,7 @@ const MCP_SCALE_MARKER = 'LAUNCH-MARKER-7741-ZEBRA'
 async function prepareMcpAtScale(scratch, profile) {
   const { home, env, runDsh } = await makeHome(scratch)
   const installedEngine = await runDsh(['plugin', '--profile', profile, 'add', engineSpec])
-  const installedAdapter = await runDsh(['plugin', '--profile', profile, 'add', 'pi-mcp-adapter'])
+  const installedAdapter = await runDsh(['plugin', '--profile', profile, 'add', suitePackageSpec('pi-mcp-adapter')])
   await useJsonlSessions(home, profile)
 
   // The README's workspace: the example directory itself, whose .mcp.json
@@ -1935,8 +1943,8 @@ function toolPairs(records, name) {
     .filter(record => record.type === 'tool/call' && record.data?.name === name)
     .map(call => {
       const result = records.find(record => record.type === 'tool/result'
-        && (record.data?.message?.content ?? []).some(block => block.toolCallId === call.data.callId))
-      return { call, block: (result?.data?.message?.content ?? []).find(block => block.toolCallId === call.data.callId) }
+        && record.data?.message?.toolCallId === call.data.callId)
+      return { call, block: result?.data?.message }
     })
     .filter(pair => pair.block !== undefined)
 }
@@ -2153,6 +2161,9 @@ await Promise.all(Array.from({ length: Math.min(concurrency, queue.length) }, as
     const [name, run, key] = next
     try {
       await run()
+      if (results[key]?.status === 'failed') {
+        failures.push(`${name}: ${results[key].error ?? results[key].reason ?? 'scenario assertions failed'}`)
+      }
       console.log(`[examples-e2e] ${name}: ${results[key]?.status ?? 'passed'}${
         results[key]?.reason === undefined ? '' : ` — ${results[key].reason}`}`)
     } catch (error) {

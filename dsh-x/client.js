@@ -788,17 +788,13 @@ window.__ModuleLoader__.load({
 		/** The session whose conversation is on screen right now, or '' when none
 		*  (the New Session draft, a full-page view). Exported for the product layer
 		*  (dsh-work-x's side-chat window rides the same rule). */
-		function useOnStage(useSessions) {
-			const current = useSessions((state) => state.current) ?? "";
-			const [, bump] = (0, react.useState)(0);
-			(0, react.useEffect)(() => {
-				const listener = () => bump((value) => value + 1);
+		function useOnStage() {
+			return (0, react.useSyncExternalStore)((listener) => {
 				stageListeners.add(listener);
 				return () => {
 					stageListeners.delete(listener);
 				};
-			}, []);
-			return current !== "" && stagedConversations.has(current) ? current : "";
+			}, () => stagedConversations.size === 1 ? stagedConversations.keys().next().value : "", () => "");
 		}
 		/** Invisible occupant of a conversation-scoped seat; its mounted lifetime is
 		*  the evidence. The hidden marker exists so E2E can assert staging from the
@@ -816,8 +812,8 @@ window.__ModuleLoader__.load({
 				style: { display: "none" }
 			});
 		}
-		function OverlaySurfaces({ useSessions }) {
-			const session = useOnStage(useSessions);
+		function OverlaySurfaces() {
+			const session = useOnStage();
 			const { threads, surfaces } = useBrowserState(session === "" ? void 0 : session);
 			const [dismissed, setDismissed] = (0, react.useState)([]);
 			const shown = (renderSideThreads ? threads : []).filter((thread) => !dismissed.includes(thread.id));
@@ -2149,8 +2145,8 @@ window.__ModuleLoader__.load({
 			}
 		}
 		/** The suite's floating side-chat window over the active session. */
-		function SideChatWindow({ useSessions }) {
-			const session = useOnStage(useSessions);
+		function SideChatWindow() {
+			const session = useOnStage();
 			const [threads, setThreads] = (0, react.useState)([]);
 			const [mode, setMode] = (0, react.useState)("dot");
 			const [opened, setOpened] = (0, react.useState)(false);

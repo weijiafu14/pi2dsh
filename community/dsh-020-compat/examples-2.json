@@ -1,0 +1,245 @@
+{
+  "schemaVersion": 1,
+  "pi2dshCommit": "b63c8c232bdb4c6f213540f549b56649dad7a12a",
+  "dshCommit": "npm:@deepseek-ai/dsh@0.2.0-rc.2",
+  "results": {
+    "alibabaTokenPlan": {
+      "status": "skipped",
+      "reason": "ALIBABA_TOKEN_PLAN_API_KEY not set"
+    },
+    "visionBridge": {
+      "status": "skipped",
+      "reason": "no complete OpenAI-compatible or Pi-registry vision model configured"
+    },
+    "gatewayCompat": {
+      "engine": {
+        "version": "0.26.0",
+        "from": "local-tarball",
+        "spec": "file:<tarball>",
+        "sha256": "9ffe08de15628d723b472fc2aed9ce01b15e1504d4b8fe95318a2d5a8ab59c40"
+      },
+      "status": "passed",
+      "requests": 2,
+      "roles": [
+        "system",
+        "user",
+        "user"
+      ],
+      "maxTokensField": "max_tokens",
+      "store": null,
+      "reasoningEffort": "high",
+      "bodyKeys": [
+        "max_tokens",
+        "messages",
+        "model",
+        "reasoning_effort",
+        "stream",
+        "stream_options",
+        "tools"
+      ],
+      "previews": [
+        "system: You are an AI agent powered by DeepSeek Harness. You are a ",
+        "user: Reply with exactly: gateway-compat-ok",
+        "user: Current runtime context. This snapshot supersedes earlier ru"
+      ]
+    },
+    "backgroundTasks": {
+      "status": "passed",
+      "engine": {
+        "version": "0.26.0",
+        "from": "local-tarball",
+        "spec": "file:<tarball>",
+        "sha256": "9ffe08de15628d723b472fc2aed9ce01b15e1504d4b8fe95318a2d5a8ab59c40"
+      },
+      "bgRunCalls": 1,
+      "bgLogsMidRunReads": 1
+    },
+    "persistentMemory": {
+      "status": "passed",
+      "engine": {
+        "version": "0.26.0",
+        "from": "local-tarball",
+        "spec": "file:<tarball>",
+        "sha256": "9ffe08de15628d723b472fc2aed9ce01b15e1504d4b8fe95318a2d5a8ab59c40"
+      },
+      "wroteVia": [
+        "memory_add"
+      ],
+      "recalledAcrossSessions": true,
+      "storeIsolatedToDshHome": true
+    },
+    "visionBridgeWeb": {
+      "status": "skipped",
+      "reason": "no complete OpenAI-compatible or Pi-registry vision model configured"
+    },
+    "customGateways": {
+      "status": "passed",
+      "engine": {
+        "version": "0.26.0",
+        "from": "local-tarball",
+        "spec": "file:<tarball>",
+        "sha256": "9ffe08de15628d723b472fc2aed9ce01b15e1504d4b8fe95318a2d5a8ab59c40"
+      },
+      "seenByPackage": {
+        "provider": "my-gateway",
+        "id": "deepseek-flash",
+        "api": "faux",
+        "contextWindow": 131072
+      },
+      "requestedThroughGateway": true
+    },
+    "workXMemoryTasks": {
+      "status": "passed",
+      "engine": {
+        "version": "0.26.0",
+        "from": "local-tarball",
+        "spec": "file:<tarball>",
+        "sha256": "9ffe08de15628d723b472fc2aed9ce01b15e1504d4b8fe95318a2d5a8ab59c40"
+      },
+      "memoryTabShowsStore": true,
+      "pinRoundTrip": true,
+      "dockKilledTask": true,
+      "screenshots": [
+        "01-memory-settings.png",
+        "02-tasks-chip-live.png",
+        "03-tasks-killed.png"
+      ]
+    },
+    "subscriptionLogin": {
+      "status": "partial",
+      "engine": {
+        "version": "0.26.0",
+        "from": "local-tarball",
+        "spec": "file:<tarball>",
+        "sha256": "9ffe08de15628d723b472fc2aed9ce01b15e1504d4b8fe95318a2d5a8ab59c40"
+      },
+      "note": "pre-login discovery and native route passed; set CODEX_AUTH_FILE to verify the post-login model picker"
+    },
+    "codexImageGen": {
+      "status": "skipped",
+      "reason": "CODEX_AUTH_FILE not set"
+    },
+    "presentationSurfaces": {
+      "status": "passed",
+      "engine": {
+        "version": "0.26.0",
+        "from": "local-tarball",
+        "spec": "file:<tarball>",
+        "sha256": "9ffe08de15628d723b472fc2aed9ce01b15e1504d4b8fe95318a2d5a8ab59c40"
+      },
+      "install": "dsh-work-x suite + pi-powerline-footer",
+      "screenshots": [
+        "06-presentation-surfaces.png"
+      ]
+    },
+    "tuiMcp": {
+      "status": "failed",
+      "error": "Command failed: node /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/scripts/verify-tui-mcp-tool-e2e.mjs\n(node:86672) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.\n(Use `node --trace-warnings ...` to show where the warning was created)\nfile:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/scripts/verify-tui-mcp-tool-e2e.mjs:30\nimport { CallId } from '@deepseek-ai/dsh-llm'\n         ^^^^^^\nSyntaxError: The requested module '@deepseek-ai/dsh-llm' does not provide an export named 'CallId'\n    at ModuleJob._instantiate (node:internal/modules/esm/module_job:226:21)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async ModuleJob.run (node:internal/modules/esm/module_job:335:5)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:665:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)\n\nNode.js v22.22.0\n"
+    },
+    "sideConversation": {
+      "status": "failed",
+      "error": "Command failed: node /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/docs/posting-kit/capture-side-chat.mjs /var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-ex-side-673m43/shots --url http://127.0.0.1:5187/?token=[redacted]\n(node:85670) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.\n(Use `node --trace-warnings ...` to show where the warning was created)\nnode:internal/modules/run_main:123\n    triggerUncaughtException(\n    ^\n\nlocator.waitFor: Timeout 120000ms exceeded.\nCall log:\n  - waiting for locator('[data-dsh-x=\"side-chat\"]') to be visible\n\n    at /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/docs/posting-kit/capture-side-chat.mjs:31:13 {\n  log: [\n    `  - waiting for locator('[data-dsh-x=\"side-chat\"]') to be visible`\n  ],\n  name: 'TimeoutError'\n}\n\nNode.js v22.22.0\n"
+    },
+    "memoryTasksWeb": {
+      "status": "passed",
+      "engine": {
+        "version": "0.26.0",
+        "from": "local-tarball",
+        "spec": "file:<tarball>",
+        "sha256": "9ffe08de15628d723b472fc2aed9ce01b15e1504d4b8fe95318a2d5a8ab59c40"
+      },
+      "memoryRecalledAcrossWebSessions": true,
+      "bgMidRunReadOnWeb": true,
+      "storeIsolatedToDshHome": true,
+      "screenshots": [
+        "01-memory-save-web.png",
+        "02-memory-recall-web.png",
+        "03-background-tasks-web.png"
+      ]
+    },
+    "dshX": {
+      "status": "failed",
+      "error": "Command failed: node /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/scripts/dsh-x-web-probe.mjs /var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-ex-dshx-InrlRG/shots --url http://127.0.0.1:5193/?token=[redacted]\n(node:87100) [UNDICI-EHPA] Warning: EnvHttpProxyAgent is experimental, expect them to change at any time.\n(Use `node --trace-warnings ...` to show where the warning was created)\nnode:internal/modules/run_main:123\n    triggerUncaughtException(\n    ^\n\npage.waitForFunction: Timeout 180000ms exceeded.\n    at /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/scripts/dsh-x-web-probe.mjs:104:14 {\n  log: [],\n  name: 'TimeoutError'\n}\n\nNode.js v22.22.0\n"
+    },
+    "codeNavigation": {
+      "status": "passed",
+      "engine": {
+        "version": "0.26.0",
+        "from": "local-tarball",
+        "spec": "file:<tarball>",
+        "sha256": "9ffe08de15628d723b472fc2aed9ce01b15e1504d4b8fe95318a2d5a8ab59c40"
+      },
+      "packages": {
+        "@ff-labs/pi-fff": "0.11.0",
+        "pi-lens": "4.4.3"
+      },
+      "search": "ffgrep -> notes/spec.md",
+      "diagnostics": "LSP diagnostic tool -> TS2322 on src/ledger.ts"
+    },
+    "mcpAtScale": {
+      "status": "passed",
+      "engine": {
+        "version": "0.26.0",
+        "from": "local-tarball",
+        "spec": "file:<tarball>",
+        "sha256": "9ffe08de15628d723b472fc2aed9ce01b15e1504d4b8fe95318a2d5a8ab59c40"
+      },
+      "packages": [
+        "pi-mcp-adapter"
+      ],
+      "server": "many-tools (official MCP SDK, 51 tools, stdio)",
+      "discovery": "mcp proxy -> tool_037 -> LAUNCH-MARKER-7741-ZEBRA",
+      "timeout": "mcpScript timeoutMs 5000 on ~120s slow_task; turn ended in 19s; tool_001 answered after"
+    },
+    "mcpAtScaleWeb": {
+      "status": "passed",
+      "engine": {
+        "version": "0.26.0",
+        "from": "local-tarball",
+        "spec": "file:<tarball>",
+        "sha256": "9ffe08de15628d723b472fc2aed9ce01b15e1504d4b8fe95318a2d5a8ab59c40"
+      },
+      "packages": [
+        "pi-mcp-adapter"
+      ],
+      "screenshots": [
+        "12-mcp-at-scale-web.png"
+      ],
+      "discovery": "mcp proxy -> tool_037 -> LAUNCH-MARKER-7741-ZEBRA"
+    },
+    "codeNavigationWeb": {
+      "status": "passed",
+      "engine": {
+        "version": "0.26.0",
+        "from": "local-tarball",
+        "spec": "file:<tarball>",
+        "sha256": "9ffe08de15628d723b472fc2aed9ce01b15e1504d4b8fe95318a2d5a8ab59c40"
+      },
+      "packages": {
+        "@ff-labs/pi-fff": "0.11.0",
+        "pi-lens": "4.4.3"
+      },
+      "screenshots": [
+        "06-code-navigation-web.png"
+      ],
+      "search": "ffgrep -> notes/spec.md",
+      "diagnostics": "LSP diagnostic tool -> TS2322 on src/ledger.ts"
+    },
+    "subagents": {
+      "status": "failed",
+      "engine": "0.26.0",
+      "cli": "0.2.0-rc.2",
+      "scenarios": {
+        "steer": "passed",
+        "failureReport": "passed",
+        "resume": "passed",
+        "resumeArchive": "passed",
+        "stop": "passed",
+        "modelFollow": "failed",
+        "explicitModelThinking": "failed",
+        "childExtensions": "passed"
+      },
+      "error": "modelFollow: the warmup turn never completed | explicitModelThinking: model-follow setup failed before the explicit child scenario"
+    }
+  }
+}

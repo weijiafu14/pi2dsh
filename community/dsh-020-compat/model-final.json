@@ -1,0 +1,82 @@
+{
+  "generatedAt": "2026-10-13T11:29:57.306Z",
+  "startedAt": "2026-10-13T11:29:03.286Z",
+  "scenario": "pi-subagents-lifecycle (steer / resume / stop / model-follow / explicit-model-thinking)",
+  "cliSpec": "@deepseek-ai/dsh@0.2.0-rc.2",
+  "engineSpec": "file:/Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/.artifacts/pi2dsh-0.26.0.tgz",
+  "subagentsSpec": "@tintinweb/pi-subagents@0.20.0",
+  "status": "passed",
+  "selection": "model-follow",
+  "scenarios": {
+    "stop": {
+      "status": "skipped",
+      "reason": "PI2DSH_SKIP_TUI set"
+    },
+    "modelFollowPickerScreen": "──────────────────────────────────────────────────────────────────────────────────╮\n  ⌸ ❯                                                                                                                                                                            ⛶\n  ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯\n                                                                                                                                                                    14k/1.0M 1.4%\n   deepseek-flash · cache 6.2% · workspace                                                                                                                    ctx 1.4% (14k/1.0m)\n\n\n",
+    "modelFollow": {
+      "status": "passed",
+      "problems": [],
+      "defaultProvider": "deepseek-official",
+      "parentRoutes": [
+        {
+          "provider": "deepseek-official",
+          "model": "deepseek-flash"
+        },
+        {
+          "provider": "work-gw",
+          "model": "deepseek-flash"
+        }
+      ],
+      "childRoutes": [
+        {
+          "provider": "work-gw",
+          "model": "deepseek-flash"
+        }
+      ],
+      "markerLanded": true
+    },
+    "explicitModelThinking": {
+      "status": "passed",
+      "problems": [],
+      "parentConfigs": [
+        {
+          "provider": "deepseek-official",
+          "model": "deepseek-flash",
+          "reasoningEffort": "max",
+          "maxTokens": 256000
+        },
+        {
+          "provider": "work-gw",
+          "model": "deepseek-flash"
+        }
+      ],
+      "agentArguments": {
+        "prompt": "Run one bash command that writes the single word EXPLICIT_MV6LLOOM into /tmp/pi2dsh-subagents-lifecycle.tZASdL/workspace/explicit-model-thinking-MV6LLOOM.txt, then reply done.",
+        "description": "explicit route and effort probe",
+        "subagent_type": "general-purpose",
+        "name": "explicit-probe",
+        "model": "deepseek-official/deepseek-flash",
+        "thinking": "max",
+        "run_in_background": false
+      },
+      "childConfigs": [
+        {
+          "provider": "deepseek-official",
+          "model": "deepseek-flash",
+          "reasoningEffort": "max",
+          "maxTokens": 256000
+        }
+      ],
+      "childToolCalls": [
+        "bash",
+        "bash"
+      ],
+      "markerLanded": true
+    },
+    "stack": {
+      "cliVersion": "0.2.0-rc.2",
+      "engineVersion": "0.26.0",
+      "scratch": "/tmp/pi2dsh-subagents-lifecycle.tZASdL"
+    }
+  }
+}

@@ -278,6 +278,8 @@ try {
 
   const evidence = {
     schemaVersion: 1,
+    engineSpec,
+    engineVersion: JSON.parse(await readFile(join(home, 'profiles/headless/node_modules/pi2dsh/package.json'), 'utf8')).version,
     packageName,
     installPath: 'engine (dsh plugin add pi2dsh, then the package) — no conversion',
     dshCommit: directDshBin !== undefined
