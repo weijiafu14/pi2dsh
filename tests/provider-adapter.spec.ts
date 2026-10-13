@@ -106,8 +106,8 @@ describe('Pi provider as a DSH llm route', () => {
       messages: [
         { role: 'user', content: [{ type: 'text', text: 'hello there' }], source: { kind: 'user' } },
         {
-          role: 'user',
-          content: [{ type: 'tool-result', toolCallId: 'c9', content: [{ type: 'text', text: 'tool output' }], isError: false }],
+          role: 'tool',
+          toolCallId: 'c9', content: [{ type: 'text', text: 'tool output' }], isError: false,
           source: { kind: 'tool', callId: 'c9' },
         },
       ],
@@ -520,9 +520,9 @@ describe('Pi provider as a DSH llm route', () => {
       messages: [
         { role: 'assistant', content: [{ type: 'tool-call', id: 'c9', name: 'bash', arguments: '{}' }] },
         {
-          role: 'user',
-          source: { kind: 'tool' },
-          content: [{ toolCallId: 'c9', content: [{ type: 'text', text: 'ok' }], isError: false }],
+          role: 'tool',
+          source: { kind: 'tool', callId: 'c9' },
+          toolCallId: 'c9', content: [{ type: 'text', text: 'ok' }], isError: false,
         },
       ],
     })

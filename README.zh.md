@@ -16,10 +16,16 @@ elicitation、sampling、cancellation——经 DSH 自己的审批和渲染跑�
 （[证据矩阵](docs/mcp-compatibility.md)）。端到端验证过的清单在
 [现在到底哪些真能用](#现在到底哪些真能用)，表外的不作声明。
 
-pi2dsh `0.25.2` 以 Pi `0.84.1` 为目标，同一引擎适配 DSH `0.1.1-rc.2`
-和 `0.1.5-rc.1` / `0.1.5-rc.2`。具体通过场景和边界见
-[版本验收记录](community/dsh-015-compat/README.md)及
-[rc.2 核验](community/dsh-015-rc2-20260914/README.md)。本版不做跨版本旧数据迁移。
+版本支持明确对应：
+
+| pi2dsh | DSH 宿主 | 维护状态 |
+|---|---|---|
+| 0.26.0 | 0.2.0-rc.2 | [发布验收与缺凭证项目](community/release-0.26.0/README.md) |
+| 0.25.2 | 0.1.5-rc.2 | 保留检查点：[发布验收](community/release-0.25.2/README.md) |
+
+Pi 扩展语义仍固定在 0.84.1。新版引擎只针对已验证的当前 DSH 版本维护；
+旧版收到具体故障后，从对应发布 tag 分支修复。存量会话格式迁移由 DSH 负责。
+未经验证的新宿主版本不会自动写入兼容声明。
 
 ## 为什么有这个项目
 

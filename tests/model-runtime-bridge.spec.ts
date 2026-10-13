@@ -124,8 +124,8 @@ describe('model runtime bridge', () => {
     expect(messages).toHaveLength(3)
     expect(messages[0]).toMatchObject({ role: 'user', source: { kind: 'user' } })
     expect(messages[1]).toMatchObject({ role: 'assistant', source: { kind: 'model', provider: 'fixture', model: 'fx-mini' } })
-    expect(messages[2]).toMatchObject({ role: 'user', source: { kind: 'tool', callId: 'call-1' } })
-    expect((messages[2]?.content as Array<Record<string, unknown>>)[0]).toMatchObject({ type: 'tool-result', toolCallId: 'call-1' })
+    expect(messages[2]).toMatchObject({ role: 'tool', source: { kind: 'tool', callId: 'call-1' } })
+    expect(messages[2]).toMatchObject({ role: 'tool', toolCallId: 'call-1' })
   })
 
   it('surfaces adapter failures as Pi error events, never fabricated completions', async () => {

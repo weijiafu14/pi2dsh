@@ -179,7 +179,7 @@ async function createRoot(ctx: Context, sessionId: string): Promise<AgentHandle>
 
 async function createChildOf(parent: Record<string, unknown>, sessionId: string): Promise<AgentHandle> {
   const agents = (parent.ctx as unknown as { agents: AgentsFace }).agents
-  return agents.create({ sessionId: SessionId(sessionId), meta: { origin: 'subagent' } })
+  return agents.create({ sessionId: SessionId(sessionId), parentAgent: parent, meta: { origin: 'subagent' } })
 }
 
 function nativeNames(ctx: Context, agent: unknown): string[] {

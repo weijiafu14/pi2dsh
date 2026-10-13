@@ -62,8 +62,7 @@ async function mountAgentRuntime(ctx: Context, agent: Record<string, unknown>): 
   // delivers them. The engine's single mount path listens for agent/created
   // and mounts every prepared Pi package into agent.ctx; its assemble and
   // pre-execute gates hold model-facing work until that mount lands.
-  agentEvents(ctx, agent as never).emit('agent/created', { agent: agent as never })
-  agentEvents(ctx, agent as never).emit('agent/session-start', { source: 'startup' })
+  await agentEvents(ctx, agent as never).serial('agent/created', { source: 'startup' })
   return scope
 }
 
@@ -309,7 +308,7 @@ describe('engine mounting on a real DSH composition', () => {
   // Skip reason on such lines: the emulated state is impossible there.
   const piTuiHostLoads = import('@xmoon76/dsh-pi-tui').then(() => true, () => false)
   const piTuiFixture = () => ({
-    api: () => ({ apiVersion: 1, capabilities: new Set(['unstable.surface.handle']) }),
+    api: () => ({ apiVersion: 2, capabilities: new Set(['unstable.surface.handle']) }),
     register: () => ({ replace() {}, dispose() {} }),
     // The real `unstable()` facade demands the host's unstable seam members.
     _unstableCaptureRaw: () => ({ dispose() {} }),
@@ -318,7 +317,7 @@ describe('engine mounting on a real DSH composition', () => {
     }),
   })
 
-  const loginCommandNames = async (withAuthorization: boolean): Promise<string[]> => {
+  const loginCommandNames = async (withAuthorization: boolean, lateTerminal = false): Promise<string[]> => {
     const root = await makeProfile({})
     const ctx = new Context()
     await ctx.plugin(SessionStore)
@@ -327,12 +326,19 @@ describe('engine mounting on a real DSH composition', () => {
     await ctx.plugin(CommandRuntime)
     await ctx.plugin(SkillRegistry)
     const provider = ctx as unknown as { provide(name: string, value: unknown): void }
-    provider.provide('piTuiExtensions', piTuiFixture())
-    if (withAuthorization) provider.provide('authorization', { begin() {} })
+    if (!lateTerminal) {
+      provider.provide('piTuiExtensions', piTuiFixture())
+      if (withAuthorization) provider.provide('authorization', { begin() {} })
+    }
     ;(ctx as unknown as { baseUrl: string }).baseUrl = `file://${root}/cordis.yml`
 
     await apply(ctx, {})
     await settle()
+    if (lateTerminal) {
+      provider.provide('piTuiExtensions', piTuiFixture())
+      if (withAuthorization) provider.provide('authorization', { begin() {} })
+      await settle()
+    }
     const typedCtx = ctx as unknown as {
       sessions: { create(id: unknown, options: Record<string, unknown>): { id: unknown } }
       commands: { list(agent: unknown): Array<{ name: string }> }
@@ -357,6 +363,12 @@ describe('engine mounting on a real DSH composition', () => {
     const names = await loginCommandNames(true)
     expect(names).not.toContain('pi-login')
     expect(names).not.toContain('login')
+  })
+
+  it('withdraws an earlier host login fallback when the terminal services arrive later', async () => {
+    const names = await loginCommandNames(true, true)
+    expect(names).not.toContain('login')
+    expect(names).not.toContain('pi-login')
   })
 
   // /login is host-level: however many packages mount (host anchor AND agent

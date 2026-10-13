@@ -3,7 +3,10 @@
 这是可扩展的 Markdown 知识树，不是接口总表，也不是 `Pi × DSH` 的机械矩阵。每个稳定
 标题代表一条架构分支；接口、模块和 seam 是可以继续增长的叶子。
 
-当前盘点快照：**2026-08-20，Pi 0.84.1，DSH 0.1.0-rc.8**。最初从 Pi 声明和运行时
+当前实现基线：**2026-10-13，Pi 0.84.1，DSH 0.2.0-rc.2**；当前候选版的
+[实测范围与边界](../community/dsh-020-compat/README.md)独立记录，不外推历史证据。
+
+最初盘点快照：**2026-08-20，Pi 0.84.1，DSH 0.1.0-rc.8**。最初从 Pi 声明和运行时
 规则中盘到 111 条上游形状规则，从 DSH 官方 subsystem 索引中看到 45 个模块。111 尚未
 把所有嵌套对象拆成 callable，45 也不包含以后发现的全部 service、waterfall、event 和
 client seam；两个数字都不表示“已经完整”。
@@ -151,7 +154,9 @@ watchdog；超时或连接断开取消原生 child。只选择已经安装的扩
 - 当前投影：命令先进入同一个 DSH commands registry；活跃终端公开声明的 native command
   拥有原名，Pi 插件撞名时使用 `pi-` 来源前缀，两个普通 Pi 来源撞名时使用编号别名。
   pi2dsh 自带的兼容性兜底命令（例如 `/login`）在宿主已有同名命令且消费相同 DSH
-  authorization 权威时不重复注册。所有权在注册前确定，不依赖插件加载顺序。
+  authorization 权威时不重复注册；若终端服务晚到，公开 service injection 会撤销
+  先前的备用命令，避免遮挡原生登录。dsh-pi-tui 使用 API 2 的公开 raw-component/
+  footer surface，入口经 DSH Loader.import 解析宿主依赖，不绕过宿主另装一套核心。
 - `getCommands()` 的文件型 skill 描述符由 `ctx.skills.list/get` 取得：使用实际文件路径，
   在会话启动和命令边界刷新，不复制另一个 skill registry。无文件的 opaque skill 不造路径。
 - 理论判断：直接承接。
@@ -220,18 +225,14 @@ watchdog；超时或连接断开取消原生 child。只选择已经安装的扩
   handlers 在第一轮前完成；session 结束时实例随之销毁。
 - 理论对应：[DSH / 插件组合](#dsh-composition)与
   [DSH / Agent 编排](#dsh-orchestration)。
-- 需要的公开 seam：`agent/created`（每条发布路径必触发、loop 启动前）、
-  `agent.ctx`（公开契约：注册 agent-local、dispose 自动 unwind）、
-  `system-prompt/assemble` 与 `tools/pre-execute` awaited waterfalls
-  （首轮就绪门；`assembly.tools` 在 waterfall 前快照，门内用官方
-  `tools.schemas(agent)` 补齐）。
-- 理论判断：组合承接。Pi 的保证是"第一轮前就绪"而非"发布前就绪"，
-  所以发布后挂载 + awaited 门恰好等价；已在 stock rc.8 npm 包上实证
-  （tests/agent-scoped-mount.spec.ts + scripts/verify-tui-singlepath-e2e.mjs）。
-  注：DSH 的发布前组合 seam（`setup(agentCtx)`）是创建者独占参数、root
-  插件不可达且 config 声明式 Agent 不经过——对生态插件这是真实缺口，正解
-  形状是 AgentRegistry 级的 serial `agent/setup` contributor（留作上游提案，
-  非本桥依赖）。
+- 需要的公开 seam：DSH 0.2 串行等待的 `agent/created` 与 `agent.ctx`。
+  创建监听器直接返回插件加载 promise；宿主在监听器完成前保持初始化活动，
+  首次提示词与工具收集因此读取已经就绪的注册表。普通插件不需要占有创建方的 setup。
+- 理论判断：直接承接。根 Agent 和 opt-in 的 DSH 原生子 Agent 都沿串行创建事件挂载；
+  Pi 发起的子 Agent 保留创建者的资源筛选与独立挂载。宿主锚只持有 Provider 等共享注册。
+- 新版移除首次 assembly 补工具快照与 pre-execute 初始化门。后加载引擎显式等待
+  已有根 Agent 的补挂载；动态工具变化仍归 DSH 的工具注册表与请求投影所有。
+  历史宿主路径保存在 v0.25.2 检查点，不进入 0.26 的运行时分支。
 
 <a id="pi-agent-control"></a>
 #### Agent 控制与空闲状态

@@ -21,7 +21,7 @@ does not exercise the separate `ctx.subagents` provider seam. See
 | [`setSessionName`](#setsessionname-pi) | `pi.*` | Same semantics | Renames the DSH session through ctx.sessionTitle, so every DSH surface shows it and the title is pinned against automatic regeneration, and announces it through session_info_changed. A composition that mounts no title service falls back to a session_info entry in the Pi-format archive, as does a blank name (DSH requires visible characters in a title; Pi does not). |
 | [`getSessionName`](#getsessionname-pi) | `pi.*` | Same semantics | Reads DSH's own session title, so it agrees with what DSH displays and sees titles DSH generated itself; falls back to the archive's session_info entry when no title service is mounted. |
 | [`setLabel`](#setlabel-pi) | `pi.*` | Mapped, difference stated | Persisted as a Pi label entry line in the per-session Pi-format archive and reflected by the sessionManager projection. |
-| [`session_start`](#session_start-event) | `event` | Same semantics | Mapped to agent/session-start. |
+| [`session_start`](#session_start-event) | `event` | Same semantics | Completed during the awaited per-Agent mount on DSH 0.2. |
 | [`session_shutdown`](#session_shutdown-event) | `event` | Mapped, difference stated | Async Cordis teardown joins pending message projection and ordered shutdown handlers; reload dispatches reason=reload before remount. Duplicate disposal notifications are suppressed. During full process shutdown other host services may already be unavailable, so model-dependent exit work is not guaranteed. |
 | [`session_info_changed`](#session_info_changed-event) | `event` | Mapped, difference stated | Fired by setSessionName() and projected from DSH session/title events. |
 | [`session_before_compact`](#session_before_compact-event) | `event` | Mapped, difference stated | Projected from DSH compaction/start as a notification; cancel/replace cannot reach DSH's compactor. |
@@ -76,7 +76,7 @@ A Pi label entry line in the session's Pi-format archive, read back through the 
 
 `event` · Same semantics
 
-Dispatched from the cordis agent/session-start notification.
+DSH serially awaits agent/created; the per-Agent package factory and session_start handlers settle before its first tool/schema collection. Creator-filtered Pi child mounts await the same package lifecycle before createAgentSession returns.
 
 ### `session_shutdown` <a id="session_shutdown-event"></a>
 

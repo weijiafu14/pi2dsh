@@ -13,23 +13,28 @@ the primary form of the suite's product UI. (Headless/CLI profiles can drop
 companion — [proposed upstream](https://github.com/deepseek-ai/deepseek-harness/discussions/4543) —
 which is the only reason this is two names instead of one.) That is the entire setup: the suite
 carries the [pi2dsh](https://github.com/weijiafu14/pi2dsh) engine and six
-capability packages, versions pinned to combinations that have been verified
-end to end on a real DSH loop — never "should work", always "was watched
-working".
+capability packages, with pinned versions and a
+[version-specific acceptance record](../community/dsh-020-compat/README.md).
+Suite 0.5.0 targets pi2dsh 0.26.0 and DSH 0.2.0-rc.2. Earlier DSH hosts
+remain on their matching historical suite/engine release.
 
 一条命令，把官方 DSH 变成开箱即用的全能 agent 工作台。装完重启 dsh 即可；
-所有组件版本锁死在真机端到端验收过的组合上。
+组件版本固定；本代适配 DSH 0.2.0-rc.2，各项实测范围见上面的验收记录。
 
-## What you get, and why native DSH alone doesn't have it
+## What the Pi packages add
 
-| Capability | Stock DSH | dsh-x |
-|---|---|---|
-| **MCP** | Config-file servers, statically mounted; every tool costs context window | **Lazy proxy** (one tool + on-demand `search`/`describe` — dozens of servers without eating context), in-session manager, **OAuth** flows, **MCP Apps** (`ui://`), prompts→slash-commands, elicitation, sampling, fast cancellation — [full verified matrix](../docs/mcp-compatibility.md) |
-| **Subagents** | Low-level agent registry, no product surface | Spawn / parallel / background delegation, **mid-run steering**, resume (in-session and **across restarts**), stop-with-parent, per-child model & thinking level, live inheritance of your `/model` switches — [acceptance report](../community/subagents-acceptance-report.md) |
-| **Side conversations** | — | `/btw <question>`: ask something off-topic without polluting the main context; answer lands in a side panel |
-| **Image generation** | — | Codex-backed image generation as a normal tool call, generated pixels shown inline (bring your own Codex credential) |
-| **Persistent memory** | Sessions forget everything | Cross-session facts, corrections and preferences (`memory_add`/`memory_search`, `/memory-*` commands), plus a **Settings → Memory page** on the web: browse and search what the agent remembers, pin/unpin standing rules with a hard budget |
-| **Background tasks** | A long tool call pins the conversation | `bg_run` starts named shell jobs and keeps talking, `bg_logs` reads output **mid-run**, plus a **tasks chip** on the web: it joins the composer's status row while jobs run — live output, one-click kill |
+| Capability | Pi package behavior on DSH |
+|---|---|
+| **MCP** | Lazy proxy with on-demand search/describe, in-session manager, OAuth flows, MCP Apps, prompts, elicitation, sampling and cancellation — [acceptance matrix](../docs/mcp-compatibility.md) |
+| **Subagents** | Pi's Agent tool, background delegation, steering, resume, parent cancellation, per-child model and thinking options |
+| **Side conversations** | `/btw <question>` keeps the side answer outside the main context; an in-window panel supports explicit injection |
+| **Image generation** | Codex-backed image tools with inline rendering; requires a Codex credential and separate live acceptance |
+| **Persistent memory** | `memory_add`/`memory_search` and `/memory-*`, with web browse/search and pin/unpin controls |
+| **Background tasks** | Pi `bg_run`/`bg_logs`, plus a web tasks chip with output and kill controls |
+
+DSH also has native MCP, subagent and job capabilities. This suite exposes the
+original Pi packages through those host services; this table is not a claim
+that the current host lacks equivalent features.
 
 The suite: [`pi-mcp-adapter`](https://www.npmjs.com/package/pi-mcp-adapter) ·
 [`@tintinweb/pi-subagents`](https://www.npmjs.com/package/@tintinweb/pi-subagents) ·
@@ -71,9 +76,8 @@ chip carry the same functionality. (DSH has no way yet for one plugin to declare
 [we've proposed one](https://github.com/deepseek-ai/deepseek-harness/discussions/4543) —
 so the install command names both.)
 
-> **On the DSH `0.1.2-alpha` line?** The sidebar ships per DSH generation:
-> install `dsh-better-sidebar@0.18.0-alpha.0` there (its latest tag serves the
-> rc lines). dsh-work-x itself is one build for every supported generation.
+> Match the sidebar to your DSH host as well. Suite 0.5.0 does not claim
+> compatibility with the historical 0.1.x/alpha host generations.
 
 ## Memory & background tasks
 

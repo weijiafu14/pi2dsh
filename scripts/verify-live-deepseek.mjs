@@ -114,7 +114,7 @@ try {
       commit: dshCommit,
       profile: 'headless',
     },
-    model: { provider: 'deepseek-official', model: 'deepseek-v4-flash' },
+    model: { provider: 'deepseek-official', model: 'deepseek-flash' },
     fixture: {
       piPackage: '@pi2dsh-fixtures/complete@1.2.3',
       generatedBundle: generatedPackage,

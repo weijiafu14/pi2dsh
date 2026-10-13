@@ -43,7 +43,7 @@
 //
 // Types are declared locally: the client packages resolve through the loader's
 // module table at runtime and are not dependencies of this package.
-import { createElement, useEffect, useState, type ReactNode } from 'react'
+import { createElement, useEffect, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { hasAnsi, parseAnsi } from './ansi.js'
 import { parseDiagnosticsWidget, type DiagnosticsView } from './diagnostics-model.js'
 
@@ -71,7 +71,6 @@ interface ClientContext {
 }
 
 /** The framework's global session-list selector hook, narrowed to what is read. */
-type SessionsHook = <T>(select: (state: { current?: string }) => T) => T
 
 interface PanelMessage { role: string, text: string }
 interface PanelThread {
@@ -609,15 +608,14 @@ function markStaged(sessionId: string): () => void {
 /** The session whose conversation is on screen right now, or '' when none
  *  (the New Session draft, a full-page view). Exported for the product layer
  *  (dsh-work-x's side-chat window rides the same rule). */
-export function useOnStage(useSessions: SessionsHook): string {
-  const current = useSessions(state => state.current) ?? ''
-  const [, bump] = useState(0)
-  useEffect(() => {
-    const listener = () => bump(value => value + 1)
+export function useOnStage(): string {
+  // DSH's SessionListState is a catalog, not UI navigation state. The
+  // conversation-scoped beacon lives only while that conversation renders.
+  // Hide during overlapping view transitions rather than guessing ownership.
+  return useSyncExternalStore(listener => {
     stageListeners.add(listener)
     return () => { stageListeners.delete(listener) }
-  }, [])
-  return current !== '' && stagedConversations.has(current) ? current : ''
+  }, () => stagedConversations.size === 1 ? stagedConversations.keys().next().value! : '', () => '')
 }
 
 /** Invisible occupant of a conversation-scoped seat; its mounted lifetime is
@@ -635,8 +633,8 @@ function StageBeacon(props: { sessionId?: string }): ReactNode {
   })
 }
 
-function OverlaySurfaces({ useSessions }: { useSessions: SessionsHook }) {
-  const session = useOnStage(useSessions)
+function OverlaySurfaces() {
+  const session = useOnStage()
   const { threads, surfaces } = useBrowserState(session === '' ? undefined : session)
   const [dismissed, setDismissed] = useState<string[]>([])
 

@@ -455,17 +455,15 @@ export class PiSessionBridge {
         })
       } else if (type === 'tool/result') {
         const message = (data.message ?? {}) as UnknownRecord
-        const blocks = Array.isArray(message.content) ? message.content as UnknownRecord[] : []
-        const tool = blocks.find(block => block.type === 'tool-result')
         merged.push({
           time,
           entry: {
             type: 'message', id: `dsh-${seq}`, timestamp: new Date(time).toISOString(),
             message: {
               role: 'toolResult',
-              toolCallId: tool?.toolCallId,
-              content: dshToPiContent(tool?.content ?? []),
-              isError: tool?.isError === true,
+              toolCallId: message.toolCallId,
+              content: dshToPiContent(message.content ?? []),
+              isError: message.isError === true,
             },
           },
         })

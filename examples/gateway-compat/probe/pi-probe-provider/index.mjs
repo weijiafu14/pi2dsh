@@ -22,7 +22,7 @@ export default function (pi) {
     // Pi's standard $ENV reference becomes DSH's apiKeyEnv credential ref.
     apiKey: '$PROBE_API_KEY',
     models: [{
-      id: process.env.PROBE_MODEL ?? 'deepseek-chat',
+      id: process.env.PROBE_MODEL ?? 'deepseek-flash',
       name: 'Probe Model',
       provider: 'probe',
       api: 'openai-completions',

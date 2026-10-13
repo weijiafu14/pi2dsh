@@ -215,6 +215,9 @@ export class PiBridgedAgentSession {
   #aborted = false
   #liveStreamAttempt: { id: unknown, index: number, ended: boolean } | undefined
   #streamingText = ''
+  #turnAssistant: { turn: number, message: UnknownRecord } | undefined
+  #pendingPrompt: { reject(error: Error): void, dispose(): void } | undefined
+  #promptActive = false
 
   constructor(
     host: SubagentHost,
@@ -362,36 +365,27 @@ export class PiBridgedAgentSession {
     }
     if (type === 'request/header') {
       // The route this child is actually calling, in Pi Model shape.
-      const config = ((event.data as UnknownRecord).config ?? {}) as UnknownRecord
+      const config = (((event.data as UnknownRecord).header as UnknownRecord | undefined)?.config ?? {}) as UnknownRecord
       if (typeof config.model === 'string') {
         this.#model = { id: config.model, provider: String(config.provider ?? '') }
       }
     }
     if (type === 'tools/result' || type === 'tool/result') {
       const data = event.data as UnknownRecord
-      // DSH records the result as a user-role message whose content blocks are
-      // 'tool-result' entries. Pi's contract is a tool_execution_end event per
-      // finished call ({toolCallId, toolName, result, isError}) — pi-subagents
-      // counts its "tool uses" on exactly this event, so missing it read as
-      // "0 tool uses" while the child was really running tools.
       const message = data.message as UnknownRecord | undefined
-      const blocks = Array.isArray(message?.content) ? message.content : []
-      for (const block of blocks) {
-        const record = block as UnknownRecord | undefined
-        if (record?.type !== 'tool-result') continue
-        const callId = String(record.toolCallId ?? (message?.source as UnknownRecord | undefined)?.callId ?? data.callId ?? '')
+      if (message?.role === 'tool') {
+        const callId = String(message.toolCallId ?? '')
         this.#pendingToolCalls.delete(callId)
-        const isError = record.isError === true
+        const isError = message.isError === true
         emit({
           type: 'tool_execution_end',
           toolCallId: callId,
           toolName: this.#toolCallNames.get(callId) ?? '',
-          result: { content: record.content ?? [], isError },
+          result: { content: message.content ?? [], isError },
           isError,
         })
         this.#toolCallNames.delete(callId)
       }
-      if (blocks.length === 0) this.#pendingToolCalls.delete(String(data.callId ?? ''))
     }
     if (type === 'tool/call') {
       const data = event.data as UnknownRecord
@@ -431,6 +425,9 @@ export class PiBridgedAgentSession {
         this.#carried.add(message)
       }
       this.messages.push(message)
+      if (type === 'assistant/message') {
+        this.#turnAssistant = { turn: Number((event.data as UnknownRecord).turn), message }
+      }
       emit({ type: 'message_start', message })
       emit({ type: 'message_end', message })
     })
@@ -442,7 +439,34 @@ export class PiBridgedAgentSession {
       // before the messages it produced have been delivered — Pi's contract is
       // that a completed prompt has already emitted its message events.
       this.#messageProjection = this.#messageProjection.then(() => {
-        emit({ type: 'turn_end', turnIndex: Number((event.data as UnknownRecord).turn ?? 1) - 1, message: { role: 'assistant', content: [] }, toolResults: [] })
+        const data = event.data as UnknownRecord
+        const turn = Number(data.turn)
+        const reason = data.reason as UnknownRecord | undefined
+        const stopReason = reason?.kind === 'error' || reason?.kind === 'blocked' ? 'error'
+          : reason?.kind === 'aborted' ? 'aborted'
+            : reason?.kind === 'max-tokens' ? 'length' : 'stop'
+        let message = this.#turnAssistant?.turn === turn ? this.#turnAssistant.message : undefined
+        const synthetic = message === undefined && stopReason !== 'stop'
+        if (message === undefined && stopReason !== 'stop') {
+          message = { role: 'assistant', content: [], timestamp: Date.now() }
+          this.messages.push(message)
+        }
+        if (message !== undefined) {
+          message.stopReason = stopReason
+          if (stopReason === 'error') {
+            const failure = reason?.error as UnknownRecord | undefined
+            message.errorMessage = reason?.kind === 'blocked' ? 'DSH blocked the child turn before completion'
+              : String(failure?.message ?? 'DSH child turn failed')
+          }
+          // Pi callers inspect the final assistant's stopReason/errorMessage.
+          // This also describes failures before any model output was admitted.
+          if (synthetic) {
+            emit({ type: 'message_start', message })
+            emit({ type: 'message_end', message })
+          }
+        }
+        emit({ type: 'turn_end', turnIndex: turn - 1, message: message ?? { role: 'assistant', content: [], stopReason }, toolResults: [] })
+        emit({ type: 'agent_end', messages: [...this.messages] })
       })
     }
   }
@@ -453,6 +477,12 @@ export class PiBridgedAgentSession {
   }
 
   async prompt(text: string): Promise<void> {
+    if (this.#promptActive) throw new Error('pi2dsh: this child session is already processing a prompt')
+    this.#promptActive = true
+    try { await this.#runPrompt(text) } finally { this.#promptActive = false }
+  }
+
+  async #runPrompt(text: string): Promise<void> {
     // Pi's contract: prompting an aborted session runs it again — the abort
     // suppression above must not outlive the next explicit prompt.
     this.#aborted = false
@@ -475,7 +505,7 @@ export class PiBridgedAgentSession {
         }])
         this.#host.deliver(this.#handle.agent, createUserMessage({
           content: seedBlocks,
-          source: { kind: 'plugin', plugin: this.#host.messageSource },
+          source: { kind: 'pi2dsh', plugin: this.#host.messageSource },
         }), 'inject')
       }
     }
@@ -483,26 +513,42 @@ export class PiBridgedAgentSession {
     // Root subscription for the same reason as the constructor: the child's
     // turn/end dispatches under the child's scope.
     const cordis = unscopedEventContext(this.#host.cordis)
-    const completed = new Promise<void>(resolve => {
-      const off = cordis.on('session/event', (session: UnknownRecord, event: UnknownRecord) => {
+    const message = createUserMessage({
+      content: blocks,
+      source: { kind: 'pi2dsh', plugin: this.#host.messageSource, form: 'relay' },
+    })
+    let turn: number | undefined
+    const offs: Array<() => void> = []
+    const cleanup = (): void => { for (const off of offs.splice(0)) off() }
+    const completed = new Promise<void>((resolve, reject) => {
+      this.#pendingPrompt = { reject, dispose: cleanup }
+      offs.push(cordis.on('agent/inbox/claimed', (payload: UnknownRecord) => {
+        if (payload.agent === this.#handle.agent && (payload.message as UnknownRecord | undefined)?.id === message.id) {
+          turn = Number(payload.turn)
+        }
+      }))
+      offs.push(cordis.on('agent/disposed', (payload: UnknownRecord) => {
+        if (payload.agent === this.#handle.agent) reject(new Error('pi2dsh: child agent was disposed before its prompt completed'))
+      }))
+      offs.push(cordis.on('session/event', (session: UnknownRecord, event: UnknownRecord) => {
         if (session !== this.#session) return
-        if (event.type === 'turn/end') {
-          off()
+        if (event.type === 'turn/end' && turn !== undefined && Number((event.data as UnknownRecord).turn) === turn) {
           resolve()
         }
-      })
-      this.#disposers.push(off)
+      }))
     })
-    this.#host.deliver(this.#handle.agent, createUserMessage({
-      content: blocks,
-      source: { kind: 'plugin', plugin: this.#host.messageSource, form: 'relay' },
-    }), 'followup')
-    await completed
+    try {
+      this.#host.deliver(this.#handle.agent, message, 'followup')
+      await completed
     // The turn's own event resolves `completed`, but message projection awaits
     // the attachment service, so draining that chain here is what makes
     // "prompt() resolved" mean "every message event for this turn has been
     // delivered" — the order a Pi caller reading `session.messages` expects.
-    await this.#messageProjection
+      await this.#messageProjection
+    } finally {
+      cleanup()
+      this.#pendingPrompt = undefined
+    }
   }
 
   // Pi's AgentSession contract (coding-agent agent-session.ts): steer and
@@ -523,7 +569,7 @@ export class PiBridgedAgentSession {
     const blocks = await this.#host.piContentToDsh(content)
     this.#host.deliver(this.#handle.agent, createUserMessage({
       content: blocks,
-      source: { kind: 'plugin', plugin: this.#host.messageSource },
+      source: { kind: 'pi2dsh', plugin: this.#host.messageSource },
     }), mode)
   }
 
@@ -663,6 +709,8 @@ export class PiBridgedAgentSession {
   }
 
   async dispose(): Promise<void> {
+    this.#pendingPrompt?.reject(new Error('pi2dsh: child session was disposed before its prompt completed'))
+    this.#pendingPrompt?.dispose()
     for (const dispose of this.#disposers.splice(0)) {
       try {
         dispose()

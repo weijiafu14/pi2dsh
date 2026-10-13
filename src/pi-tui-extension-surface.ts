@@ -211,7 +211,9 @@ export async function createPiTuiExtensionSurfaceAdapter(
   const extensionService = service(ctx)
   if (extensionService === undefined) return undefined
   const api = extensionService.api()
-  if (api.apiVersion !== 1 || !api.capabilities.has('unstable.surface.handle')) {
+  // API 2 changes client-command contributions, which this adapter does not
+  // register. Raw-component leases and the footer status slot stay unchanged.
+  if (api.apiVersion !== 2 || !api.capabilities.has('unstable.surface.handle')) {
     ctx.logger?.warn(`pi2dsh: piTuiExtensions cannot host Pi components (api=${api.apiVersion}, raw surface=${api.capabilities.has('unstable.surface.handle')})`)
     return undefined
   }
@@ -221,9 +223,13 @@ export async function createPiTuiExtensionSurfaceAdapter(
     // private implementation path is consumed.
     const hostEntry = '@xmoon76/dsh-pi-tui'
     const unstableEntry = '@xmoon76/dsh-pi-tui/extensions/unstable'
+    // DSH resolves Host peers from its own installation. Use its public
+    // module loader when composed; native imports serve standalone tests.
+    const loader = ctx.get('loader', false) as { import(name: string): Promise<unknown> } | undefined
+    const importPublic = (name: string): Promise<unknown> => loader === undefined ? import(name) : loader.import(name)
     const [hostModule, unstableModule] = await Promise.all([
-      import(hostEntry) as Promise<PiTuiPublicModule>,
-      import(unstableEntry) as Promise<PiTuiUnstableModule>,
+      importPublic(hostEntry) as Promise<PiTuiPublicModule>,
+      importPublic(unstableEntry) as Promise<PiTuiUnstableModule>,
     ])
     if (unstableModule.UNSTABLE_API_LEVEL !== 1) {
       ctx.logger?.warn(`pi2dsh: unsupported dsh-pi-tui unstable API level ${unstableModule.UNSTABLE_API_LEVEL}`)

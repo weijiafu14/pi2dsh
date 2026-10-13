@@ -32,10 +32,10 @@
 //
 //   node scripts/verify-subagents-lifecycle-e2e.mjs [community/subagents-lifecycle-e2e.json]
 
-import { installedCoreVersions } from './lib/e2e-harness.mjs'
+import { writeHostConfig, installedCoreVersions } from './lib/e2e-harness.mjs'
 import { execFile as execFileCallback } from 'node:child_process'
 import { spawn } from 'node:child_process'
-import { randomBytes } from 'node:crypto'
+import { createHash, randomBytes } from 'node:crypto'
 import { readFileSync, existsSync } from 'node:fs'
 import { chmod, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
@@ -46,9 +46,11 @@ const execFile = promisify(execFileCallback)
 const projectRoot = resolve(new URL('..', import.meta.url).pathname)
 const outPath = resolve(process.argv[2] ?? 'community/subagents-lifecycle-e2e.json')
 
-const DSH_CLI_SPEC = process.env.PI2DSH_DSH_CLI_SPEC ?? '@deepseek-ai/dsh@0.1.1-rc.2'
+const DSH_CLI_SPEC = process.env.PI2DSH_DSH_CLI_SPEC ?? '@deepseek-ai/dsh@0.2.0-rc.2'
 const ENGINE_SPEC = process.env.PI2DSH_ENGINE_SPEC ?? projectRoot
-const SUBAGENTS_SPEC = process.env.PI2DSH_SUBAGENTS_SPEC ?? '@tintinweb/pi-subagents@0.18.0'
+const engineTarballSha256 = ENGINE_SPEC.startsWith('file:')
+  ? createHash('sha256').update(readFileSync(ENGINE_SPEC.slice(5))).digest('hex') : undefined
+const SUBAGENTS_SPEC = process.env.PI2DSH_SUBAGENTS_SPEC ?? '@tintinweb/pi-subagents@0.20.0'
 // Cross-restart reopen probe (public Pi ABI: createAgentSession + SessionManager.open).
 const PROBE_DIR = join(projectRoot, 'fixtures', 'subagent-archive-probe')
 const READINESS_PROBE = join(projectRoot, 'fixtures', 'subagent-readiness-probe')
@@ -58,6 +60,7 @@ const log = message => console.log(`[subagents-lifecycle] ${message}`)
 
 const startedAt = new Date().toISOString()
 const scenarios = {}
+const modelOnly = process.env.PI2DSH_LIFECYCLE_ONLY === 'model-follow'
 const record = async status => {
   await mkdir(resolve(outPath, '..'), { recursive: true })
   await writeFile(outPath, `${JSON.stringify({
@@ -66,6 +69,7 @@ const record = async status => {
     scenario: 'pi-subagents-lifecycle (steer / resume / stop / model-follow / explicit-model-thinking)',
     cliSpec: DSH_CLI_SPEC,
     engineSpec: ENGINE_SPEC,
+    engineTarballSha256,
     subagentsSpec: SUBAGENTS_SPEC,
     status,
     selection: process.env.PI2DSH_LIFECYCLE_ONLY ?? 'all',
@@ -93,7 +97,7 @@ if (apiKey === undefined) {
 
 const root = process.env.PI2DSH_SUBAGENTS_E2E_ROOT ?? await mkdtemp('/tmp/pi2dsh-subagents-lifecycle.')
 const home = join(root, 'dsh-home')
-const cliDir = join(root, 'cli')
+const cliDir = resolve(process.env.PI2DSH_DSH_CWD ?? join(root, 'cli'))
 const workDir = join(root, 'workspace')
 await mkdir(workDir, { recursive: true })
 log(`scratch: ${root}`)
@@ -278,7 +282,7 @@ try {
   // A second REAL route for the model-follow scenario: an llm-pi-ai alias of
   // the same DeepSeek endpoint (same key, same wire — only the route name
   // differs). No mock: requests through it are real model calls.
-  await writeFile(join(home, 'settings.yaml'), [
+  await writeHostConfig(home, [
     'llm-pi-ai:',
     '  providers:',
     '    work-gw:',
@@ -287,7 +291,7 @@ try {
     '      baseURL: https://api.deepseek.com/v1',
     '      apiKeyEnv: DEEPSEEK_API_KEY',
     '      models:',
-    '        - id: deepseek-chat',
+    '        - id: deepseek-flash',
     '          name: Work Gateway Model',
     '          contextWindow: 131072',
     '',
@@ -296,7 +300,7 @@ try {
   // ======================================================================
   // Scenario 1 — steer: a mid-run steer_subagent reaches the child model.
   // ======================================================================
-  {
+  if (!modelOnly) {
     const STEER_TAG = `STEER_${RUN_TAG}`
     const steeredPath = join(workDir, `steered-${RUN_TAG}.txt`)
     const alphaPath = join(workDir, `alpha-${RUN_TAG}.txt`)
@@ -378,7 +382,7 @@ try {
   // reads — the parent's prompt names the path, never the word — so the tag
   // can arrive in the parent's log through the child's report alone.
   // ======================================================================
-  {
+  if (!modelOnly) {
     const REASON = `FAILCAUSE_${randomBytes(6).toString('hex').toUpperCase()}`
     const reasonPath = join(workDir, `reason-${RUN_TAG}.txt`)
     await writeFile(reasonPath, `${REASON}\n`)
@@ -410,7 +414,7 @@ try {
         .filter(c => c.data?.name === 'get_subagent_result')
         .map(c => c.data?.callId))
       reportCarried = parent.events.some(e => e.type === 'tool/result'
-        && (e.data?.message?.content ?? []).some(b => reportCallIds.has(b.toolCallId) && JSON.stringify(b).includes(REASON)))
+        && reportCallIds.has(e.data?.message?.toolCallId) && JSON.stringify(e.data.message.content).includes(REASON))
       if (reportCallIds.size === 0) problems.push('parent never called get_subagent_result')
       if (!reportCarried) problems.push('the failure reason never appeared inside a get_subagent_result result block')
     }
@@ -429,7 +433,7 @@ try {
   // Model-compliance failures (the parent grabbing bash/read itself) get ONE
   // retry — they falsify the evidence, not the feature.
   // ======================================================================
-  for (let resumeAttempt = 1; resumeAttempt <= 3; resumeAttempt += 1) {
+  for (let resumeAttempt = 1; !modelOnly && resumeAttempt <= 3; resumeAttempt += 1) {
     const CODEWORD = `CODEWORD_${randomBytes(6).toString('hex').toUpperCase()}`
     const secretPath = join(workDir, `secret-${RUN_TAG}-${resumeAttempt}.txt`)
     const recallPath = join(workDir, `recall-${RUN_TAG}-${resumeAttempt}.txt`)
@@ -507,7 +511,7 @@ try {
   // archive identity is the same conversation (pi-subagents' tombstone
   // resurrect shape: SessionManager.open(file) -> createAgentSession).
   // ======================================================================
-  {
+  if (!modelOnly) {
     const CODEWORD = `ARCHIVE_${randomBytes(6).toString('hex').toUpperCase()}`
     const secretPath = join(workDir, `archive-secret-${RUN_TAG}.txt`)
     const identityPath = join(workDir, `archive-identity-${RUN_TAG}.json`)
@@ -580,13 +584,13 @@ try {
   // ======================================================================
   // Scenario 3 — stop: interrupting the parent stops the running child.
   // ======================================================================
-  if (process.env.PI2DSH_SKIP_TUI !== undefined) {
-    scenarios.stop = { status: 'skipped', reason: 'PI2DSH_SKIP_TUI set' }
+  if (modelOnly || process.env.PI2DSH_SKIP_TUI !== undefined) {
+    scenarios.stop = { status: 'skipped', reason: modelOnly ? 'not selected (model-follow only)' : 'PI2DSH_SKIP_TUI set' }
   } else {
     const STOP_TAG = `SHOULD_NOT_EXIST_${RUN_TAG}`
     const cPath = join(workDir, `stopped-agent-output-${RUN_TAG}.txt`)
     await rm(cPath, { force: true })
-    const TMUX_SESSION = 'pi2dsh-subagents-lifecycle-tui'
+    const TMUX_SESSION = `pi2dsh-subagents-lifecycle-${RUN_TAG}`
     const tuiVersion = JSON.parse(await readFile(
       join(home, 'profiles', 'tui', 'node_modules', '@deepseek-harness-tui', 'dsh-tui', 'package.json'), 'utf8')).version
     await execFile('tmux', ['kill-session', '-t', TMUX_SESSION]).catch(() => {})
@@ -607,7 +611,19 @@ try {
       const composerDeadline = Date.now() + 120_000
       for (;;) {
         const screen = await capture()
-        if (/(Ctrl|\/help|❯|›|deepseek)/iu.test(screen)) break
+        if (/Esc skip the guide/iu.test(screen)) {
+          await execFile('tmux', ['send-keys', '-t', TMUX_SESSION, 'Escape'])
+          await delay(500)
+          continue
+        }
+        if (/Say something, or type \/ for commands/u.test(screen) || (/⌸ ❯/u.test(screen) && /Context loaded/u.test(screen))) {
+          await delay(1000)
+          if (/Esc skip the guide/iu.test(await capture())) {
+            await execFile('tmux', ['send-keys', '-t', TMUX_SESSION, 'Escape'])
+            continue
+          }
+          break
+        }
         if (Date.now() > composerDeadline) throw new Error('TUI composer never appeared')
         await delay(1500)
       }
@@ -706,7 +722,7 @@ try {
     const FOLLOW_TAG = `FOLLOW_${RUN_TAG}`
     const followMarker = join(workDir, `model-follow-${RUN_TAG}.txt`)
     await rm(followMarker, { force: true })
-    const TMUX_SESSION = 'pi2dsh-subagents-modelfollow-tui'
+    const TMUX_SESSION = `pi2dsh-subagents-modelfollow-${RUN_TAG}`
     await execFile('tmux', ['kill-session', '-t', TMUX_SESSION]).catch(() => {})
     const launcher = join(root, 'launch-tui-follow.sh')
     await writeFile(launcher, `#!/bin/sh\nexec "${dshBin}" --profile tui\n`)
@@ -724,7 +740,19 @@ try {
       const composerDeadline = Date.now() + 120_000
       for (;;) {
         const screen = await capture()
-        if (/(Ctrl|\/help|❯|›|deepseek)/iu.test(screen)) break
+        if (/Esc skip the guide/iu.test(screen)) {
+          await execFile('tmux', ['send-keys', '-t', TMUX_SESSION, 'Escape'])
+          await delay(500)
+          continue
+        }
+        if (/Say something, or type \/ for commands/u.test(screen) || (/⌸ ❯/u.test(screen) && /Context loaded/u.test(screen))) {
+          await delay(1000)
+          if (/Esc skip the guide/iu.test(await capture())) {
+            await execFile('tmux', ['send-keys', '-t', TMUX_SESSION, 'Escape'])
+            continue
+          }
+          break
+        }
         if (Date.now() > composerDeadline) throw new Error('TUI composer never appeared')
         await delay(1500)
       }
@@ -732,10 +760,21 @@ try {
       // is DSH_HOME-level persistent, so a reused home may remember work-gw
       // from an earlier run — force the official route first, then the later
       // switch is observable as a CHANGE.
-      await execFile('tmux', ['send-keys', '-t', TMUX_SESSION, '-l', '/model deepseek-official/deepseek-v4-flash'])
+      await execFile('tmux', ['send-keys', '-t', TMUX_SESSION, '-l', '/model deepseek-official/deepseek-flash'])
       await delay(800)
       await execFile('tmux', ['send-keys', '-t', TMUX_SESSION, 'Enter'])
       await delay(2500)
+      // The home composer transitions to the chat after /model. Startup may
+      // take longer than a fixed sleep; do not type the warmup into that gap.
+      // On the home slash menu, the first Enter accepts the completion.
+      if (/⌘ \/model/u.test(await capture())) {
+        await execFile('tmux', ['send-keys', '-t', TMUX_SESSION, 'Enter'])
+      }
+      const chatDeadline = Date.now() + 120_000
+      while (!/⌸ ❯/u.test(await capture())) {
+        if (Date.now() > chatDeadline) throw new Error('chat composer did not become ready after /model')
+        await delay(1000)
+      }
       // Turn 1 on the DEFAULT route: pins the parent's creation-time snapshot
       // in the durable log, so the later switch is observable as a CHANGE.
       await execFile('tmux', ['send-keys', '-t', TMUX_SESSION, '-l', `Reply with exactly: warmup-${FOLLOW_TAG}`])
@@ -776,7 +815,7 @@ try {
       // The real /model switch, parameterized: the picker's Enter confirms
       // whatever is highlighted (the CURRENT model), so driving the menu from
       // tmux re-selects the old route — the argument form switches exactly.
-      await execFile('tmux', ['send-keys', '-t', TMUX_SESSION, '-l', '/model work-gw/deepseek-chat'])
+      await execFile('tmux', ['send-keys', '-t', TMUX_SESSION, '-l', '/model work-gw/deepseek-flash'])
       await delay(800)
       await execFile('tmux', ['send-keys', '-t', TMUX_SESSION, 'Enter'])
       await delay(2500)
@@ -832,7 +871,7 @@ try {
       try {
         const explicitMessage = [
           `Call the Agent tool exactly once with description "explicit route and effort probe",`,
-          `subagent_type general-purpose, name "explicit-probe", model "deepseek-official/deepseek-v4-flash",`,
+          `subagent_type general-purpose, name "explicit-probe", model "deepseek-official/deepseek-flash",`,
           `thinking "max", run_in_background false, and prompt: "Run one bash command that writes the single word`,
           `${EXPLICIT_TAG} into ${explicitMarker}, then reply done."`,
           `Do not run bash yourself. Then reply done.`,
@@ -866,7 +905,7 @@ try {
             explicitProblems.push(`the Agent tool arguments are not valid JSON (${rawAgentArgs})`)
           }
         }
-        if (String(agentArgs.model ?? '') !== 'deepseek-official/deepseek-v4-flash') {
+        if (String(agentArgs.model ?? '') !== 'deepseek-official/deepseek-flash') {
           explicitProblems.push(`the parent did not explicitly pass the requested child model (${JSON.stringify(agentArgs)})`)
         }
         if (String(agentArgs.thinking ?? '') !== 'max') {
@@ -881,7 +920,7 @@ try {
         const childConfigs = explicitChild === undefined ? [] : configsOf(explicitChild)
         const childFirst = childConfigs[0] ?? {}
         if (String(childFirst.provider ?? '') !== 'deepseek-official'
-          || String(childFirst.model ?? '') !== 'deepseek-v4-flash') {
+          || String(childFirst.model ?? '') !== 'deepseek-flash') {
           explicitProblems.push(`the child did not use the explicit route (${JSON.stringify(childConfigs)})`)
         }
         if (String(childFirst.reasoningEffort ?? '') !== 'max') {
@@ -906,6 +945,7 @@ try {
         }
       }
     } catch (error) {
+      await writeFile(join(root, 'model-follow-failure-screen.txt'), await capture().catch(() => 'TUI exited'))
       scenarios.modelFollow = { status: 'failed', problems: [...problems, String((error && error.message) || error)] }
       scenarios.explicitModelThinking ??= { status: 'failed', problems: ['model-follow setup failed before the explicit child scenario'] }
     } finally {
@@ -926,7 +966,7 @@ try {
   // the negative child, restricted to `tools: read` with extensions off,
   // must show no probe_touch call and produce no file.
   // ======================================================================
-  {
+  if (!modelOnly) {
     const EXT_TAG = `EXT_${RUN_TAG}`
     const touchedPath = join(workDir, `ext-touched-${RUN_TAG}.txt`)
     const deniedPath = join(workDir, `ext-denied-${RUN_TAG}.txt`)

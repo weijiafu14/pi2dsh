@@ -19,11 +19,17 @@ through DSH's own approval and rendering
 end is listed in [What actually works today](#what-actually-works-today);
 nothing outside that table is claimed.
 
-pi2dsh `0.25.2` targets Pi `0.84.1` and uses one engine for DSH `0.1.1-rc.2`
-and `0.1.5-rc.1` / `0.1.5-rc.2`. Exact tested workflows and exclusions are in
-the [version acceptance record](community/dsh-015-compat/README.md) and
-[rc.2 checks](community/dsh-015-rc2-20260914/README.md). Cross-version saved-data
-migration is outside this release.
+Version support is explicit:
+
+| pi2dsh | DSH host | Maintenance |
+|---|---|---|
+| 0.26.0 | 0.2.0-rc.2 | [Release verification](community/release-0.26.0/README.md) |
+| 0.25.2 | 0.1.5-rc.2 | Frozen checkpoint: [release evidence](community/release-0.25.2/README.md) |
+
+Pi extension semantics remain pinned to 0.84.1. New engine releases target the
+validated current DSH line; historical fixes start from their release tag when
+needed. DSH owns stored-session format migration. An untested host version is
+not included in the compatibility declaration.
 
 ## Why this exists
 

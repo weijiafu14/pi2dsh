@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { PiComponentRelay } from '../src/pi-component-relay.js'
 import {
   PiTuiExtensionSurfaceAdapter,
+  createPiTuiExtensionSurfaceAdapter,
   type PiTuiExtensionServiceLike,
   type PiTuiUnstableFacadeLike,
 } from '../src/pi-tui-extension-surface.js'
@@ -66,8 +67,8 @@ function createExtensionHarness() {
   }
   const service = {
     api: () => ({
-      apiVersion: 1,
-      hostVersion: '0.3.4',
+      apiVersion: 2,
+      hostVersion: '0.5.1',
       capabilities: new Set(['slot.chrome.footer.status', 'unstable.surface.handle']),
       deprecations: new Map(),
     }),
@@ -102,6 +103,23 @@ function createExtensionHarness() {
 }
 
 describe('dsh-pi-tui public surface backend', () => {
+  it('loads API 2 public modules through the Host loader, not native Node peer resolution', async () => {
+    const harness = createExtensionHarness()
+    const imported: string[] = []
+    const loader = { async import(name: string) {
+      imported.push(name)
+      return name.endsWith('/unstable')
+        ? { UNSTABLE_API_LEVEL: 1, unstable: () => harness.unstable }
+        : { LOCAL_COMMANDS: new Set(['login', 'tasks']) }
+    } }
+    const adapter = await createPiTuiExtensionSurfaceAdapter({
+      get: name => name === 'piTuiExtensions' ? harness.service : name === 'loader' ? loader : undefined,
+    }, 'any-pi-package')
+    expect(imported).toEqual(['@xmoon76/dsh-pi-tui', '@xmoon76/dsh-pi-tui/extensions/unstable'])
+    expect(adapter?.nativeCommands.has('login')).toBe(true)
+    adapter?.dispose()
+  })
+
   it('mounts every Pi custom component through the same raw public seam', async () => {
     const harness = createExtensionHarness()
     const adapter = new PiTuiExtensionSurfaceAdapter(

@@ -67,15 +67,16 @@ Logged in to OpenAI (ChatGPT Plus/Pro); 7 models available
 
 ## 3. Look at what it wrote
 
-The engine writes exactly one thing into your settings — a route naming a
-credential reference:
+The engine uses DSH's settings service to store a route in the active profile's
+`llm-pi-ai` configuration, with only a credential reference:
 
 ```yaml
-llm-pi-ai:
-  providers:
-    openai-codex:
-      displayName: OpenAI (ChatGPT Plus/Pro)
-      apiKeyEnv: PI2DSH_OAUTH_OPENAI_CODEX
+- id: llm-pi-ai
+  config:
+    providers:
+      openai-codex:
+        displayName: OpenAI (ChatGPT Plus/Pro)
+        apiKeyEnv: PI2DSH_OAUTH_OPENAI_CODEX
 ```
 
 No protocol, no endpoint, no model list. That is deliberate: naming a protocol

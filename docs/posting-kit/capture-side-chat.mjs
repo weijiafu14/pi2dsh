@@ -28,7 +28,10 @@ await composer.pressSequentially(QUESTION, { delay: 14 })
 await page.keyboard.press('Enter')
 
 const panel = page.locator('[data-dsh-x="side-chat"]')
-await panel.waitFor({ state: 'visible', timeout: 120_000 })
+await panel.waitFor({ state: 'visible', timeout: 120_000 }).catch(async error => {
+  await shot('failure-side-panel')
+  throw error
+})
 await panel.getByText(/herbert/iu).last().waitFor({ state: 'visible', timeout: 120_000 })
 const panelText = await panel.innerText()
 if (panelText.includes('<system-reminder>') || panelText.includes('Instructions from: AGENTS.md')) {

@@ -7,14 +7,22 @@ import { childLabel, createBridgedAgentSession, type SubagentHost } from '../src
 type UnknownRecord = Record<string, unknown>
 
 function makeHost(ctx: Context, deliveries: Array<{ mode: string, message: unknown }>): SubagentHost {
+  let nextTurn = 0
+  ctx.on('session/event', (_session, event) => {
+    if (event.type === 'turn/start') nextTurn = Math.max(nextTurn, event.data.turn)
+  })
   return {
     cordis: ctx,
     cwd: () => process.cwd(),
     parentSessionId: () => 'parent-session',
     parentDelegationDepth: () => 0,
     piContentToDsh: async content => (Array.isArray(content) ? content : []) as never,
-    deliver: (_agent, message, mode) => {
+    deliver: (agent, message, mode) => {
       deliveries.push({ mode, message })
+      if (mode === 'followup') {
+        ;(ctx as unknown as { emit(name: string, payload: unknown): void })
+          .emit('agent/inbox/claimed', { agent, message, turn: ++nextTurn })
+      }
     },
     messageFromSessionEvent: async event => {
       if (event.type === 'assistant/message') {
@@ -268,7 +276,7 @@ describe('Pi createAgentSession bridged onto real DSH agents', () => {
     // composition. This package does not depend on it, so the core union here
     // does not carry the name and the read is widened deliberately — the event
     // is the host's, not ours to declare.
-    const descriptor = session.events.find(event => (event.type as string) === 'subagent/descriptor')
+    const descriptor = session.snapshotEvents().find(event => (event.type as string) === 'subagent/descriptor')
     expect(descriptor).toBeDefined()
     expect((descriptor as unknown as { data: UnknownRecord }).data).toEqual({
       version: 2,
@@ -302,7 +310,7 @@ describe('Pi createAgentSession bridged onto real DSH agents', () => {
       sessionManager: { getSessionFile: () => undefined },
     })
 
-    const descriptor = session.events.find(event => (event.type as string) === 'subagent/descriptor')
+    const descriptor = session.snapshotEvents().find(event => (event.type as string) === 'subagent/descriptor')
     expect((descriptor as unknown as { data: UnknownRecord }).data.label).toBe('Side: pi-btw side conversation')
   })
 
@@ -432,9 +440,9 @@ describe('Pi createAgentSession bridged onto real DSH agents', () => {
         turn: 1,
         step: 1,
         message: {
-          role: 'user',
+          role: 'tool',
           source: { kind: 'tool', callId: 'call-1' },
-          content: [{ type: 'tool-result', toolCallId: 'call-1', content: [{ type: 'text', text: 'ok' }], isError: false }],
+          toolCallId: 'call-1', content: [{ type: 'text', text: 'ok' }], isError: false,
         },
       },
     })
@@ -873,7 +881,7 @@ describe('modern DSH child creation and stream contract', () => {
     expect(createOptions?.parentAgent).toBe(parent)
     expect(schemaScopes).toEqual([agent])
     expect(restrictions).toEqual([{ allow: ['read'] }])
-    expect(session.events).toEqual(expect.arrayContaining([
+    expect(session.snapshotEvents()).toEqual(expect.arrayContaining([
       expect.objectContaining({ type: 'approval/policy', data: { policy: 'never', source: 'delegation' } }),
     ]))
     const updates: string[] = []

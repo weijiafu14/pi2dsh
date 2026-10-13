@@ -108,7 +108,7 @@ async function stageProbeFixture(scratch, proxyBase) {
     pi: { extensions: ['./index.mjs'] },
   }, null, 2)}\n`)
   const model = (id, { maxTokens }) => ({
-    id: 'deepseek-chat',
+    id: 'deepseek-flash',
     name: `Probe ${id}`,
     provider: id,
     api: 'openai-completions',
@@ -213,7 +213,7 @@ try {
     cli: { spec: DSH_CLI_SPEC, installed: cliVersion },
     engine: { spec: engineSpec.startsWith('file:') ? 'file:<working-tree>' : engineSpec, installed: engineVersion },
     upstream: process.env.PROXY_UPSTREAM ?? 'https://api.deepseek.com',
-    model: 'deepseek-chat',
+    model: 'deepseek-flash',
   }
 
   let seenSessions = []
@@ -227,7 +227,7 @@ try {
     log(`case ${id} …`)
     const ws = join(scratch, `ws-${id}`)
     await mkdir(ws, { recursive: true })
-    await harness.useDefaultModel(home, provider, 'deepseek-chat')
+    await harness.useDefaultModel(home, provider, 'deepseek-flash')
     const before = await sessionFiles(home)
     seenSessions = before
     seenRequests = (await readRecorded()).length
@@ -346,7 +346,7 @@ try {
       // The property under test is that a completion running into thousands of
       // tokens arrives complete: the end marker lands, and the turn closes as
       // completed rather than a max-tokens cut. (An integer-list variant was
-      // abandoned honestly: deepseek-chat refuses to hand-write 3000 integers
+      // abandoned honestly: deepseek-flash refuses to hand-write 3000 integers
       // with or without tools, so that prompt tested obedience, not transport.)
       const text = assistantText(records)
       assert(text.length >= 9000, `only ${text.length} chars — not a multi-thousand-token completion`)

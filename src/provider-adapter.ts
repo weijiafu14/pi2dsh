@@ -449,7 +449,7 @@ const DSH_PROTOCOLS = new Set(['openai-completions', 'openai-responses', 'anthro
 // forwarded, because one unknown spelling rejects the entire section.
 const DSH_MODALITIES = new Set(['text', 'image'])
 const DSH_THINKING_FORMATS = new Set([
-  'openai', 'deepseek', 'openrouter', 'together', 'zai', 'qwen',
+  'openai', 'deepseek', 'openrouter', 'together', 'baseten', 'zai', 'qwen',
   'chat-template', 'qwen-chat-template', 'string-thinking', 'ant-ling',
 ])
 const DSH_MAX_TOKENS_FIELDS = new Set(['max_completion_tokens', 'max_tokens'])
@@ -475,6 +475,9 @@ const DSH_COMPAT_FIELD_PROTOCOLS = {
   supportsFinishReason: COMPLETIONS,
   chatTemplateArgs: COMPLETIONS,
   supportsThinkingTokenBudget: COMPLETIONS,
+  thinkingTokenBudgetField: COMPLETIONS,
+  vllmPriority: COMPLETIONS,
+  supportsMaxOutputTokens: RESPONSES,
   maxTokensField: COMPLETIONS,
   requiresToolResultName: COMPLETIONS,
   requiresAssistantAfterToolResult: COMPLETIONS,
@@ -491,11 +494,7 @@ const DSH_COMPAT_FIELD_PROTOCOLS = {
   forceAdaptiveThinking: ANTHROPIC,
   allowEmptySignature: ANTHROPIC,
   supportsStrictTools: ANTHROPIC,
-} satisfies Record<keyof PiAiCompatProfile, ReadonlySet<string>> & Record<string, ReadonlySet<string>>
-// The intersection keeps the drift gate DUAL-GENERATION: the first member
-// still fails the build when the installed line ADDS a profile field we have
-// not deliberately assigned, while the index-signature member admits keys a
-// NEWER line defines that the installed (older) line's keyof does not.
+} satisfies Record<keyof PiAiCompatProfile, ReadonlySet<string>>
 
 function recordOf(value: unknown): UnknownRecord | undefined {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -544,9 +543,13 @@ function compatProfileOf(value: unknown, api: string | undefined): UnknownRecord
     const candidate = compat[field]
     if (field === 'maxTokensField') {
       if (typeof candidate === 'string' && DSH_MAX_TOKENS_FIELDS.has(candidate)) output[field] = candidate
+    } else if (field === 'vllmPriority') {
+      if (typeof candidate === 'number' && Number.isSafeInteger(candidate)) output[field] = candidate
+    } else if (field === 'thinkingTokenBudgetField') {
+      if (candidate === 'thinking_token_budget' || candidate === 'thinking_budget' || candidate === 'thinking_budget_tokens') output[field] = candidate
     } else if (field === 'thinkingFormat') {
       if (typeof candidate === 'string' && DSH_THINKING_FORMATS.has(candidate)) output[field] = candidate
-    } else if (field === 'chatTemplateKwargs') {
+    } else if (field === 'chatTemplateKwargs' || field === 'chatTemplateArgs') {
       const kwargs = chatTemplateKwargsOf(candidate)
       if (kwargs !== undefined) output[field] = kwargs
     } else if (field === 'cacheControlFormat') {

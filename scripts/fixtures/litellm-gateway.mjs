@@ -15,8 +15,8 @@ const port = Number(process.env.PORT ?? 41888)
 const gatewayKey = process.env.LITELLM_GATEWAY_KEY
 const upstreamKey = process.env.UPSTREAM_API_KEY
 const upstreamBase = process.env.UPSTREAM_BASE_URL ?? 'https://api.deepseek.com'
-const modelName = process.env.GATEWAY_MODEL_NAME ?? 'deepseek-chat'
-const upstreamModel = process.env.UPSTREAM_MODEL ?? 'deepseek-chat'
+const modelName = process.env.GATEWAY_MODEL_NAME ?? 'deepseek-flash'
+const upstreamModel = process.env.UPSTREAM_MODEL ?? 'deepseek-flash'
 if (!gatewayKey || !upstreamKey) {
   console.error('[litellm-gateway] LITELLM_GATEWAY_KEY and UPSTREAM_API_KEY are required')
   process.exit(1)

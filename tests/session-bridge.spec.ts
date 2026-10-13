@@ -77,7 +77,7 @@ describe("buildContextEntries is the model's view, not the whole log", () => {
       model: 'test',
     })
     session.append('user/message', createUserMessage({ content: summary, source: { kind: 'user' } }), {
-      surfaceOp: { op: 'replace', start: first.seq, end: second.seq },
+      surfaceOp: { op: 'replace', startSeq: first.seq, endSeq: second.seq },
       sourceEventSeqs: [startEvent.seq, summaryEvent.seq, ...shadowedSeqs],
     })
 
@@ -149,7 +149,7 @@ describe('Pi session semantics over a DSH durable session', () => {
       },
       {
         type: 'tool/result', seq: 3, time: 4000,
-        data: { message: { content: [{ type: 'tool-result', toolCallId: 'c1', content: [{ type: 'text', text: 'ok' }], isError: false }] } },
+        data: { message: { role: 'tool', toolCallId: 'c1', content: [{ type: 'text', text: 'ok' }], isError: false } },
       },
     ])
     bridge.appendCustomEntry('sess-2', 'checkpoint', 42)

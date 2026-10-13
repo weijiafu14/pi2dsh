@@ -11,8 +11,26 @@ import { execFile as execFileCallback } from 'node:child_process'
 import { chmod, mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
 import { promisify } from 'node:util'
+import { parse, stringify } from 'yaml'
 
 const execFile = promisify(execFileCallback)
+
+/** Configure published DSH before boot; settings.yaml is only a legacy importer. */
+export async function writeHostConfig(home, sections) {
+  const path = join(home, 'cordis.patch.yml')
+  const document = typeof sections === 'string' ? parse(sections) : sections
+  let rows = []
+  try { rows = parse(await readFile(path, 'utf8')) ?? [] } catch (error) {
+    if (error.code !== 'ENOENT') throw error
+  }
+  assert(Array.isArray(rows), 'expected a Cordis patch list')
+  for (const [id, config] of Object.entries(document)) {
+    const row = rows.find(row => row.id === id)
+    if (row) row.config = { ...row.config, ...config }
+    else rows.push({ id, config })
+  }
+  await writeFile(path, stringify(rows))
+}
 
 /** Resolve the running CLI's actual dependency graph in npm and pnpm layouts. */
 export function installedCoreVersions(bin) {
@@ -251,13 +269,9 @@ export function createE2eHarness({ dshRoot, directDshBin, dshBin, dshCwd }) {
    * CLI has no --model flag; the selection is settings.
    */
   async function useDefaultModel(home, provider, model, reasoningEffort) {
-    await writeFile(join(home, 'settings.yaml'), [
-      'agent-default-model:',
-      `  provider: ${provider}`,
-      `  model: ${model}`,
-      ...(reasoningEffort === undefined ? [] : [`  reasoningEffort: ${reasoningEffort}`]),
-      '',
-    ].join('\n'))
+    await writeHostConfig(home, { 'agent-default-model': {
+      provider, model, ...(reasoningEffort === undefined ? {} : { reasoningEffort }),
+    } })
   }
 
   /** Session records from the session log(s) a scenario's home produced. */
@@ -267,12 +281,15 @@ export function createE2eHarness({ dshRoot, directDshBin, dshBin, dshCwd }) {
     // its own expectation (mcp-at-scale runs two prompts = two sessions) and
     // gets every session's records back, in file order.
     const files = (await filesBelow(join(home, 'sessions'))).filter(path => isSessionLog(path)).sort()
-    assert.equal(files.length, expect, `expected ${expect} session log(s), found ${files.length}:\n  ${files.join('\n  ')}`)
-    const all = []
+    const runs = []
     for (const file of files) {
-      all.push(...(await readFile(file, 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line)))
+      const events = (await readFile(file, 'utf8')).split('\n').filter(Boolean).map(line => JSON.parse(line))
+      // Web now creates a default blank Session before the user's chosen
+      // workspace. Only logs with a real turn belong to these workflow runs.
+      if (events.some(event => event.type === 'turn/start')) runs.push({ file, events })
     }
-    return all
+    assert.equal(runs.length, expect, `expected ${expect} session(s) with turns, found ${runs.length}:\n  ${runs.map(run => run.file).join('\n  ')}`)
+    return runs.flatMap(run => run.events)
   }
 
   return { makeHome, useJsonlSessions, useDefaultModel, sessionRecords }

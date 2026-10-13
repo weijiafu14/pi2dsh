@@ -214,7 +214,7 @@ describe('an installed Pi package in the real DSH runtime', () => {
     agent.ctx = agentScope.ctx
     const disposeAgent = ctx.agents.register(agent as never)
 
-    ctx.emit('agent/session-start', { agent: agent as never, source: 'fresh' as never })
+    await disposeAgent
     await settle()
     expect(ctx.tools.schemas(agent as never).map(tool => tool.name).sort()).toEqual([
       'pi_api_probe', 'pi_ask_probe', 'pi_exec_probe', 'pi_greet', 'pi_image_probe', 'pi_message_probe',
@@ -341,7 +341,7 @@ describe('an installed Pi package in the real DSH runtime', () => {
     // the proof is the session log, not the agent's inbox: routing inject
     // through the inbox meant a turn cancelled in between dropped a message
     // the package had already been told was delivered.
-    const injectedEvents = session.events.filter(event =>
+    const injectedEvents = session.snapshotEvents().filter(event =>
       event.type === 'user/message'
       && (event.data.source as { plugin?: string } | undefined)?.plugin === 'pi2dsh:@pi2dsh-fixtures/complete')
     expect(injectedEvents).toHaveLength(1)
@@ -350,7 +350,7 @@ describe('an installed Pi package in the real DSH runtime', () => {
     expect(steered).toHaveLength(1)
     expect(followedUp).toHaveLength(1)
     for (const delivered of [...steered, ...followedUp]) {
-      expect(delivered).toMatchObject({ source: { kind: 'plugin', plugin: 'pi2dsh:@pi2dsh-fixtures/complete' } })
+      expect(delivered).toMatchObject({ source: { kind: 'pi2dsh', plugin: 'pi2dsh:@pi2dsh-fixtures/complete' } })
     }
 
     const command = await ctx.commands.execute(agent as never, '/pi-hello Ada', [], signal)
@@ -698,7 +698,7 @@ describe("a Pi tool's own system-prompt contributions", () => {
 
     const ctx = new Context()
     await ctx.plugin(SessionStore)
-    await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false, persona: 'Base DSH prompt.' })
+    await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false, personaPrefix: 'Base DSH prompt.' })
     await ctx.plugin(ToolRuntime)
     await ctx.plugin(CommandRuntime)
     await ctx.plugin(SkillRegistry)
