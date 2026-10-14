@@ -4,9 +4,10 @@
   "pi2dsh": {
     "version": "0.26.0",
     "publishCommandExitCode": 0,
-    "registryStatus": "validating",
+    "registryStatus": "published",
     "localIntegrity": "sha512-tOQjFkDGDfq1gFjGQQzHwI+MTd9vBd5ipnVchtQ8eFBjLd3fAOS/PdsP6nUXigQI7oyQUvHlhiFB0aX5K44+gQ==",
-    "registryIntegrityVerified": false
+    "registryIntegrityVerified": true,
+    "latest": "0.26.0"
   },
   "dsh-work-x": {
     "version": "0.5.0",
@@ -14,9 +15,9 @@
     "registryStatus": "published",
     "dist.integrity": "sha512-5EjvIFiYzdDhRaPpT7bJReOK8hCzh2uUt40UpB5Yh5oYPMl2jYCI8GFKYxkHFLN0wkL0aln4P69FJp6lNa5w8Q==",
     "registryIntegrityVerified": true,
-    "latest": "0.4.2",
-    "latestNote": "Keep the previous stable default until the new engine dependency becomes publicly installable."
+    "latest": "0.5.0"
   },
-  "postPublishAcceptance": "pending registry availability",
+  "verifiedOn": "2026-10-14",
+  "postPublishAcceptance": "passed with documented credential/configuration exclusions",
   "issueRepliesSent": []
 }

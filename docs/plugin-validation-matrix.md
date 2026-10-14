@@ -1,10 +1,10 @@
 # 真实插件验证
 
-## DSH 0.2 候选版验收（2026-10-13，未发布）
+## DSH 0.2 正式包验收（2026-10-14）
 
 373 个契约测试通过；完整示例 15 passed / 1 partial / 4 skipped / 0 failed。
 两种 TUI、Web、headless 的最终证据和凭证缺失边界见
-[0.2 验收记录](../community/dsh-020-compat/README.md)。
+[npm 发布后验收记录](../community/release-0.26.0/README.md)。
 
 `pi-subagents@0.20.0` 的父模型 Agent 工具 → Pi createAgentSession →
 pi2dsh 子代理桥 → DSH agents.create / 原生文件工具 / 原生 session log →
