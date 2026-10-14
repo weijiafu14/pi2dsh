@@ -41,6 +41,11 @@ packages; its targeted result is merged into the full example report. This
 avoids treating the stale pre-disable frame as successful command behavior.
 No product implementation changed during release acceptance.
 
+Upgrade replies were posted after registry acceptance:
+[#7](https://github.com/weijiafu14/pi2dsh/issues/7#issuecomment-6162228660) and
+[#8](https://github.com/weijiafu14/pi2dsh/issues/8#issuecomment-6162229190).
+Both issues remain open for the reporters' confirmation.
+
 For this machine's proxy-enabled Node environment, the test command uses
 `NODE_OPTIONS=--disable-warning=UNDICI-EHPA` so that Node's experimental proxy
 warning does not contaminate the subprocess stderr contract. It does not
