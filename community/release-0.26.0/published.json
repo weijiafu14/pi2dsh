@@ -19,5 +19,8 @@
   },
   "verifiedOn": "2026-10-14",
   "postPublishAcceptance": "passed with documented credential/configuration exclusions",
-  "issueRepliesSent": []
+  "issueRepliesSent": [
+    { "issue": 7, "url": "https://github.com/weijiafu14/pi2dsh/issues/7#issuecomment-6162228660" },
+    { "issue": 8, "url": "https://github.com/weijiafu14/pi2dsh/issues/8#issuecomment-6162229190" }
+  ]
 }
