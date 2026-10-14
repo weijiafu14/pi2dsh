@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "pi2dshCommit": "933bef94d45fc8a52ece9b89113f47eb1ac51f5f",
-  "dshCommit": "npm:@deepseek-ai/dsh@0.1.1-rc.2",
+  "pi2dshCommit": "9c202a135d6bd44789847c56e8af4b82e5fcc4a1",
+  "dshCommit": "npm:@deepseek-ai/dsh@0.2.0-rc.2",
   "results": {
     "alibabaTokenPlan": {
       "status": "skipped",
@@ -11,11 +11,24 @@
       "status": "skipped",
       "reason": "no complete OpenAI-compatible or Pi-registry vision model configured"
     },
+    "persistentMemory": {
+      "status": "passed",
+      "engine": {
+        "version": "0.26.0",
+        "from": "registry",
+        "spec": "pi2dsh@0.26.0"
+      },
+      "wroteVia": [
+        "memory_add"
+      ],
+      "recalledAcrossSessions": true,
+      "storeIsolatedToDshHome": true
+    },
     "gatewayCompat": {
       "engine": {
-        "version": "0.24.0",
+        "version": "0.26.0",
         "from": "registry",
-        "spec": "pi2dsh@0.24.0"
+        "spec": "pi2dsh@0.26.0"
       },
       "status": "passed",
       "requests": 2,
@@ -42,58 +55,49 @@
         "user: Current runtime context. This snapshot supersedes earlier ru"
       ]
     },
-    "visionBridgeWeb": {
-      "status": "skipped",
-      "reason": "no complete OpenAI-compatible or Pi-registry vision model configured"
-    },
-    "customGateways": {
-      "status": "passed",
-      "engine": {
-        "version": "0.24.0",
-        "from": "registry",
-        "spec": "pi2dsh@0.24.0"
-      },
-      "seenByPackage": {
-        "provider": "my-gateway",
-        "id": "deepseek-chat",
-        "api": "faux",
-        "contextWindow": 131072
-      },
-      "requestedThroughGateway": true
-    },
     "backgroundTasks": {
       "status": "passed",
       "engine": {
-        "version": "0.24.0",
+        "version": "0.26.0",
         "from": "registry",
-        "spec": "pi2dsh@0.24.0"
+        "spec": "pi2dsh@0.26.0"
       },
       "bgRunCalls": 1,
       "bgLogsMidRunReads": 1
     },
-    "persistentMemory": {
+    "sideConversation": {
       "status": "passed",
       "engine": {
-        "version": "0.24.0",
+        "version": "0.26.0",
         "from": "registry",
-        "spec": "pi2dsh@0.24.0"
+        "spec": "pi2dsh@0.26.0",
+        "suite": {
+          "version": "0.5.0",
+          "from": "registry",
+          "spec": "dsh-work-x@0.5.0"
+        }
       },
-      "wroteVia": [
-        "memory_add"
-      ],
-      "recalledAcrossSessions": true,
-      "storeIsolatedToDshHome": true
+      "install": "dsh-work-x suite (bundles pi-btw)",
+      "sideAnswerIsolated": true,
+      "screenshots": [
+        "00-side-conversation-work-x.png"
+      ]
     },
-    "codexImageGen": {
+    "visionBridgeWeb": {
       "status": "skipped",
-      "reason": "CODEX_AUTH_FILE not set"
+      "reason": "no complete OpenAI-compatible or Pi-registry vision model configured"
     },
     "workXMemoryTasks": {
       "status": "passed",
       "engine": {
-        "version": "0.24.0",
+        "version": "0.26.0",
         "from": "registry",
-        "spec": "pi2dsh@0.24.0"
+        "spec": "pi2dsh@0.26.0",
+        "suite": {
+          "version": "0.5.0",
+          "from": "registry",
+          "spec": "dsh-work-x@0.5.0"
+        }
       },
       "memoryTabShowsStore": true,
       "pinRoundTrip": true,
@@ -104,25 +108,61 @@
         "03-tasks-killed.png"
       ]
     },
+    "customGateways": {
+      "status": "passed",
+      "engine": {
+        "version": "0.26.0",
+        "from": "registry",
+        "spec": "pi2dsh@0.26.0"
+      },
+      "seenByPackage": {
+        "provider": "my-gateway",
+        "id": "deepseek-flash",
+        "api": "faux",
+        "contextWindow": 131072
+      },
+      "requestedThroughGateway": true
+    },
     "subscriptionLogin": {
       "status": "partial",
       "engine": {
-        "version": "0.24.0",
+        "version": "0.26.0",
         "from": "registry",
-        "spec": "pi2dsh@0.24.0"
+        "spec": "pi2dsh@0.26.0"
       },
       "note": "pre-login discovery and native route passed; set CODEX_AUTH_FILE to verify the post-login model picker"
+    },
+    "codexImageGen": {
+      "status": "skipped",
+      "reason": "CODEX_AUTH_FILE not set"
+    },
+    "presentationSurfaces": {
+      "status": "passed",
+      "engine": {
+        "version": "0.26.0",
+        "from": "registry",
+        "spec": "pi2dsh@0.26.0",
+        "suite": {
+          "version": "0.5.0",
+          "from": "registry",
+          "spec": "dsh-work-x@0.5.0"
+        }
+      },
+      "install": "dsh-work-x suite + pi-powerline-footer",
+      "screenshots": [
+        "06-presentation-surfaces.png"
+      ]
     },
     "tuiMcp": {
       "status": "passed",
       "engine": {
-        "version": "0.24.0",
+        "version": "0.26.0",
         "from": "registry",
-        "spec": "pi2dsh@0.24.0"
+        "spec": "pi2dsh@0.26.0"
       },
       "profile": "dsh-tui",
       "piPackage": "pi-mcp-adapter",
-      "piPackageVersion": "2.31.0",
+      "piPackageVersion": "2.27.0",
       "command": "/pi-mcp",
       "nativeCommandPreserved": "/mcp",
       "mcpServer": "@modelcontextprotocol/server-everything",
@@ -150,51 +190,39 @@
         "session-restart"
       ]
     },
-    "presentationSurfaces": {
+    "dshX": {
       "status": "passed",
       "engine": {
-        "version": "0.24.0",
+        "version": "0.26.0",
         "from": "registry",
-        "spec": "pi2dsh@0.24.0"
+        "spec": "pi2dsh@0.26.0",
+        "suite": {
+          "version": "0.5.0",
+          "from": "registry",
+          "spec": "dsh-work-x@0.5.0"
+        }
       },
-      "install": "dsh-work-x suite + pi-powerline-footer",
-      "screenshots": [
-        "06-presentation-surfaces.png"
-      ]
-    },
-    "sideConversation": {
-      "status": "passed",
-      "engine": {
-        "version": "0.24.0",
-        "from": "registry",
-        "spec": "pi2dsh@0.24.0"
-      },
-      "install": "dsh-work-x suite (bundles pi-btw)",
-      "sideAnswerIsolated": true,
-      "screenshots": [
-        "00-side-conversation-work-x.png"
-      ]
-    },
-    "mcpAtScale": {
-      "status": "passed",
-      "engine": {
-        "version": "0.24.0",
-        "from": "registry",
-        "spec": "pi2dsh@0.24.0"
-      },
-      "packages": [
-        "pi-mcp-adapter"
+      "suite": [
+        "pi-mcp-adapter",
+        "@tintinweb/pi-subagents",
+        "pi-btw",
+        "@crazygit/pi-codex-image-gen",
+        "pi-hermes-memory",
+        "pi-background-tasks"
       ],
-      "server": "many-tools (official MCP SDK, 51 tools, stdio)",
-      "discovery": "mcp proxy -> tool_037 -> LAUNCH-MARKER-7741-ZEBRA",
-      "timeout": "mcpScript timeoutMs 5000 on ~120s slow_task; turn ended in 23s; tool_001 answered after"
+      "sideChat": "answers in-window; inject + --save verified in the main session log",
+      "commands": {
+        "pi-mcp-adapter": "mcp",
+        "@tintinweb/pi-subagents": "agents",
+        "pi-btw": "btw"
+      }
     },
     "memoryTasksWeb": {
       "status": "passed",
       "engine": {
-        "version": "0.24.0",
+        "version": "0.26.0",
         "from": "registry",
-        "spec": "pi2dsh@0.24.0"
+        "spec": "pi2dsh@0.26.0"
       },
       "memoryRecalledAcrossWebSessions": true,
       "bgMidRunReadOnWeb": true,
@@ -205,60 +233,27 @@
         "03-background-tasks-web.png"
       ]
     },
-    "dshX": {
-      "status": "failed",
-      "error": "no main-session log carries the saved btw note (searched 3 logs)"
-    },
-    "mcpAtScaleWeb": {
-      "status": "passed",
-      "engine": {
-        "version": "0.24.0",
-        "from": "registry",
-        "spec": "pi2dsh@0.24.0"
-      },
-      "packages": [
-        "pi-mcp-adapter"
-      ],
-      "screenshots": [
-        "12-mcp-at-scale-web.png"
-      ],
-      "discovery": "mcp proxy -> tool_037 -> LAUNCH-MARKER-7741-ZEBRA"
-    },
     "codeNavigationWeb": {
       "status": "passed",
       "engine": {
-        "version": "0.24.0",
+        "version": "0.26.0",
         "from": "registry",
-        "spec": "pi2dsh@0.24.0"
+        "spec": "pi2dsh@0.26.0"
       },
-      "packages": [
-        "@ff-labs/pi-fff",
-        "pi-lens"
-      ],
+      "packages": {
+        "@ff-labs/pi-fff": "0.11.0",
+        "pi-lens": "4.4.3"
+      },
       "screenshots": [
         "06-code-navigation-web.png"
       ],
       "search": "ffgrep -> notes/spec.md",
-      "diagnostics": "lsp_diagnostics -> TS2322 on src/ledger.ts"
-    },
-    "codeNavigation": {
-      "status": "passed",
-      "engine": {
-        "version": "0.24.0",
-        "from": "registry",
-        "spec": "pi2dsh@0.24.0"
-      },
-      "packages": [
-        "@ff-labs/pi-fff",
-        "pi-lens"
-      ],
-      "search": "ffgrep -> notes/spec.md",
-      "diagnostics": "lsp_diagnostics -> TS2322 on src/ledger.ts"
+      "diagnostics": "LSP diagnostic tool -> TS2322 on src/ledger.ts"
     },
     "subagents": {
       "status": "passed",
-      "engine": "0.24.0",
-      "cli": "0.1.1-rc.2",
+      "engine": "0.26.0",
+      "cli": "0.2.0-rc.2",
       "scenarios": {
         "steer": "passed",
         "failureReport": "passed",
@@ -269,6 +264,49 @@
         "explicitModelThinking": "passed",
         "childExtensions": "passed"
       }
+    },
+    "mcpAtScale": {
+      "status": "passed",
+      "engine": {
+        "version": "0.26.0",
+        "from": "registry",
+        "spec": "pi2dsh@0.26.0"
+      },
+      "packages": [
+        "pi-mcp-adapter"
+      ],
+      "server": "many-tools (official MCP SDK, 51 tools, stdio)",
+      "discovery": "mcp proxy -> tool_037 -> LAUNCH-MARKER-7741-ZEBRA",
+      "timeout": "mcpScript timeoutMs 5000 on ~120s slow_task; turn ended in 20s; tool_001 answered after"
+    },
+    "mcpAtScaleWeb": {
+      "status": "passed",
+      "engine": {
+        "version": "0.26.0",
+        "from": "registry",
+        "spec": "pi2dsh@0.26.0"
+      },
+      "packages": [
+        "pi-mcp-adapter"
+      ],
+      "screenshots": [
+        "12-mcp-at-scale-web.png"
+      ],
+      "discovery": "mcp proxy -> tool_037 -> LAUNCH-MARKER-7741-ZEBRA"
+    },
+    "codeNavigation": {
+      "status": "passed",
+      "engine": {
+        "version": "0.26.0",
+        "from": "registry",
+        "spec": "pi2dsh@0.26.0"
+      },
+      "packages": {
+        "@ff-labs/pi-fff": "0.11.0",
+        "pi-lens": "4.4.3"
+      },
+      "search": "ffgrep -> notes/spec.md",
+      "diagnostics": "LSP diagnostic tool -> TS2322 on src/ledger.ts"
     }
   }
 }

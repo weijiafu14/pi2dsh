@@ -32,61 +32,78 @@ await page.getByRole('button', { name: UI.newSession }).first().click({ timeout:
 // identical for both.
 await send('Say OK and nothing else.')
 
-// `/powerline` shares its prefix with `/powerline-perf`, so Send stays disabled
-// until one is PICKED from the suggestion popover — the documented gesture, and
-// the reason a straight type-and-click hangs here.
-const composer = page.getByRole('textbox').last()
-await composer.click()
-await composer.pressSequentially('/powerline', { delay: 25 })
-// The package's commands register when the fresh session's Agent mounts its
-// Pi runtime — an eventual palette, a beat behind session creation. Wait for
-// the suggestion to actually list the command before picking it; typing
-// blind races the mount and silently loses the command. Still falsifiable:
-// if the command never registers, this times out and fails.
-const suggestionDeadline = Date.now() + 60_000
-for (;;) {
-  const listed = await page.evaluate(() => /powerline status/u.test(document.body.innerText))
-  if (listed) break
-  if (Date.now() > suggestionDeadline) throw new Error('capture: /powerline never appeared in the command suggestions')
-  await page.waitForTimeout(500)
-  // Re-arm the popover: retype the line so a popup that raced the palette
-  // refresh reopens against the current registry.
-  await composer.fill('')
+async function togglePowerline() {
+
+  // `/powerline` shares its prefix with `/powerline-perf`, so Send stays disabled
+  // until one is PICKED from the suggestion popover — the documented gesture, and
+  // the reason a straight type-and-click hangs here.
+  const composer = page.getByRole('textbox').last()
+  await composer.click()
   await composer.pressSequentially('/powerline', { delay: 25 })
+  // The package's commands register when the fresh session's Agent mounts its
+  // Pi runtime — an eventual palette, a beat behind session creation. Wait for
+  // the suggestion to actually list the command before picking it; typing
+  // blind races the mount and silently loses the command. Still falsifiable:
+  // if the command never registers, this times out and fails.
+  const suggestionDeadline = Date.now() + 60_000
+  for (;;) {
+    const listed = await page.evaluate(() => /powerline status/u.test(document.body.innerText))
+    if (listed) break
+    if (Date.now() > suggestionDeadline) throw new Error('capture: /powerline never appeared in the command suggestions')
+    await page.waitForTimeout(500)
+    // Re-arm the popover: retype the line so a popup that raced the palette
+    // refresh reopens against the current registry.
+    await composer.fill('')
+    await composer.pressSequentially('/powerline', { delay: 25 })
+  }
+  await page.waitForTimeout(300)
+  await page.keyboard.press('Enter')
+  await page.waitForTimeout(800)
+  const sendButton = page.getByRole('button', { name: UI.send })
+  if (await sendButton.isEnabled().catch(() => false)) await sendButton.click({ timeout: 30_000 })
+  else await page.keyboard.press('Enter')
 }
-await page.waitForTimeout(300)
-await page.keyboard.press('Enter')
-await page.waitForTimeout(800)
-const sendButton = page.getByRole('button', { name: UI.send })
-if (await sendButton.isEnabled().catch(() => false)) await sendButton.click({ timeout: 30_000 })
-else await page.keyboard.press('Enter')
 
 // Widgets float in the overlay stack (pill for a status line, card for
 // content) — the in-column dock strip is gone. Read every widget presence.
 const widgets = page.locator('[data-pi2dsh="widget"]')
-const deadline = Date.now() + 90_000
-for (;;) {
-  const count = await widgets.count()
-  const pieces = []
-  for (let index = 0; index < count; index += 1) pieces.push(await widgets.nth(index).innerText())
-  const text = pieces.length === 0 ? undefined : pieces.join('\n')
-  if (text !== undefined && OWN_MARKS.every(mark => mark.test(text))) {
-    // The ANSI check, and the reason it is here rather than in a unit test: the
-    // package emits real SGR codes, and a seat that shows them prints visible
-    // garbage. The unit tests cover the parser; this covers the seat.
-    if (text.includes(ESC) || /\[\d+(?:;\d+)*m/u.test(text)) {
-      throw new Error(`capture: the widget seat is showing raw ANSI escapes rather than colour:\n  ${JSON.stringify(text)}`)
+async function waitForPowerline(visible) {
+  const deadline = Date.now() + 90_000
+  for (;;) {
+    const count = await widgets.count()
+    const pieces = []
+    for (let index = 0; index < count; index += 1) pieces.push(await widgets.nth(index).innerText())
+    const text = pieces.length === 0 ? undefined : pieces.join('\n')
+    const shown = text !== undefined && OWN_MARKS.every(mark => mark.test(text))
+    if (!visible && !shown) return
+    if (visible && shown) {
+      // The ANSI check, and the reason it is here rather than in a unit test: the
+      // package emits real SGR codes, and a seat that shows them prints visible
+      // garbage. The unit tests cover the parser; this covers the seat.
+      if (text.includes(ESC) || /\[\d+(?:;\d+)*m/u.test(text)) {
+        throw new Error(`capture: the widget seat is showing raw ANSI escapes rather than colour:\n  ${JSON.stringify(text)}`)
+      }
+      break
     }
-    break
+    if (Date.now() > deadline) {
+      throw new Error(
+        `capture: the Pi package's status line did not become ${visible ? 'visible' : 'hidden'}.`
+        + `\n  widgets held: ${JSON.stringify(text ?? null)}`,
+      )
+    }
+    await page.waitForTimeout(1000)
   }
-  if (Date.now() > deadline) {
-    throw new Error(
-      'capture: the Pi package\'s status line never reached the floating widget seat.'
-      + `\n  widgets held: ${JSON.stringify(text ?? null)}`,
-    )
-  }
-  await page.waitForTimeout(1000)
 }
+
+// The current original package enables itself at session_start. Verify the
+// initial render, then a real disable/enable cycle across the browser poll.
+// Seeing the pre-disable widget immediately after a command is not evidence
+// that the command changed the UI, and produced misleading screenshots.
+await waitForPowerline(true)
+await togglePowerline()
+await waitForPowerline(false)
+await togglePowerline()
+await waitForPowerline(true)
 await shot('06-presentation-surfaces')
 
 await browser.close()

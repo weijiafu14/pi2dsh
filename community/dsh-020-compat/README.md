@@ -3,6 +3,8 @@
 Candidate: pi2dsh 0.26.0 and dsh-work-x 0.5.0. Host: stock npm
 `@deepseek-ai/dsh@0.2.0-rc.2`. Pi extension semantics remain 0.84.1.
 This directory records development acceptance, not an npm release claim.
+The subsequent [npm release acceptance](../release-0.26.0/README.md) was completed
+on 2026-10-14 using the published engine and suite.
 
 ## Final candidate acceptance — 2026-10-13
 

@@ -1,0 +1,312 @@
+{
+  "schemaVersion": 1,
+  "pi2dshCommit": "9c202a135d6bd44789847c56e8af4b82e5fcc4a1",
+  "dshCommit": "npm:@deepseek-ai/dsh@0.2.0-rc.2",
+  "results": {
+    "alibabaTokenPlan": {
+      "status": "skipped",
+      "reason": "ALIBABA_TOKEN_PLAN_API_KEY not set"
+    },
+    "visionBridge": {
+      "status": "skipped",
+      "reason": "no complete OpenAI-compatible or Pi-registry vision model configured"
+    },
+    "persistentMemory": {
+      "status": "passed",
+      "engine": {
+        "version": "0.26.0",
+        "from": "registry",
+        "spec": "pi2dsh@0.26.0"
+      },
+      "wroteVia": [
+        "memory_add"
+      ],
+      "recalledAcrossSessions": true,
+      "storeIsolatedToDshHome": true
+    },
+    "gatewayCompat": {
+      "engine": {
+        "version": "0.26.0",
+        "from": "registry",
+        "spec": "pi2dsh@0.26.0"
+      },
+      "status": "passed",
+      "requests": 2,
+      "roles": [
+        "system",
+        "user",
+        "user"
+      ],
+      "maxTokensField": "max_tokens",
+      "store": null,
+      "reasoningEffort": "high",
+      "bodyKeys": [
+        "max_tokens",
+        "messages",
+        "model",
+        "reasoning_effort",
+        "stream",
+        "stream_options",
+        "tools"
+      ],
+      "previews": [
+        "system: You are an AI agent powered by DeepSeek Harness. You are a ",
+        "user: Reply with exactly: gateway-compat-ok",
+        "user: Current runtime context. This snapshot supersedes earlier ru"
+      ]
+    },
+    "backgroundTasks": {
+      "status": "passed",
+      "engine": {
+        "version": "0.26.0",
+        "from": "registry",
+        "spec": "pi2dsh@0.26.0"
+      },
+      "bgRunCalls": 1,
+      "bgLogsMidRunReads": 1
+    },
+    "sideConversation": {
+      "status": "passed",
+      "engine": {
+        "version": "0.26.0",
+        "from": "registry",
+        "spec": "pi2dsh@0.26.0",
+        "suite": {
+          "version": "0.5.0",
+          "from": "registry",
+          "spec": "dsh-work-x@0.5.0"
+        }
+      },
+      "install": "dsh-work-x suite (bundles pi-btw)",
+      "sideAnswerIsolated": true,
+      "screenshots": [
+        "00-side-conversation-work-x.png"
+      ]
+    },
+    "visionBridgeWeb": {
+      "status": "skipped",
+      "reason": "no complete OpenAI-compatible or Pi-registry vision model configured"
+    },
+    "workXMemoryTasks": {
+      "status": "passed",
+      "engine": {
+        "version": "0.26.0",
+        "from": "registry",
+        "spec": "pi2dsh@0.26.0",
+        "suite": {
+          "version": "0.5.0",
+          "from": "registry",
+          "spec": "dsh-work-x@0.5.0"
+        }
+      },
+      "memoryTabShowsStore": true,
+      "pinRoundTrip": true,
+      "dockKilledTask": true,
+      "screenshots": [
+        "01-memory-settings.png",
+        "02-tasks-chip-live.png",
+        "03-tasks-killed.png"
+      ]
+    },
+    "customGateways": {
+      "status": "passed",
+      "engine": {
+        "version": "0.26.0",
+        "from": "registry",
+        "spec": "pi2dsh@0.26.0"
+      },
+      "seenByPackage": {
+        "provider": "my-gateway",
+        "id": "deepseek-flash",
+        "api": "faux",
+        "contextWindow": 131072
+      },
+      "requestedThroughGateway": true
+    },
+    "subscriptionLogin": {
+      "status": "partial",
+      "engine": {
+        "version": "0.26.0",
+        "from": "registry",
+        "spec": "pi2dsh@0.26.0"
+      },
+      "note": "pre-login discovery and native route passed; set CODEX_AUTH_FILE to verify the post-login model picker"
+    },
+    "codexImageGen": {
+      "status": "skipped",
+      "reason": "CODEX_AUTH_FILE not set"
+    },
+    "presentationSurfaces": {
+      "status": "passed",
+      "engine": {
+        "version": "0.26.0",
+        "from": "registry",
+        "spec": "pi2dsh@0.26.0",
+        "suite": {
+          "version": "0.5.0",
+          "from": "registry",
+          "spec": "dsh-work-x@0.5.0"
+        }
+      },
+      "install": "dsh-work-x suite + pi-powerline-footer",
+      "screenshots": [
+        "06-presentation-surfaces.png"
+      ]
+    },
+    "tuiMcp": {
+      "status": "passed",
+      "engine": {
+        "version": "0.26.0",
+        "from": "registry",
+        "spec": "pi2dsh@0.26.0"
+      },
+      "profile": "dsh-tui",
+      "piPackage": "pi-mcp-adapter",
+      "piPackageVersion": "2.27.0",
+      "command": "/pi-mcp",
+      "nativeCommandPreserved": "/mcp",
+      "mcpServer": "@modelcontextprotocol/server-everything",
+      "transports": [
+        "stdio",
+        "streamable-http",
+        "sse"
+      ],
+      "capabilities": [
+        "manager",
+        "discovery",
+        "proxy",
+        "direct-tools",
+        "mcpScript",
+        "resources",
+        "prompts",
+        "images",
+        "structured-content",
+        "mcp-app-ui",
+        "approval",
+        "elicitation",
+        "sampling",
+        "cancellation",
+        "reconnect",
+        "session-restart"
+      ]
+    },
+    "dshX": {
+      "status": "passed",
+      "engine": {
+        "version": "0.26.0",
+        "from": "registry",
+        "spec": "pi2dsh@0.26.0",
+        "suite": {
+          "version": "0.5.0",
+          "from": "registry",
+          "spec": "dsh-work-x@0.5.0"
+        }
+      },
+      "suite": [
+        "pi-mcp-adapter",
+        "@tintinweb/pi-subagents",
+        "pi-btw",
+        "@crazygit/pi-codex-image-gen",
+        "pi-hermes-memory",
+        "pi-background-tasks"
+      ],
+      "sideChat": "answers in-window; inject + --save verified in the main session log",
+      "commands": {
+        "pi-mcp-adapter": "mcp",
+        "@tintinweb/pi-subagents": "agents",
+        "pi-btw": "btw"
+      }
+    },
+    "memoryTasksWeb": {
+      "status": "passed",
+      "engine": {
+        "version": "0.26.0",
+        "from": "registry",
+        "spec": "pi2dsh@0.26.0"
+      },
+      "memoryRecalledAcrossWebSessions": true,
+      "bgMidRunReadOnWeb": true,
+      "storeIsolatedToDshHome": true,
+      "screenshots": [
+        "01-memory-save-web.png",
+        "02-memory-recall-web.png",
+        "03-background-tasks-web.png"
+      ]
+    },
+    "codeNavigationWeb": {
+      "status": "passed",
+      "engine": {
+        "version": "0.26.0",
+        "from": "registry",
+        "spec": "pi2dsh@0.26.0"
+      },
+      "packages": {
+        "@ff-labs/pi-fff": "0.11.0",
+        "pi-lens": "4.4.3"
+      },
+      "screenshots": [
+        "06-code-navigation-web.png"
+      ],
+      "search": "ffgrep -> notes/spec.md",
+      "diagnostics": "LSP diagnostic tool -> TS2322 on src/ledger.ts"
+    },
+    "subagents": {
+      "status": "passed",
+      "engine": "0.26.0",
+      "cli": "0.2.0-rc.2",
+      "scenarios": {
+        "steer": "passed",
+        "failureReport": "passed",
+        "resume": "passed",
+        "resumeArchive": "passed",
+        "stop": "passed",
+        "modelFollow": "passed",
+        "explicitModelThinking": "passed",
+        "childExtensions": "passed"
+      }
+    },
+    "mcpAtScale": {
+      "status": "passed",
+      "engine": {
+        "version": "0.26.0",
+        "from": "registry",
+        "spec": "pi2dsh@0.26.0"
+      },
+      "packages": [
+        "pi-mcp-adapter"
+      ],
+      "server": "many-tools (official MCP SDK, 51 tools, stdio)",
+      "discovery": "mcp proxy -> tool_037 -> LAUNCH-MARKER-7741-ZEBRA",
+      "timeout": "mcpScript timeoutMs 5000 on ~120s slow_task; turn ended in 20s; tool_001 answered after"
+    },
+    "mcpAtScaleWeb": {
+      "status": "passed",
+      "engine": {
+        "version": "0.26.0",
+        "from": "registry",
+        "spec": "pi2dsh@0.26.0"
+      },
+      "packages": [
+        "pi-mcp-adapter"
+      ],
+      "screenshots": [
+        "12-mcp-at-scale-web.png"
+      ],
+      "discovery": "mcp proxy -> tool_037 -> LAUNCH-MARKER-7741-ZEBRA"
+    },
+    "codeNavigation": {
+      "status": "passed",
+      "engine": {
+        "version": "0.26.0",
+        "from": "registry",
+        "spec": "pi2dsh@0.26.0"
+      },
+      "packages": {
+        "@ff-labs/pi-fff": "0.11.0",
+        "pi-lens": "4.4.3"
+      },
+      "search": "ffgrep -> notes/spec.md",
+      "diagnostics": "LSP diagnostic tool -> TS2322 on src/ledger.ts"
+    }
+  }
+}

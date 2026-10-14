@@ -1,0 +1,18 @@
+{
+  "target": "DSH 0.2.0-rc.2 + pi-subagents 0.20.0",
+  "status": "passed",
+  "scratch": "/tmp/pi2dsh-host020-live-LiInqr",
+  "engine": {
+    "from": "registry",
+    "spec": "pi2dsh@0.26.0"
+  },
+  "engineVersion": "0.26.0",
+  "childRequestHeaders": 1,
+  "childToolCalls": [
+    "write",
+    "bash"
+  ],
+  "parentReceivedChildOutput": true,
+  "cliExited": true,
+  "outputContainsMarker": true
+}
