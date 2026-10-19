@@ -1,6 +1,6 @@
 # pi2dsh 0.27.0 / dsh-work-x 0.6.0
 
-状态：发布前验收通过，npm 发布及正式包回归待完成。
+状态：两个 npm 包已发布并回读校验，代码与 v0.27.0 标签已推送；正式包完整回归通过。
 
 目标：DSH **0.2.1-rc.2**，Pi 公开 ABI 继续固定 **0.84.1**。对应
 [#7 的新版桌面安装报告](https://github.com/weijiafu14/pi2dsh/issues/7#issuecomment-6259660360)。
@@ -30,6 +30,12 @@ invariant 组合。保留失败证据，不修改第三方实现，不计入通�
 允许仍停在首页输入框，实际路由继续用父子请求日志断言。测试错误中的 launch token
 脱敏；并发场景的截图单独保留，临时 profile 仍可清理。
 
+首次 npm 完整轮的状态条测试失败，保存在 `examples-npm-first-attempt.json`：
+原包默认布局会把超出 80 列的内容移到 terminal footer，而测试误把用量始终在
+widget 第一行当成保证。现固定原包 0.20.2 的公开 layout 配置，仍断言模型、思考档位、
+用量显示及关闭/重新开启，并收紧“关闭”断言为真正移除状态条；不改变产品代码，
+不把已有 partial footer/context-usage 投影宣称为完整支持。
+
 ## 接口复核
 
 基于两版 npm 包的公开声明及所带实现对照，不以本地 DSH 源码 checkout 代替发布包。
@@ -57,3 +63,15 @@ peer 检查无问题。完整示例为 15 passed / 1 partial / 4 skipped / 0 fai
 契约、完整示例、子代理生命周期、终端组合、发布后 npm 安装结果分别保存。
 缺少账号/视觉端点的项目必须保留 skipped/partial 和原因，不能计入通过。
 本轮使用官方 npm CLI，独立 DSH_HOME；凭证仅从进程环境提供，不进入本目录。
+
+发布后 `pnpm verify:release` 完整命令退出码 **0**，不是把单项重试拼成全绿：
+
+- 373 tests / 37 files、类型/文档/打包检查通过。
+- npm `pi2dsh@0.27.0` / `dsh-work-x@0.6.0` 全新安装：**15 passed / 1 partial / 4 skipped / 0 failed**，见 [examples-npm.json](examples-npm.json)。
+- 子代理八场景全过，见 [subagents-npm.json](subagents-npm.json)；独立真实父子工具调用与 CLI 正常退出见 [host-npm.json](host-npm.json)。
+- 生命周期顺序、参数转换及工具结果传递通过，见 [step-seams-npm.json](step-seams-npm.json)。
+- 不兼容第三方终端单独记为 excluded/skipped，见 [pi-tui-excluded.json](pi-tui-excluded.json)，没有计入通过。
+- 四项跳过：Alibaba Plan 缺账号、两项视觉场景缺视觉端点、Codex 生图缺 OAuth 凭据。subscription-login 的 partial 只证明登录前发现与原生路由，不证明本轮完成真实订阅登录。
+- 发布包的 registry integrity 与本地发布 tarball 一致，见 [published.json](published.json)。
+
+本轮 npm 真机截图保存在 [screenshots/](screenshots/)：侧边会话、记忆设置、后台任务运行/停止、状态条和 MCP 工具发现。状态条截图证明配置后的 UI 投影，不证明 token 用量核算与 Pi 完全一致。

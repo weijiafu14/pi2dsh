@@ -20,6 +20,7 @@ const ESC = ''
 
 const { page, browser, shot, send, UI } = await openApp()
 
+try {
 await page.getByRole('button', { name: UI.newSession }).first().click({ timeout: 60_000 })
 
 // A real message FIRST, so the conversation is actually on screen before the
@@ -75,7 +76,8 @@ async function waitForPowerline(visible) {
     for (let index = 0; index < count; index += 1) pieces.push(await widgets.nth(index).innerText())
     const text = pieces.length === 0 ? undefined : pieces.join('\n')
     const shown = text !== undefined && OWN_MARKS.every(mark => mark.test(text))
-    if (!visible && !shown) return
+    // Hiding must remove the actual widget, not merely lose an optional segment.
+    if (!visible && (text === undefined || !/think:/u.test(text))) return
     if (visible && shown) {
       // The ANSI check, and the reason it is here rather than in a unit test: the
       // package emits real SGR codes, and a seat that shows them prints visible
@@ -106,4 +108,6 @@ await togglePowerline()
 await waitForPowerline(true)
 await shot('06-presentation-surfaces')
 
-await browser.close()
+} finally {
+  await browser.close()
+}
