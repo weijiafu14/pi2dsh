@@ -2,6 +2,8 @@
 
 状态：两个 npm 包已发布并回读校验，代码与 v0.27.0 标签已推送；正式包完整回归通过。
 
+回归结束后已在 [#7 回复升级方式](https://github.com/weijiafu14/pi2dsh/issues/7#issuecomment-6264889422)，并回读确认评论内容；issue 保持打开等待用户反馈。
+
 目标：DSH **0.2.1-rc.2**，Pi 公开 ABI 继续固定 **0.84.1**。对应
 [#7 的新版桌面安装报告](https://github.com/weijiafu14/pi2dsh/issues/7#issuecomment-6259660360)。
 DSH 0.2.0-rc.2 用户保留 pi2dsh 0.26.0 / dsh-work-x 0.5.0 检查点。
