@@ -18,7 +18,7 @@ import { setTimeout as delay } from 'node:timers/promises'
 const execFile = promisify(execFileCallback)
 const projectRoot = resolve(new URL('..', import.meta.url).pathname)
 const resultPath = resolve(process.argv[2] ?? 'community/pi-tui-ecosystem-e2e.json')
-const DSH_SPEC = process.env.PI2DSH_DSH_CLI_SPEC ?? '@deepseek-ai/dsh@0.2.0-rc.2'
+const DSH_SPEC = process.env.PI2DSH_DSH_CLI_SPEC ?? '@deepseek-ai/dsh@0.2.1-rc.2'
 const TUI_SPEC = process.env.PI2DSH_PI_TUI_SPEC ?? '@xmoon76/dsh-pi-tui@0.5.1'
 const ENGINE_SPEC = process.env.PI2DSH_ENGINE_SPEC ?? projectRoot
 const MCP_SPEC = process.env.PI2DSH_MCP_ADAPTER_SPEC ?? 'pi-mcp-adapter@2.27.0'
@@ -132,6 +132,15 @@ async function writeResult(status, detail) {
     status,
     ...detail,
   }, null, 2)}\n`)
+}
+
+// A release may explicitly exclude an independently incompatible terminal.
+// Keep a visible skipped receipt; never turn an upstream startup failure into
+// a passing bridge result. With no reason supplied, this test still runs.
+if (process.env.PI2DSH_PI_TUI_SKIP_REASON) {
+  await writeResult('skipped', { reason: process.env.PI2DSH_PI_TUI_SKIP_REASON })
+  log(`SKIPPED: ${process.env.PI2DSH_PI_TUI_SKIP_REASON}`)
+  process.exit(0)
 }
 
 const apiKey = findDeepSeekKey()

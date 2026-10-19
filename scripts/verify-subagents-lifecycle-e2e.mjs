@@ -46,7 +46,7 @@ const execFile = promisify(execFileCallback)
 const projectRoot = resolve(new URL('..', import.meta.url).pathname)
 const outPath = resolve(process.argv[2] ?? 'community/subagents-lifecycle-e2e.json')
 
-const DSH_CLI_SPEC = process.env.PI2DSH_DSH_CLI_SPEC ?? '@deepseek-ai/dsh@0.2.0-rc.2'
+const DSH_CLI_SPEC = process.env.PI2DSH_DSH_CLI_SPEC ?? '@deepseek-ai/dsh@0.2.1-rc.2'
 const ENGINE_SPEC = process.env.PI2DSH_ENGINE_SPEC ?? projectRoot
 const engineTarballSha256 = ENGINE_SPEC.startsWith('file:')
   ? createHash('sha256').update(readFileSync(ENGINE_SPEC.slice(5))).digest('hex') : undefined
@@ -771,7 +771,10 @@ try {
         await execFile('tmux', ['send-keys', '-t', TMUX_SESSION, 'Enter'])
       }
       const chatDeadline = Date.now() + 120_000
-      while (!/⌸ ❯/u.test(await capture())) {
+      // Current dsh-TUI keeps /model on the home composer until a real
+      // message is sent. Both visible composers can accept the warmup;
+      // the durable route assertions below still prove which model ran.
+      while (!/⌸ ❯|Say something, or type \/ for commands/u.test(await capture())) {
         if (Date.now() > chatDeadline) throw new Error('chat composer did not become ready after /model')
         await delay(1000)
       }

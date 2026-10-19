@@ -8,13 +8,16 @@ import { createHash, randomUUID } from 'node:crypto'
 import { createE2eHarness, filesBelow, installedCoreVersions } from './lib/e2e-harness.mjs'
 import { isSessionLog } from './lib/session-log.mjs'
 
-const cliDir = resolve(process.env.PI2DSH_DSH_CWD ?? '/tmp/pi2dsh-026-cli')
+const manifest = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'))
+const hostVersion = manifest.devDependencies['@deepseek-ai/dsh-agent']
+assert(process.env.PI2DSH_DSH_CWD, 'PI2DSH_DSH_CWD must point to a stock npm CLI install')
+const cliDir = resolve(process.env.PI2DSH_DSH_CWD)
 const cli = resolve(process.env.PI2DSH_DSH_BIN ?? join(cliDir, 'node_modules/.bin/dsh'))
 const root = await mkdtemp('/tmp/pi2dsh-host020-live-')
 const workspace = join(root, 'workspace')
 await mkdir(workspace)
 const out = resolve(process.argv[2] ?? 'community/host-020-e2e.json')
-const report = { target: 'DSH 0.2.0-rc.2 + pi-subagents 0.20.0', status: 'running', scratch: root }
+const report = { target: `DSH ${hostVersion} + pi-subagents 0.20.0`, status: 'running', scratch: root }
 const persist = async () => {
   const encoded = JSON.stringify(report, null, 2)
   assert(!process.env.DEEPSEEK_API_KEY || !encoded.includes(process.env.DEEPSEEK_API_KEY), 'secret in evidence')
@@ -24,10 +27,10 @@ const persist = async () => {
 try {
   assert(process.env.DEEPSEEK_API_KEY, 'DEEPSEEK_API_KEY is required for live model evidence')
   const versions = installedCoreVersions(cli)
-  assert.equal(versions.get('@deepseek-ai/dsh'), '0.2.0-rc.2')
+  assert.equal(versions.get('@deepseek-ai/dsh'), hostVersion)
   const harness = createE2eHarness({ directDshBin: cli, dshBin: cli, dshCwd: cliDir })
   const { home, runDsh } = await harness.makeHome(root)
-  const engine = process.env.PI2DSH_ENGINE_SPEC ?? `file:${resolve('.artifacts/pi2dsh-0.26.0.tgz')}`
+  const engine = process.env.PI2DSH_ENGINE_SPEC ?? `file:${resolve(`.artifacts/pi2dsh-${manifest.version}.tgz`)}`
   report.engine = engine.startsWith('file:')
     ? { from: 'local-tarball', sha256: createHash('sha256').update(await readFile(engine.slice(5))).digest('hex') }
     : { from: 'registry', spec: engine }
@@ -36,7 +39,7 @@ try {
   await harness.useJsonlSessions(home, 'headless')
   await harness.useDefaultModel(home, 'deepseek-official', 'deepseek-flash')
   const installed = JSON.parse(await readFile(join(home, 'profiles/headless/node_modules/pi2dsh/package.json'), 'utf8'))
-  assert.equal(installed.version, '0.26.0')
+  assert.equal(installed.version, manifest.version)
   report.engineVersion = installed.version
   const marker = `CHILD_${randomUUID().replaceAll('-', '')}`
   const markerPath = join(workspace, 'child-output.txt')

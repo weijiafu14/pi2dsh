@@ -19,6 +19,7 @@ const PIN = flag('pin')
 if (CODEWORD === undefined || PIN === undefined) throw new Error('capture-workx-memory-tasks: --codeword and --pin are required')
 
 const { page, browser, shot, send } = await openApp()
+try {
 await page.getByRole('button', { name: /new session/iu }).first().click({ timeout: 60_000 })
 
 // 1. The model writes a durable memory through the package's own tool.
@@ -55,7 +56,10 @@ await page.locator('[data-dsh-x="tasks-panel"]').getByTitle('Close').click()
 // 4. Settings → Memory: the STORE's content (the codeword inside the page
 // container can only have come through /dsh-x/memory-state), pin a rule,
 // see it round-trip, unpin it, see it leave.
-await page.getByText('Settings', { exact: true }).first().click({ timeout: 30_000 })
+// The stock 0.2.1 account launcher replaces the old visible Settings text.
+// Use the shell's documented Web shortcut, not an internal store or DOM patch.
+await page.keyboard.press('ControlOrMeta+Alt+,')
+await page.getByRole('dialog', { name: 'Settings', exact: true }).waitFor({ timeout: 30_000 })
 await page.getByText('Memory', { exact: true }).first().click({ timeout: 30_000 })
 const memoryRoot = page.locator('[data-dsh-x="memory-tab"]')
 await memoryRoot.getByText(CODEWORD).first().waitFor({ timeout: 30_000 })
@@ -74,4 +78,6 @@ await page.waitForFunction(pin => {
   return pins.every(entry => !(entry.textContent ?? '').includes(pin))
 }, PIN, { timeout: 30_000 })
 
-await browser.close()
+} finally {
+  await browser.close()
+}

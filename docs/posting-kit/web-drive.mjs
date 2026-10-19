@@ -57,6 +57,10 @@ export async function openApp() {
   const browser = await chromium.launch(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE === undefined
     ? {} : { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE })
   const page = await browser.newPage({ viewport: { width: 1280, height: 860 }, locale })
+  page.on('pageerror', error => console.error(`capture page error: ${error.message}`))
+  page.on('console', message => {
+    if (message.type() === 'error') console.error(`capture console error: ${message.text().replace(/([?&]token=)[^\s"']+/gu, '$1[redacted]')}`)
+  })
   const shot = async name => {
     // Park the pointer away from the chrome so no hover tooltip lands in the asset.
     await page.mouse.move(700, 620)
@@ -69,6 +73,11 @@ export async function openApp() {
    * @param text - what to type into the composer.
    */
   async function send(text, { typingDelayMs = 12 } = {}) {
+    // The sidebar also publishes a blank "New Session" row during creation.
+    // Its own renderer deliberately makes it non-draggable; only materialized
+    // non-archived conversations are draggable and can be resumed here.
+    const sessionRows = '[role="treeitem"][data-row-key^="session:"][draggable="true"]'
+    const beforeRows = await page.locator(sessionRows).evaluateAll(nodes => nodes.map(node => node.getAttribute('data-row-key')))
     const composer = page.getByRole('textbox').last()
     await composer.click()
     // Type key by key (a slash command needs the suggestion popover to see each
@@ -131,6 +140,21 @@ export async function openApp() {
     // line). Neither marker is painted the instant the click lands, so give the
     // UI a beat first — otherwise "no marker yet" reads as "already finished".
     await page.waitForTimeout(1500)
+    // In stock 0.2.1 a draft submission can publish the new conversation in
+    // the sidebar while leaving the main pane on the home draft. An in-session
+    // command sent there would create ANOTHER hidden session. Open the newly
+    // published row through the real UI before continuing the workflow.
+    if (!text.startsWith('/') && await page.getByText('Into the Unknown', { exact: true }).isVisible().catch(() => false)) {
+      await page.waitForFunction(({ selector, before }) =>
+        [...document.querySelectorAll(selector)].some(node => !before.includes(node.getAttribute('data-row-key'))),
+      { selector: sessionRows, before: beforeRows }, { timeout: 60000 })
+      const newKeys = (await page.locator(sessionRows).evaluateAll(nodes => nodes.map(node => node.getAttribute('data-row-key'))))
+        .filter(key => !beforeRows.includes(key))
+      if (newKeys.length !== 1) throw new Error(`capture: expected one newly published conversation, got ${newKeys.length}`)
+      await page.locator(`[data-row-key="${newKeys[0]}"]`).click()
+      await page.getByText('Into the Unknown', { exact: true }).waitFor({ state: 'hidden', timeout: 30000 })
+    }
+    await page.getByRole('button', { name: new RegExp(`^${UI.stop}\\b`, 'i') }).waitFor({ state: 'hidden', timeout: 180000 })
     await page.waitForFunction(
       ({ running, stop }) => {
         const text = document.body.innerText
