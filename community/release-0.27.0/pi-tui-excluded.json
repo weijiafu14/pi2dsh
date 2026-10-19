@@ -1,0 +1,13 @@
+{
+  "generatedAt": "2026-10-19T10:14:42.034Z",
+  "scenario": "dsh-pi-tui + pi2dsh + Pi MCP + Pi Subagents",
+  "specs": {
+    "dsh": "@deepseek-ai/dsh@0.2.1-rc.2",
+    "tui": "@xmoon76/dsh-pi-tui@0.5.1",
+    "engine": "pi2dsh@0.27.0",
+    "mcp": "pi-mcp-adapter@2.27.0",
+    "subagents": "@tintinweb/pi-subagents@0.20.0"
+  },
+  "status": "skipped",
+  "reason": "User-approved exclusion: dsh-pi-tui 0.5.1 still references removed DSH invariant components and cwd prompt variable on 0.2.1-rc.2; upstream startup failure recorded separately."
+}

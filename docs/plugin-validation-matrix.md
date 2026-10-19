@@ -2,7 +2,7 @@
 
 ## DSH 0.2.1 升级验收（2026-10-19）
 
-候选 pi2dsh 0.27.0 / dsh-work-x 0.6.0 对齐 stock npm DSH 0.2.1-rc.2。
+已发布 pi2dsh 0.27.0 / dsh-work-x 0.6.0，对齐 stock npm DSH 0.2.1-rc.2。
 Pi 包版本与映射职责不变；逐项真实结果以[本轮证据](../community/release-0.27.0/README.md)
 为准。下列 0.2.0 与更早结果保留当时边界，不自动继承为新宿主通过。
 

@@ -1116,7 +1116,16 @@ async function runPresentationSurfaces() {
     // suite and adds the status-line package on top.
     const tarball = await stageSuiteTarball(projectRoot, engineSpec, scratch, env)
     await runDsh(['plugin', '--profile', 'web', 'add', tarball])
-    await runDsh(['plugin', '--profile', 'web', 'add', 'pi-powerline-footer'])
+    await runDsh(['plugin', '--profile', 'web', 'add', 'pi-powerline-footer@0.20.2'])
+    // The original package moves overflow segments into its terminal footer.
+    // Keep this widget-projection probe within the bridge's 80-column render
+    // width, independent of checkout name and changing Git dirty counts.
+    // This is the package's supported layout configuration, not a source patch.
+    const powerlineAgentDir = join(home, 'pi2dsh', 'agent')
+    await mkdir(powerlineAgentDir, { recursive: true })
+    await writeFile(join(powerlineAgentDir, 'settings.json'), JSON.stringify({
+      powerline: { layout: { left: ['model', 'thinking', 'context_pct'], right: [], secondary: [] } },
+    }))
     await useJsonlSessions(home, 'web')
 
     const port = Number(process.env.SURFACES_PORT ?? 5189)
@@ -1150,7 +1159,7 @@ async function runPresentationSurfaces() {
     }).catch(error => { console.log(String(error.stdout ?? '')); throw error })
     const captured = await readdir(shots)
     assert(captured.length > 0, 'the surfaces run produced no screenshots')
-    results.presentationSurfaces = { status: 'passed', engine: await installedEngineVersion(home, 'web', 'dsh-work-x'), install: 'dsh-work-x suite + pi-powerline-footer', screenshots: captured.sort() }
+    results.presentationSurfaces = { status: 'passed', engine: await installedEngineVersion(home, 'web', 'dsh-work-x'), install: 'dsh-work-x suite + pi-powerline-footer@0.20.2', layout: ['model', 'thinking', 'context_pct'], screenshots: captured.sort() }
   } finally {
     web?.kill('SIGTERM')
     await removeScratch(scratch, 'scenario cleanup')

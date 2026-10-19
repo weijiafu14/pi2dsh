@@ -51,6 +51,15 @@ collapsible to a labelled pill):
 Colour included: the plugin emits terminal colour codes, and the browser half
 paints them rather than printing them.
 
+The exact segments depend on the package's layout and available width. Its
+default layout can move context usage into a secondary terminal footer; the
+Web bridge does not promise the complete Pi terminal footer. The regression
+pins the original package to `0.20.2` and uses its supported layout setting
+`left: ["model", "thinking", "context_pct"]` (empty right/secondary rows), so
+all asserted segments fit the bridge's 80-column widget rendering. It checks
+initial display, actual removal, re-enabling, and ANSI rendering—not full
+terminal-editor or token-accounting parity.
+
 ## Which plugins this is for
 
 Measured by reading the source of the 50 most-downloaded Pi packages —

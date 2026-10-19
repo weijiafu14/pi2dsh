@@ -1,0 +1,22 @@
+{
+  "date": "2026-10-19",
+  "sourceCommit": "14195cbbcd263089446af218f84773a40d78bbfe",
+  "tag": "v0.27.0",
+  "host": "@deepseek-ai/dsh@0.2.1-rc.2",
+  "packages": [
+    {
+      "name": "pi2dsh",
+      "version": "0.27.0",
+      "registryAvailable": true,
+      "matchesLocalTarball": true,
+      "integrity": "sha512-3P2yFMxp2KxTlKyebMYWCVrWRP6T0DdfYoOcbr+Ac7Reez1xyZDuAJdJ4edborRJUrmvooiGhg32lAqfyyfv9g=="
+    },
+    {
+      "name": "dsh-work-x",
+      "version": "0.6.0",
+      "registryAvailable": true,
+      "matchesLocalTarball": true,
+      "integrity": "sha512-G10Gybj1S+wFSO0KPxdqqlfZG198UMgxyQ/39QgLkmB3zLV9Gkb6e796tPpoyYQgf4IT2zukYcGM+6PTqIy+eA=="
+    }
+  ]
+}

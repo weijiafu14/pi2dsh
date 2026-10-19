@@ -1,0 +1,15 @@
+{
+  "date": "2026-10-19",
+  "command": "pnpm verify:release",
+  "exitCode": 0,
+  "host": "@deepseek-ai/dsh@0.2.1-rc.2",
+  "engineSpec": "pi2dsh@0.27.0",
+  "suiteSpec": "dsh-work-x@0.6.0",
+  "tests": { "passed": 373, "files": 37 },
+  "examples": { "passed": 15, "partial": 1, "skipped": 4, "failed": 0 },
+  "subagentScenarios": { "passed": 8, "failed": 0 },
+  "stepSeams": "passed",
+  "dshPiTui": "explicitly excluded: upstream incompatible with this host",
+  "firstAttempt": "examples-npm-first-attempt.json",
+  "finalExamples": "examples-npm.json"
+}
