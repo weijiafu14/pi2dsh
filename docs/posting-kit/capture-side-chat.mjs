@@ -9,10 +9,13 @@
 // posting-kit screenshot; the answer presents in the side-chat window (the
 // web projects no TUI, so no package modal ever appears).
 import { openApp } from './web-drive.mjs'
+import { writeFile } from 'node:fs/promises'
+import { join } from 'node:path'
 
 const QUESTION = '/btw who wrote the novel Dune? name only'
 
-const { page, browser, shot, send } = await openApp()
+const { page, browser, shot, send, outDir } = await openApp()
+try {
 await page.getByRole('button', { name: /new session/iu }).first().click({ timeout: 60_000 })
 
 // A bare slash command in the modern host's draft can create a hidden session
@@ -30,6 +33,11 @@ await page.keyboard.press('Enter')
 const panel = page.locator('[data-dsh-x="side-chat"]')
 await panel.waitFor({ state: 'visible', timeout: 120_000 }).catch(async error => {
   await shot('failure-side-panel')
+  await writeFile(join(outDir, 'failure-side-state.json'), JSON.stringify(await page.evaluate(() => ({
+    text: document.body.innerText,
+    stages: [...document.querySelectorAll('[data-pi2dsh="stage"]')].map(node => node.getAttribute('data-session')),
+    composer: [...document.querySelectorAll('[role="textbox"],textarea')].map(node => node.textContent),
+  })), null, 2))
   throw error
 })
 await panel.getByText(/herbert/iu).last().waitFor({ state: 'visible', timeout: 120_000 })
@@ -43,4 +51,9 @@ if ((await page.locator('body').innerText()).includes('ui.custom is not availabl
 await panel.getByText(/herbert/iu).last().scrollIntoViewIfNeeded()
 await shot('00-side-conversation-work-x')
 
-await browser.close()
+} catch (error) {
+  await shot('failure-side-workflow').catch(() => {})
+  throw error
+} finally {
+  await browser.close()
+}

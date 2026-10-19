@@ -24,6 +24,7 @@ const COMMANDS = [
 
 const { page, browser, shot, send, UI } = await openApp()
 await page.getByRole('button', { name: UI.newSession }).first().click({ timeout: 60_000 })
+await send('Reply with exactly READY.')
 
 const composer = page.getByRole('textbox').last()
 // Real keystrokes only: the 0.1.2 line's composer is a Lexical

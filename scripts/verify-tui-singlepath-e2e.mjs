@@ -40,7 +40,7 @@ const outPath = resolve(process.argv[2] ?? 'community/tui-singlepath-e2e.json')
 // Default follows npm `latest` — the CLI a NEW user installs today. The
 // rc.8 line stays supported: re-run with
 // PI2DSH_DSH_CLI_SPEC=@deepseek-ai/dsh@0.1.0-rc.8 to cover it.
-const DSH_CLI_SPEC = process.env.PI2DSH_DSH_CLI_SPEC ?? '@deepseek-ai/dsh@0.2.0-rc.2'
+const DSH_CLI_SPEC = process.env.PI2DSH_DSH_CLI_SPEC ?? '@deepseek-ai/dsh@0.2.1-rc.2'
 const TUI_SPEC = process.env.PI2DSH_TUI_SPEC ?? '@deepseek-harness-tui/dsh-tui'
 const ENGINE_SPEC = process.env.PI2DSH_ENGINE_SPEC ?? projectRoot
 const MCP_ADAPTER_SPEC = process.env.PI2DSH_MCP_ADAPTER_SPEC ?? 'pi-mcp-adapter@2.27.0'

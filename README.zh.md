@@ -20,12 +20,17 @@ elicitation、sampling、cancellation——经 DSH 自己的审批和渲染跑�
 
 | pi2dsh | DSH 宿主 | 维护状态 |
 |---|---|---|
+| 0.27.0 | 0.2.1-rc.2 | [验收与发布状态](community/release-0.27.0/README.md) |
 | 0.26.0 | 0.2.0-rc.2 | [发布验收与缺凭证项目](community/release-0.26.0/README.md) |
 | 0.25.2 | 0.1.5-rc.2 | 保留检查点：[发布验收](community/release-0.25.2/README.md) |
 
 Pi 扩展语义仍固定在 0.84.1。新版引擎只针对已验证的当前 DSH 版本维护；
 旧版收到具体故障后，从对应发布 tag 分支修复。存量会话格式迁移由 DSH 负责。
 未经验证的新宿主版本不会自动写入兼容声明。
+
+DSH 0.2.1-rc.2 上暂不支持 `@xmoon76/dsh-pi-tui@0.5.1` 这一组合：该终端仍挂载
+宿主已删除的 invariant 组件，并使用已移除的 `cwd` 提示词变量。这与引擎的 Web 和
+`@deepseek-harness-tui/dsh-tui@0.16.1` 路径分开；不要用 `allow-version` 绕过。
 
 ## 为什么有这个项目
 

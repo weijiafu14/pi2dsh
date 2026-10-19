@@ -9,7 +9,7 @@ import ToolRuntime from '@deepseek-ai/dsh-tools'
 
 /**
  * Mechanism probe for the single-path per-Agent architecture, run against the
- * exact stock npm packages the engine pins (DSH 0.2.0-rc.2).
+ * exact stock npm packages the engine pins (DSH 0.2.1-rc.2).
  *
  * Pillars under test:
  *  1. A root (host-level) `agent/created` listener fires for every registry

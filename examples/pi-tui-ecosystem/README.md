@@ -1,5 +1,12 @@
 # Pi MCP and Subagents in dsh-pi-tui
 
+**Version boundary:** this example is retained for DSH **0.2.0-rc.2** +
+pi2dsh **0.26.0** + dsh-pi-tui **0.5.1** ([published proof](../../community/release-0.26.0/pi-tui-npm.json)).
+On DSH **0.2.1-rc.2**, this terminal still references removed invariant
+components and a removed `cwd` prompt variable. It is not part of the 0.27.0
+support claim. Use [dsh-TUI](../tui-mcp/) on the new host instead; do not
+install old host components into the new runtime or force a version exemption.
+
 This is the stock four-package combination verified on a real DSH model loop:
 
 ```text
@@ -9,8 +16,8 @@ This is the stock four-package combination verified on a real DSH model loop:
 ## Install
 
 ```sh
-dsh plugin --profile pi-tui add @xmoon76/dsh-pi-tui
-dsh plugin --profile pi-tui add pi2dsh pi-mcp-adapter @tintinweb/pi-subagents
+dsh plugin --profile pi-tui add @xmoon76/dsh-pi-tui@0.5.1
+dsh plugin --profile pi-tui add pi2dsh@0.26.0 pi-mcp-adapter@2.27.0 @tintinweb/pi-subagents@0.20.0
 dsh --profile pi-tui
 ```
 

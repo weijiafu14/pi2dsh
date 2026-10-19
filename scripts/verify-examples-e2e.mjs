@@ -49,7 +49,7 @@ import { createHash } from 'node:crypto'
 import { createRequire } from 'node:module'
 import { chmod, mkdir, mkdtemp, readFile, readdir, realpath, rm, stat, symlink, writeFile } from 'node:fs/promises'
 import { homedir, tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { basename, join, resolve } from 'node:path'
 import { promisify } from 'node:util'
 
 import { stageSuiteTarball } from './lib/suite-tarball.mjs'
@@ -82,6 +82,10 @@ const engineSpec = process.env.PI2DSH_ENGINE_SPEC ?? `file:${projectRoot}`
 // should not rewrite repository assets. Point this at docs/posting-kit/assets
 // when you actually want to refresh the published pictures.
 const shotDir = process.env.PI2DSH_SHOT_DIR === undefined ? undefined : resolve(process.env.PI2DSH_SHOT_DIR)
+// A retained screenshot root must keep concurrent scenarios separate. Keep
+// pixels outside disposable profiles without keeping their credentials/state.
+const captureDirectory = (scratch, fallback = 'shots') => shotDir === undefined
+  ? join(scratch, fallback) : join(shotDir, basename(scratch))
 
 /**
  * Read back which engine actually got installed, and refuse a mismatch.
@@ -733,7 +737,7 @@ async function runMemoryTasksWeb() {
     }
 
     const CODEWORD = `NIMBUS-${Math.floor(1000 + Math.random() * 9000)}`
-    const shots = join(scratch, 'shots')
+    const shots = captureDirectory(scratch, 'shots')
     await execFile('node', [
       join(projectRoot, 'docs/posting-kit/capture-memory-tasks.mjs'), shots,
       '--url', await authedUrl(url, () => webLog), '--codeword', CODEWORD,
@@ -856,7 +860,7 @@ async function runSideConversation() {
     // Drive one `/btw` line the way a user types it; the durable assertions
     // below read the session logs, never the page (the page legitimately
     // shows the answer — in the side surfaces — so page text proves nothing).
-    const shots = shotDir ?? join(scratch, 'shots')
+    const shots = captureDirectory(scratch, 'shots')
     await execFile('node', [join(projectRoot, 'docs/posting-kit/capture-side-chat.mjs'), shots, '--url', await authedUrl(url, () => webLog)], {
       cwd: projectRoot,
       env: { ...env, PLAYWRIGHT_FROM: playwrightFrom },
@@ -951,7 +955,7 @@ async function runVisionBridgeWeb() {
 
     const image = join(projectRoot, 'examples/vision-bridge/test-images/solid-green.png')
     await stat(image)
-    const shots = shotDir ?? join(scratch, 'shots')
+    const shots = captureDirectory(scratch, 'shots')
     await execFile('node', [
       join(projectRoot, 'docs/posting-kit/capture-vision.mjs'), shots, '--url', await authedUrl(url, () => webLog), '--image', image,
     ], {
@@ -1137,7 +1141,7 @@ async function runPresentationSurfaces() {
 
     // The capture script IS the assertion: each seat has to hold the string the
     // Pi package supplied, checked inside that seat rather than in page text.
-    const shots = shotDir ?? join(scratch, 'shots')
+    const shots = captureDirectory(scratch, 'shots')
     await execFile('node', [join(projectRoot, 'docs/posting-kit/capture-surfaces.mjs'), shots, '--url', await authedUrl(url, () => webLog)], {
       cwd: projectRoot,
       env: { ...env, PLAYWRIGHT_FROM: playwrightFrom },
@@ -1203,7 +1207,7 @@ async function runSubscriptionLogin() {
     }
     let accountBacked
     if (authFile !== undefined && authFile.length > 0) {
-      const shots = shotDir ?? join(scratch, 'provider-shots')
+      const shots = captureDirectory(scratch, 'provider-shots')
       await execFile('node', [
         join(projectRoot, 'docs/posting-kit/capture-providers.mjs'),
         shots,
@@ -1464,7 +1468,7 @@ async function runWorkXMemoryTasks() {
 
     const CODEWORD = `AURORA-${Math.floor(1000 + Math.random() * 9000)}`
     const PIN = `Always answer with the release codename ${CODEWORD} first`
-    const shots = join(scratch, 'shots')
+    const shots = captureDirectory(scratch, 'shots')
     await execFile('node', [
       join(projectRoot, 'docs/posting-kit/capture-workx-memory-tasks.mjs'), shots,
       '--url', await authedUrl(url, () => webLog), '--codeword', CODEWORD, '--pin', PIN,
@@ -1578,7 +1582,7 @@ async function runDshX() {
     assert(!/failed to mount/u.test(webLog), `a suite member failed to mount:\n${webLog.split('\n').filter(line => /failed to mount/u.test(line)).join('\n')}`)
 
     // The falsifiable web check: each member's command offered by the popover.
-    const probe = await execFile('node', [join(projectRoot, 'scripts/dsh-x-web-probe.mjs'), join(scratch, 'shots'), '--url', await authedUrl(url, () => webLog)], {
+    const probe = await execFile('node', [join(projectRoot, 'scripts/dsh-x-web-probe.mjs'), captureDirectory(scratch), '--url', await authedUrl(url, () => webLog)], {
       cwd: projectRoot,
       env: { ...env, PLAYWRIGHT_FROM: playwrightFrom },
       timeout: 600_000,
@@ -1862,7 +1866,7 @@ async function runCodeNavigationWeb() {
       await new Promise(done => setTimeout(done, 500))
     }
 
-    const shots = shotDir ?? join(scratch, 'shots')
+    const shots = captureDirectory(scratch, 'shots')
     await execFile('node', [
       join(projectRoot, 'docs/posting-kit/capture-codenav.mjs'), shots, '--url', await authedUrl(url, () => webLog),
     ], {
@@ -2077,7 +2081,7 @@ async function runMcpAtScaleWeb() {
       await new Promise(done => setTimeout(done, 500))
     }
 
-    const shots = shotDir ?? join(scratch, 'shots')
+    const shots = captureDirectory(scratch, 'shots')
     await execFile('node', [
       join(projectRoot, 'docs/posting-kit/capture-mcp-scale.mjs'), shots, '--url', await authedUrl(url, () => webLog),
     ], {
@@ -2167,7 +2171,11 @@ await Promise.all(Array.from({ length: Math.min(concurrency, queue.length) }, as
       console.log(`[examples-e2e] ${name}: ${results[key]?.status ?? 'passed'}${
         results[key]?.reason === undefined ? '' : ` — ${results[key].reason}`}`)
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
+      // Child-process errors echo argv, including the short-lived Web launch
+      // token. Receipts and public failure reports must never retain it.
+      const message = (error instanceof Error ? error.message : String(error))
+        .replace(/([?&]token=)[^\s"']+/gu, '$1[redacted]')
+        .replaceAll(apiKey ?? '\0', '[redacted]')
       results[key] = { status: 'failed', error: message }
       failures.push(`${name}: ${message}`)
       console.error(`[examples-e2e] ${name}: FAILED — ${message}`)
