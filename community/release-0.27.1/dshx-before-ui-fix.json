@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "pi2dshCommit": "a7f1ea8bd0d21735e85c0d76a21488dc347fa8b0",
+  "dshCommit": "npm:@deepseek-ai/dsh@0.2.1-rc.3",
+  "results": {
+    "dshX": {
+      "status": "failed",
+      "error": "Command failed: node /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/scripts/dsh-x-web-probe.mjs /tmp/pi2dsh-issue9.d6GPF9/shots-rc3/pi2dsh-ex-dshx-oPdCUG --url http://127.0.0.1:5193/?token=[redacted]\nside-chat at failure: Side chat\n⤴ Inject\n⤢\n×\nWhat planet is the novel Dune set on? Reply with the planet name only.\nArrakis\nAnswering…\nSend\nalso save into the main conversation\nnode:internal/modules/run_main:123\n    triggerUncaughtException(\n    ^\n\npage.waitForFunction: Timeout 180000ms exceeded.\n    at /Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/scripts/dsh-x-web-probe.mjs:131:14 {\n  log: [],\n  name: 'TimeoutError'\n}\n\nNode.js v22.22.0\n"
+    }
+  }
+}

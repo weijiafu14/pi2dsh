@@ -18,8 +18,8 @@ import { setTimeout as delay } from 'node:timers/promises'
 const execFile = promisify(execFileCallback)
 const projectRoot = resolve(new URL('..', import.meta.url).pathname)
 const resultPath = resolve(process.argv[2] ?? 'community/pi-tui-ecosystem-e2e.json')
-const DSH_SPEC = process.env.PI2DSH_DSH_CLI_SPEC ?? '@deepseek-ai/dsh@0.2.1-rc.2'
-const TUI_SPEC = process.env.PI2DSH_PI_TUI_SPEC ?? '@xmoon76/dsh-pi-tui@0.5.1'
+const DSH_SPEC = process.env.PI2DSH_DSH_CLI_SPEC ?? '@deepseek-ai/dsh@0.2.1-rc.3'
+const TUI_SPEC = process.env.PI2DSH_PI_TUI_SPEC ?? '@xmoon76/dsh-pi-tui@0.5.3'
 const ENGINE_SPEC = process.env.PI2DSH_ENGINE_SPEC ?? projectRoot
 const MCP_SPEC = process.env.PI2DSH_MCP_ADAPTER_SPEC ?? 'pi-mcp-adapter@2.27.0'
 const SUBAGENTS_SPEC = process.env.PI2DSH_SUBAGENTS_SPEC ?? '@tintinweb/pi-subagents@0.20.0'
@@ -248,7 +248,7 @@ try {
   await tmux('send-keys', '-t', TMUX, '-l', 'openai codex')
   const loginScreen = await waitFor('OpenAI Codex in native login', async () => {
     const screen = await capture()
-    return /OpenAI Codex — sign in/u.test(screen) ? screen : undefined
+    return /OpenAI Codex(?: \(legacy\))? — sign in/u.test(screen) ? screen : undefined
   }, 30_000)
   await closeOverlay()
 
@@ -295,7 +295,7 @@ try {
   await writeResult('passed', {
     versions,
     assertions: {
-      nativeLogin: /OpenAI Codex — sign in/u.test(loginScreen),
+      nativeLogin: /OpenAI Codex(?: \(legacy\))? — sign in/u.test(loginScreen),
       mcpManager: /everything\s+23\/23/u.test(mcpManager),
       agentsSurface: /Agent types \(3\)/u.test(agentsScreen),
       subagentToolResult: relative(home, subagentLog),

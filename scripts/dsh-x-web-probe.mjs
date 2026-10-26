@@ -23,6 +23,7 @@ const COMMANDS = [
 ]
 
 const { page, browser, shot, send, UI } = await openApp()
+try {
 await page.getByRole('button', { name: UI.newSession }).first().click({ timeout: 60_000 })
 await send('Reply with exactly READY.')
 
@@ -104,7 +105,7 @@ if (process.env.DEEPSEEK_API_KEY === undefined && process.env.OPENROUTER_API_KEY
   await page.locator('[data-dsh-x="side-chat-send"]').click()
   await page.waitForFunction(() => {
     const w = document.querySelector('[data-dsh-x="side-chat"]')
-    return w !== null && /Herbert/iu.test(w.textContent ?? '')
+    return w !== null && /Herbert/iu.test(w.textContent ?? '') && !/Answering/u.test(w.textContent ?? '')
   }, undefined, { timeout: 180_000 })
   const leaked = await page.evaluate(() => {
     const clone = document.body.cloneNode(true)
@@ -129,10 +130,17 @@ if (process.env.DEEPSEEK_API_KEY === undefined && process.env.OPENROUTER_API_KEY
   await page.locator('[data-dsh-x="side-chat-send"]').click()
   await page.waitForFunction(() => {
     const w = document.querySelector('[data-dsh-x="side-chat"]')
-    return w !== null && /Arrakis/iu.test(w.textContent ?? '')
+    // Streaming text is visible before the plugin finishes its --save action.
+    return w !== null && /Arrakis/iu.test(w.textContent ?? '') && !/Answering/u.test(w.textContent ?? '')
   }, undefined, { timeout: 180_000 })
   await shot('dsh-x-side-saved')
   mounted['side-chat'] = 'answer-in-window; inject and save confirmed in-window (durable halves asserted from the session log)'
   console.log('[dsh-x-probe] side-chat: side answers stayed in-window; inject and --save acknowledged')
 }
-await browser.close()
+} catch (error) {
+  await shot('dsh-x-failure').catch(() => {})
+  console.error('side-chat at failure:', await page.locator('[data-dsh-x="side-chat"]').innerText().catch(() => 'not visible'))
+  throw error
+} finally {
+  await browser.close()
+}

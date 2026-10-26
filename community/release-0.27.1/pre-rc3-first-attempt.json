@@ -1,0 +1,304 @@
+{
+  "schemaVersion": 1,
+  "pi2dshCommit": "a7f1ea8bd0d21735e85c0d76a21488dc347fa8b0",
+  "dshCommit": "npm:@deepseek-ai/dsh@0.2.1-rc.3",
+  "results": {
+    "alibabaTokenPlan": {
+      "status": "skipped",
+      "reason": "ALIBABA_TOKEN_PLAN_API_KEY not set"
+    },
+    "visionBridge": {
+      "status": "skipped",
+      "reason": "no complete OpenAI-compatible or Pi-registry vision model configured"
+    },
+    "gatewayCompat": {
+      "engine": {
+        "version": "0.27.1",
+        "from": "local",
+        "spec": "file:<working-tree>",
+        "commit": "a7f1ea8bd0d21735e85c0d76a21488dc347fa8b0",
+        "dirty": true
+      },
+      "status": "passed",
+      "requests": 2,
+      "roles": [
+        "system",
+        "user",
+        "user"
+      ],
+      "maxTokensField": "max_tokens",
+      "store": null,
+      "reasoningEffort": "high",
+      "bodyKeys": [
+        "max_tokens",
+        "messages",
+        "model",
+        "reasoning_effort",
+        "stream",
+        "stream_options",
+        "tools"
+      ],
+      "previews": [
+        "system: You are an AI agent powered by DeepSeek Harness. You are a ",
+        "user: Reply with exactly: gateway-compat-ok",
+        "user: Current runtime context. This snapshot supersedes earlier ru"
+      ]
+    },
+    "backgroundTasks": {
+      "status": "passed",
+      "engine": {
+        "version": "0.27.1",
+        "from": "local",
+        "spec": "file:<working-tree>",
+        "commit": "a7f1ea8bd0d21735e85c0d76a21488dc347fa8b0",
+        "dirty": true
+      },
+      "bgRunCalls": 1,
+      "bgLogsMidRunReads": 1
+    },
+    "persistentMemory": {
+      "status": "passed",
+      "engine": {
+        "version": "0.27.1",
+        "from": "local",
+        "spec": "file:<working-tree>",
+        "commit": "a7f1ea8bd0d21735e85c0d76a21488dc347fa8b0",
+        "dirty": true
+      },
+      "wroteVia": [
+        "memory_add"
+      ],
+      "recalledAcrossSessions": true,
+      "storeIsolatedToDshHome": true
+    },
+    "memoryTasksWeb": {
+      "status": "passed",
+      "engine": {
+        "version": "0.27.1",
+        "from": "local",
+        "spec": "file:<working-tree>",
+        "commit": "a7f1ea8bd0d21735e85c0d76a21488dc347fa8b0",
+        "dirty": true
+      },
+      "memoryRecalledAcrossWebSessions": true,
+      "bgMidRunReadOnWeb": true,
+      "storeIsolatedToDshHome": true,
+      "screenshots": [
+        "01-memory-save-web.png",
+        "02-memory-recall-web.png",
+        "03-background-tasks-web.png"
+      ]
+    },
+    "visionBridgeWeb": {
+      "status": "skipped",
+      "reason": "no complete OpenAI-compatible or Pi-registry vision model configured"
+    },
+    "workXMemoryTasks": {
+      "status": "passed",
+      "engine": {
+        "version": "0.27.1",
+        "from": "local",
+        "spec": "file:<working-tree>",
+        "commit": "a7f1ea8bd0d21735e85c0d76a21488dc347fa8b0",
+        "dirty": true
+      },
+      "memoryTabShowsStore": true,
+      "pinRoundTrip": true,
+      "dockKilledTask": true,
+      "screenshots": [
+        "01-memory-settings.png",
+        "02-tasks-chip-live.png",
+        "03-tasks-killed.png"
+      ]
+    },
+    "customGateways": {
+      "status": "passed",
+      "engine": {
+        "version": "0.27.1",
+        "from": "local",
+        "spec": "file:<working-tree>",
+        "commit": "a7f1ea8bd0d21735e85c0d76a21488dc347fa8b0",
+        "dirty": true
+      },
+      "seenByPackage": {
+        "provider": "my-gateway",
+        "id": "deepseek-flash",
+        "api": "faux",
+        "contextWindow": 131072
+      },
+      "requestedThroughGateway": true
+    },
+    "subscriptionLogin": {
+      "status": "partial",
+      "engine": {
+        "version": "0.27.1",
+        "from": "local",
+        "spec": "file:<working-tree>",
+        "commit": "a7f1ea8bd0d21735e85c0d76a21488dc347fa8b0",
+        "dirty": true
+      },
+      "note": "pre-login discovery and native route passed; set CODEX_AUTH_FILE to verify the post-login model picker"
+    },
+    "codexImageGen": {
+      "status": "skipped",
+      "reason": "CODEX_AUTH_FILE not set"
+    },
+    "sideConversation": {
+      "status": "passed",
+      "engine": {
+        "version": "0.27.1",
+        "from": "local",
+        "spec": "file:<working-tree>",
+        "commit": "a7f1ea8bd0d21735e85c0d76a21488dc347fa8b0",
+        "dirty": true
+      },
+      "install": "dsh-work-x suite (bundles pi-btw)",
+      "sideAnswerIsolated": true,
+      "screenshots": [
+        "00-side-conversation-work-x.png"
+      ]
+    },
+    "presentationSurfaces": {
+      "status": "passed",
+      "engine": {
+        "version": "0.27.1",
+        "from": "local",
+        "spec": "file:<working-tree>",
+        "commit": "a7f1ea8bd0d21735e85c0d76a21488dc347fa8b0",
+        "dirty": true
+      },
+      "install": "dsh-work-x suite + pi-powerline-footer@0.20.2",
+      "layout": [
+        "model",
+        "thinking",
+        "context_pct"
+      ],
+      "screenshots": [
+        "06-presentation-surfaces.png"
+      ]
+    },
+    "subagents": {
+      "status": "failed",
+      "error": "the lifecycle harness left no evidence; tail: 39:18)\n    at tryReadSync (node:fs:416:20)\n    at readFileSync (node:fs:470:19)\n    at file:///Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh/scripts/verify-subagents-lifecycle-e2e.mjs:52:33\n    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:665:26)\n    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5) {\n  errno: -21,\n  code: 'EISDIR',\n  syscall: 'read'\n}\n\nNode.js v22.22.0\n"
+    },
+    "codeNavigation": {
+      "status": "failed",
+      "error": "Command failed: /tmp/pi2dsh-issue9.d6GPF9/rc3/node_modules/.bin/dsh plugin --profile headless add file:/Users/weijiafu8/projj/coding.jd.com/fm-common/synDbToEs/pi2dsh\ndsh: initialized profile headless at /var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-ex-codenav-qjm3rh/dsh-home/profiles/headless\nnode:events:497\n      throw er; // Unhandled 'error' event\n      ^\n\nTypeError: terminated\n    at Fetch.onAborted (node:internal/deps/undici/undici:11322:53)\n    at Fetch.emit (node:events:519:28)\n    at Fetch.terminate (node:internal/deps/undici/undici:10480:14)\n    at Object.onError (node:internal/deps/undici/undici:11445:38)\n    at Request.onError (node:internal/deps/undici/undici:2210:31)\n    at Object.errorRequest (node:internal/deps/undici/undici:1707:17)\n    at TLSSocket.<anonymous> (node:internal/deps/undici/undici:6433:16)\n    at TLSSocket.emit (node:events:531:35)\n    at node:net:346:12\n    at TCP.done (node:_tls_wrap:667:7)\nEmitted 'error' event on Readable instance at:\n    at emitErrorNT (node:internal/streams/destroy:170:8)\n    at emitErrorCloseNT (node:internal/streams/destroy:129:3)\n    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {\n  [cause]: Error: read ECONNRESET\n      at TLSWrap.onStreamRead (node:internal/stream_base_commons:216:20) {\n    errno: -54,\n    code: 'ECONNRESET',\n    syscall: 'read'\n  }\n}\n\nNode.js v22.22.0\ndsh: plugin command failed; diagnostics: /var/folders/6m/14zlftds6md1btml42wsbvl80000gp/T/pi2dsh-ex-codenav-qjm3rh/dsh-home/profiles/headless/.plugin-manager/logs/operation-uFhbGQ/pnpm.log\n"
+    },
+    "dshX": {
+      "status": "passed",
+      "engine": {
+        "version": "0.27.1",
+        "from": "local",
+        "spec": "file:<working-tree>",
+        "commit": "a7f1ea8bd0d21735e85c0d76a21488dc347fa8b0",
+        "dirty": true
+      },
+      "suite": [
+        "pi-mcp-adapter",
+        "@tintinweb/pi-subagents",
+        "pi-btw",
+        "@crazygit/pi-codex-image-gen",
+        "pi-hermes-memory",
+        "pi-background-tasks"
+      ],
+      "sideChat": "answers in-window; inject + --save verified in the main session log",
+      "commands": {
+        "pi-mcp-adapter": "mcp",
+        "@tintinweb/pi-subagents": "agents",
+        "pi-btw": "btw"
+      }
+    },
+    "tuiMcp": {
+      "status": "passed",
+      "engine": {
+        "version": "0.27.1",
+        "from": "local",
+        "spec": "file:<working-tree>",
+        "commit": "a7f1ea8bd0d21735e85c0d76a21488dc347fa8b0",
+        "dirty": true
+      },
+      "profile": "dsh-tui",
+      "piPackage": "pi-mcp-adapter",
+      "piPackageVersion": "2.27.0",
+      "command": "/pi-mcp",
+      "nativeCommandPreserved": "/mcp",
+      "mcpServer": "@modelcontextprotocol/server-everything",
+      "transports": [
+        "stdio",
+        "streamable-http",
+        "sse"
+      ],
+      "capabilities": [
+        "manager",
+        "discovery",
+        "proxy",
+        "direct-tools",
+        "mcpScript",
+        "resources",
+        "prompts",
+        "images",
+        "structured-content",
+        "mcp-app-ui",
+        "approval",
+        "elicitation",
+        "sampling",
+        "cancellation",
+        "reconnect",
+        "session-restart"
+      ]
+    },
+    "mcpAtScale": {
+      "status": "passed",
+      "engine": {
+        "version": "0.27.1",
+        "from": "local",
+        "spec": "file:<working-tree>",
+        "commit": "a7f1ea8bd0d21735e85c0d76a21488dc347fa8b0",
+        "dirty": true
+      },
+      "packages": [
+        "pi-mcp-adapter"
+      ],
+      "server": "many-tools (official MCP SDK, 51 tools, stdio)",
+      "discovery": "mcp proxy -> tool_037 -> LAUNCH-MARKER-7741-ZEBRA",
+      "timeout": "mcpScript timeoutMs 5000 on ~120s slow_task; turn ended in 20s; tool_001 answered after"
+    },
+    "mcpAtScaleWeb": {
+      "status": "passed",
+      "engine": {
+        "version": "0.27.1",
+        "from": "local",
+        "spec": "file:<working-tree>",
+        "commit": "a7f1ea8bd0d21735e85c0d76a21488dc347fa8b0",
+        "dirty": true
+      },
+      "packages": [
+        "pi-mcp-adapter"
+      ],
+      "screenshots": [
+        "12-mcp-at-scale-web.png"
+      ],
+      "discovery": "mcp proxy -> tool_037 -> LAUNCH-MARKER-7741-ZEBRA"
+    },
+    "codeNavigationWeb": {
+      "status": "passed",
+      "engine": {
+        "version": "0.27.1",
+        "from": "local",
+        "spec": "file:<working-tree>",
+        "commit": "a7f1ea8bd0d21735e85c0d76a21488dc347fa8b0",
+        "dirty": true
+      },
+      "packages": {
+        "@ff-labs/pi-fff": "0.11.0",
+        "pi-lens": "4.4.5"
+      },
+      "screenshots": [
+        "06-code-navigation-web.png"
+      ],
+      "search": "ffgrep -> notes/spec.md",
+      "diagnostics": "LSP diagnostic tool -> TS2322 on src/ledger.ts"
+    }
+  }
+}

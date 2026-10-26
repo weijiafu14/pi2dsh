@@ -5,11 +5,12 @@ import assert from 'node:assert/strict'
 import {existsSync, readFileSync, realpathSync} from 'node:fs'
 import {createRequire} from 'node:module'
 import {join, resolve} from 'node:path'
+import {assertHostCompatibility} from './lib/host-compatibility.mjs'
 
 const root=resolve(new URL('..',import.meta.url).pathname)
 const manifestPath=join(root,'package.json')
 const manifest=JSON.parse(readFileSync(manifestPath,'utf8'))
-const expected=manifest.devDependencies['@deepseek-ai/dsh-agent']
+const expected=assertHostCompatibility(manifest)
 const pending=[manifestPath],seen=new Set(),versions=new Map()
 while(pending.length){
   const path=realpathSync(pending.pop())
@@ -30,8 +31,5 @@ while(pending.length){
     }
     pending.push(found)
   }
-}
-for(const [name,range] of Object.entries(manifest.peerDependencies)){
-  if(name.startsWith('@deepseek-ai/dsh'))assert.equal(range,expected,`${name} must declare the tested host`)
 }
 console.log(`Host graph verified: ${versions.size} DSH packages, all ${expected}`)

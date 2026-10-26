@@ -2147,6 +2147,12 @@ window.__ModuleLoader__.load({
 		/** The suite's floating side-chat window over the active session. */
 		function SideChatWindow() {
 			const session = useOnStage();
+			return session === "" ? null : (0, react.createElement)(SideChatConversation, {
+				key: session,
+				session
+			});
+		}
+		function SideChatConversation({ session }) {
 			const [threads, setThreads] = (0, react.useState)([]);
 			const [mode, setMode] = (0, react.useState)("dot");
 			const [opened, setOpened] = (0, react.useState)(false);
@@ -2181,7 +2187,6 @@ window.__ModuleLoader__.load({
 			(0, react.useEffect)(() => {
 				if (messages.length > seenCount.current) {
 					seenCount.current = messages.length;
-					setPending(false);
 					if (!opened) {
 						setMode("panel");
 						setOpened(true);
@@ -2208,13 +2213,11 @@ window.__ModuleLoader__.load({
 				setNote(void 0);
 				setPending(true);
 				runSideCommand(session, thread?.package ?? SIDE_PACKAGE, "btw", save ? `${text} --save` : text).then((result) => {
-					if (!result.ok) {
-						setPending(false);
-						setNote({
-							text: result.detail ?? "the command failed",
-							tone: "error"
-						});
-					}
+					setPending(false);
+					if (!result.ok) setNote({
+						text: result.detail ?? "the command failed",
+						tone: "error"
+					});
 				});
 			};
 			return (0, react_dom.createPortal)((0, react.createElement)("div", {
