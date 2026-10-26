@@ -23,6 +23,7 @@ Version support is explicit:
 
 | pi2dsh | DSH host | Maintenance |
 |---|---|---|
+| 0.27.1 | 0.2.1-rc.2 / 0.2.1-rc.3 | [Acceptance and release status](community/release-0.27.1/README.md) |
 | 0.27.0 | 0.2.1-rc.2 | [Acceptance and release status](community/release-0.27.0/README.md) |
 | 0.26.0 | 0.2.0-rc.2 | [Release verification](community/release-0.26.0/README.md) |
 | 0.25.2 | 0.1.5-rc.2 | Frozen checkpoint: [release evidence](community/release-0.25.2/README.md) |
@@ -32,10 +33,10 @@ validated current DSH line; historical fixes start from their release tag when
 needed. DSH owns stored-session format migration. An untested host version is
 not included in the compatibility declaration.
 
-On DSH 0.2.1-rc.2, `@xmoon76/dsh-pi-tui@0.5.1` is not a supported
-combination: that terminal still mounts removed host invariant components and
-uses the removed `cwd` prompt variable. This is separate from pi2dsh's Web and
-`@deepseek-harness-tui/dsh-tui@0.16.1` paths; do not bypass it with `allow-version`.
+For either supported DSH version, the validated terminal packages are
+`@deepseek-harness-tui/dsh-tui@0.17.0` and `@xmoon76/dsh-pi-tui@0.5.3`.
+The older dsh-pi-tui 0.5.1 still references removed host components; upgrade
+that terminal rather than bypassing compatibility checks with `allow-version`.
 
 ## Why this exists
 

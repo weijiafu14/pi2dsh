@@ -1,0 +1,135 @@
+{
+  "generatedAt": "2026-10-26T09:51:59.607Z",
+  "startedAt": "2026-10-26T09:46:37.848Z",
+  "scenario": "pi-subagents-lifecycle (steer / resume / stop / model-follow / explicit-model-thinking)",
+  "cliSpec": "@deepseek-ai/dsh@0.2.1-rc.2",
+  "engineSpec": "file:/tmp/pi2dsh-issue9.d6GPF9/pi2dsh-0.27.1-candidate.tgz",
+  "engineTarballSha256": "490d7a2ddd1259f73a112d0cd80724fa6491af41ff6998e20447b03184207531",
+  "subagentsSpec": "@tintinweb/pi-subagents@0.20.0",
+  "status": "passed",
+  "selection": "all",
+  "scenarios": {
+    "steer": {
+      "gateObserved": true,
+      "timingGate": "public tools/pre-execute waits for a real child request/header before allowing steer",
+      "status": "passed",
+      "problems": [],
+      "steeredLanded": true,
+      "alphaAlsoLanded": false,
+      "spawnTaskVerbatim": true,
+      "parentToolCalls": [
+        "Agent",
+        "steer_subagent",
+        "get_subagent_result"
+      ],
+      "childFile": "/tmp/pi2dsh-subagents-lifecycle.diW3Di/dsh-home/sessions/--private-tmp-pi2dsh-subagents-lifecycle.diW3Di-workspace--/pi2dsh-sub-mvp2p5cd-1/session.v4.jsonl"
+    },
+    "failureReport": {
+      "status": "passed",
+      "problems": [],
+      "reportCarried": true,
+      "childFile": "/tmp/pi2dsh-subagents-lifecycle.diW3Di/dsh-home/sessions/--private-tmp-pi2dsh-subagents-lifecycle.diW3Di-workspace--/pi2dsh-sub-mvp2pwkg-1/session.v4.jsonl"
+    },
+    "resume": {
+      "status": "passed",
+      "problems": [],
+      "attempt": 1,
+      "recalled": true,
+      "childSessionFile": "/tmp/pi2dsh-subagents-lifecycle.diW3Di/dsh-home/sessions/--private-tmp-pi2dsh-subagents-lifecycle.diW3Di-workspace--/pi2dsh-sub-mvp2q2qp-1/session.v4.jsonl",
+      "childTurns": 2,
+      "matchedChildLogs": 1
+    },
+    "resumeArchive": {
+      "status": "passed",
+      "problems": [],
+      "recalled": true,
+      "archive": "/tmp/pi2dsh-subagents-lifecycle.diW3Di/dsh-home/pi2dsh/agent/sessions/--private-tmp-pi2dsh-subagents-lifecycle.diW3Di-workspace--/dsh-pi2dsh-sub-mvp2qbqv-1.jsonl",
+      "childSessionFile": "/tmp/pi2dsh-subagents-lifecycle.diW3Di/dsh-home/sessions/--private-tmp-pi2dsh-subagents-lifecycle.diW3Di-workspace--/pi2dsh-sub-mvp2qbqv-1/session.v4.jsonl",
+      "childTurns": 2
+    },
+    "stopChildTurnEnds": [
+      "{\"kind\":\"aborted\",\"reason\":{\"kind\":\"hook\",\"reason\":\"pi2dsh subagent abort()\"}}"
+    ],
+    "stopPaneTail": "▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▄              /private/tmp/pi2dsh-subagents-lifecycle.diW3Di/workspace\n          ▀▀▀▀▀▀▀▀▀▀▀  ▀▀▀▀▀▀▀              Tip: /plan enters plan mode; /goal sets a session goal · /tips more tips\n\n          Explore the uncharted!\n\n  ❯ Call the Agent tool exactly once: subagent_type general-purpose, name \"sleeper\", run_in_background false, prompt: \"Run the bash command `sleep 90` in the FOREGROUND and\n    wait for it to finish — do not set run_in_background, do not append &. When it finishes, write the file\n    /tmp/pi2dsh-subagents-lifecycle.diW3Di/workspace/stopped-agent-output-MVP2O1I0.txt containing SHOULD_NOT_EXIST_MVP2O1I0 using bash, then reply done.\" Do not run bash\n    yourself.\n\n  ⏺ ⏵ Delegating the sleep-and-write task to the \"sleeper\" agent\n\n  ✗ Agent({\"description\":\"Run sleep then write marker file\",\"subagent_type\":\"general-purpose\",\"name\":\"sleeper\",\"run_in_background\":false,\"prompt\":\"Run the bash command `s…) · 3s\n   ⎿ AbortError: ABORTED — Error: tool call aborted\n     ctrl+t for the full trajectory\n\n  Interrupted · What should DeepSeek do instead?\n\n\n\n\n\n\n\n\n\n\n\n  ╭──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮\n  ⌸ ❯                                                                                                                                                                            ⛶\n  ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯\n                                                                                                                                                                   15k/131k 11.4%\n   deepseek-flash · cache 9.5% · workspace                                                                                                                     ctx 11% (15k/131k)\n\n\n",
+    "stopManagerScreen": "h — do not set run_in_background, do not append &. When it finishes, write the file\n    /tmp/pi2dsh-subagents-lifecycle.diW3Di/workspace/stopped-agent-output-MVP2O1I0.txt containing SHOULD_NOT_EXIST_MVP2O1I0 using bash, then reply done.\" Do not run bash\n    yourself.\n\n  ⏺ ⏵ Delegating the sleep-and-write task to the \"sleeper\" agent\n\n  ✗ Agent({\"description\":\"Run sleep then write marker file\",\"subagent_type\":\"general-purpose\",\"name\":\"sleeper\",\"run_in_background\":false,\"prompt\":\"Run the bash command `s…) · 3s\n   ⎿ AbortError: ABORTED — Error: tool call aborted\n     ctrl+t for the full trajectory\n\n  Interrupted · What should DeepSeek do instead?\n\n    ───────────────────────────────────────────────────────────────────────────▾  📋 Question 1/1   ────────────────────────────────────────────────────────────────────────────\n\n    Agents\n\n\n    ❯● Running agents (1) — 0 running, 0 done\n     ○ Agent types (3)\n     ○ Scheduled jobs (0)\n     ○ Create new agent\n     ○ Settings\n     ✎ Custom answer： Type directly…\n\n    ↑/↓ select · Ctrl+V paste · Type text to attach an answer · Enter submit · Esc cancel · Ctrl+K to fold / click the header\n                                                                                                                                                                   15k/131k 11.4%\n   deepseek-flash · cache 9.5% · workspace                                                                                                                     ctx 11% (15k/131k)\n\n\n",
+    "stop": {
+      "status": "passed",
+      "problems": [],
+      "tuiVersion": "0.17.0",
+      "interrupted": true,
+      "outputFileAbsentAfterWindow": true
+    },
+    "modelFollowPickerScreen": "──────────────────────────────────────────────────────────────────────────────────╮\n  ⌸ ❯                                                                                                                                                                            ⛶\n  ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯\n                                                                                                                                                                    15k/1.0M 1.5%\n   deepseek-flash · cache 9.6% · workspace                                                                                                                    ctx 1.5% (15k/1.0m)\n\n\n",
+    "modelFollow": {
+      "status": "passed",
+      "problems": [],
+      "defaultProvider": "deepseek-official",
+      "parentRoutes": [
+        {
+          "provider": "deepseek-official",
+          "model": "deepseek-flash"
+        },
+        {
+          "provider": "work-gw",
+          "model": "deepseek-flash"
+        }
+      ],
+      "childRoutes": [
+        {
+          "provider": "work-gw",
+          "model": "deepseek-flash"
+        }
+      ],
+      "markerLanded": true
+    },
+    "explicitModelThinking": {
+      "status": "passed",
+      "problems": [],
+      "parentConfigs": [
+        {
+          "provider": "deepseek-official",
+          "model": "deepseek-flash",
+          "reasoningEffort": "max",
+          "maxTokens": 256000
+        },
+        {
+          "provider": "work-gw",
+          "model": "deepseek-flash"
+        }
+      ],
+      "agentArguments": {
+        "description": "explicit route and effort probe",
+        "model": "deepseek-official/deepseek-flash",
+        "name": "explicit-probe",
+        "prompt": "Run one bash command that writes the single word EXPLICIT_MVP2O1I0 into /tmp/pi2dsh-subagents-lifecycle.diW3Di/workspace/explicit-model-thinking-MVP2O1I0.txt, then reply done.",
+        "run_in_background": false,
+        "subagent_type": "general-purpose",
+        "thinking": "max"
+      },
+      "childConfigs": [
+        {
+          "provider": "deepseek-official",
+          "model": "deepseek-flash",
+          "reasoningEffort": "max",
+          "maxTokens": 256000
+        }
+      ],
+      "childToolCalls": [
+        "bash"
+      ],
+      "markerLanded": true
+    },
+    "childExtensions": {
+      "status": "passed",
+      "problems": [],
+      "touched": true,
+      "positiveChild": "/tmp/pi2dsh-subagents-lifecycle.diW3Di/dsh-home/sessions/--private-tmp-pi2dsh-subagents-lifecycle.diW3Di-workspace--/pi2dsh-sub-mvp2upzm-1/session.v4.jsonl",
+      "negativeChild": "/tmp/pi2dsh-subagents-lifecycle.diW3Di/dsh-home/sessions/--private-tmp-pi2dsh-subagents-lifecycle.diW3Di-workspace--/pi2dsh-sub-mvp2uvs4-1/session.v4.jsonl"
+    },
+    "stack": {
+      "cliVersion": "0.2.1-rc.2",
+      "engineVersion": "0.27.1",
+      "scratch": "/tmp/pi2dsh-subagents-lifecycle.diW3Di"
+    }
+  }
+}

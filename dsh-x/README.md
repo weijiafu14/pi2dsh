@@ -14,12 +14,12 @@ companion — [proposed upstream](https://github.com/deepseek-ai/deepseek-harnes
 which is the only reason this is two names instead of one.) That is the entire setup: the suite
 carries the [pi2dsh](https://github.com/weijiafu14/pi2dsh) engine and six
 capability packages, with pinned versions and a
-[version-specific acceptance record](../community/release-0.27.0/README.md).
-Suite 0.6.0 targets pi2dsh 0.27.0 and DSH 0.2.1-rc.2. Earlier DSH hosts
+[version-specific acceptance record](../community/release-0.27.1/README.md).
+Suite 0.6.1 targets pi2dsh 0.27.1 and DSH 0.2.1-rc.2 / 0.2.1-rc.3. Earlier DSH hosts
 remain on their matching historical suite/engine release.
 
 一条命令，把官方 DSH 变成开箱即用的全能 agent 工作台。装完重启 dsh 即可；
-组件版本固定；本代适配 DSH 0.2.1-rc.2，各项实测范围见发布验收记录。
+组件版本固定；本代适配 DSH 0.2.1-rc.2 / 0.2.1-rc.3，各项实测范围见发布验收记录。
 
 ## What the Pi packages add
 

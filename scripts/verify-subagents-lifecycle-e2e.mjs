@@ -36,7 +36,7 @@ import { writeHostConfig, installedCoreVersions } from './lib/e2e-harness.mjs'
 import { execFile as execFileCallback } from 'node:child_process'
 import { spawn } from 'node:child_process'
 import { createHash, randomBytes } from 'node:crypto'
-import { readFileSync, existsSync } from 'node:fs'
+import { readFileSync, existsSync, statSync } from 'node:fs'
 import { chmod, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { promisify } from 'node:util'
@@ -46,9 +46,12 @@ const execFile = promisify(execFileCallback)
 const projectRoot = resolve(new URL('..', import.meta.url).pathname)
 const outPath = resolve(process.argv[2] ?? 'community/subagents-lifecycle-e2e.json')
 
-const DSH_CLI_SPEC = process.env.PI2DSH_DSH_CLI_SPEC ?? '@deepseek-ai/dsh@0.2.1-rc.2'
+const DSH_CLI_SPEC = process.env.PI2DSH_DSH_CLI_SPEC ?? '@deepseek-ai/dsh@0.2.1-rc.3'
 const ENGINE_SPEC = process.env.PI2DSH_ENGINE_SPEC ?? projectRoot
-const engineTarballSha256 = ENGINE_SPEC.startsWith('file:')
+// `file:` can name either an npm tarball or an unpacked local package.
+// Only tarballs have a byte-level archive identity; reading a directory here
+// throws before the harness can even create its evidence file.
+const engineTarballSha256 = ENGINE_SPEC.startsWith('file:') && statSync(ENGINE_SPEC.slice(5)).isFile()
   ? createHash('sha256').update(readFileSync(ENGINE_SPEC.slice(5))).digest('hex') : undefined
 const SUBAGENTS_SPEC = process.env.PI2DSH_SUBAGENTS_SPEC ?? '@tintinweb/pi-subagents@0.20.0'
 // Cross-restart reopen probe (public Pi ABI: createAgentSession + SessionManager.open).

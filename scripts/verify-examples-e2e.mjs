@@ -1614,14 +1614,22 @@ async function runDshX() {
           else if (entry.name.endsWith('.jsonl')) sessionFiles.push(path)
         }
       }
-      await walk(join(home, 'sessions'))
       let mainLog
-      for (const file of sessionFiles) {
-        const text = await readFile(file, 'utf8')
-        if (text.includes('Reply with exactly one word: ok') && text.includes('"piCustomType":"btw-note"')) {
-          mainLog = text
-          break
+      // Pi sendMessage is void: the command can finish before DSH's async
+      // durable append settles. Wait for the SAME authoritative facts, not
+      // merely the first streamed answer or a fixed arbitrary sleep.
+      const durableDeadline = Date.now() + 30_000
+      while (mainLog === undefined && Date.now() < durableDeadline) {
+        sessionFiles.length = 0
+        await walk(join(home, 'sessions'))
+        for (const file of sessionFiles) {
+          const text = await readFile(file, 'utf8')
+          if (text.includes('Reply with exactly one word: ok') && text.includes('"piCustomType":"btw-note"')) {
+            mainLog = text
+            break
+          }
         }
+        if (mainLog === undefined) await new Promise(done => setTimeout(done, 250))
       }
       assert(mainLog !== undefined, `no main-session log carries the saved btw note (searched ${sessionFiles.length} logs)`)
       // --save: the note is a durable main-session message with the answer.
@@ -1642,7 +1650,8 @@ async function runDshX() {
     }
   } finally {
     web?.kill('SIGTERM')
-    await removeScratch(scratch, 'scenario cleanup')
+    if (process.env.PI2DSH_KEEP_SCRATCH === '1') console.error(`[examples-e2e] kept dsh-x scratch: ${scratch}`)
+    else await removeScratch(scratch, 'scenario cleanup')
   }
 }
 

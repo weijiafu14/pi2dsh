@@ -134,6 +134,12 @@ export function SideChatWindow(): ReactNode {
   // the previous session, and this window showing that session's thread over
   // the empty New Session screen was the reported leak (2026-08-29).
   const session = useOnStage()
+  // The conversation owns UI state and in-flight callbacks. Switching the
+  // staged session must not reuse another conversation's pending request.
+  return session === '' ? null : createElement(SideChatConversation, { key: session, session })
+}
+
+function SideChatConversation({ session }: { session: string }): ReactNode {
   const [threads, setThreads] = useState<ThreadView[]>([])
   const [mode, setMode] = useState<'dot' | 'panel' | 'max'>('dot')
   const [opened, setOpened] = useState(false)
@@ -166,12 +172,11 @@ export function SideChatWindow(): ReactNode {
   const thread = threads.length > 0 ? threads[threads.length - 1] : undefined
   const messages = thread?.messages ?? []
 
-  // A fresh answer clears the pending state and auto-opens a closed window
-  // ONCE per new content (the arrival is the point of the feature).
+  // Auto-open on new content. Message counts are NOT command completion:
+  // injecting resets the thread, and the next answer can have the same count.
   useEffect(() => {
     if (messages.length > seenCount.current) {
       seenCount.current = messages.length
-      setPending(false)
       if (!opened) {
         setMode('panel')
         setOpened(true)
@@ -207,8 +212,8 @@ export function SideChatWindow(): ReactNode {
     setPending(true)
     void runSideCommand(session, thread?.package ?? SIDE_PACKAGE, 'btw', save ? `${text} --save` : text)
       .then((result) => {
+        setPending(false)
         if (!result.ok) {
-          setPending(false)
           setNote({ text: result.detail ?? 'the command failed', tone: 'error' })
         }
       })
