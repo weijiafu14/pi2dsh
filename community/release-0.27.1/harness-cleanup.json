@@ -36,7 +36,8 @@
     "terminalScratchRemoved": true,
     "webTestPortsReleased": true,
     "testBrowsersAndRunnersRemaining": 0,
-    "unrelatedUserTerminalLeftUntouched": true
+    "unrelatedUserTerminalLeftUntouched": true,
+    "remainingTemporaryInstalls": "The top-level rc.2 CLI dependencies and the failed Web scenario scratch were moved to system Trash (recoverable); logs and screenshots were retained."
   },
   "boundary": "POSIX/macOS harness validation. SIGKILL and machine power loss cannot execute JavaScript finalizers. No Windows desktop execution claim."
 }

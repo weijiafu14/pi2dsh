@@ -1,0 +1,12 @@
+{
+  "issue": 9,
+  "commentId": 6433944474,
+  "url": "https://github.com/weijiafu14/pi2dsh/issues/9#issuecomment-6433944474",
+  "author": "weijiafu14",
+  "readBackVerified": true,
+  "issueLeftOpen": true,
+  "engine": "pi2dsh@0.27.1",
+  "suite": "dsh-work-x@0.6.1",
+  "regressionCommit": "41e9804",
+  "checkedAt": "2026-10-27T04:44:34.549Z"
+}
