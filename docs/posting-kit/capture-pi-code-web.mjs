@@ -20,6 +20,7 @@ const IMPORT_CW = flag('import-codeword')
 if (ENV_CW === undefined || IMPORT_CW === undefined) throw new Error('capture-pi-code-web: --env-codeword and --import-codeword are required')
 
 const { page, browser, shot, send, UI } = await openApp()
+try {
 page.on('pageerror', error => console.error('page exception:', String(error).slice(0, 400)))
 await page.getByRole('button', { name: /new session/iu }).first().click({ timeout: 60_000 })
 
@@ -115,4 +116,6 @@ if (uploadFile !== undefined) {
   await shot('05-file-attachment')
 }
 console.log('[capture-pi-code-web] done')
-await browser.close()
+} finally {
+  await browser.close()
+}

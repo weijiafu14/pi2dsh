@@ -24,6 +24,7 @@ const QUESTION = `What solid color fills the image at ${image} ? Answer with jus
 const EXPECTED = /green/iu
 
 const { page, browser, shot, send, UI } = await openApp()
+try {
 
 await page.getByRole('button', { name: UI.newSession }).first().click({ timeout: 60_000 })
 await send(QUESTION)
@@ -42,4 +43,6 @@ if (!EXPECTED.test(answered)) {
 // image-reading tool's own result says which happened.
 await shot('05-vision-bridge-web')
 
-await browser.close()
+} finally {
+  await browser.close()
+}

@@ -44,18 +44,16 @@
 import { isSessionLog } from './lib/session-log.mjs'
 import assert from 'node:assert/strict'
 import { existsSync } from 'node:fs'
-import { execFile as execFileCallback, spawn } from 'node:child_process'
+import { execFile, spawn, stopProcess, cleanupTestProcesses } from './lib/test-processes.mjs'
 import { createHash } from 'node:crypto'
 import { createRequire } from 'node:module'
-import { chmod, mkdir, mkdtemp, readFile, readdir, realpath, rm, stat, symlink, writeFile } from 'node:fs/promises'
+import { chmod, mkdir, mkdtemp, readFile, readdir, realpath, rm, stat, statfs, symlink, writeFile } from 'node:fs/promises'
 import { homedir, tmpdir } from 'node:os'
 import { basename, join, resolve } from 'node:path'
-import { promisify } from 'node:util'
 
 import { stageSuiteTarball } from './lib/suite-tarball.mjs'
 import { writeHostConfig, createE2eHarness, filesBelow, seedCodexLogin, authedUrl } from './lib/e2e-harness.mjs'
 
-const execFile = promisify(execFileCallback)
 const projectRoot = resolve(new URL('..', import.meta.url).pathname)
 const dshRoot = process.env.PI2DSH_DSH_ROOT === undefined
   ? resolve(projectRoot, '..', 'deepseek-harness')
@@ -164,11 +162,14 @@ function engineOrigin() {
  * sources — the run then tests the checkout's branch, not the installed CLI.
  */
 function spawnWeb(port, env) {
+  // Playwright owns the isolated browser used by assertions. The host's
+  // default opener would leak a second tab into the user's everyday browser
+  // on every scenario, where stale tabs keep reconnecting after teardown.
   return spawn(
     directDshBin === undefined ? 'node' : directDshBin,
     directDshBin === undefined
-      ? ['--import', 'tsx/esm', dshBin, '--profile', 'web', '--port', String(port)]
-      : ['--profile', 'web', '--port', String(port)],
+      ? ['--import', 'tsx/esm', dshBin, '--profile', 'web', '--no-open', '--port', String(port)]
+      : ['--profile', 'web', '--no-open', '--port', String(port)],
     { cwd: dshCwd, env, stdio: ['ignore', 'pipe', 'pipe'] },
   )
 }
@@ -388,7 +389,7 @@ async function runGatewayCompat() {
       previews: first.previews,
     }
   } finally {
-    endpoint?.kill('SIGTERM')
+    await stopProcess(endpoint)
     await removeScratch(scratch, 'scenario cleanup')
   }
 }
@@ -809,10 +810,7 @@ async function runMemoryTasksWeb() {
       screenshots: shotsTaken.sort(),
     }
   } finally {
-    if (web !== undefined) {
-      web.kill('SIGTERM')
-      await new Promise(done => { web.once('exit', done); setTimeout(done, 5000) })
-    }
+    await stopProcess(web)
     await removeScratch(scratch, 'memory-tasks-web')
   }
 }
@@ -901,7 +899,7 @@ async function runSideConversation() {
       screenshots: captured.sort(),
     }
   } finally {
-    web?.kill('SIGTERM')
+    await stopProcess(web)
     await removeScratch(scratch, 'scenario cleanup')
   }
 }
@@ -978,7 +976,7 @@ async function runVisionBridgeWeb() {
       visionRoute: hasRegistryVision ? `${registryVision.provider}/${registryVision.model}` : 'openai-compatible',
     }
   } finally {
-    web?.kill('SIGTERM')
+    await stopProcess(web)
     await removeScratch(scratch, 'scenario cleanup')
   }
 }
@@ -1161,7 +1159,7 @@ async function runPresentationSurfaces() {
     assert(captured.length > 0, 'the surfaces run produced no screenshots')
     results.presentationSurfaces = { status: 'passed', engine: await installedEngineVersion(home, 'web', 'dsh-work-x'), install: 'dsh-work-x suite + pi-powerline-footer@0.20.2', layout: ['model', 'thinking', 'context_pct'], screenshots: captured.sort() }
   } finally {
-    web?.kill('SIGTERM')
+    await stopProcess(web)
     await removeScratch(scratch, 'scenario cleanup')
   }
 }
@@ -1246,7 +1244,7 @@ async function runSubscriptionLogin() {
       } : { accountBacked }),
     }
   } finally {
-    web?.kill('SIGTERM')
+    await stopProcess(web)
     await removeScratch(scratch, 'scenario cleanup')
   }
 }
@@ -1532,10 +1530,7 @@ async function runWorkXMemoryTasks() {
       screenshots: shotsTaken.sort(),
     }
   } finally {
-    if (web !== undefined) {
-      web.kill('SIGTERM')
-      await new Promise(done => { web.once('exit', done); setTimeout(done, 5000) })
-    }
+    await stopProcess(web)
     if (process.env.PI2DSH_KEEP_SCRATCH === '1') {
       console.error(`[examples-e2e] kept work-x-memory-tasks scratch for diagnosis: ${scratch}`)
     } else {
@@ -1649,7 +1644,7 @@ async function runDshX() {
       ...(mountedLine === undefined ? {} : { commands: JSON.parse(mountedLine) }),
     }
   } finally {
-    web?.kill('SIGTERM')
+    await stopProcess(web)
     if (process.env.PI2DSH_KEEP_SCRATCH === '1') console.error(`[examples-e2e] kept dsh-x scratch: ${scratch}`)
     else await removeScratch(scratch, 'scenario cleanup')
   }
@@ -1667,11 +1662,8 @@ async function runDshX() {
 // that routes around it (bash grep, reading the file) must FAIL here.
 
 /**
- * Remove a scenario scratch tree, tolerating stragglers: pi-lens keeps
- * language-server children writing into its home for a beat after the dsh
- * process is killed, and a concurrent write turns rm into ENOTEMPTY. Cleanup
- * failure is logged, never thrown — a passed scenario must not regress on
- * scratch removal.
+ * Remove a scenario scratch tree after its processes have been reaped.
+ * A cleanup failure is a harness failure, not a green run with leaked state.
  * @param scratch - the scenario directory to remove.
  * @param label - scenario name for the diagnostic.
  */
@@ -1691,7 +1683,7 @@ async function removeScratch(scratch, label) {
   try {
     await rm(scratch, { recursive: true, force: true })
   } catch (error) {
-    console.error(`[examples-e2e] ${label}: scratch cleanup left ${scratch}: ${String(error)}`)
+    throw new Error(`[examples-e2e] ${label}: scratch cleanup left ${scratch}: ${String(error)}`)
   }
 }
 
@@ -1914,7 +1906,7 @@ async function runCodeNavigationWeb() {
       diagnostics: 'LSP diagnostic tool -> TS2322 on src/ledger.ts',
     }
   } finally {
-    web?.kill('SIGTERM')
+    await stopProcess(web)
     if (process.env.PI2DSH_KEEP_SCRATCH === '1') {
       console.error(`[examples-e2e] kept code-navigation-web scratch for diagnosis: ${scratch}`)
     } else {
@@ -2129,7 +2121,7 @@ async function runMcpAtScaleWeb() {
       discovery: `mcp proxy -> tool_037 -> ${MCP_SCALE_MARKER}`,
     }
   } finally {
-    web?.kill('SIGTERM')
+    await stopProcess(web)
     if (process.env.PI2DSH_KEEP_SCRATCH === '1') {
       console.error(`[examples-e2e] kept mcp-at-scale-web scratch for diagnosis: ${scratch}`)
     } else {
@@ -2173,7 +2165,7 @@ if (selected.length === 0) {
 // local proxy at once and connections start dying with empty reads — 14
 // scenarios false-failed that way on 2026-08-31 while every single rerun
 // passed. A small pool keeps the wall-clock win without the stampede.
-const concurrency = Math.max(1, Number(process.env.PI2DSH_E2E_CONCURRENCY ?? 6) || 6)
+const concurrency = Math.min(2, Math.max(1, Number(process.env.PI2DSH_E2E_CONCURRENCY ?? 1) || 1))
 const failures = []
 const queue = [...selected]
 await Promise.all(Array.from({ length: Math.min(concurrency, queue.length) }, async () => {
@@ -2182,6 +2174,10 @@ await Promise.all(Array.from({ length: Math.min(concurrency, queue.length) }, as
     if (next === undefined) return
     const [name, run, key] = next
     try {
+      const disk = await statfs(tmpdir())
+      if (disk.bavail * disk.bsize < 4 * 1024 ** 3) {
+        throw new Error('E2E stopped: less than 4 GiB free on the temporary volume; free space before retrying')
+      }
       await run()
       if (results[key]?.status === 'failed') {
         failures.push(`${name}: ${results[key].error ?? results[key].reason ?? 'scenario assertions failed'}`)
@@ -2237,6 +2233,7 @@ await writeFile(outputPath, `${JSON.stringify({
   results: outputResults,
 }, null, 2)}\n`)
 
+await cleanupTestProcesses()
 if (failures.length > 0) {
   console.error(`[examples-e2e] ${failures.length} example(s) regressed:\n${failures.map(item => `  - ${item}`).join('\n')}`)
   process.exit(1)

@@ -20,6 +20,7 @@
 import { openApp } from './web-drive.mjs'
 
 const { page, browser, shot, send, UI } = await openApp()
+try {
 
 // A session of this capture's own, with the diagnostics widget live in it.
 await page.getByRole('button', { name: UI.newSession }).first().click({ timeout: 60_000 })
@@ -107,4 +108,6 @@ if (leaked > 0 || /typescript:2322/u.test(bodyText)) {
 }
 await shot('10-new-session-clean')
 
-await browser.close()
+} finally {
+  await browser.close()
+}

@@ -12,6 +12,7 @@ const PROMPT = 'Use the mcp tool to list the tools of the many-tools server, '
   + 'Use only the mcp tool.'
 
 const { page, browser, shot, send, UI } = await openApp()
+try {
 
 // On timeout, say WHAT the page was showing — a bare locator timeout names
 // nothing and forces a blind rerun.
@@ -37,4 +38,6 @@ for (;;) {
 }
 await shot('12-mcp-at-scale-web')
 
-await browser.close()
+} finally {
+  await browser.close()
+}

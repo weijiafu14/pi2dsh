@@ -1,0 +1,42 @@
+{
+  "checkedAt": "2026-10-27T03:57:11.675Z",
+  "scope": "Test harness only; published product versions remain pi2dsh@0.27.1 and dsh-work-x@0.6.1",
+  "localVerify": {
+    "exitCode": 0,
+    "testFiles": 39,
+    "tests": 391,
+    "cleanupTests": 7,
+    "consecutiveStartupShutdownChecks": 20
+  },
+  "processChecks": [
+    "owned server and resistant descendant terminated",
+    "unrelated process left alive",
+    "normal success and command failure",
+    "timeout terminates process group",
+    "SIGTERM of harness cleans child processes",
+    "private tmux server closed"
+  ],
+  "browserInitializationFailure": {
+    "expectedNavigationFailure": true,
+    "processExitCode": 0
+  },
+  "privateTerminalPositiveControl": "has-session succeeded before explicit cleanup",
+  "realWebTeardown": {
+    "scenario": "memory-tasks-web",
+    "status": "passed",
+    "serverExited": true,
+    "backgroundTaskExited": true,
+    "port5191Released": true,
+    "screenshotsReviewed": 3
+  },
+  "publishedRegression": {
+    "rc2FullCommandExitCode": 0,
+    "rc2Examples": { "passed": 15, "partial": 1, "skipped": 4, "failed": 0 },
+    "subagentScratchRemoved": true,
+    "terminalScratchRemoved": true,
+    "webTestPortsReleased": true,
+    "testBrowsersAndRunnersRemaining": 0,
+    "unrelatedUserTerminalLeftUntouched": true
+  },
+  "boundary": "POSIX/macOS harness validation. SIGKILL and machine power loss cannot execute JavaScript finalizers. No Windows desktop execution claim."
+}

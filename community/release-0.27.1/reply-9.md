@@ -18,5 +18,6 @@ dsh plugin --profile desktop add dsh-work-x@0.6.1
 
 完成后重新打开 DeepSeek Harness。独立 npm CLI 会拒绝管理 `desktop` profile，
 这是宿主的隔离规则，不需要修改或绕过。
+参考：[官方桌面内置命令说明](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.2.1-rc.3/apps/desktop/README.zh.md#bundled-command-runtime)。
 
 已用 npm 正式包在 rc.2、rc.3 上重新验证；[版本范围与验收记录](https://github.com/weijiafu14/pi2dsh/tree/main/community/release-0.27.1)。如果仍有错误，请贴升级后的版本和新的报错文本，我继续跟进。

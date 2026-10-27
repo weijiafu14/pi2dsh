@@ -33,16 +33,13 @@
 //   node scripts/verify-subagents-lifecycle-e2e.mjs [community/subagents-lifecycle-e2e.json]
 
 import { writeHostConfig, installedCoreVersions } from './lib/e2e-harness.mjs'
-import { execFile as execFileCallback } from 'node:child_process'
-import { spawn } from 'node:child_process'
+import { execFile, spawn, stopProcess, cleanupTestProcesses } from './lib/test-processes.mjs'
 import { createHash, randomBytes } from 'node:crypto'
 import { readFileSync, existsSync, statSync } from 'node:fs'
 import { chmod, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
-import { promisify } from 'node:util'
 import { setTimeout as delay } from 'node:timers/promises'
 
-const execFile = promisify(execFileCallback)
 const projectRoot = resolve(new URL('..', import.meta.url).pathname)
 const outPath = resolve(process.argv[2] ?? 'community/subagents-lifecycle-e2e.json')
 
@@ -190,7 +187,7 @@ async function runHeadlessTurn(prompt, doneFile, deadlineMs) {
   // Let the parent finish narrating, then stop the process either way — the
   // assertions read durable logs and the filesystem, never the screen.
   for (let settle = 0; settle < 90 && child.exitCode === null; settle += 1) await delay(2000)
-  if (child.exitCode === null) child.kill('SIGTERM')
+  await stopProcess(child)
   return output
 }
 
@@ -1043,10 +1040,16 @@ try {
   scenarios.stack = { cliVersion, engineVersion, scratch: root }
   await record(failed === 0 ? 'passed' : 'failed')
   log(`${failed === 0 ? 'PASSED' : `FAILED (${failed} scenario(s))`} — evidence in ${outPath}`)
+  await cleanupTestProcesses()
+  if (failed === 0 && process.env.PI2DSH_SUBAGENTS_E2E_ROOT === undefined
+    && process.env.PI2DSH_KEEP_SCRATCH !== '1') {
+    await rm(root, { recursive: true, force: true })
+  }
   process.exit(failed === 0 ? 0 : 1)
 } catch (error) {
   scenarios.harness = { status: 'failed', error: String((error && error.message) || error) }
   await record('failed')
   log(`FAILED: ${String((error && error.message) || error)}`)
+  await cleanupTestProcesses()
   process.exit(1)
 }

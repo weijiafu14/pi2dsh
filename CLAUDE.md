@@ -469,7 +469,7 @@ DSH 有两半，桥也必须有两半。凡是"形态"类的 Pi 能力（浮层�
 ### 五点二、发版后必须跑完整回归（铁律，用户明令）
 
 **每个版本发出去之后，立刻跑一次完整端到端回归——一条命令、全部场景、CLI 与
-Web 双端、并行跑完。**不许挑着跑，不许"这次先跑这两个"，不许发完就散。
+Web 双端、完整跑完。**不许挑着跑，不许"这次先跑这两个"，不许发完就散。
 
 ```bash
 pnpm verify:release   # verify + 全部 examples（装 npm 上刚发的那版）+ step-seams 真机
@@ -478,8 +478,8 @@ pnpm verify:release   # verify + 全部 examples（装 npm 上刚发的那版）
 - 引擎必须从 **npm 装刚发的那版**（`PI2DSH_ENGINE_SPEC=pi2dsh@<版本>`，
   `verify:release` 已自动带上 package.json 的版本号），不是本地
   `file:`——裸环终验和回归是同一件事，别分两次做。
-- 场景**并行**跑（各自独立临时 DSH_HOME + 各自端口）。串行是几分钟 npm 安装和
-  浏览器启动一个接一个排队，慢到人就开始"这次先跳过"，标准就是这么烂掉的。
+- 场景各自独立临时 DSH_HOME + 各自端口；笔记本默认串行，显式并发最多 2。
+  完整性靠全场景验收，不靠挤满机器；机器资源优先于缩短测试时间。
 - **没跑的必须 skipped 并写原因**，缺任何一个场景的结果算 failed，不算通过。
 - 事故（2026-08-16，用户当场抓）：发完 0.12.2 我只补了单个场景就去写文档，被斥
   "左手干右手丢"。
@@ -546,6 +546,17 @@ pnpm verify:release   # verify + 全部 examples（装 npm 上刚发的那版）
   污染其暂存区和 version）。
 
 ## 七、E2E 装置备忘
+
+- **测试资源必须闭环（2026-10-27）**：自动 Web 启动必须带 `--no-open`，
+  只允许 Playwright 独立浏览器，不向用户日常浏览器开页。浏览器初始化失败及
+  每个 capture 的成功/失败均关闭 browser；服务用 `scripts/lib/test-processes.mjs`
+  管理自有进程组，先 TERM 并等待，超时再 KILL；正常结束、异常和 SIGINT/SIGTERM
+  均收尾。TUI 使用测试专属 tmux socket，失败也关闭，不保留运行中的终端。
+  `PI2DSH_KEEP_SCRATCH` 只能保留诊断文件，不保留进程。每场景启动前检查临时盘
+  至少剩 4 GiB；成功时删除自动创建的子代理/TUI 安装目录，显式指定的目录不删。
+  默认串行，最多并发 2；单测最多 2 workers。禁止全局 kill 浏览器/
+  node/tmux，禁止按模糊名字清理别人的进程。SIGKILL/机器断电不能执行 JS 收尾，
+  重启后必须重新核对所有权，不能按历史 PID 清理。
 
 - DSH CLI 必须在 deepseek-harness 目录跑（`node --import tsx/esm
   apps/cli/src/bin.ts`）；发现"跑很久"先查结果文件而不是傻等。
@@ -676,7 +687,7 @@ pnpm verify:release   # verify + 全部 examples（装 npm 上刚发的那版）
   ——引擎装得上、社区包全挂的迷惑形状）；overrides 版本必须从 CLI 树读
   （硬编码 rc.2 在 alpha profile=混装）；`ERR_PNPM_ADDING_TO_ROOT` 按错误
   形状带 `-w` 重试；pnpm fetch 超时提到 300s（recheck-jar 21MB 实测 89s，
-  默认 60s 必死）；场景并发有界池（默认 6，PI2DSH_E2E_CONCURRENCY）——
+  默认 60s 必死）；场景并发有界池（现默认 1、最多 2，PI2DSH_E2E_CONCURRENCY）——
   无界并行把本地代理打爆、14 场景连环假失败；401 门下 authedUrl 必须等出
   token 否则 fail loud（等 90s；30s 在并行下误伤）；**场景端口一场一个**
   （5191 曾被 memory-tasks-web 与 mcp-at-scale-web 共用，池内同时活时
@@ -734,8 +745,9 @@ pnpm verify:release   # verify + 全部 examples（装 npm 上刚发的那版）
   `npm install` 连挂两轮，我当网络抖动重跑，真因是磁盘 99%——ENOSPC 藏在
   "Invalid response body" 后面）。E2E 装置会留大量残骸：/tmp/pi2dsh-*（lifecycle
   一份 677MB，当天积到 32 份）+ pnpm 全局 store（一次性 profile 安装把它喂到
-  55GB）。处置：`rm -rf /tmp/pi2dsh-*` + `npx pnpm@11 store prune`（只清无引用
-  项，安全）；长跑日之前先清。
+  55GB）。处置：只清理已确认归本轮且进程已退出的明确临时目录；不使用
+  `/tmp/pi2dsh-*` 广泛删除。需要时用官方 `pnpm store prune` 清理可重下缓存，
+  不在真机回归同时运行。长跑前检查空间，完成后移出证据再清理本轮目录。
 - 真机 TUI 驱动用 tmux（send-keys -l + capture-pane）；断言读
   `$DSH_HOME/sessions/*.jsonl` 里的工具结果（session-persistence-jsonl
   patch 落盘），永不拿屏幕文字当断言。

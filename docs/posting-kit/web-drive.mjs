@@ -56,6 +56,7 @@ export async function openApp() {
   await mkdir(outDir, { recursive: true })
   const browser = await chromium.launch(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE === undefined
     ? {} : { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE })
+  try {
   const page = await browser.newPage({ viewport: { width: 1280, height: 860 }, locale })
   page.on('pageerror', error => console.error(`capture page error: ${error.message}`))
   page.on('console', message => {
@@ -221,4 +222,8 @@ export async function openApp() {
   await dismissNotice(page)
 
   return { page, browser, shot, send, UI, outDir }
+  } catch (error) {
+    await browser.close()
+    throw error
+  }
 }

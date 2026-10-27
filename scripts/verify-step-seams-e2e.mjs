@@ -26,13 +26,11 @@
 
 import { isSessionLog, systemPromptText } from './lib/session-log.mjs'
 import assert from 'node:assert/strict'
-import { execFile as execFileCallback } from 'node:child_process'
+import { execFile } from './lib/test-processes.mjs'
 import { chmod, mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
-import { promisify } from 'node:util'
 
-const execFile = promisify(execFileCallback)
 const projectRoot = resolve(new URL('..', import.meta.url).pathname)
 const dshRoot = process.env.PI2DSH_DSH_ROOT === undefined
   ? resolve(projectRoot, '..', 'deepseek-harness')

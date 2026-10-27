@@ -1,0 +1,9 @@
+{
+  "host": "@deepseek-ai/dsh@0.2.1-rc.3",
+  "platform": "darwin",
+  "profile": "web",
+  "before": {"package":"pi2dsh@0.27.0","exitCode":1,"reason":"installation rejected: incompatible with dsh 0.2.1-rc.3","nothingInstalled":true},
+  "after": {"package":"pi2dsh@0.27.1","exitCode":0,"installedVersion":"0.27.1","peerRange":"0.2.1-rc.2 || 0.2.1-rc.3"},
+  "usedAllowVersion": false,
+  "desktopBoundary": "Standalone npm CLI rejects desktop profile management; use the Desktop plugin page or Desktop-installed dsh command. This is not a Windows desktop E2E claim."
+}

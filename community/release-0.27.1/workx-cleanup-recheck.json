@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "pi2dshCommit": "6246ab08442f79fa999c4a8920dd7310bbddb3a5",
+  "dshCommit": "npm:@deepseek-ai/dsh@0.2.1-rc.2",
+  "results": {
+    "workXMemoryTasks": {
+      "status": "passed",
+      "engine": {
+        "version": "0.27.1",
+        "from": "registry",
+        "spec": "pi2dsh@0.27.1",
+        "suite": {
+          "version": "0.6.1",
+          "from": "registry",
+          "spec": "dsh-work-x@0.6.1"
+        }
+      },
+      "memoryTabShowsStore": true,
+      "pinRoundTrip": true,
+      "dockKilledTask": true,
+      "screenshots": [
+        "01-memory-settings.png",
+        "02-tasks-chip-live.png",
+        "03-tasks-killed.png"
+      ]
+    }
+  }
+}

@@ -8,14 +8,13 @@
 // connects, a real model calls an MCP tool, /agents renders, and a real model
 // creates a child through the original Agent tool. No package is patched.
 
-import { execFile as execFileCallback, execSync } from 'node:child_process'
+import { execSync } from 'node:child_process'
+import { execFile, cleanupTestProcesses } from './lib/test-processes.mjs'
 import { readFileSync } from 'node:fs'
-import { chmod, mkdir, mkdtemp, readdir, readFile, writeFile } from 'node:fs/promises'
+import { chmod, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { basename, join, relative, resolve } from 'node:path'
-import { promisify } from 'node:util'
 import { setTimeout as delay } from 'node:timers/promises'
 
-const execFile = promisify(execFileCallback)
 const projectRoot = resolve(new URL('..', import.meta.url).pathname)
 const resultPath = resolve(process.argv[2] ?? 'community/pi-tui-ecosystem-e2e.json')
 const DSH_SPEC = process.env.PI2DSH_DSH_CLI_SPEC ?? '@deepseek-ai/dsh@0.2.1-rc.3'
@@ -313,6 +312,12 @@ try {
     scratch: root,
   })
   log(`FAIL: ${error instanceof Error ? error.message : String(error)}`)
-  log(`scratch kept: ${root}; tmux session: ${TMUX}`)
+  log(`scratch kept for diagnosis: ${root}; test terminal will be closed`)
   process.exitCode = 1
+} finally {
+  await cleanupTestProcesses()
+  if (process.exitCode !== 1 && process.env.PI2DSH_PI_TUI_E2E_ROOT === undefined
+    && process.env.PI2DSH_KEEP_SCRATCH !== '1') {
+    await rm(root, { recursive: true, force: true })
+  }
 }

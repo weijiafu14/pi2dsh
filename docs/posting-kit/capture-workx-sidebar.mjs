@@ -16,6 +16,7 @@ const CODEWORD = flag('codeword')
 if (CODEWORD === undefined) throw new Error('capture-workx-sidebar: --codeword is required')
 
 const { page, browser, shot, send } = await openApp()
+try {
 page.on('console', message => {
   if (message.type() === 'error') console.error('page error:', message.text().slice(0, 400))
 })
@@ -127,4 +128,6 @@ await page.locator('[data-dsh-x="tasks-card"]').first().waitFor({ timeout: 30_00
 })
 await shot('02-sidebar-tasks')
 
-await browser.close()
+} finally {
+  await browser.close()
+}

@@ -7,13 +7,11 @@ import { isSessionLog } from './session-log.mjs'
 import assert from 'node:assert/strict'
 import { existsSync, readFileSync, realpathSync } from 'node:fs'
 import { createRequire } from 'node:module'
-import { execFile as execFileCallback } from 'node:child_process'
+import { execFile } from './test-processes.mjs'
 import { chmod, mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
-import { promisify } from 'node:util'
 import { parse, stringify } from 'yaml'
 
-const execFile = promisify(execFileCallback)
 
 /** Configure published DSH before boot; settings.yaml is only a legacy importer. */
 export async function writeHostConfig(home, sections) {
@@ -224,8 +222,8 @@ export function createE2eHarness({ dshRoot, directDshBin, dshBin, dshCwd }) {
         {
           cwd: cwd ?? dshCwd,
           env,
-          // 600s, not 300: with a cold pnpm store and the bounded pool's six
-          // installs sharing a slow proxy, one profile install measured 92s
+          // 600s, not 300: historically six parallel installs shared a slow
+          // proxy (the pool is now at most two); one install measured 92s
           // SOLO — under contention 300s truncated installs into blank
           // "Command failed" errors across the board (2026-08-31, right
           // after a store prune).
