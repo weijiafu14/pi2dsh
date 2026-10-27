@@ -1,6 +1,6 @@
 # pi2dsh 0.27.1 / dsh-work-x 0.6.1
 
-状态：两个 npm 包已可下载且 integrity 匹配，代码及 v0.27.1 已推送；rc.2、rc.3 正式包均已完成完整回归，两个 `verify:release` 均退出 0。#9 回复待发送。
+状态：两个 npm 包已可下载且 integrity 匹配，代码及 v0.27.1 已推送；rc.2、rc.3 正式包均已完成完整回归，两个 `verify:release` 均退出 0。[#9 已回复升级步骤](https://github.com/weijiafu14/pi2dsh/issues/9#issuecomment-6433944474)，回读核对完成，保留 issue 开放等待原作者反馈。
 
 针对 [#9](https://github.com/weijiafu14/pi2dsh/issues/9)：用户在 Windows、DSH
 0.2.1-rc.3 的 `desktop` profile 安装时，被 0.27.0 的 rc.2 精确兼容声明拒绝。
