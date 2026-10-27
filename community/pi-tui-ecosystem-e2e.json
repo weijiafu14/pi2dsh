@@ -1,13 +1,27 @@
 {
-  "generatedAt": "2026-10-19T10:14:42.034Z",
+  "generatedAt": "2026-10-27T04:36:56.728Z",
   "scenario": "dsh-pi-tui + pi2dsh + Pi MCP + Pi Subagents",
   "specs": {
     "dsh": "@deepseek-ai/dsh@0.2.1-rc.2",
-    "tui": "@xmoon76/dsh-pi-tui@0.5.1",
-    "engine": "pi2dsh@0.27.0",
+    "tui": "@xmoon76/dsh-pi-tui@0.5.3",
+    "engine": "pi2dsh@0.27.1",
     "mcp": "pi-mcp-adapter@2.27.0",
     "subagents": "@tintinweb/pi-subagents@0.20.0"
   },
-  "status": "skipped",
-  "reason": "User-approved exclusion: dsh-pi-tui 0.5.1 still references removed DSH invariant components and cwd prompt variable on 0.2.1-rc.2; upstream startup failure recorded separately."
+  "status": "passed",
+  "versions": {
+    "dsh": "0.2.1-rc.2",
+    "tui": "0.5.3",
+    "engine": "0.27.1",
+    "mcp": "2.27.0",
+    "subagents": "0.20.0"
+  },
+  "assertions": {
+    "nativeLogin": true,
+    "mcpManager": true,
+    "agentsSurface": true,
+    "subagentToolResult": "sessions/--private-tmp-pi2dsh-pi-tui-e2e.hK7NxF--/session-68c1f9a6-5c78-412e-afd7-c81e2f74dbff/session.v4.jsonl",
+    "mcpToolResult": "sessions/--private-tmp-pi2dsh-pi-tui-e2e.hK7NxF--/session-68c1f9a6-5c78-412e-afd7-c81e2f74dbff/session.v4.jsonl",
+    "duplicateCommandErrors": 0
+  }
 }

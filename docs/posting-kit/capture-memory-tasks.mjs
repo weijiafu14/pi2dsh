@@ -17,6 +17,7 @@ const CODEWORD = at === -1 ? undefined : process.argv[at + 1]
 if (CODEWORD === undefined) throw new Error('capture-memory-tasks: --codeword is required')
 
 const { page, browser, shot } = await openApp()
+try {
 
 async function turn(text, settleMs) {
   const composer = page.getByRole('textbox').last()
@@ -50,4 +51,6 @@ await turn(
 )
 await shot('03-background-tasks-web')
 
-await browser.close()
+} finally {
+  await browser.close()
+}

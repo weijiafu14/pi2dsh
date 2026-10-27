@@ -17,6 +17,7 @@ const PROMPT = 'Two tasks in this project: '
   + 'Do not use bash or any other tool for these two tasks.'
 
 const { page, browser, shot, send, UI } = await openApp()
+try {
 
 await page.getByRole('button', { name: UI.newSession }).first().click({ timeout: 60_000 })
 await send(PROMPT)
@@ -33,4 +34,6 @@ if (!/spec\.md/u.test(answered) || !/2322|not assignable/iu.test(answered)) {
 }
 await shot('06-code-navigation-web')
 
-await browser.close()
+} finally {
+  await browser.close()
+}

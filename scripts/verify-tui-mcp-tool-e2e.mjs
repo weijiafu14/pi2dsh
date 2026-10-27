@@ -15,7 +15,7 @@
 //   PI2DSH_MCP_ADAPTER_ROOT=/path/to/node_modules/pi-mcp-adapter \
 //     node scripts/verify-tui-mcp-tool-e2e.mjs
 
-import { spawn } from 'node:child_process'
+import { spawn, stopProcess } from './lib/test-processes.mjs'
 import { chmod, mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { createServer } from 'node:net'
 import { createRequire } from 'node:module'
@@ -104,15 +104,7 @@ async function startEverythingTransport(mode, port) {
   })
   return {
     output: () => output,
-    stop() {
-      if (child.exitCode !== null || child.pid === undefined) return
-      try {
-        if (process.platform === 'win32') child.kill('SIGTERM')
-        else process.kill(-child.pid, 'SIGTERM')
-      } catch {
-        child.kill('SIGTERM')
-      }
-    },
+    stop: () => stopProcess(child),
   }
 }
 
@@ -596,7 +588,7 @@ try {
   await packageFiber?.dispose()
   await scopeFiber?.dispose()
   await ctx.fiber.dispose()
-  streamable?.stop()
-  legacySse?.stop()
+  await streamable?.stop()
+  await legacySse?.stop()
   await rm(scratch, { recursive: true, force: true })
 }

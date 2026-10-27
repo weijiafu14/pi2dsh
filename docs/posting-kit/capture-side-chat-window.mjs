@@ -7,6 +7,7 @@
 import { openApp } from './web-drive.mjs'
 
 const { page, browser, shot } = await openApp()
+try {
 await page.getByRole('button', { name: /new session/iu }).first().click({ timeout: 60_000 })
 await page.waitForTimeout(1500)
 
@@ -27,4 +28,6 @@ await page.keyboard.press('Enter')
 await page.waitForTimeout(40_000)
 await shot('21-side-chat-window-qa')
 
-await browser.close()
+} finally {
+  await browser.close()
+}

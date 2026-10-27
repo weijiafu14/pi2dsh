@@ -4,6 +4,7 @@ import { defineConfig } from 'vitest/config'
 // vite.config.js (including its coverage thresholds). Pin this project's own.
 export default defineConfig({
   test: {
+    maxWorkers: 2,
     // Real-DSH integration fixtures (a full cordis Context with the session/
     // tools/commands/skills plugins) exceed the 5s default under coverage
     // instrumentation with many suites in flight.

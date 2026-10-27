@@ -17,6 +17,7 @@
 import { openApp } from './web-drive.mjs'
 
 const { page, browser, shot, UI } = await openApp()
+try {
 
 await page.getByRole('button', { name: UI.newSession }).first().click({ timeout: 60_000 })
 
@@ -52,4 +53,6 @@ await page.getByText(/ChatGPT Plus\/Pro/u).waitFor({ timeout: 30_000 })
 await page.getByText(/^GPT-5/u).first().waitFor({ timeout: 30_000 })
 await shot('11-model-picker-after-login')
 
-await browser.close()
+} finally {
+  await browser.close()
+}

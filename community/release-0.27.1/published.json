@@ -1,0 +1,10 @@
+{
+  "date": "2026-10-26",
+  "sourceCommit": "6246ab08442f79fa999c4a8920dd7310bbddb3a5",
+  "tag": "v0.27.1",
+  "hosts": ["0.2.1-rc.2", "0.2.1-rc.3"],
+  "packages": [
+    {"name":"pi2dsh","version":"0.27.1","registryAvailable":true,"matchesLocalTarball":true,"integrity":"sha512-iwjaQ2XuzhYS1V7wx1BhqfGDRiBBLLF99+B2tGTOzP0hPwyNfvEyAD2UZC/8gKOxMAcw61V6AMB8bS8osqCl/A=="},
+    {"name":"dsh-work-x","version":"0.6.1","registryAvailable":true,"matchesLocalTarball":true,"integrity":"sha512-uKazuzAQ7za5xAQvHe04ZRZSdjn0pjp0WoHIlxdCNBsNHNIbZgrTXR4nHZmfwoJG1Trq+lLUC3iy0MmFDexzjA=="}
+  ]
+}

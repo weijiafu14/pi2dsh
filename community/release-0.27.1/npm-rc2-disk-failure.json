@@ -1,0 +1,12 @@
+{
+  "host": "@deepseek-ai/dsh@0.2.1-rc.2",
+  "engine": "pi2dsh@0.27.1",
+  "suite": "dsh-work-x@0.6.1",
+  "status": "failed",
+  "scenario": "code-navigation",
+  "operation": "npm install --no-fund --no-audit in isolated sample project",
+  "error": "TAR_ENTRY_ERROR ENOSPC: no space left on device, write",
+  "controllerExitCode": 143,
+  "interruptedAfterConfirmedEnvironmentFailure": true,
+  "recovery": "Stop this run's processes, prune redownloadable pnpm cache, rerun the entire rc.2 verify:release command; do not count this attempt as passed."
+}

@@ -22,6 +22,7 @@ const SIDE_QUESTION = '/btw who wrote the novel Dune? name only'
 const SIDE_ANSWER = /herbert/iu
 
 const { page, browser, shot, send, UI, outDir } = await openApp()
+try {
 
 await page.getByRole('button', { name: UI.newSession }).first().click({ timeout: 60_000 })
 await send(MAIN_QUESTION)
@@ -125,5 +126,7 @@ for (;;) {
 }
 await shot('05-side-conversation-child-view')
 
-await browser.close()
+} finally {
+  await browser.close()
+}
 console.log(`done — ${outDir}`)
