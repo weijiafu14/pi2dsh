@@ -1,5 +1,9 @@
 # Pi MCP and Subagents in dsh-pi-tui
 
+DSH 0.2.2-alpha.2 is **not** covered by this historical terminal example.
+The Pi 1.4 preview uses `pi2dsh@next` / `dsh-work-x@next` on stock Web/headless;
+see the [current acceptance boundary](../../community/issue-10/README.md).
+
 **Version boundary:** this example is retained for DSH **0.2.0-rc.2** +
 pi2dsh **0.26.0** + dsh-pi-tui **0.5.1** ([published proof](../../community/release-0.26.0/pi-tui-npm.json)).
 On DSH **0.2.1-rc.2**, this terminal still references removed invariant

@@ -1,3 +1,4 @@
+import { mountSessions } from './lib/dsh-compat.js'
 import { describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
@@ -40,7 +41,7 @@ function makeHost(ctx: Context, deliveries: Array<{ mode: string, message: unkno
 describe('Pi createAgentSession bridged onto real DSH agents', () => {
   it('fails explicitly when the composition has no agent factory', async () => {
     const ctx = new Context()
-    await ctx.plugin(SessionStore)
+    await mountSessions(ctx)
     const deliveries: Array<{ mode: string, message: unknown }> = []
     // dsh-agent's registry exists only with its plugin; here ctx.agents is
     // absent entirely, the harsher of the two degraded compositions.
@@ -50,7 +51,7 @@ describe('Pi createAgentSession bridged onto real DSH agents', () => {
 
   it('creates a child through the factory, projects its durable events, and completes prompt() on turn end', async () => {
     const ctx = new Context()
-    await ctx.plugin(SessionStore)
+    await mountSessions(ctx)
     const session = ctx.sessions.create(SessionId(`sub-${Date.now()}`), {
       meta: { createdAt: Date.now(), cwd: process.cwd() },
     })
@@ -121,7 +122,7 @@ describe('Pi createAgentSession bridged onto real DSH agents', () => {
   // Pi's own AgentSession.
   it('exposes Pi\'s settable AgentState transcript and carries a seeded transcript into the child', async () => {
     const ctx = new Context()
-    await ctx.plugin(SessionStore)
+    await mountSessions(ctx)
     const session = ctx.sessions.create(SessionId(`seed-${Date.now()}`), {
       meta: { createdAt: Date.now(), cwd: process.cwd() },
     })
@@ -257,7 +258,7 @@ describe('Pi createAgentSession bridged onto real DSH agents', () => {
   // and the side thread cannot be listed or reopened from the conversation.
   it("records the host's own subagent identity in the child log so DSH can list and reopen it", async () => {
     const ctx = new Context()
-    await ctx.plugin(SessionStore)
+    await mountSessions(ctx)
     const session = ctx.sessions.create(SessionId(`ident-${Date.now()}`), {
       meta: { createdAt: Date.now(), cwd: process.cwd() },
     })
@@ -294,7 +295,7 @@ describe('Pi createAgentSession bridged onto real DSH agents', () => {
   // package creating an in-memory child gets it, no package names involved.
   it("labels an in-memory child with the ecosystem's side-thread prefix", async () => {
     const ctx = new Context()
-    await ctx.plugin(SessionStore)
+    await mountSessions(ctx)
     const session = ctx.sessions.create(SessionId(`side-${Date.now()}`), {
       meta: { createdAt: Date.now(), cwd: process.cwd() },
     })
@@ -321,7 +322,7 @@ describe('Pi createAgentSession bridged onto real DSH agents', () => {
   // The bridge cancels every turn that opens while aborted; prompt() lifts it.
   it('keeps an aborted child quiet — a post-abort wake is re-cancelled until the next prompt()', async () => {
     const ctx = new Context()
-    await ctx.plugin(SessionStore)
+    await mountSessions(ctx)
     const session = ctx.sessions.create(SessionId(`quiet-${Date.now()}`), {
       meta: { createdAt: Date.now(), cwd: process.cwd() },
     })
@@ -376,7 +377,7 @@ describe('Pi createAgentSession bridged onto real DSH agents', () => {
   // value directly, so anything but a Promise is a synchronous crash there.
   it('queues steer and followUp through the delivery channel and returns awaitable promises', async () => {
     const ctx = new Context()
-    await ctx.plugin(SessionStore)
+    await mountSessions(ctx)
     const session = ctx.sessions.create(SessionId(`queue-${Date.now()}`), {
       meta: { createdAt: Date.now(), cwd: process.cwd() },
     })
@@ -414,7 +415,7 @@ describe('Pi createAgentSession bridged onto real DSH agents', () => {
   // and the parent model distrusted its own successes.
   it('projects a durable tool/result into Pi\'s tool_execution_end with the tool name and error flag', async () => {
     const ctx = new Context()
-    await ctx.plugin(SessionStore)
+    await mountSessions(ctx)
     const session = ctx.sessions.create(SessionId(`toolend-${Date.now()}`), {
       meta: { createdAt: Date.now(), cwd: process.cwd() },
     })
@@ -741,45 +742,41 @@ describe('the caller route a child inherits is the LIVE one', () => {
   // inherit the parent's CREATION-TIME AgentOptions, so a session that
   // switched models spawns children on the stale default and they fail on a
   // provider the user never configured. The bridge resolves the caller's live
-  // route instead — an in-session ctx.setModel override wins over the
+  // route instead — the native model selector wins over the
   // creation snapshot — so a Pi package that leaves the model to the caller
   // gets the model the caller is actually running.
-  it('prefers an in-session setModel override over the creation-time snapshot', () => {
-    const overrides = new WeakMap<object, { provider?: string, model?: string }>()
-    const state = {
-      modelOverrides: overrides,
-      companionRoutes: new Map<string, string>(),
-      modelCatalog: undefined,
-    } as unknown as Parameters<typeof runtimeInternals.currentPiModel>[0]
-    const agent = { options: { provider: 'deepseek-official', model: 'stale-default' } }
-
-    // Before any switch: the creation snapshot is the live route.
-    expect(runtimeInternals.currentPiModel(state, agent)).toMatchObject({
-      id: 'stale-default', provider: 'deepseek-official',
-    })
-
-    const native = { ...agent, session: { id: 'native', snapshotEvents: () => [
-      { type: 'request/header', data: { header: { config: { provider: 'native-live', model: 'live-model' } } } },
-    ] } }
-    expect(runtimeInternals.currentPiModel(state, native)).toMatchObject({ id: 'live-model', provider: 'native-live' })
-
-    // After the session switched models, the override is the live route.
-    overrides.set(agent, { provider: 'my-gateway', model: 'switched-model' })
+  it('reads the live host selection before a new request instead of stale snapshots', () => {
+    const state = { companionRoutes: new Map<string, string>(), modelCatalog: undefined } as unknown as Parameters<typeof runtimeInternals.currentPiModel>[0]
+    let selected = { provider: 'deepseek-official', model: 'stale-default' }
+    const agent = {
+      options: { provider: 'deepseek-official', model: 'stale-default' },
+      session: { snapshotEvents: () => [{ type: 'request/header', data: { config: selected } }] },
+      model: {
+        current: () => selected,
+        select: (value: typeof selected) => { selected = value },
+      },
+    }
+    expect(runtimeInternals.currentPiModel(state, agent)).toMatchObject({ id: 'stale-default' })
+    agent.model.select({ provider: 'my-gateway', model: 'switched-model' })
     expect(runtimeInternals.currentPiModel(state, agent)).toMatchObject({
       id: 'switched-model', provider: 'my-gateway',
+    })
+    agent.model.select({ provider: 'host-ui', model: 'latest-selection' })
+    expect(runtimeInternals.currentPiModel(state, agent)).toMatchObject({
+      id: 'latest-selection', provider: 'host-ui',
     })
   })
 })
 
 describe('per-child thinking level and adoption', () => {
   // Pi's createAgentSession thinkingLevel is per-child request config. On DSH
-  // it rides the instance's agent/request waterfall, which only covers agents
-  // the instance claims — so creation must ADOPT the child (#2970/#3008-shaped
+  // it is selected on the child's own AgentModel when creation adopts the
+  // child (#2970/#3008-shaped
   // gap: the option used to be accepted and silently dropped, with the state
   // getter hardwired to 'off').
   async function harness(adopted: Array<{ child: unknown, level?: string }>) {
     const ctx = new Context()
-    await ctx.plugin(SessionStore)
+    await mountSessions(ctx)
     const session = ctx.sessions.create(SessionId(`think-${Date.now()}-${Math.random().toString(36).slice(2)}`), {
       meta: { createdAt: Date.now(), cwd: process.cwd() },
     })
@@ -819,42 +816,10 @@ describe('per-child thinking level and adoption', () => {
   })
 })
 
-describe('the durable last-request route', () => {
-  // A DSH UI or /model switch never rewrites the creation-time AgentOptions —
-  // it lands in the session log as the next request/header. Reading only the
-  // snapshot is the stale-inheritance bug (#455/#2006 shape); the durable
-  // header is the authority between explicit Pi setModel and the snapshot.
-  it('reads the last request/header in any of its observed nestings', () => {
-    const route = { provider: 'work-gw', model: 'deepseek-chat' }
-    for (const data of [
-      { config: route },
-      { header: { config: route } },
-      { header: route },
-    ]) {
-      const session = { id: 's', events: [
-        { type: 'request/header', data: { config: { provider: 'old', model: 'old-model' } } },
-        { type: 'request/header', data },
-      ] }
-      expect(runtimeInternals.lastRequestRouteOf(session as never)).toEqual(route)
-    }
-    expect(runtimeInternals.lastRequestRouteOf({ id: 's', events: [] } as never)).toBeUndefined()
-  })
-
-  it('resolves by authority: setModel override, then durable header, then snapshot', () => {
-    const override = { provider: 'pi-set', model: 'pi-model' }
-    const durable = { provider: 'work-gw', model: 'switched' }
-    const snapshot = { provider: 'deepseek-official', model: 'stale' }
-    expect(runtimeInternals.resolveCallerRoute(override, durable, snapshot)).toEqual(override)
-    expect(runtimeInternals.resolveCallerRoute(undefined, durable, snapshot)).toEqual(durable)
-    expect(runtimeInternals.resolveCallerRoute(undefined, undefined, snapshot)).toEqual(snapshot)
-    expect(runtimeInternals.resolveCallerRoute(undefined, undefined, undefined)).toBeUndefined()
-  })
-})
-
 describe('modern DSH child creation and stream contract', () => {
   it('uses the explicit setup Agent, preserves parent ownership, and isolates stream attempts', async () => {
     const ctx = new Context()
-    await ctx.plugin(SessionStore)
+    await mountSessions(ctx)
     const session = ctx.sessions.create(SessionId('modern-child'), { meta: { cwd: process.cwd() } })
     const parent = { id: 'live-parent' }
     const schemaScopes: unknown[] = []

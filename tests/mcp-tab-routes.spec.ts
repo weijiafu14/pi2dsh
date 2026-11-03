@@ -1,3 +1,5 @@
+import { mountSessions } from './lib/dsh-compat.js'
+import { mountTools } from './lib/dsh-compat.js'
 // The structured MCP faces behind dsh-x's native tab, locked at the seam the
 // browser really calls: the engine's own route, mounted through the real
 // runtime against a real session whose cwd carries a real .mcp.json.
@@ -92,9 +94,9 @@ beforeAll(async () => {
       return () => {}
     },
   })
-  await ctx.plugin(SessionStore)
+  await mountSessions(ctx)
   await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
-  await ctx.plugin(ToolRuntime)
+  await mountTools(ctx)
   await ctx.plugin(CommandRuntime)
   const mount: Plugin.Object = {
     name: 'pi2dsh:mcp-tab-fixture',

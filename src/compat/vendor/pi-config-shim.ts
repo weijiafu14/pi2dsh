@@ -5,6 +5,7 @@
 // installation on the same machine.
 import { homedir } from 'node:os'
 import { isAbsolute, join, resolve as nodeResolvePath } from 'node:path'
+export const APP_NAME = 'pi'
 
 export function getAgentDir(): string {
   if (process.env.PI_CODING_AGENT_DIR) return process.env.PI_CODING_AGENT_DIR

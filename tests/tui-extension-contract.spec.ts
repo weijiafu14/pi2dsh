@@ -1,3 +1,5 @@
+import { mountSessions } from './lib/dsh-compat.js'
+import { mountTools, executeTool } from './lib/dsh-compat.js'
 // Public Pi API -> real DSH command runtime -> dsh-TUI service contract.
 // This closes the gap a module-only scene test cannot: ctx.mode/hasUI,
 // ctx.ui.custom, ctx.ui.setStatus and /mcp command avoidance all travel
@@ -134,9 +136,9 @@ beforeAll(async () => {
       return () => {}
     },
   })
-  await ctx.plugin(SessionStore)
+  await mountSessions(ctx)
   await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
-  await ctx.plugin(ToolRuntime)
+  await mountTools(ctx)
   await ctx.plugin(CommandRuntime)
 
   const mount: Plugin.Object = {
@@ -295,7 +297,7 @@ describe('Pi custom UI on dsh-TUI', () => {
     // dsh-TUI /new can expose the replacement Agent to tools before the
     // optional DSH agent/session-start announcement. Pi still promises its
     // session_start handlers have completed before any tool executes.
-    const result = await ctx.tools.execute({
+    const result = await executeTool(ctx, {
       agent: immediateAgent as never,
       signal: new AbortController().signal,
       callId: 'tui-immediate-tool' as never,
@@ -325,7 +327,7 @@ describe('Pi custom UI on dsh-TUI', () => {
     }
     const previous = makeAgent('pi2dsh-tui-replaced-previous')
     const replacement = makeAgent('pi2dsh-tui-replaced-current')
-    const executeProbe = (target: UnknownRecord, callId: string) => ctx.tools.execute({
+    const executeProbe = (target: UnknownRecord, callId: string) => executeTool(ctx, {
       agent: target as never,
       signal: new AbortController().signal,
       callId: callId as never,

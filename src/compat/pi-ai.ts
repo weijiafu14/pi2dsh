@@ -13,6 +13,9 @@ export { Type } from 'typebox'
 export { isContextOverflow, isRecoverableLength } from './vendor/pi-ai-overflow.js'
 export { isRetryableAssistantError } from './vendor/pi-ai-retry.js'
 export { uuidv7 } from './vendor/pi-uuid.js'
+export * from './vendor/pi-ai-transcript.js'
+export { getSystemMessageText, renderSystemMessageUpdate } from './vendor/pi-ai-text.js'
+export { getModelType, isModelType } from './vendor/pi-ai-model-operations.js'
 export type {
   AgentMessage,
   AssistantMessage,

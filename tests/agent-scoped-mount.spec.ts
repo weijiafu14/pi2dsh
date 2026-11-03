@@ -1,3 +1,6 @@
+import { executeTool } from './lib/dsh-compat.js'
+import { mountSessions } from './lib/dsh-compat.js'
+import { mountTools } from './lib/dsh-compat.js'
 import { describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import AgentRegistry, { assembleContextFor } from '@deepseek-ai/dsh-agent'
@@ -37,9 +40,9 @@ interface LooseAgent {
 
 async function buildRuntime(): Promise<Context> {
   const ctx = new Context()
-  await ctx.plugin(SessionStore)
+  await mountSessions(ctx)
   await ctx.plugin(SystemPrompt as never, { includeHarnessIdentity: false } as never)
-  await ctx.plugin(ToolRuntime)
+  await mountTools(ctx)
   await ctx.plugin(LlmRuntime as never, {} as never)
   await ctx.plugin(AgentRegistry)
   await mountAgentLoop(ctx)
@@ -126,7 +129,7 @@ describe('per-agent mount on stock rc.8 core events and waterfalls', () => {
     const tools = (ctx as never as {
       tools: { execute(input: Record<string, unknown>): Promise<unknown> }
     }).tools
-    await tools.execute({
+    await executeTool(ctx, {
       callId: CallId('probe-call-1'),
       signal: new AbortController().signal,
       name: 'pi_probe_1',
@@ -155,7 +158,7 @@ describe('per-agent mount on stock rc.8 core events and waterfalls', () => {
     }).systemPrompt.assemble(assembleContextFor(b.agent as never))
     expect(assemblyB2.tools.map(tool => tool.name)).toContain('pi_probe_2')
     expect(assemblyB2.tools.map(tool => tool.name)).not.toContain('pi_probe_1')
-    await tools.execute({
+    await executeTool(ctx, {
       callId: CallId('probe-call-2'),
       signal: new AbortController().signal,
       name: 'pi_probe_2',

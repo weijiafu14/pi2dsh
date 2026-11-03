@@ -14,7 +14,7 @@ on the Coding Plan route.
 ## 1. Install the engine and the original provider
 
 ```sh
-dsh plugin --profile web add pi2dsh
+dsh plugin --profile web add pi2dsh@next
 dsh plugin --profile web add pi-provider-alibaba
 ```
 

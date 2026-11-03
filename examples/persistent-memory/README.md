@@ -13,7 +13,7 @@ and [evidence](../../community/hermes-memory-20260910/final/README.md).
 ## Install
 
 ```sh
-dsh plugin add pi2dsh
+dsh plugin add pi2dsh@next
 dsh plugin add pi-hermes-memory
 ```
 

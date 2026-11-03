@@ -20,7 +20,7 @@ and shows three properties:
 ## Install
 
 ```sh
-dsh plugin add pi2dsh
+dsh plugin add pi2dsh@next
 dsh plugin add pi-mcp-adapter
 ```
 

@@ -1,3 +1,6 @@
+import { executeTool } from './lib/dsh-compat.js'
+import { mountSessions } from './lib/dsh-compat.js'
+import { mountTools } from './lib/dsh-compat.js'
 // The P0 contract this pins: a Pi package's createAgentSession() child runs
 // with its TOOLS — the allowlist as an official scoped restriction over the
 // host's global tools, and customTools registered in the child Agent's own
@@ -57,9 +60,9 @@ describe('createAgentSession child tools on a real DSH composition', () => {
     await writeFile(join(root, 'probe.ts'), CHILD_SPAWN_PROBE)
 
     const ctx = new Context()
-    await ctx.plugin(SessionStore)
+    await mountSessions(ctx)
     await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
-    await ctx.plugin(ToolRuntime)
+    await mountTools(ctx)
     await ctx.plugin(CommandRuntime)
     await ctx.plugin(SkillRegistry)
     // The child must be a REAL registry agent: the whole point is what its
@@ -130,14 +133,14 @@ describe('createAgentSession child tools on a real DSH composition', () => {
 
     // The custom tool really EXECUTES through the DSH pipeline (argument
     // validation included) inside the child's scope.
-    const result = await tools.execute({
+    const result = await executeTool(ctx, {
       signal: new AbortController().signal,
       callId: CallId('child-tool-run'),
       name: 'child_probe',
       arguments: { word: 'sesame' },
       agent: child,
     })
-    expect(result.content.map(block => block.text).join('')).toContain('CHILD_TOOL_OK:sesame')
+    expect(result.content.map(block => block.type === 'text' ? block.text : '').join('')).toContain('CHILD_TOOL_OK:sesame')
 
     // The Pi façade reads the child's real toolset, and
     // setActiveToolsByName REPLACES the restriction (no stale intersection:

@@ -1,3 +1,5 @@
+import { mountSessions } from './lib/dsh-compat.js'
+import { mountTools } from './lib/dsh-compat.js'
 // DSH authorization-seam projection contract (0.1.1 line): a Pi package's
 // OAuth-capable provider appears on DSH's native sign-in surface as an
 // official authorization flow; running it executes the package's OWN login,
@@ -71,9 +73,9 @@ async function buildHost(root: string): Promise<Context> {
   cleanup.push(home)
   process.env.DSH_HOME = home
   const ctx = new Context()
-  await ctx.plugin(SessionStore)
+  await mountSessions(ctx)
   await ctx.plugin(SystemPrompt as never, { includeHarnessIdentity: false } as never)
-  await ctx.plugin(ToolRuntime)
+  await mountTools(ctx)
   await ctx.plugin(CommandRuntime)
   await ctx.plugin(SkillRegistry)
   await ctx.plugin(LlmRuntime as never, {} as never)
@@ -145,9 +147,9 @@ describe('DSH authorization-seam projection', () => {
     cleanup.push(home)
     process.env.DSH_HOME = home
     const ctx = new Context()
-    await ctx.plugin(SessionStore)
+    await mountSessions(ctx)
     await ctx.plugin(SystemPrompt as never, { includeHarnessIdentity: false } as never)
-    await ctx.plugin(ToolRuntime)
+    await mountTools(ctx)
     await ctx.plugin(CommandRuntime)
     await ctx.plugin(SkillRegistry)
     await ctx.plugin(LlmRuntime as never, {} as never)
@@ -185,9 +187,9 @@ describe('DSH authorization-seam projection', () => {
     cleanup.push(home)
     process.env.DSH_HOME = home
     const ctx = new Context()
-    await ctx.plugin(SessionStore)
+    await mountSessions(ctx)
     await ctx.plugin(SystemPrompt as never, { includeHarnessIdentity: false } as never)
-    await ctx.plugin(ToolRuntime)
+    await mountTools(ctx)
     await ctx.plugin(CommandRuntime)
     await ctx.plugin(SkillRegistry)
     await ctx.plugin(LlmRuntime as never, {} as never)

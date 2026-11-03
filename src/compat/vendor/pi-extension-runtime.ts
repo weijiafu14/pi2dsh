@@ -1,5 +1,5 @@
 /**
- * Vendored verbatim from `@earendil-works/pi-coding-agent@0.84.2`
+ * Vendored from `@earendil-works/pi-coding-agent@1.4.0` (4a08025)
  * (`dist/core/extensions/loader.js` `createExtensionRuntime`).
  *
  * A pure state-container factory with no host dependency. Action methods start
@@ -12,6 +12,7 @@
  */
 
 type Unsubscribe = () => void
+import { McpServerRegistry } from './pi-mcp-servers.js'
 
 interface RuntimeState {
   staleMessage?: string
@@ -23,6 +24,8 @@ export interface ExtensionRuntime {
   flagValues: Map<string, boolean | string>
   pendingProviderRegistrations: Array<{ name: string, config: unknown, extensionPath: string }>
   pendingNativeProviderRegistrations: Array<{ provider: { id: string }, extensionPath: string }>
+  mcpServers: McpServerRegistry
+  pendingVirtualModelRegistrations: Array<{ definition: { provider: string, id: string }, extensionPath: string }>
 }
 
 /**
@@ -52,6 +55,7 @@ export function createExtensionRuntime(): ExtensionRuntime {
     setLabel: notInitialized,
     getActiveTools: notInitialized,
     getAllTools: notInitialized,
+    getSettings: notInitialized,
     setActiveTools: notInitialized,
     // registerTool() is valid during extension load; refresh is only needed post-bind.
     refreshTools: () => {},
@@ -62,6 +66,9 @@ export function createExtensionRuntime(): ExtensionRuntime {
     flagValues: new Map<string, boolean | string>(),
     pendingProviderRegistrations: [],
     pendingNativeProviderRegistrations: [],
+    mcpServers: new McpServerRegistry(),
+    pendingVirtualModelRegistrations: [],
+    createContext: notInitialized,
     assertActive,
     invalidate: (message?: string) => {
       if (state.staleMessage) return
@@ -92,6 +99,14 @@ export function createExtensionRuntime(): ExtensionRuntime {
     unregisterProvider: (name: string) => {
       runtime.pendingProviderRegistrations = runtime.pendingProviderRegistrations.filter(r => r.name !== name)
       runtime.pendingNativeProviderRegistrations = runtime.pendingNativeProviderRegistrations.filter(r => r.provider.id !== name)
+    },
+    registerVirtualModel: (definition: { provider: string, id: string }, extensionPath = '<unknown>') => {
+      runtime.pendingVirtualModelRegistrations.push({ definition, extensionPath })
+    },
+    unregisterVirtualModel: (provider: string, id: string) => {
+      runtime.pendingVirtualModelRegistrations = runtime.pendingVirtualModelRegistrations.filter(
+        ({ definition }) => definition.provider !== provider || definition.id !== id,
+      )
     },
   }
   return runtime

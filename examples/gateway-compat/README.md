@@ -70,7 +70,7 @@ the fixture, install the engine and fixture, then start DSH:
 export PROBE_API_KEY="$DEEPSEEK_API_KEY"
 export PROBE_BASE_URL=http://127.0.0.1:4599/v1
 
-dsh plugin --profile web add pi2dsh
+dsh plugin --profile web add pi2dsh@next
 dsh plugin --profile web add file:examples/gateway-compat/probe/pi-probe-provider
 dsh --profile web --port 5184
 ```

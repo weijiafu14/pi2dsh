@@ -24,6 +24,7 @@ export {
   sessionEntryToContextMessages,
   buildContextEntries,
   buildSessionContext,
+  buildSessionProjection,
   loadEntriesFromFile,
   findMostRecentSession,
   getDefaultSessionDir,

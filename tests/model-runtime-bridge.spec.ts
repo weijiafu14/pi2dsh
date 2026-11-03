@@ -175,21 +175,53 @@ describe('DSH system-message requests projected to Pi transports', () => {
   const user = { role: 'user', content: [{ type: 'text', text: 'hello' }] }
   const system = { role: 'system', content: [{ type: 'text', text: 'follow project instructions' }] }
 
-  it('preserves the system prompt from a modern loop without leaking its message into Pi history', async () => {
+  it('preserves the system prompt in the Pi 1.x normalized transcript', async () => {
     const projected = await dshRequestToPiContext({ messages: [system, user] })
-    expect(projected.systemPrompt).toBe('follow project instructions')
-    expect(projected.messages).toEqual([user])
+    expect(projected).not.toHaveProperty('systemPrompt')
+    expect(projected.messages).toEqual([{ role: 'system', content: 'follow project instructions', timestamp: 0 }, user])
   })
 
   it('preserves legacy and one-shot system prompts, including an explicit clear', async () => {
     expect(await dshRequestToPiContext({ system: 'legacy prompt', messages: [user] }))
-      .toMatchObject({ systemPrompt: 'legacy prompt', messages: [user] })
+      .toMatchObject({ messages: [{ role: 'system', content: 'legacy prompt' }, user] })
     expect(await dshRequestToPiContext({ system: '', messages: [user] }))
       .not.toHaveProperty('systemPrompt')
   })
 
-  it('rejects in-history system updates that the Pi transport cannot represent', async () => {
-    await expect(dshRequestToPiContext({ messages: [system, user, system] }))
-      .rejects.toThrow('in-history system prompt')
+  it('retains in-history system updates at their original position', async () => {
+    const projected = await dshRequestToPiContext({ messages: [system, user, system] })
+    expect(projected.messages).toEqual([
+      { role: 'system', content: 'follow project instructions', timestamp: 0 },
+      user,
+      { ...system, timestamp: 0 },
+    ])
+  })
+
+  it('puts initial tools and native developer tool changes into Pi system messages', async () => {
+    const tool = { name: 'probe', description: 'probe tool', parameters: { type: 'object' } }
+    const projected = await dshRequestToPiContext({ tools: [tool], messages: [user, {
+      role: 'developer', content: [{ type: 'tool-removal', toolName: 'old' }, { type: 'tool-addition', toolName: 'probe' }],
+    }] })
+    expect(projected).not.toHaveProperty('tools')
+    expect(projected.messages).toEqual([
+      { role: 'system', content: '', toolsAdded: [tool], timestamp: 0 }, user,
+      { role: 'system', content: [], toolsAdded: [tool], toolsRemoved: [{ name: 'old' }], timestamp: 0 },
+    ])
+    await expect(dshRequestToPiContext({ messages: [{ role: 'developer', content: [{ type: 'tool-addition', toolName: 'unknown' }] }] }))
+      .rejects.toThrow('undeclared tool')
+  })
+
+  it('uses transcript prompt sections and initial tools for a Pi-to-DSH call', async () => {
+    const { ctx, adapter } = await llmContext()
+    try {
+      const tool = { name: 'probe', description: 'probe tool', parameters: { type: 'object' } }
+      const stream = streamViaDshLlm(llmOf(ctx)!, {
+        model: { provider: 'fixture', id: 'fx-mini' },
+        context: { messages: [{ role: 'system', content: 'base', sections: { policy: 'rules' }, toolsAdded: [tool], timestamp: 0 }, user] },
+      })
+      await stream.result()
+      expect(adapter.lastOptions).toMatchObject({ system: 'base\n\nrules', tools: [tool] })
+      expect((adapter.lastOptions?.messages as unknown[])).toHaveLength(1)
+    } finally { await ctx.fiber.dispose() }
   })
 })

@@ -73,9 +73,9 @@ for (const command of COMMANDS) {
     throw new Error(`dsh-x probe: no spelling of ${command.owner}'s command was offered by the popover (tried ${command.variants.map(v => v.full).join(', ')}); command-ish lines:\n${[...new Set(dumps)].slice(0, 40).join('\n')}\n--- full page text (truncated) ---\n${body.slice(0, 3000)}`)
   }
   mounted[command.owner] = found
+  if (command === COMMANDS.at(-1)) await shot('dsh-x-command-popover')
   await freshComposerLine()
 }
-await shot('dsh-x-command-popover')
 console.log(`[dsh-x-probe] suite commands offered by the composer popover: ${JSON.stringify(mounted)}`)
 
 // ---- The side-chat window: the suite's product face of pi-btw. ----

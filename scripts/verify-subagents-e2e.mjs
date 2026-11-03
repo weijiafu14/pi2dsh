@@ -18,15 +18,13 @@
 //
 //   node scripts/verify-subagents-e2e.mjs [community/subagents-e2e.json]
 
-import { execFile as execFileCallback } from 'node:child_process'
-import { spawn } from 'node:child_process'
+import { execFile, spawn, stopProcess, cleanupTestProcesses } from './lib/test-processes.mjs'
 import { readFileSync, existsSync } from 'node:fs'
-import { chmod, mkdir, mkdtemp, readdir, readFile, writeFile } from 'node:fs/promises'
+import { chmod, mkdir, mkdtemp, readdir, readFile, writeFile, rm } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
-import { promisify } from 'node:util'
 import { setTimeout as delay } from 'node:timers/promises'
+import { createE2eHarness } from './lib/e2e-harness.mjs'
 
-const execFile = promisify(execFileCallback)
 const projectRoot = resolve(new URL('..', import.meta.url).pathname)
 const outPath = resolve(process.argv[2] ?? 'community/subagents-e2e.json')
 
@@ -71,6 +69,7 @@ if (apiKey === undefined) {
 }
 
 const root = process.env.PI2DSH_SUBAGENTS_E2E_ROOT ?? await mkdtemp('/tmp/pi2dsh-subagents-e2e.')
+let failureRecorded = false
 const home = join(root, 'dsh-home')
 const cliDir = resolve(process.env.PI2DSH_DSH_CWD ?? join(root, 'cli'))
 const workDir = join(root, 'workspace')
@@ -148,23 +147,18 @@ try {
     await execFile('corepack', ['pnpm@11.7.0', 'install'], { cwd: cliDir, env: baseEnv, timeout: 300_000 })
   }
   const cliVersion = JSON.parse(await readFile(join(cliDir, 'node_modules', '@deepseek-ai', 'dsh', 'package.json'), 'utf8')).version
+  if (cliVersion !== DSH_CLI_SPEC.slice(DSH_CLI_SPEC.lastIndexOf('@') + 1)) throw new Error('stock CLI version does not match the requested host')
+  const harness = createE2eHarness({ dshRoot: resolve(projectRoot, '..', 'deepseek-harness'), directDshBin: dshBin, dshBin, dshCwd: cliDir })
+  const { runDsh, env: runEnv } = await harness.makeHome(root, { DEEPSEEK_API_KEY: apiKey })
 
   // ---- 2. headless profile: engine + pi-subagents ------------------------
   const profileRoot = join(home, 'profiles', 'headless')
   if (!existsSync(join(profileRoot, 'node_modules', 'pi2dsh'))) {
     log(`installing profile: engine + ${SUBAGENTS_SPEC} …`)
-    await execFile(dshBin, ['plugin', '--profile', 'headless', 'add', ENGINE_SPEC, SUBAGENTS_SPEC], {
-      env: baseEnv, timeout: 600_000, maxBuffer: 32 * 1024 * 1024,
-    })
+    await runDsh(['plugin', '--profile', 'headless', 'add', ENGINE_SPEC, SUBAGENTS_SPEC])
   }
   const engineVersion = JSON.parse(await readFile(join(profileRoot, 'node_modules', 'pi2dsh', 'package.json'), 'utf8')).version
-  await writeFile(join(profileRoot, 'cordis.patch.yml'), [
-    '- id: session-persistence-jsonl',
-    '  config:',
-    "    root: !!js dshHomePath('sessions')",
-    '    compression: none',
-    '',
-  ].join('\n'))
+  await harness.useJsonlSessions(home, 'headless')
   log(`stock proof: cli ${cliVersion}, engine ${engineVersion}`)
 
   // ---- 3. one real headless turn: delegate a bash task to a child --------
@@ -176,7 +170,7 @@ try {
   ].join(' ')
   log('running the headless turn (parent + child on real DeepSeek) …')
   const child = spawn(dshBin, ['--profile', 'headless', prompt], {
-    cwd: workDir, env: baseEnv, stdio: ['ignore', 'pipe', 'pipe'],
+    cwd: workDir, env: runEnv, stdio: ['ignore', 'pipe', 'pipe'],
   })
   let output = ''
   child.stdout.on('data', chunk => { output += String(chunk) })
@@ -190,7 +184,7 @@ try {
   // then stop the process either way — every assertion below reads durable
   // logs and the filesystem, not the process.
   for (let settle = 0; settle < 60 && child.exitCode === null; settle += 1) await delay(2000)
-  if (child.exitCode === null) child.kill('SIGTERM')
+  await stopProcess(child)
 
   // ---- 4. evidence -------------------------------------------------------
   const markerLanded = existsSync(markerPath) && readFileSync(markerPath, 'utf8').includes(MARKER)
@@ -206,6 +200,7 @@ try {
     const summary = {
       file,
       toolCalls: events.filter(event => event.type === 'tool/call').map(event => event.data?.name),
+      toolCallsWithArgs: events.filter(event => event.type === 'tool/call').map(event => ({ name: event.data?.name, arguments: event.data?.arguments })),
       toolResults: events.filter(event => event.type === 'tool/result' || event.type === 'tools/result'),
       requestTools: events
         .filter(event => event.type === 'request/header')
@@ -219,10 +214,18 @@ try {
 
   const problems = []
   if (parent === undefined) problems.push('no parent session with a real Agent tool/call')
+  if (parent !== undefined && parent.toolCalls.some(name => name !== 'Agent')) {
+    problems.push(`parent used tools besides delegation (${parent.toolCalls.join(', ')}); marker ownership is not proven`)
+  }
   if (childSession === undefined) problems.push('no child session (subagent/descriptor) carrying the task marker')
   if (childSession !== undefined) {
     if (!childSession.toolCalls.includes('bash')) {
       problems.push(`child made no bash tool/call (calls: ${childSession.toolCalls.join(', ') || 'none'})`)
+    }
+    if (!childSession.toolCallsWithArgs.some(call => call.name === 'bash'
+      && JSON.stringify(call.arguments ?? {}).includes(MARKER)
+      && JSON.stringify(call.arguments ?? {}).includes(markerPath))) {
+      problems.push('no recorded child bash arguments contain both the marker and its destination')
     }
     if (!childSession.requestTools.some(count => count > 0)) {
       problems.push('child request/header carried no tools — the P0 this run exists to disprove')
@@ -241,7 +244,8 @@ try {
       scratch: root,
     })
     log(`FAILED: ${problems.join('; ')}`)
-    process.exit(1)
+    failureRecorded = true
+    throw new Error(problems.join('; '))
   }
 
   // ---- 5. dsh-TUI surface: the /agents collision alias -------------------
@@ -250,7 +254,7 @@ try {
   // menu ("Agent types (N)" is its select prompt; the TUI-local /agents view
   // has no such line).
   const TMUX_SESSION = 'pi2dsh-subagents-e2e-tui'
-  let tui = { status: 'skipped', reason: 'PI2DSH_SKIP_TUI set' }
+  let tui = { status: 'skipped', reason: process.env.PI2DSH_SKIP_TUI_REASON ?? 'PI2DSH_SKIP_TUI set' }
   if (process.env.PI2DSH_SKIP_TUI === undefined) {
     const TUI_SPEC = process.env.PI2DSH_TUI_SPEC ?? '@deepseek-harness-tui/dsh-tui'
     const tuiProfile = join(home, 'profiles', 'tui')
@@ -277,8 +281,8 @@ try {
     await chmod(launcher, 0o755)
     log(`booting the stock TUI ${tuiVersion} in tmux …`)
     await execFile('tmux', ['new-session', '-d', '-s', TMUX_SESSION, '-x', '180', '-y', '50', '-c', workDir,
-      'env', `DSH_HOME=${home}`, `DEEPSEEK_API_KEY=${apiKey}`, 'NO_COLOR=1', launcher,
-    ], { timeout: 30_000 })
+      launcher,
+    ], { timeout: 30_000, env: baseEnv })
     const capture = async () => {
       const { stdout } = await execFile('tmux', ['capture-pane', '-p', '-t', TMUX_SESSION, '-S', '-200'], { timeout: 15_000 })
       return stdout
@@ -326,6 +330,7 @@ try {
     cliVersion,
     engineVersion,
     parentAgentToolCalls: parent.toolCalls.filter(name => name === 'Agent').length,
+    parentToolCalls: parent.toolCalls,
     childToolCalls: childSession.toolCalls,
     childRequestToolCounts: childSession.requestTools,
     markerLanded,
@@ -334,7 +339,13 @@ try {
   })
   log(`PASSED — child ran ${childSession.toolCalls.length} tool call(s), marker on disk; evidence in ${outPath}`)
 } catch (error) {
-  await record('failed', { error: String((error && error.message) || error), scratch: root })
-  log(`FAILED: ${String((error && error.message) || error)}`)
-  process.exit(1)
+  const message = String((error && error.message) || error).replaceAll(apiKey, '[redacted]')
+  if (!failureRecorded) await record('failed', { error: message, scratch: root })
+  log(`FAILED: ${message}`)
+  process.exitCode = 1
+} finally {
+  await cleanupTestProcesses()
+  if (process.env.PI2DSH_SUBAGENTS_E2E_ROOT === undefined && process.env.PI2DSH_KEEP_SCRATCH !== '1') {
+    await rm(root, { recursive: true, force: true })
+  }
 }

@@ -1,0 +1,29 @@
+{
+  "generatedAt": "2026-11-03T07:22:33.234Z",
+  "startedAt": "2026-11-03T07:22:09.609Z",
+  "scenario": "pi-subagents-child-tools",
+  "cliSpec": "@deepseek-ai/dsh@0.2.2-alpha.2",
+  "engineSpec": "<working-tree>",
+  "subagentsSpec": "@tintinweb/pi-subagents@0.20.0",
+  "status": "passed",
+  "cliVersion": "0.2.2-alpha.2",
+  "engineVersion": "0.28.0-next.0",
+  "parentAgentToolCalls": 1,
+  "parentToolCalls": [
+    "Agent"
+  ],
+  "childToolCalls": [
+    "bash",
+    "read"
+  ],
+  "childRequestToolCounts": [
+    5
+  ],
+  "markerLanded": true,
+  "tui": {
+    "status": "skipped",
+    "reason": "Published third-party terminals do not declare DSH 0.2.2-alpha.2 compatibility"
+  },
+  "scratch": "<temporary test workspace>"
+}
+

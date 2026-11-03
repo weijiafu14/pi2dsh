@@ -13,7 +13,7 @@ listed, named after the package, opened in its own view and continuable. This
 does not exercise the separate `ctx.subagents` provider seam. See
 [`examples/side-conversation`](../../examples/side-conversation/).
 
-**24 upstream-shaped Pi rule rows** — 6 same semantics · 18 mapped, difference stated.
+**25 upstream-shaped Pi rule rows** — 6 same semantics · 18 mapped, difference stated · 1 not available.
 
 | Pi surface | Kind | Status | What it does on DSH |
 |---|---|---|---|
@@ -21,6 +21,7 @@ does not exercise the separate `ctx.subagents` provider seam. See
 | [`setSessionName`](#setsessionname-pi) | `pi.*` | Same semantics | Renames the DSH session through ctx.sessionTitle, so every DSH surface shows it and the title is pinned against automatic regeneration, and announces it through session_info_changed. A composition that mounts no title service falls back to a session_info entry in the Pi-format archive, as does a blank name (DSH requires visible characters in a title; Pi does not). |
 | [`getSessionName`](#getsessionname-pi) | `pi.*` | Same semantics | Reads DSH's own session title, so it agrees with what DSH displays and sees titles DSH generated itself; falls back to the archive's session_info entry when no title service is mounted. |
 | [`setLabel`](#setlabel-pi) | `pi.*` | Mapped, difference stated | Persisted as a Pi label entry line in the per-session Pi-format archive and reflected by the sessionManager projection. |
+| [`session_compact_failed`](#session_compact_failed-event) | `event` | Not available | Not emitted yet; manual compaction errors still reach the existing onError callback. |
 | [`session_start`](#session_start-event) | `event` | Same semantics | Completed during the awaited per-Agent mount on DSH 0.2. |
 | [`session_shutdown`](#session_shutdown-event) | `event` | Mapped, difference stated | Async Cordis teardown joins pending message projection and ordered shutdown handlers; reload dispatches reason=reload before remount. Duplicate disposal notifications are suppressed. During full process shutdown other host services may already be unavailable, so model-dependent exit work is not guaranteed. |
 | [`session_info_changed`](#session_info_changed-event) | `event` | Mapped, difference stated | Fired by setSessionName() and projected from DSH session/title events. |
@@ -36,9 +37,9 @@ does not exercise the separate `ctx.subagents` provider seam. See
 | [`sessionManager`](#sessionmanager-ctx) | `ctx.*` | Mapped, difference stated | A real read-only projection using the host snapshotEvents API or the legacy event reader. Native file attachments become the host-rendered read-only file locator text in Pi. DSH durable messages plus the session's Pi-only entries (customs, labels, branch summaries — stored as genuine Pi entry lines in the per-session archive file), exposed through Pi's exact 14-method surface as a single-branch tree. API reads use the public snapshotEvents() surface where available, with the older events surface as fallback. getSessionFile() is undefined for Pi in-memory side sessions (native DSH audit remains); otherwise it atomically exports a complete Pi JSONL transcript under the redirected sessions directory for file-only consumers; this derived copy is never imported as native state. Cold history is read through public persistence inspect/read handles, and native deletion retires the derived exports. Host-authored context projects as custom messages rather than human turns. buildContextEntries is compaction-aware — entries a compaction summarized away are gone, exactly as they are for the model — while getEntries stays the append-only log, which is the same split Pi makes. |
 | [`shutdown`](#shutdown-ctx) | `ctx.*` | Mapped, difference stated | Pi defines shutdown behavior as host-provided (runner.ts bindExtensions); this host absorbs the request — the user owns DSH process exit — and informs the user once. The package keeps running. |
 | [`compact`](#compact-ctx) | `ctx.*` | Mapped, difference stated | Pi's fire-and-forget trigger, translated to DSH's official manual compaction (ctx.compaction.compactNow on the live agent). onComplete receives the real summary text and the shadowed-content token estimate as tokensBefore; firstKeptEntryId is empty because the DSH log has no Pi entry ids. Without a compaction service the gap flows through Pi's onError callback and the capability ledger. |
-| [`newSession`](#newsession-ctx) | `ctx.*` | Mapped, difference stated | Really creates a DSH session (ctx.sessions.create) with parent lineage; withSession runs against a projection context bound to it, whose sendMessage/sendUserMessage/appendEntry write into THAT session rather than the one the call came from. DSH has no host-level "current session pointer" a plugin could move — which session the surface shows stays a host choice, announced once. |
-| [`fork`](#fork-ctx) | `ctx.*` | Mapped, difference stated | Really forks on DSH's official prefix-fork surface (ctx.sessions.fork with lineage metadata). Anchors are durable-log entries (projected ids "dsh-<seq>"); Pi's default position "before" is honored, and the boundary shrinks to the nearest completed-turn edge because DSH seeds must not split an open turn. Sidecar entries cannot anchor a fork. |
-| [`navigateTree`](#navigatetree-ctx) | `ctx.*` | Mapped, difference stated | Expressed through DSH's session model: the DSH tree lives BETWEEN sessions (fork lineage), not inside one log, so navigation forks at the target boundary. summarize runs Pi's vendored branch summarizer over the abandoned durable slice (model call on the DSH llm bridge) and lands the summary as a branch_summary entry in the new session's projection; label lands as a label entry. |
+| [`newSession`](#newsession-ctx) | `ctx.*` | Mapped, difference stated | Really creates a DSH session (ctx.sessions.create) as an independent ordinary session; withSession runs against a projection context bound to it, whose sendMessage/sendUserMessage/appendEntry write into THAT session rather than the one the call came from. DSH has no host-level "current session pointer" a plugin could move — which session the surface shows stays a host choice, announced once. |
+| [`fork`](#fork-ctx) | `ctx.*` | Mapped, difference stated | Really forks on DSH's official prefix-fork surface (ctx.sessions.fork with prefix-inheritance metadata, not subagent parent identity). Anchors are durable-log entries (projected ids "dsh-<seq>"); Pi's default position "before" is honored, and the boundary shrinks to the nearest completed-turn edge because DSH seeds must not split an open turn. Sidecar entries cannot anchor a fork. |
+| [`navigateTree`](#navigatetree-ctx) | `ctx.*` | Mapped, difference stated | Expressed through DSH's session model: DSH represents branches as independent sessions with inherited prefixes, not a mutable tree inside one log, so navigation forks at the target boundary. summarize runs Pi's vendored branch summarizer over the abandoned durable slice (model call on the DSH llm bridge) and lands the summary as a branch_summary entry in the new session's projection; label lands as a label entry. |
 | [`switchSession`](#switchsession-ctx) | `ctx.*` | Mapped, difference stated | Targets a LIVE DSH session by id (or a Pi-style path whose basename is "<id>.jsonl"); withSession runs against its projection. Switching to persisted sessions is host-owned — resume them from the DSH surface first. Which session the surface shows stays a host choice. |
 | [`reload`](#reload-ctx) | `ctx.*` | Mapped, difference stated | Really remounts every mounted package's extension entries through a fresh loader (registrations replaced via the same-name path, event handlers reset), so edited plugin code takes effect. Skills, prompts, and themes are host-managed and reload with dsh itself. |
 
@@ -71,6 +72,12 @@ ctx.sessionTitle.get, so the answer agrees with what DSH displays and includes t
 `pi.*` · Mapped, difference stated
 
 A Pi label entry line in the session's Pi-format archive, read back through the sessionManager projection.
+
+### `session_compact_failed` <a id="session_compact_failed-event"></a>
+
+`event` · Not available
+
+No synthetic compaction failure event is fabricated.
 
 ### `session_start` <a id="session_start-event"></a>
 
@@ -166,7 +173,7 @@ Calls DSH's official compaction.compactNow on the live agent and adapts the outc
 
 `ctx.*` · Mapped, difference stated
 
-ctx.sessions.create with parent lineage, then a projection context bound to the new session so everything inside withSession (sendMessage, appendEntry, ...) writes into THAT session.
+ctx.sessions.create as an independent ordinary session, then a projection context bound to the new session so everything inside withSession (sendMessage, appendEntry, ...) writes into THAT session.
 
 ### `fork` <a id="fork-ctx"></a>
 

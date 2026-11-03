@@ -1,3 +1,5 @@
+import { mountSessions } from './lib/dsh-compat.js'
+import { mountTools } from './lib/dsh-compat.js'
 // ctx.modelRegistry's registration surface — Pi 0.84.1 model-registry.ts:
 // registerProvider (both overloads), unregisterProvider,
 // getRegisteredProviderConfig, getRegisteredNativeProvider,
@@ -31,9 +33,14 @@ afterEach(async () => {
 const EXTENSION = [
   'export default function probe(pi: any) {',
   "  pi.registerTool({ name: 'registry_probe_tool', description: 'proves the package stayed mounted', parameters: { type: 'object', properties: {} }, async execute() { return { content: [{ type: 'text', text: 'ok' }] } } })",
-  "  pi.on('session_start', (_event: any, ctx: any) => {",
+  "  pi.on('session_start', async (_event: any, ctx: any) => {",
   '    const r = ctx.modelRegistry',
   '    const out: any = {}',
+  "    out.authStatus = r.getProviderAuthStatus('missing-provider')",
+  "    out.v1Methods = ['stream', 'streamSimple', 'getModelsOfType', 'getAvailableOfType', 'getModelOfType', 'generateImages', 'classify'].filter(name => typeof r[name] !== 'function')",
+  "    out.images = await r.generateImages({ type: 'image', provider: 'probe', id: 'image-model', api: 'image-api' }, { input: [] })",
+  "    out.classifier = await r.classify({ type: 'classifier', provider: 'probe', id: 'classifier-model', api: 'classifier-api' }, {})",
+  "    out.imageModels = r.getModelsOfType('image')",
   "    out.methods = ['registerProvider', 'unregisterProvider', 'getRegisteredProviderConfig', 'getRegisteredNativeProvider', 'getRegisteredProviderIds'].filter(name => typeof r[name] !== 'function')",
   // Legacy (name, config) form: lands in the legacy ledger only.
   "    const legacy = { baseUrl: 'https://legacy.invalid/v1', api: 'openai-completions', apiKey: 'PROBE_KEY', models: [] }",
@@ -80,9 +87,9 @@ describe('ctx.modelRegistry registration surface', () => {
       },
     }
     const ctx = new Context()
-    await ctx.plugin(SessionStore)
+    await mountSessions(ctx)
     await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
-    await ctx.plugin(ToolRuntime)
+    await mountTools(ctx)
     await ctx.plugin(CommandRuntime)
     await ctx.plugin(AgentRegistry)
     const mounted = await ctx.plugin(plugin)
@@ -106,6 +113,11 @@ describe('ctx.modelRegistry registration surface', () => {
     expect(probe, 'session_start handler never completed — it threw before reporting').toBeDefined()
     expect(probe.methods).toEqual([])
     expect(probe.before).toEqual({ config: undefined, native: undefined })
+    expect(probe.authStatus).toEqual({ configured: false })
+    expect(probe.v1Methods).toEqual([])
+    expect(probe.images).toMatchObject({ provider: 'probe', model: 'image-model', output: [], stopReason: 'error', errorMessage: expect.stringContaining('no native non-chat') })
+    expect(probe.classifier).toMatchObject({ provider: 'probe', model: 'classifier-model', answers: {}, stopReason: 'error' })
+    expect(probe.imageModels).toEqual([])
     expect(probe.legacy).toEqual({ configSet: true, stableIdentity: true, native: undefined, listed: true })
     expect(probe.native).toEqual({ sameObject: true, config: undefined, listed: true })
     expect(probe.replaced).toEqual({ native: undefined, configSet: true })
@@ -140,9 +152,9 @@ describe('an unawaited pi.sendMessage that cannot be delivered', () => {
       prompts: [],
     }
     const ctx = new Context()
-    await ctx.plugin(SessionStore)
+    await mountSessions(ctx)
     await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
-    await ctx.plugin(ToolRuntime)
+    await mountTools(ctx)
     await ctx.plugin(CommandRuntime)
     await ctx.plugin(AgentRegistry)
     const mounted = await ctx.plugin({

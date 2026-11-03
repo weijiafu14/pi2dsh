@@ -231,6 +231,8 @@ describe('dependency-light Pi host shims', () => {
       expect(runtime.flagValues).toBeInstanceOf(Map)
       expect(runtime.pendingProviderRegistrations).toEqual([])
       expect(runtime.pendingNativeProviderRegistrations).toEqual([])
+      expect(runtime.mcpServers.list()).toEqual([])
+      expect(runtime.pendingVirtualModelRegistrations).toEqual([])
     })
 
     it('queues provider registrations pre-bind and drops them on unregister', () => {
@@ -245,6 +247,7 @@ describe('dependency-light Pi host shims', () => {
       const runtime = createExtensionRuntime()
       expect(() => (runtime.sendMessage as () => void)()).toThrowError(/not initialized/u)
       expect(() => (runtime.getActiveTools as () => void)()).toThrowError(/not initialized/u)
+      expect(() => (runtime.getSettings as () => void)()).toThrowError(/not initialized/u)
     })
 
     it('untracks an event-bus subscription on invalidate', () => {

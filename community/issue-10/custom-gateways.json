@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "pi2dshCommit": "6a04f6f852c064bc80acd9df83d4c9479178611c",
+  "dshCommit": "npm:@deepseek-ai/dsh@0.2.2-alpha.2",
+  "results": {
+    "customGateways": {
+      "status": "passed",
+      "engine": {
+        "version": "0.28.0-next.0",
+        "from": "local",
+        "spec": "file:<working-tree>",
+        "commit": "6a04f6f852c064bc80acd9df83d4c9479178611c",
+        "dirty": true
+      },
+      "seenByPackage": {
+        "provider": "my-gateway",
+        "id": "deepseek-flash",
+        "api": "faux",
+        "contextWindow": 131072
+      },
+      "requestedThroughGateway": true
+    }
+  }
+}
+

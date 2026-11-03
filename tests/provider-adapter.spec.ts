@@ -118,10 +118,11 @@ describe('Pi provider as a DSH llm route', () => {
     // message, its own model entry, and the resolved credential.
     expect(calls).toHaveLength(1)
     expect(calls[0]?.model).toMatchObject({ id: 'pifix-1' })
-    expect(calls[0]?.context).toMatchObject({ systemPrompt: 'be nice' })
+    expect(calls[0]?.context).not.toHaveProperty('systemPrompt')
     const piMessages = calls[0]?.context.messages as UnknownRecord[]
-    expect(piMessages[0]).toMatchObject({ role: 'user' })
-    expect(piMessages[1]).toMatchObject({ role: 'toolResult', toolCallId: 'c9', isError: false })
+    expect(piMessages[0]).toMatchObject({ role: 'system', content: 'be nice' })
+    expect(piMessages[1]).toMatchObject({ role: 'user' })
+    expect(piMessages[2]).toMatchObject({ role: 'toolResult', toolCallId: 'c9', isError: false })
     expect(calls[0]?.options).toMatchObject({ apiKey: 'pi-key-77', baseUrl: 'https://gw.example/v1', maxTokens: 99 })
 
     // And DSH consumers received canonical chunks with disjoint usage.

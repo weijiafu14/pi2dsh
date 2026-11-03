@@ -1,3 +1,5 @@
+import { mountSessions } from './lib/dsh-compat.js'
+import { mountTools } from './lib/dsh-compat.js'
 // The Models-page login card's wire contract, locked at the seam the browser
 // really calls: the engine's own /pi2dsh/login-state and /pi2dsh/login-action
 // routes, mounted through the real runtime, driving the SAME login spine as
@@ -119,9 +121,9 @@ beforeAll(async () => {
       return () => {}
     },
   })
-  await ctx.plugin(SessionStore)
+  await mountSessions(ctx)
   await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
-  await ctx.plugin(ToolRuntime)
+  await mountTools(ctx)
   await ctx.plugin(CommandRuntime)
   const mount: Plugin.Object = {
     name: 'pi2dsh:login-card-fixture',

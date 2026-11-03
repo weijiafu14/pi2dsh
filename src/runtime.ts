@@ -3,6 +3,11 @@
 // 事件桥等多个职责。拆法必须跟着架构走：按 CLAUDE.md 三层结构与 host 级/
 // 包级资源边界切模块，纯搬家不改逻辑；动手前先给出切分方案对齐再执行。
 import { isPiUserMessage, readSessionEvents } from './session-events.js'
+import { readAgentModel, selectAgentModel } from './agent-model.js'
+import { mcpRegistrationChanged, mcpRegistrations, registerMcpServer } from './mcp-registration.js'
+import { nestedToolCaller, parentPiToolCallId, publishNestedToolUpdate, withPiToolIdentity } from './nested-tools.js'
+import { uiPromptChanged, withUiPrompt } from './ui-prompt-lifecycle.js'
+import { imageErrorResult, classifierErrorResult } from './compat/vendor/pi-ai-model-operations.js'
 import { withPiPrintTransport, type PiPrintRequest } from './pi-cli-bridge.js'
 import { access, mkdir, readFile, realpath, stat, writeFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
@@ -24,6 +29,7 @@ import type {
   ToolDefinition,
   ToolExecution,
   ToolExecutionResult,
+  ToolRunContext,
 } from '@deepseek-ai/dsh-tools'
 import type { GeneratedRuntimeManifest } from './types.js'
 import { CapabilityLedger, PiCapabilityError } from './capability.js'
@@ -108,6 +114,10 @@ interface PiTool {
   label?: string
   description: string
   parameters: unknown
+  outputSchema?: unknown
+  exposure?: 'direct' | 'model-only' | 'codemode' | 'deferred' | 'hidden'
+  defaultActive?: boolean
+  prepareLoadout?: unknown
   /** Pi: one line for the system prompt's "Available tools" list. */
   promptSnippet?: string
   /** Pi: guideline bullets that apply while this tool is active. */
@@ -132,6 +142,7 @@ interface PiCommand {
 
 interface RuntimeState {
   packageName: string
+  mcpOwners: Set<string>
   /** Exact DSH Agent that owns this runtime; absent only for legacy root mounts. */
   ownerAgent: UnknownRecord | undefined
   /** Host-anchor mount: host-level contributions only, serves no Agent (see RuntimeOptions.hostAnchor). */
@@ -215,12 +226,8 @@ interface RuntimeState {
   editorComponentFactory?: unknown
   editorBuffers: WeakMap<object, string>
   toolsExpanded: boolean
-  // Per-agent model/thinking overrides applied through the agent/request waterfall.
-  modelOverrides: WeakMap<object, { provider?: string; model?: string }>
-  thinkingLevels: WeakMap<object, string>
-  // Child agents THIS instance created through createAgentSession: the
-  // agent/request waterfall covers them (their thinking level rides it), and
-  // nobody else's instance claims them.
+  // Child agents THIS instance created through createAgentSession.
+  // Model selection and reasoning effort are owned by each native AgentModel.
   childAgents: WeakSet<object>
   // Per-agent, per-turn system-prompt override returned by before_agent_start
   // (Pi resets to the base prompt when a turn's handlers return none).
@@ -370,6 +377,7 @@ function normalizeToolResult(result: unknown): UnknownRecord {
   return {
     content: textBlocks(record.content),
     details: jsonValue(record.details),
+    ...(record.structuredContent === undefined ? {} : { structuredContent: jsonValue(record.structuredContent) }),
     ...(record.isError === true ? { isError: true } : {}),
     ...(record.usage !== undefined ? { usage: jsonValue(record.usage) } : {}),
     ...(record.terminate === true ? { terminate: true } : {}),
@@ -420,6 +428,7 @@ async function normalizeToolResultForDsh(ctx: Context, result: unknown): Promise
   return {
     content: await piToDshContent(ctx, record.content),
     details: jsonValue(record.details),
+    ...(record.structuredContent === undefined ? {} : { structuredContent: jsonValue(record.structuredContent) }),
     ...(record.isError === true ? { isError: true } : {}),
     ...(record.usage !== undefined ? { usage: jsonValue(record.usage) } : {}),
     ...(record.terminate === true ? { terminate: true } : {}),
@@ -577,65 +586,20 @@ function isSubagentOrigin(subject: UnknownRecord | undefined): boolean {
     || (session?.meta as UnknownRecord | undefined)?.origin === 'subagent'
 }
 
-// Pi ctx.model: a setModel() override wins; otherwise the live DSH agent's
-// own route (Agent.options.provider/model), enriched from the catalog.
+// Pi ctx.model reads the live DSH selection, including a pending UI choice
+// before the next request. No bridge-owned override can outlive a host switch.
 // An image-admission companion selection reports its ORIGINAL route: the
 // generating model is the original text-only one, and that truth is what
 // extensions branching on input modalities need.
 function currentPiModel(state: RuntimeState, agent: UnknownRecord): UnknownRecord | undefined {
-  const override = state.modelOverrides.get(agent)
+  const selection = readAgentModel(agent)
   const options = agent.options as { provider?: unknown, model?: unknown } | undefined
-  const durable = lastRequestRouteOf(agentSession(agent))
-  const selectedProvider = String(override?.provider ?? durable?.provider ?? options?.provider ?? '')
+  const selectedProvider = String(selection?.provider ?? options?.provider ?? '')
   const provider = state.companionRoutes.get(selectedProvider) ?? selectedProvider
-  const id = String(override?.model ?? durable?.model ?? options?.model ?? '')
-  if (id.length === 0) return override
+  const id = String(selection?.model ?? options?.model ?? '')
+  if (id.length === 0) return undefined
   const known = provider.length > 0 ? state.modelCatalog?.find(provider, id) : undefined
   return known ?? { id, name: id, provider, api: 'faux', input: ['text'], reasoning: false }
-}
-
-/**
- * The provider/model of a session's LAST model request, read off the durable
- * log's request/header — the authority on what the caller is ACTUALLY running.
- * A UI/`/model` switch never touches the creation-time AgentOptions snapshot,
- * so a child inheriting the snapshot runs on a stale route (the exact
- * inheritance bug DSH's own subagent line reports); the durable header is
- * where the live truth lands, in either of its two observed nestings.
- */
-function lastRequestRouteOf(session: UnknownRecord | undefined): { provider?: string, model?: string } | undefined {
-  if (session === undefined) return undefined
-  const events = eventsOf(session)
-  for (let i = events.length - 1; i >= 0; i -= 1) {
-    const event = events[i] as UnknownRecord
-    if (event.type !== 'request/header') continue
-    const data = (event.data ?? {}) as UnknownRecord
-    const header = (data.header ?? {}) as UnknownRecord
-    for (const shape of [data.config, header.config, header, data] as Array<UnknownRecord | undefined>) {
-      if (typeof shape?.model === 'string' && shape.model.length > 0) {
-        return {
-          model: shape.model,
-          ...(typeof shape.provider === 'string' && shape.provider.length > 0 ? { provider: shape.provider } : {}),
-        }
-      }
-    }
-    return undefined
-  }
-  return undefined
-}
-
-/**
- * The route a spawned child inherits, by authority: an explicit Pi
- * ctx.setModel() override wins, then the caller's last durable request
- * (UI/`/model` switches land there), then the creation-time snapshot.
- */
-function resolveCallerRoute(
-  override: { provider?: string, model?: string } | undefined,
-  durable: { provider?: string, model?: string } | undefined,
-  snapshot: { provider?: string, model?: string } | undefined,
-): { provider?: string, model?: string } | undefined {
-  const pick = override ?? durable ?? snapshot
-  if (typeof pick?.model !== 'string' || pick.model.length === 0) return undefined
-  return pick
 }
 
 /** A session's durable events, whether the store exposes them as value or method. */
@@ -672,11 +636,23 @@ function putSurface(
 }
 
 function thinkingLevelOf(state: RuntimeState, agent: UnknownRecord | undefined): string {
-  if (agent !== undefined) {
-    const scoped = state.thinkingLevels.get(agent)
-    if (scoped !== undefined) return scoped
-  }
-  return state.globalThinkingLevel
+  return readAgentModel(agent)?.reasoningEffort ?? state.globalThinkingLevel
+}
+
+function selectThinkingLevel(state: RuntimeState, agent: UnknownRecord, level: string): void {
+  const selection = readAgentModel(agent)
+  if (selection === undefined) throw new PiCapabilityError({
+    capability: 'pi.setThinkingLevel',
+    reason: 'No model is selected for this Agent.',
+    guidance: 'Select a model in DSH before choosing its reasoning effort.',
+  })
+  const omitOff = level === 'off'
+    && (currentPiModel(state, agent)?.thinkingLevelMap as UnknownRecord | undefined)?.off === null
+  selectAgentModel(agent, {
+    provider: selection.provider,
+    model: selection.model,
+    ...(omitOff ? {} : { reasoningEffort: level }),
+  })
 }
 
 // Durable-log projection entries carry their source seq in the id ("dsh-<seq>").
@@ -1038,6 +1014,14 @@ function contextFor(
   // replacement session while the live agent — and everything that needs
   // one — stays with the turn that initiated the operation.
   const session = sessionOverride ?? agentSession(agent)
+  if (!headlessUi && (state.tuiSurfaces !== undefined || humanAnswererAvailable(userQuestions, agent, state.shared))) {
+    for (const kind of ['select', 'confirm', 'input', 'editor', 'custom'] as const) {
+      const original = ui[kind] as (...args: unknown[]) => Promise<unknown>
+      ;(ui as UnknownRecord)[kind] = (...args: unknown[]) => withUiPrompt(
+        state.eventBus, kind, kind === 'custom' ? undefined : String(args[0] ?? ''), () => original(...args),
+      )
+    }
+  }
   // Pi's ModelRegistry surface over the ONE model directory — the DSH llm
   // directory — projected faithfully into Pi vocabulary (package-registered
   // route entries carry their full Pi Model fields through it). Neither
@@ -1081,20 +1065,71 @@ function contextFor(
   // DSH llm route → adapter. No provider surface hands a package a direct
   // wire transport; the wire clients live inside route adapters only.
   const dshRoutedStream = (model: UnknownRecord, context: UnknownRecord, options?: UnknownRecord) => {
+    if (model.type !== undefined && model.type !== 'chat') throw new PiCapabilityError({
+      capability: 'modelRegistry.stream',
+      reason: 'The selected model is not a chat model.',
+      guidance: 'Choose a chat model from the DSH model directory.',
+    })
     const llm = llmOf(ctx)
     if (llm === undefined) {
       throw new Error('pi2dsh: model calls need a DSH llm service; this composition mounts none')
     }
     return streamViaDshLlm(llm, { model, context, options: options as never })
   }
+  const nonChatResult = async (operation: 'generateImages' | 'classify', model: UnknownRecord, options?: UnknownRecord) => {
+    const gap = {
+      capability: `modelRegistry.${operation}`,
+      packageName: state.packageName,
+      reason: 'DSH has no native non-chat model operation service.',
+      guidance: 'This model operation is unavailable; ordinary chat and independently implemented image tools are unaffected.',
+    }
+    capabilityLedgerOf(ctx, state).reportDegraded(gap)
+    const error = new PiCapabilityError(gap)
+    const aborted = options?.signal instanceof AbortSignal && options.signal.aborted
+    // Both Pi operations promise an error result, not a rejected Promise.
+    return operation === 'generateImages'
+      ? imageErrorResult(model as never, error, aborted)
+      : classifierErrorResult(model as never, error, aborted)
+  }
+  const dshRoutedSimpleStream = (model: UnknownRecord, context: UnknownRecord, options?: UnknownRecord) => {
+    const offSupported = (model.thinkingLevelMap as UnknownRecord | undefined)?.off !== null
+    return dshRoutedStream(model, context, options?.reasoning === undefined && model.reasoning === true && offSupported
+      ? { ...options, reasoning: 'off' } : options)
+  }
   const dshRoutedPiProvider = (base: UnknownRecord, providerId: string): UnknownRecord => ({
     ...base,
     id: providerId,
     getModels: () => allModels().filter(model => model.provider === providerId),
+    getAllModels: () => allModels().filter(model => model.provider === providerId),
     stream: dshRoutedStream,
-    streamSimple: dshRoutedStream,
+    streamSimple: dshRoutedSimpleStream,
+    generateImages: (model: UnknownRecord, _context: unknown, options?: UnknownRecord) => nonChatResult('generateImages', model, options),
+    classify: (model: UnknownRecord, _context: unknown, options?: UnknownRecord) => nonChatResult('classify', model, options),
   })
   const modelRegistry = {
+    stream: dshRoutedStream,
+    streamSimple: dshRoutedSimpleStream,
+    getModelsOfType: (type: string, provider?: string) => type === 'chat'
+      ? allModels().filter(model => provider === undefined || model.provider === provider) : [],
+    getAvailableOfType: async (type: string, provider?: string, options?: { signal?: AbortSignal }) => {
+      options?.signal?.throwIfAborted()
+      return type === 'chat' ? allModels().filter(model => provider === undefined || model.provider === provider) : []
+    },
+    getModelOfType: (type: string, provider: string, id: string) => type === 'chat'
+      ? allModels().find(model => model.provider === provider && model.id === id) : undefined,
+    findOfType: (type: string, provider: string, id: string) => type === 'chat'
+      ? allModels().find(model => model.provider === provider && model.id === id) : undefined,
+    registerVirtualModel: () => {
+      const gap = { capability: 'registerVirtualModel', packageName: state.packageName,
+        reason: 'Virtual selection, physical routing and branch-persistent router state have not been mapped.',
+        guidance: 'Select a physical model from the DSH directory instead.',
+      }
+      capabilityLedgerOf(ctx, state).reportDegraded(gap)
+      throw new PiCapabilityError(gap)
+    },
+    unregisterVirtualModel: () => {},
+    generateImages: (model: UnknownRecord, _context: unknown, options?: UnknownRecord) => nonChatResult('generateImages', model, options),
+    classify: (model: UnknownRecord, _context: unknown, options?: UnknownRecord) => nonChatResult('classify', model, options),
     getAll: () => allModels(),
     getAvailable: () => allModels(),
     find: (provider: string, modelId: string) => {
@@ -1134,8 +1169,9 @@ function contextFor(
       }
       return resolveHostModelAuth(ctx, provider)
     },
-    getProviderAuthStatus: (provider: string) =>
-      providerSupportsOAuth(providerConfig(provider)) ? 'oauth' : 'none',
+    getProviderAuthStatus: (provider: string) => ({
+      configured: (catalog?.all() ?? []).some(entry => entry.provider === provider),
+    }),
     // Every provider the directory carries answers as a Pi Provider whose
     // stream surface runs through the DSH llm route — packages never hold a
     // wire transport. A package-registered provider keeps its fields (Pi's
@@ -1145,10 +1181,10 @@ function contextFor(
     getProvider: (provider: string) => {
       const base = providerConfig(provider)
       if (base !== undefined) {
-        const routed = state.providerRouteDisposers.has(provider)
-        // A package provider that never became a route keeps its own object:
-        // that transport is the package's own asset, not a bridge surface.
-        return routed ? dshRoutedPiProvider(base, provider) : base
+        // A registry read never hands out a direct transport, even while a
+        // catalog-only route is being registered. Read-back of the package's
+        // original declaration has a separate getRegisteredNativeProvider API.
+        return dshRoutedPiProvider(base, provider)
       }
       if ((catalog?.all() ?? []).some(entry => entry.provider === provider)) {
         return dshRoutedPiProvider({ id: provider, name: provider }, provider)
@@ -1409,11 +1445,9 @@ function contextFor(
           })
           return { cancelled: true }
         }
-        const parent = agentSession(agent) as { id?: unknown } | undefined
         const created = sessions.create(undefined, {
           meta: {
             cwd: cwdOf(agent),
-            ...(parent?.id === undefined ? {} : { parentSession: parent.id }),
           },
         })
         const withSession = options?.withSession as ((replaced: unknown) => Promise<void>) | undefined
@@ -1455,7 +1489,8 @@ function contextFor(
         const boundary = requested < 0 ? -1 : shrinkToTurnBoundary(events, requested)
         const child = boundary < 0
           ? sessions.create(undefined, {
-              meta: { cwd: cwdOf(agent), parentSession: (source as { id?: unknown }).id },
+              seed: [], inheritedEventCount: 0,
+              meta: { cwd: cwdOf(agent), isSeeded: true },
             })
           : sessions.fork(source, boundary)
         const withSession = options?.withSession as ((replaced: unknown) => Promise<void>) | undefined
@@ -1494,7 +1529,8 @@ function contextFor(
         const boundary = capped < 0 ? -1 : shrinkToTurnBoundary(events, capped)
         const child = boundary < 0
           ? sessions.create(undefined, {
-              meta: { cwd: cwdOf(agent), parentSession: (source as { id?: unknown }).id },
+              seed: [], inheritedEventCount: 0,
+              meta: { cwd: cwdOf(agent), isSeeded: true },
             })
           : sessions.fork(source, boundary)
         // Pi's navigateTree can summarize the branch being left. The vendored
@@ -1587,7 +1623,7 @@ async function dispatch(
 ): Promise<unknown[]> {
   const results: unknown[] = []
   const agent = eventContext.__agent as UnknownRecord | undefined
-  for (const handler of state.handlers.get(eventName) ?? []) {
+  for (const handler of [...(state.handlers.get(eventName) ?? [])]) {
     results.push(await runInPiRuntime(state, agent, () => handler(event, eventContext)))
   }
   return results
@@ -1640,7 +1676,7 @@ async function dispatchBeforeProviderRequest(
   // A direct ctx.llm.stream() call may have no live agent, but the adapter
   // still knows the exact selected model. Pi handlers are entitled to it.
   eventContext.model = { ...request.model, provider: request.provider }
-  for (const handler of state.handlers.get('before_provider_request') ?? []) {
+  for (const handler of [...(state.handlers.get('before_provider_request') ?? [])]) {
     try {
       const result = await runInPiRuntime(state, agent, () => handler({
         type: 'before_provider_request',
@@ -2176,7 +2212,7 @@ function subscribeLifecycle(ctx: Context, state: RuntimeState): void {
       // themselves before it is declared finished.
       state.projection = state.projection.then(async () => {
         await dispatch(state, 'agent_end', { type: 'agent_end', messages: [] }, eventContext)
-        await dispatch(state, 'agent_settled', { type: 'agent_settled' }, eventContext)
+        await dispatch(state, 'agent_settled', { type: 'agent_settled', aborted: ((event.data as UnknownRecord | undefined)?.reason as UnknownRecord | undefined)?.kind === 'aborted' }, eventContext)
       }).catch(error => warn('turn end lifecycle', error))
     }
   }
@@ -2203,26 +2239,6 @@ function subscribeLifecycle(ctx: Context, state: RuntimeState): void {
     if (ownedSession !== undefined && state.sessionEventsLive !== true) return
     projectSessionEvent(session, event)
   })
-
-  // Per-agent model/thinking overrides recorded by setModel()/setThinkingLevel()
-  // are applied at the request boundary, DSH's sanctioned seam for call-config
-  // replacement.
-  cordis.on('agent/request', async (payload: UnknownRecord, next: () => Promise<UnknownRecord>) => {
-    const config = await next()
-    const agent = payload.agent as UnknownRecord | undefined
-    if (agent === undefined || !acceptsAgent(state, agent)) return config
-    const override = state.modelOverrides.get(agent)
-    const thinking = state.thinkingLevels.get(agent)
-    if (override === undefined && thinking === undefined) return config
-    return {
-      ...config,
-      ...(override?.provider === undefined ? {} : { provider: override.provider }),
-      ...(override?.model === undefined ? {} : { model: override.model }),
-      ...(thinking === undefined || (thinking === 'off' && (currentPiModel(state, agent)?.thinkingLevelMap as UnknownRecord | undefined)?.off === null)
-        ? {} : { reasoningEffort: thinking }),
-    }
-  })
-
 
   cordis.effect(() => async () => {
     await state.projection
@@ -2462,6 +2478,15 @@ function piViewOfToolArguments(state: RuntimeState, name: string, args: unknown)
 
 function subscribeInterceptors(ctx: Context, state: RuntimeState): void {
   const cordis = ctx as unknown as { on(name: string, callback: (...args: any[]) => unknown): () => void }
+  cordis.on('tools/execute', async (exec: ToolExecution, next: () => Promise<ToolExecutionResult>) => {
+    if (exec.parent !== undefined && acceptsAgent(state, exec.agent as unknown as UnknownRecord | undefined)) {
+      await dispatch(state, 'tool_execution_start', { type: 'tool_execution_start', toolCallId: exec.callId,
+        toolName: exec.name, args: piViewOfToolArguments(state, exec.name, exec.arguments),
+        parentToolCallId: parentPiToolCallId(exec),
+      }, contextFor(ctx, state, exec.agent as unknown as UnknownRecord, exec.signal))
+    }
+    return next()
+  })
   cordis.on('tools/pre-execute', async (exec: ToolExecution, next: () => Promise<PreToolDecision>): Promise<PreToolDecision> => {
     // A child agent's tool traffic must not reach extensions mounted on the
     // parent: DSH lets an untagged listener see every scope, so without this
@@ -2470,7 +2495,8 @@ function subscribeInterceptors(ctx: Context, state: RuntimeState): void {
     if (!acceptsAgent(state, exec.agent as unknown as UnknownRecord | undefined)) return next()
     const original = piViewOfToolArguments(state, exec.name, exec.arguments)
     const input = cloneJson(original)
-    const event: UnknownRecord = { type: 'tool_call', toolName: exec.name, toolCallId: exec.callId, input }
+    const event: UnknownRecord = { type: 'tool_call', toolName: exec.name, toolCallId: exec.callId, input,
+      ...(parentPiToolCallId(exec) === undefined ? {} : { parentToolCallId: parentPiToolCallId(exec) }) }
     const results = await dispatch(state, 'tool_call', event, contextFor(ctx, state, exec.agent as unknown as UnknownRecord, exec.signal))
     if (!jsonEqual(event.input, original)) {
       if (state.tools.has(exec.name)) {
@@ -2525,6 +2551,7 @@ function subscribeInterceptors(ctx: Context, state: RuntimeState): void {
     // — could land after the turn that produced it had already ended.
     await dispatch(state, 'tool_execution_end', {
       type: 'tool_execution_end',
+      ...(parentPiToolCallId(exec) === undefined ? {} : { parentToolCallId: parentPiToolCallId(exec) }),
       toolCallId: exec.callId,
       toolName: exec.name,
       result: { content: await dshToPiContent(ctx, result.content), details: result.meta ?? null },
@@ -2534,6 +2561,7 @@ function subscribeInterceptors(ctx: Context, state: RuntimeState): void {
     if (downstream.kind === 'block') return downstream
     const event: UnknownRecord = {
       type: 'tool_result',
+      ...(parentPiToolCallId(exec) === undefined ? {} : { parentToolCallId: parentPiToolCallId(exec) }),
       toolName: exec.name,
       toolCallId: exec.callId,
       input: piViewOfToolArguments(state, exec.name, exec.arguments),
@@ -2661,7 +2689,7 @@ function subscribeInterceptors(ctx: Context, state: RuntimeState): void {
     // run; Pi's prompt/images/custom-message surfaces need a real turn.
     if ((state.handlers.get('before_agent_start')?.length ?? 0) === 0) return downstream
     const event: UnknownRecord = {
-      type: 'before_agent_start', prompt: '', systemPrompt: original, systemPromptOptions: {},
+      type: 'before_agent_start', messageType: 'user', prompt: '', systemPrompt: original, systemPromptOptions: {},
     }
     const results = await dispatch(state, 'before_agent_start', event, contextFor(ctx, state, assembleContext.scope as UnknownRecord, assembleContext.signal as AbortSignal | undefined))
     let replacement = original
@@ -2717,10 +2745,14 @@ async function runBeforeAgentStart(
     .map(block => block.text)
     .join('\n')
   const images = await collectPiImages(ctx, userMessages)
+  const firstMessage = claimed[0]!.message as UnknownRecord
+  const customType = (firstMessage.source as UnknownRecord | undefined)?.piCustomType
+  const trigger = typeof customType === 'string'
+    ? { messageType: 'custom', message: { ...await piShapeOfPending(ctx, firstMessage), display: false } }
+    : { messageType: 'user', prompt, ...(images.length > 0 ? { images } : {}) }
   const event: UnknownRecord = {
     type: 'before_agent_start',
-    prompt,
-    ...(images.length > 0 ? { images } : {}),
+    ...trigger,
     systemPrompt: assembled,
     systemPromptOptions: await piSystemPromptOptions(ctx, state, agent, claimed.map(entry => entry.message as UnknownRecord)),
   }
@@ -2733,7 +2765,7 @@ async function runBeforeAgentStart(
   // and that became the turn's override).
   const eventContext = contextFor(ctx, state, agent, signal)
   const results: unknown[] = []
-  for (const handler of state.handlers.get('before_agent_start') ?? []) {
+  for (const handler of [...(state.handlers.get('before_agent_start') ?? [])]) {
     const result = await runInPiRuntime(state, agent, () => handler(event, eventContext))
     results.push(result)
     if (typeof result === 'object' && result !== null && typeof (result as UnknownRecord).systemPrompt === 'string') {
@@ -4131,7 +4163,40 @@ function registerLoginCommand(ctx: Context, state: RuntimeState): void {
   })
 }
 
+function toolContextFor(ctx: Context, state: RuntimeState, exec: ToolRunContext): UnknownRecord {
+  const agent = exec.agent as unknown as UnknownRecord | undefined
+  const executeTool = nestedToolCaller(ctx, exec,
+    content => dshToPiContent(ctx, content as ContentBlock[]),
+    (name, args) => {
+      const peers = state.shared.runtimeStatesBySession.get(sessionIdOf(state, agent))
+      const isPi = state.tools.has(name) || [...(peers ?? [])].some(peer => peer.tools.has(name))
+      const mapping = isPi ? undefined : HOST_TOOL_ARGUMENT_PROJECTION[name]
+      if (mapping === undefined || typeof args !== 'object' || args === null || Array.isArray(args)) return cloneJson(args)
+      const inverse = Object.fromEntries(Object.entries(mapping).map(([native, pi]) => [pi, native]))
+      return Object.fromEntries(Object.entries(args).map(([key, value]) => [inverse[key] ?? key, cloneJson(value)]))
+    })
+  return {
+    ...contextFor(ctx, state, agent, exec.signal),
+    executeTool,
+    get tools() {
+      return ctx.tools.definitions(exec.agent, exec.toolSet).map(tool => ({
+        name: tool.name, label: tool.name, description: tool.description, parameters: cloneJson(tool.parameters),
+        execute: async (_id: string, args: unknown, signal?: AbortSignal, onUpdate?: (value: unknown) => void) =>
+          (await executeTool(tool.name, args, { ...(signal === undefined ? {} : { signal }), ...(onUpdate === undefined ? {} : { onUpdate }) })).result,
+      }))
+    },
+  }
+}
+
 function registerTool(ctx: Context, state: RuntimeState, tool: PiTool): void {
+  if (tool.exposure === 'codemode' || tool.exposure === 'model-only' || tool.prepareLoadout !== undefined) {
+    const gap = { capability: 'registerTool.loadout', packageName: state.packageName,
+      reason: 'Pi separates nested-tool reachability from model declarations; this bridge does not yet translate that loadout contract.',
+      guidance: 'Use a directly exposed tool; this loadout is refused rather than changing which tools the model may call.',
+    }
+    capabilityLedgerOf(ctx, state).reportDegraded(gap)
+    throw new PiCapabilityError(gap)
+  }
   // Pi's runner stores tools in a name-keyed Map (set + refreshTools):
   // re-registering a name replaces the previous definition. Mirror that —
   // catalog packages (pi-fabric) re-register wrapped variants at runtime,
@@ -4164,7 +4229,9 @@ function registerTool(ctx: Context, state: RuntimeState, tool: PiTool): void {
     description: tool.description,
     parameters: normalized.schema,
     output: {
-      schema: {},
+      schema: tool.outputSchema === undefined ? {} : {
+        type: 'object', properties: { structuredContent: tool.outputSchema as never }, required: ['structuredContent'],
+      },
       render: (_args, value) => (value as UnknownRecord).content as ContentBlock[],
       presentationMeta: (_args, value) => jsonValue((value as UnknownRecord).details) as never,
     },
@@ -4190,13 +4257,15 @@ function registerTool(ctx: Context, state: RuntimeState, tool: PiTool): void {
         { name: live.name, parameters: live.parameters },
         { name: live.name, arguments: live.prepareArguments?.(cloneJson(effective)) ?? effective },
       )
-      const result = await normalizeToolResultForDsh(ctx, await runInPiRuntime(state, agent, () => live.execute(
+      const result = await normalizeToolResultForDsh(ctx, await withPiToolIdentity(exec, () => runInPiRuntime(state, agent, () => live.execute(
           String(exec.callId),
           prepared,
           exec.signal,
           update => {
+            publishNestedToolUpdate(exec, update)
             void dispatch(state, 'tool_execution_update', {
               type: 'tool_execution_update',
+              ...(parentPiToolCallId(exec) === undefined ? {} : { parentToolCallId: parentPiToolCallId(exec) }),
               toolCallId: String(exec.callId),
               toolName: tool.name,
               args: prepared,
@@ -4204,8 +4273,8 @@ function registerTool(ctx: Context, state: RuntimeState, tool: PiTool): void {
             }, contextFor(ctx, state, agent, exec.signal))
               .catch(error => logger(ctx).warn(`[pi2dsh] tool_execution_update handler failed: ${String(error)}`))
           },
-          contextFor(ctx, state, agent, exec.signal),
-        )))
+          toolContextFor(ctx, state, exec),
+        ))))
       if (result.terminate === true) exec.concludeTurn()
       if (result.isError === true) {
         const message = textBlocks(result.content).map(block => block.text).filter(Boolean).join('\n')
@@ -4214,7 +4283,10 @@ function registerTool(ctx: Context, state: RuntimeState, tool: PiTool): void {
       return result
     },
   }
-  const dispose = (ctx as unknown as { tools: { register(toolDefinition: ToolDefinition): () => void } }).tools.register(definition)
+  const conditional = tool.defaultActive === false || tool.exposure === 'hidden' || tool.exposure === 'deferred'
+  const dispose = ctx.tools.register(definition, conditional ? {
+    when: () => tool.exposure !== 'hidden' && state.pendingActiveTools?.includes(tool.name) === true,
+  } : undefined)
   state.toolDisposers.set(tool.name, dispose)
   // Register the browser card at package mount, not after the first result.
   // The package and tool name must both match the verified contract, so no
@@ -4256,13 +4328,13 @@ function registerChildPiTool(childCtx: Context, state: RuntimeState, tool: PiToo
         { name: tool.name, parameters: tool.parameters },
         { name: tool.name, arguments: tool.prepareArguments?.(cloneJson(args)) ?? args },
       )
-      const result = await normalizeToolResultForDsh(childCtx, await runInPiRuntime(state, agent, () => tool.execute(
+      const result = await normalizeToolResultForDsh(childCtx, await withPiToolIdentity(exec, () => runInPiRuntime(state, agent, () => tool.execute(
         String(exec.callId),
         prepared,
         exec.signal,
-        () => { /* no Pi-side partial-update consumer on the child path */ },
-        contextFor(childCtx, state, agent, exec.signal),
-      )))
+        update => publishNestedToolUpdate(exec, update),
+        toolContextFor(childCtx, state, exec),
+      ))))
       if (result.terminate === true) exec.concludeTurn()
       if (result.isError === true) {
         const message = textBlocks(result.content).map(block => block.text).filter(Boolean).join('\n')
@@ -4295,9 +4367,9 @@ function acceptsAgent(state: RuntimeState, agent: UnknownRecord | undefined): bo
   // The host anchor serves no Agent at all: every live Agent has its own
   // instance, so anchor participation would double-run session lifecycles.
   if (state.hostAnchor) return false
-  // A child THIS instance spawned belongs to it on the request boundary too:
-  // its per-agent thinking level rides the same agent/request waterfall. The
-  // WeakSet is instance-local, so no other package's instance claims it.
+  // A child THIS instance spawned belongs to its scoped lifecycle too. Model
+  // choices live on the child's native agent.model service, not a request
+  // rewrite. The WeakSet is instance-local; other instances do not claim it.
   if (agent !== undefined && state.childAgents.has(agent)) return true
   if (state.ownerAgent !== undefined) return agent === state.ownerAgent
   return !isSubagentOrigin(agent)
@@ -4344,7 +4416,15 @@ function piToolPromptContribution(ctx: Context, state: RuntimeState): string {
 
 function getActiveTools(ctx: Context, state: RuntimeState): string[] {
   const agent = currentAgent(state)
-  return toolRuntime(ctx, agent).schemas(agent).map(tool => tool.name)
+  const names = new Set(toolRuntime(ctx, agent).schemas(agent).map(tool => tool.name))
+  for (const [name, tool] of state.tools) {
+    if (tool.exposure === 'hidden') names.delete(name)
+    else if (tool.defaultActive === false || tool.exposure === 'deferred') {
+      if (state.pendingActiveTools?.includes(name)) names.add(name)
+      else names.delete(name)
+    }
+  }
+  return [...names]
 }
 
 /**
@@ -4859,6 +4939,15 @@ function registerSharedProviderRoute(
       }) as Promise<{ auth?: UnknownRecord } | undefined>,
       ensureModel: async () => { await discoverProviderModels(ctx, state, name, canonical) },
       warn: message => logger(ctx).warn(message),
+      onProviderStreamEvent: async (data, request) => {
+        const peers = request.sessionId === undefined ? undefined : shared.runtimeStatesBySession.get(request.sessionId)
+        for (const peer of peers === undefined || peers.size === 0 ? [state] : [...peers]) {
+          try {
+            await dispatch(peer, 'provider_stream_event', { type: 'provider_stream_event', provider: request.provider,
+              api: request.model.api, model: request.model.id, data }, contextFor(ctx, peer, currentAgent(peer), request.signal))
+          } catch (error) { logger(ctx).warn(`[pi2dsh] provider stream observer failed: ${String(error)}`) }
+        }
+      },
       beforeProviderRequest: (payload, request) => dispatchHostProviderRequest(
         ctx,
         shared,
@@ -5039,12 +5128,52 @@ function unregisterPiProvider(ctx: Context, state: RuntimeState, name: string): 
   }
 }
 
-function createPiApi(ctx: Context, state: RuntimeState): UnknownRecord {
+function createPiApi(ctx: Context, state: RuntimeState, extensionPath = state.packageName): UnknownRecord {
+  state.mcpOwners.add(extensionPath)
+  const unavailable = (capability: string, reason: string): never => {
+    const gap = { capability, reason, packageName: state.packageName,
+      guidance: 'This capability is unavailable in this bridge; configure the supported behavior through DSH.',
+    }
+    capabilityLedgerOf(ctx, state).reportDegraded(gap)
+    throw new PiCapabilityError(gap)
+  }
   return {
+    getSettings: () => {
+      // The host default service is distinct from agent.model.current(): a
+      // session-local switch must not masquerade as a global settings change.
+      const defaults = optionalService<{ currentSelection(): { provider: string, model: string, reasoningEffort?: string } }>(ctx, 'agentDefaultModel')?.currentSelection()
+      if (defaults === undefined) return {}
+      const level = defaults.reasoningEffort
+      return {
+        defaultProvider: defaults.provider,
+        defaultModel: defaults.model,
+        ...(level !== undefined && ['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'].includes(level)
+          ? { defaultThinkingLevel: level } : {}),
+      }
+    },
+    registerVirtualModel: () => unavailable('registerVirtualModel', 'Pi virtual selection and physical request routing require a pre-request routing decision and branch-persistent router state, not a second provider runtime.'),
+    unregisterVirtualModel: () => {}, // no virtual registration can succeed
+    registerToolRenderer: (_resolver: unknown) => {
+      // As with message renderers, Pi terminal rendering has no consumer in
+      // RPC/headless mode. Do not execute terminal factories in the Web UI.
+      capabilityLedgerOf(ctx, state).reportHostDecision({ capability: 'registerToolRenderer', packageName: state.packageName,
+        reason: 'Tool drawing is owned by the DSH surface; Pi renderer resolvers are not consumed.', guidance: '' })
+    },
+    registerMcpServer: (name: string, config: unknown) => registerMcpServer(state.eventBus, extensionPath, name, config),
+    unregisterMcpServer: (name: string) => mcpRegistrations(state.eventBus).unregister(name, extensionPath),
+    getMcpServers: () => mcpRegistrations(state.eventBus).list(),
     on(event: string, handler: PiHandler) {
       const list = state.handlers.get(event) ?? []
-      list.push(handler)
+      // Each registration has its own identity, including when a package
+      // registers the same callback twice. Dispatch snapshots the array so
+      // subscribing/unsubscribing inside a callback affects the next dispatch.
+      const registered: PiHandler = (event, context) => handler(event, context)
+      list.push(registered)
       state.handlers.set(event, list)
+      return () => {
+        const index = list.indexOf(registered)
+        if (index !== -1) list.splice(index, 1)
+      }
     },
     registerTool: (tool: PiTool) => registerTool(ctx, state, tool),
     unregisterTool: (name: string) => unregisterTool(state, name),
@@ -5174,7 +5303,13 @@ function createPiApi(ctx: Context, state: RuntimeState): UnknownRecord {
       // DSH-shaped `{provider, model}` route, which is not what Pi hands a
       // model_select handler.
       const previousModel = currentPiModel(state, agent)
-      state.modelOverrides.set(agent, override)
+      const current = readAgentModel(agent)
+      const provider = override.provider ?? current?.provider
+      if (provider === undefined) return false
+      selectAgentModel(agent, {
+        provider, model: override.model,
+        ...(current?.reasoningEffort === undefined ? {} : { reasoningEffort: current.reasoningEffort }),
+      })
       void dispatch(state, 'model_select', {
         type: 'model_select', model, previousModel, source: 'set',
       }, contextFor(ctx, state, agent, undefined))
@@ -5186,7 +5321,7 @@ function createPiApi(ctx: Context, state: RuntimeState): UnknownRecord {
       const agent = currentAgent(state)
       const previousLevel = thinkingLevelOf(state, agent)
       if (agent === undefined) state.globalThinkingLevel = String(level)
-      else state.thinkingLevels.set(agent, String(level))
+      else selectThinkingLevel(state, agent, String(level))
       void dispatch(state, 'thinking_level_select', {
         type: 'thinking_level_select', level: String(level), previousLevel,
       }, contextFor(ctx, state, agent, undefined))
@@ -5287,7 +5422,7 @@ async function registerPromptCommands(ctx: Context, state: RuntimeState, rootDir
 async function loadExtensions(
   rootDir: string,
   manifest: GeneratedRuntimeManifest,
-  api: UnknownRecord,
+  api: (extensionPath: string) => UnknownRecord,
   onExtensionError?: (failure: string) => void,
   onCapabilityGap?: (error: PiCapabilityError, extension: string) => void,
   onHostInfraReference?: (symbol: string, extension: string) => void,
@@ -5388,7 +5523,7 @@ async function loadExtensions(
         ? (loaded as { default: unknown }).default
         : loaded
       if (typeof candidate !== 'function') throw new TypeError(`Pi extension ${extension} has no default factory function`)
-      await candidate(api)
+      await candidate(api(join(rootDir, extension)))
       mounted += 1
     } catch (error) {
       // A capability gap during entry setup means this package cannot start
@@ -5435,6 +5570,7 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
   const state: RuntimeState = {
     shared,
     packageName: options.manifest.package.name,
+    mcpOwners: new Set(),
     ownerAgent,
     hostAnchor: options.hostAnchor === true,
     handlers: new Map(),
@@ -5481,8 +5617,6 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
     autocompleteProviders: [],
     editorBuffers: new WeakMap(),
     toolsExpanded: false,
-    modelOverrides: new WeakMap(),
-    thinkingLevels: new WeakMap(),
     childAgents: new WeakSet(),
     turnSystemPromptOverrides: new WeakMap(),
     projection: Promise.resolve(),
@@ -5526,6 +5660,33 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
   }
   subscribeLifecycle(ctx, state)
   subscribeInterceptors(ctx, state)
+  const onMcpChange = (servers: unknown): void => {
+    const agent = currentAgent(state)
+    if (!state.extensionsReady || agent === undefined || state.hostAnchor) return
+    state.projection = state.projection.then(async () => {
+      await dispatch(state, 'mcp_servers_change', { type: 'mcp_servers_change', servers }, contextFor(ctx, state, agent, undefined))
+    }).catch(error => logger(ctx).warn(`[pi2dsh] mcp_servers_change handler failed: ${String(error)}`))
+  }
+  state.eventBus.on(mcpRegistrationChanged, onMcpChange)
+  const onUiPrompt = (event: UnknownRecord): void => {
+    const agent = currentAgent(state)
+    if (!state.extensionsReady || agent === undefined || state.hostAnchor) return
+    void dispatch(state, String(event.type), event, contextFor(ctx, state, agent, undefined))
+      .catch(error => logger(ctx).warn(`[pi2dsh] UI prompt observer failed: ${String(error)}`))
+  }
+  state.eventBus.on(uiPromptChanged, onUiPrompt)
+  const clearOwnedMcp = (): void => {
+    const registry = mcpRegistrations(state.eventBus)
+    for (const server of registry.list()) {
+      if (state.mcpOwners.has(server.extensionPath)) registry.unregister(server.name, server.extensionPath)
+    }
+    state.mcpOwners.clear()
+  }
+  ctx.effect(() => () => {
+    state.eventBus.off(mcpRegistrationChanged, onMcpChange)
+    state.eventBus.off(uiPromptChanged, onUiPrompt)
+    clearOwnedMcp()
+  })
   // Pi hosts ship their built-in OAuth providers ready to log in; preload the
   // four vendored official flows so `/login openai-codex` (etc.) works out of
   // the box, before any package registers its own providers. They form the
@@ -6035,37 +6196,17 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
     },
     discardStaleArchive: sessionId => state.bridge.discardArchive(sessionId),
     parentModelRoute: () => {
-      // The caller's LIVE route, by authority: an explicit Pi ctx.setModel()
-      // override, else the last durable request/header (where a DSH UI or
-      // /model switch actually lands — the snapshot never learns of it), else
-      // the creation-time AgentOptions snapshot. Snapshot-only reading is the
-      // exact inheritance bug DSH's own subagent line reports.
+      // The public selection includes host UI changes BEFORE a request is
+      // made. Reading only the last request would inherit a retired route.
       const parent = currentAgent(state)
       if (parent === undefined) return undefined
-      const options = parent.options as { provider?: unknown, model?: unknown } | undefined
-      return resolveCallerRoute(
-        state.modelOverrides.get(parent),
-        lastRequestRouteOf(agentSession(parent)),
-        typeof options?.model === 'string'
-          ? { model: options.model, ...(typeof options.provider === 'string' ? { provider: options.provider } : {}) }
-          : undefined,
-      )
+      return readAgentModel(parent)
     },
     adoptChildAgent: (child, thinkingLevel) => {
       if (typeof child !== 'object' || child === null) return
       state.childAgents.add(child)
       if (typeof thinkingLevel === 'string' && thinkingLevel.length > 0) {
-        state.thinkingLevels.set(child, thinkingLevel)
-        // Modern DSH dispatches Agent events in that Agent's scope. A parent
-        // listener cannot configure a child merely by accepting its identity.
-        const childCtx = (child as UnknownRecord).ctx as { on?: (event: string, listener: (payload: UnknownRecord, next: () => Promise<UnknownRecord>) => Promise<UnknownRecord>) => unknown } | undefined
-        childCtx?.on?.('agent/request', async (payload, next) => {
-          const config = await next()
-          if (payload.agent !== child) return config
-          const level = state.thinkingLevels.get(child)
-          if (level === undefined || (level === 'off' && (currentPiModel(state, child as UnknownRecord)?.thinkingLevelMap as UnknownRecord | undefined)?.off === null)) return config
-          return { ...config, reasoningEffort: level }
-        })
+        selectThinkingLevel(state, child as UnknownRecord, thinkingLevel)
       }
     },
   })
@@ -6092,7 +6233,7 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
     () => loadExtensions(
       rootDir,
       options.manifest,
-      createPiApi(ctx, state),
+      extensionPath => createPiApi(ctx, state, extensionPath),
       onExtensionError,
       onCapabilityGap,
       onHostInfraReference,
@@ -6121,6 +6262,7 @@ export async function applyPiPackage(ctx: Context, options: RuntimeOptions): Pro
       state.shutdownTasks.delete(previousAgent)
     }
     state.extensionsReady = false
+    clearOwnedMcp()
     state.handlers.clear()
     // The bus is agent-shared: unwind only this instance's subscriptions.
     for (const off of state.eventBusOffs.splice(0)) off()
@@ -6171,8 +6313,6 @@ export const runtimeInternals = {
   compactionReason,
   resolveOfferedChoice,
   currentPiModel,
-  lastRequestRouteOf,
-  resolveCallerRoute,
   resolveChildExtensionPackages,
   dshToPiContent,
   expandPrompt,

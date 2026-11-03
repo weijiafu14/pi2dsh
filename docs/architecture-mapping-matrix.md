@@ -1,5 +1,86 @@
 # Pi → DSH 架构模型
 
+## 0.28 开发候选：DSH 0.2.2 / Pi 1.4（2026-10-29）
+
+目标为 stock DSH `0.2.2-alpha.2` 与 Pi `1.4.0`；本地可运行场景验收完成，未发布。
+`v0.27.1` 保留为旧宿主检查点，不在新主线分裂旧/新宿主两套运行路径。
+2026-11-03：DSH 依赖、Pi 开发依赖已实际切换到上述版本；provider factory、transcript
+纯逻辑、MCP registry、session/message 纯逻辑及 pre-bind runtime 更新到 Pi 1.4 来源。
+这不是全能力兼容声明；下面区分已实现映射、显式边界和未完成的整体验收。
+
+- 模型选择：由 `agent/request` 改路由迁到 `agent.model`；模型目录仍由 DSH 所有。
+- 工具：核对 step-owned toolSet、执行器和 Pi exposure/prepareLoadout/executeTool 的对应关系。
+- 会话与事件：核对异步 projection handle、Pi context_edit / turn_end boundary / agent_before_settle。
+- 新注册面：MCP server、virtual model、模型类型/生成、tool renderer 分别映射原有架构分支，
+  不复制一套 Pi agent loop、工具执行器或模型传输来绕过宿主。
+- 判断边界：公开 seam 足够就补桥；需要 fork、平行权威状态或改变插件语义的点，先给出
+  真实消费者和最小复现，再由用户决定，不以空返回值假装支持。
+
+验证顺序：同代依赖图 → 公共契约 → 真 Pi 包 CLI/Web 工作流 → 发布后精确 npm 包全回归。
+资源约束沿用 CLAUDE.md 的串行默认、独立浏览器、私有终端与完整收尾要求。
+
+### 2026-11-03 实施与验收边界
+
+| 分支 | 当前映射 | 不能从中推导的结论 |
+|---|---|---|
+| 模型选择 | `agent.model.current/select`，选择进入宿主日志，未发请求的切换也能继承 | 不以修改 `agent/request` 的 provider/model 冒充新模型选择 |
+| 模型请求 | Pi 1.x TranscriptContext；leading system、工具声明、原生 developer tool update 双向翻译 | 独立 Pi 请求的历史工具重定义仍明确拒绝；不静默展平成另一套工具历史 |
+| Provider factory / registry | 1.4 createProvider 按 chat/image/classifier 分目录；DSH 只接 chat；标准 stream/streamSimple 仍走宿主 | 非聊天 operation 走 Pi 的 error-result 通道，不建立第二套模型服务 |
+| 工具执行 | `ctx.executeTool` 走官方 ToolExecutionPipeline，继承 parent token、取消和 step toolSet；支持结构化返回与 Pi 工具进度 | durable Pi nestedCalls 尚未投影；codemode/model-only/prepareLoadout 组合明确拒绝，不能偷换可调用范围 |
+| 工具注册 | outputSchema 约束 structuredContent；hidden、deferred、defaultActive:false 通过宿主条件注册收紧可用性 | deferred 工具在未获宿主 step 准入时，不承诺 Pi codemode 的额外可调用性 |
+| MCP 注册 | 同 Agent 共享上游验证/registry；按真实扩展文件归属，冲突保护、克隆读取、卸载/重载清理及变更事件 | 元数据登记不是连接成功；没有自动装入 Pi 内建 MCP/codemode 扩展 |
+| 会话读取 | 1.4 SessionManager 纯逻辑与 buildSessionProjection；宿主只读投影继续由 foldSurface 过滤 | 修改 Pi 导出文件不改变 DSH；context_edit / editable turn boundary 不能据纯 helper 存在就宣称支持 |
+| UI 与事件 | 用户/自定义消息的启动判别；prompt start/end 的重叠深度与 finally 结束；逐注册解除监听 | 跨包一次性 handler 快照尚未闭环，事件行保持 partial |
+| 配置 | `getSettings` 只投影 `agentDefaultModel.currentSelection()` 的默认模型/档位，不读当前会话选择冒充默认值 | 不伪造 Pi 专有设置，不把 Pi settings.json 变成用户配置入口 |
+
+`registerVirtualModel`、`context_with_system`、`agent_before_settle`、新的可编辑 `turn_end`
+事务、cache warming 和自动 compaction-failed 事件仍有明确缺口，逐项见运行时目录。
+这些条目尚未满足新 `DSH-ARCH-*` 的最小复现门槛，不能一概归责上游，也不能因已有
+聊天功能通过就隐藏。旧 SDK 的 state.messages 导入行为仍是桥的部分兼容行为，
+不是 Pi 1.x canonical SessionManager 写入语义已经等价。
+
+本轮 stock npm alpha.2 上的完整 examples、本地 verify、强化后的 headless
+pi-subagents child-tools 与 step-seams 已验收；缺配置及外部终端不兼容项目不计通过。
+磁盘不足经用户批准清理 npm 缓存后解除，安全门未放宽。
+记录见[本轮验收](../community/issue-10/README.md)。第三方 TUI 最新 npm 声明仍未覆盖目标 alpha，
+验收装置根据真实 peer 范围记 skipped，不使用 allow-version 或 fork。
+
+### 当前检查点与需确认的兼容边界
+
+DSH 迁移检查点：依赖图中 91 个 DSH 包均为 `0.2.2-alpha.2`；类型检查、构建和
+40 文件 / 392 条契约测试通过（单 worker）。新增测试在真实 `AgentModel`、session 和
+异步 projection handle 上验证：尚未发请求的模型选择可读取、选择进入原生日志、
+子代理推理档位不污染父/兄弟。工具测试改走官方批量执行器；普通 fork 与委派子代理
+不再混用 `parentSession`。这不是新版本 CLI/Web E2E，也不是 Pi 1.4 完整支持证明。
+
+**非聊天模型操作不能沿现有聊天桥直接承接。** Pi 1.x 的 ModelRegistry 新增按
+`chat/image/classifier` 分类的目录及 `generateImages` / `classify` 操作；真实消费者是
+Pi 1.4 内建 codemode 的 `models.generateImages()`、`models.classify()`。对应代码：
+[ModelRegistry](https://github.com/earendil-works/pi/blob/v1.0.0/packages/coding-agent/src/core/model-registry.ts)、
+[codemode 消费者](https://github.com/earendil-works/pi/blob/v1.4.0/packages/coding-agent/src/extensions/codemode/execute.ts)。
+
+DSH `0.2.2-alpha.2` 的公开 `LlmAdapter` / `LlmRuntime` 只提供聊天 stream 调度，
+模型目录没有上述操作类型；image pricing/target 是输入图片处理，不是图片生成。
+实际挂载 npm 的 LlmRuntime 后，`stream/listModels/resolveModelInfo/prepareCall` 均为
+function，`generateImages/classify/getModelsOfType` 均不存在；完整上游源码树也未发现
+独立生图/分类服务。依据为
+[公开 LLM 接口](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.2.2-alpha.2/packages/llm/llm/src/index.ts)
+与同目录 `types.ts`。此探针证明当前调用接口边界，不冒充真实图片生成 E2E。
+
+既有 `pi-codex-image-gen` 自带图片请求不是这一新增标准模型接口的消费者，它的历史
+成功不证明此接口已支持。把 image/classifier 假装成聊天模型、在桥中另起 Pi 模型目录
+或偷偷直连 SDK，都不满足“同一 DSH 模型权威”标准。
+
+2026-10-30 用户确认范围：先迁移可由 DSH 公开机制可靠承接的 Pi 1.x 契约，对非聊天
+模型操作明确报不支持；本轮不 fork DSH、不另建模型系统，不把 DSH 原生非聊天模型
+接口建设纳入本轮。未完成验收前不发布兼容承诺。
+轮次结束控制、可编辑历史等新增契约仍需逐项核验，不因该处已查明就推断其余全通。
+
+事件注册增量：`pi.on` 现返回逐次注册、幂等的解除函数；同一回调重复注册相互独立。
+各包派发前快照 handler 列表，本次派发中的增删仅影响下一次。Pi 1.4 上游 runner
+对全部扩展一次性快照，桥的跨包派发尚需统一核验，因此该行仍标 partial，不把包内
+契约测试扩大为所有事件完整兼容。原有事件各自的支持边界不变。
+
 0.27.1 双宿主验收（rc.2 / rc.3）进行中，见[本轮记录](../community/release-0.27.1/README.md)。
 本轮调整兼容声明与验证规则，并修正 Web 侧聊请求完成/会话切换的局部状态；
 不新增宿主版本分支，不改变既有映射等级。

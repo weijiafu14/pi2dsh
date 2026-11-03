@@ -3,23 +3,21 @@
 **One install that turns a stock [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) into a batteries-included agent workstation.**
 
 ```sh
-dsh plugin --profile web add dsh-work-x dsh-better-sidebar
+dsh plugin --profile web add dsh-work-x@next
 ```
 
-Restart `dsh` (plugins mount at startup). One line, two packages: the suite,
-and the sidebar its Memory/Tasks/MCP workbench tabs live in — the sidebar IS
-the primary form of the suite's product UI. (Headless/CLI profiles can drop
-`dsh-better-sidebar`; DSH has no way yet for one plugin to auto-install a
-companion — [proposed upstream](https://github.com/deepseek-ai/deepseek-harness/discussions/4543) —
-which is the only reason this is two names instead of one.) That is the entire setup: the suite
+Restart `dsh` (plugins mount at startup). This preview uses the stock Web shell:
+Settings hosts Memory/MCP, and the composer hosts the background-task controls.
+No third-party sidebar is required. The suite
 carries the [pi2dsh](https://github.com/weijiafu14/pi2dsh) engine and six
 capability packages, with pinned versions and a
-[version-specific acceptance record](../community/release-0.27.1/README.md).
-Suite 0.6.1 targets pi2dsh 0.27.1 and DSH 0.2.1-rc.2 / 0.2.1-rc.3. Earlier DSH hosts
-remain on their matching historical suite/engine release.
+[version-specific acceptance record](../community/issue-10/README.md).
+Suite 0.7.0-next.0 pins pi2dsh 0.28.0-next.0, DSH 0.2.2-alpha.2 and Node.js 24.9+.
+DSH 0.2.1-rc.2 / rc.3 users remain on suite 0.6.1 / engine 0.27.1 (`latest`).
 
 一条命令，把官方 DSH 变成开箱即用的全能 agent 工作台。装完重启 dsh 即可；
-组件版本固定；本代适配 DSH 0.2.1-rc.2 / 0.2.1-rc.3，各项实测范围见发布验收记录。
+组件版本固定；本预览线适配 DSH 0.2.2-alpha.2，需要 Node.js 24.9+。
+旧 DSH 0.2.1 用户继续装 0.6.1，不要把预览线混装进去；各项边界见验收记录。
 
 ## What the Pi packages add
 
@@ -59,10 +57,11 @@ install and asserts each bundled package's own command is offered by the
 composer — not that a file exists somewhere.
 
 ```sh
-dsh plugin --profile web add dsh-work-x dsh-better-sidebar
+dsh plugin --profile web add dsh-work-x@next
 dsh web --port 5179
 ```
 
+Optional, only on a matching host-compatible version:
 [`dsh-better-sidebar`](https://www.npmjs.com/package/dsh-better-sidebar) is the
 community sidebar the suite's product UI seats into: its Tasks page shows your
 subagents natively (click through to steer or stop them), and dsh-work-x adds an
@@ -76,12 +75,12 @@ chip carry the same functionality. (DSH has no way yet for one plugin to declare
 [we've proposed one](https://github.com/deepseek-ai/deepseek-harness/discussions/4543) —
 so the install command names both.)
 
-> Match the sidebar to your DSH host as well. Suite 0.6.0 does not claim
-> compatibility with the historical 0.1.x/alpha host generations.
+> A third-party sidebar is not part of this alpha-host acceptance. Do not bypass
+> its compatibility declaration or assume its latest version matches this host.
 
 ## Memory & background tasks
 
-**Primary form — the sidebar.** With the one-line install above, the right
+**Optional sidebar form.** With a separately installed, host-compatible sidebar, the right
 sidebar (VSCode-style, per session) carries the suite's workbench tabs: open
 the **＋** next to the tab strip and add **Memory** or **Jobs** — they sit
 beside Files, Terminal, Source Control, and stay while you chat.

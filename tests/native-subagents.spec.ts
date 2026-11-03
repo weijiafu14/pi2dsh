@@ -1,3 +1,6 @@
+import { executeTool } from './lib/dsh-compat.js'
+import { mountSessions } from './lib/dsh-compat.js'
+import { mountTools } from './lib/dsh-compat.js'
 // Native subagent coverage contract: the `serveNativeSubagents` engine config
 // (default OFF) serves DSH-native subagents with the profile's Pi extensions.
 //
@@ -146,9 +149,9 @@ function ledgerCount(profileRoot: string, prefix: string): number {
  */
 async function buildRuntime(root: string, config: Record<string, unknown> = {}): Promise<Context> {
   const ctx = new Context()
-  await ctx.plugin(SessionStore)
+  await mountSessions(ctx)
   await ctx.plugin(SystemPrompt as never, { includeHarnessIdentity: false } as never)
-  await ctx.plugin(ToolRuntime)
+  await mountTools(ctx)
   await ctx.plugin(CommandRuntime)
   await ctx.plugin(SkillRegistry)
   await ctx.plugin(LlmRuntime as never, {} as never)
@@ -257,7 +260,7 @@ describe('serveNativeSubagents opt-in', () => {
     // depth-2 failure (the grandchild's first turn saw zero extension tools
     // because its mount raced its first model call).
     const tools = (ctx as unknown as { tools: ToolsFace }).tools
-    const gateResultPromise = tools.execute({
+    const gateResultPromise = executeTool(ctx, {
       signal: new AbortController().signal,
       callId: CallId('native-child-gate'),
       name: 'gate_probe_a',
@@ -278,7 +281,7 @@ describe('serveNativeSubagents opt-in', () => {
 
     const gateResult = await gateResultPromise
     expect(gateResult.isError ?? false).toBe(false)
-    expect(gateResult.content[0]?.text).toBe('gate-ok')
+    expect((gateResult.content[0]?.type === 'text' ? gateResult.content[0].text : undefined)).toBe('gate-ok')
 
     catalog.mount = originalMount
     await waitFor(() => nativeNames(ctx, childHandle.agent).length === 2, 'child probe tools')
@@ -294,7 +297,7 @@ describe('serveNativeSubagents opt-in', () => {
 
     // The child's tools are live and resolve through its own mount.
     const probeA = childNames.find(name => name.startsWith('native_a_'))!
-    const result = await tools.execute({
+    const result = await executeTool(ctx, {
       signal: new AbortController().signal,
       callId: CallId('native-child-probe'),
       name: probeA,
@@ -302,7 +305,7 @@ describe('serveNativeSubagents opt-in', () => {
       agent: childHandle.agent as never,
     })
     expect(result.isError ?? false).toBe(false)
-    expect(result.content[0]?.text).toMatch(/^native-a-\d+$/)
+    expect((result.content[0]?.type === 'text' ? result.content[0].text : undefined)).toMatch(/^native-a-\d+$/)
 
     // The child's mount never leaks onto the root.
     expect(nativeNames(ctx, rootHandle.agent)).toEqual(rootNames)
@@ -376,7 +379,7 @@ describe('serveNativeSubagents opt-in', () => {
       // The stable-name gate tool is live for the root child too (its path is
       // gated the same way), even though it is not this listener's child.
       const tools = (ctx as unknown as { tools: ToolsFace }).tools
-      const gateResult = await tools.execute({
+      const gateResult = await executeTool(ctx, {
         signal: new AbortController().signal,
         callId: CallId('rootchild-gate'),
         name: 'gate_probe_a',
@@ -384,7 +387,7 @@ describe('serveNativeSubagents opt-in', () => {
         agent: rootChild.agent as never,
       })
       expect(gateResult.isError ?? false).toBe(false)
-      expect(gateResult.content[0]?.text).toBe('gate-ok')
+      expect((gateResult.content[0]?.type === 'text' ? gateResult.content[0].text : undefined)).toBe('gate-ok')
 
       await rootChild.dispose()
       await rootHandle.dispose()

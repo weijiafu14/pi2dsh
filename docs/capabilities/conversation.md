@@ -6,18 +6,21 @@ a step, and observing the loop. These map onto DSH's waterfalls and durable
 events. Nothing here fabricates a result — where DSH has no equivalent moment,
 the surface is registered and stated as never firing rather than faked.
 
-**20 upstream-shaped Pi rule rows** — 9 same semantics · 11 mapped, difference stated.
+**23 upstream-shaped Pi rule rows** — 8 same semantics · 13 mapped, difference stated · 2 not available.
 
 | Pi surface | Kind | Status | What it does on DSH |
 |---|---|---|---|
+| [`on`](#on-pi) | `pi.*` | Mapped, difference stated | Returns an idempotent unsubscribe function for each registration, including duplicate callbacks. Each package dispatch snapshots its handlers before awaiting them. Pi 1.x snapshots across all extensions together; cross-package dispatch timing is still under migration, and each event retains its own supported/unsupported status. |
 | [`sendMessage`](#sendmessage-pi) | `pi.*` | Mapped, difference stated | Durable by the time it returns, as in Pi: the no-turn call appends to the session log and announces its message events immediately, so the message IS in the conversation when the call resolves. Steering and follow-up drive a turn through the agent. Pi display/details metadata awaits the custom session-entry seam. |
 | [`sendUserMessage`](#sendusermessage-pi) | `pi.*` | Same semantics | Mapped to native DSH steer/followup delivery with text and attachment-backed image content. |
+| [`context_with_system`](#context_with_system-event) | `event` | Not available | The separate writable full-transcript transform phase is not mapped. |
+| [`agent_before_settle`](#agent_before_settle-event) | `event` | Not available | Pi's editable boundary entries and forced continuation are not mapped. |
 | [`agent_start`](#agent_start-event) | `event` | Same semantics | Mapped to the DSH turn/start boundary. |
 | [`agent_settled`](#agent_settled-event) | `event` | Same semantics | Mapped to the DSH turn/end boundary. |
 | [`turn_start`](#turn_start-event) | `event` | Same semantics | Fires once per MODEL CALL, as in Pi — DSH calls that a step — with turnIndex counting from zero and resetting at each new prompt. |
-| [`before_agent_start`](#before_agent_start-event) | `event` | Same semantics | Fires once per user prompt, inside the assembly of the turn it belongs to, with the real prompt text and image attachments; returned custom messages enter that same turn beside the user message, and a returned systemPrompt overrides that turn's own assembly and resets at the next turn — chained as in Pi, each handler receiving the prompt the previous one returned. systemPromptOptions carries the session cwd and contextFiles — the AGENTS.md/CLAUDE.md chain the host loaded, recovered through the official dsh-agent-instructions loader with the exact identity DSH recorded (empty when the host composes no instruction loader). |
+| [`before_agent_start`](#before_agent_start-event) | `event` | Same semantics | Fires at the new run's assembly with Pi 1.2+ messageType discrimination: user triggers carry prompt/images, and custom triggers carry their projected custom message; returned custom messages enter that same turn beside the user message, and a returned systemPrompt overrides that turn's own assembly and resets at the next turn — chained as in Pi, each handler receiving the prompt the previous one returned. systemPromptOptions carries the session cwd and contextFiles — the AGENTS.md/CLAUDE.md chain the host loaded, recovered through the official dsh-agent-instructions loader with the exact identity DSH recorded (empty when the host composes no instruction loader). |
 | [`agent_end`](#agent_end-event) | `event` | Mapped, difference stated | The lifecycle boundary is mapped, but the reconstructed Pi message history is intentionally minimal. |
-| [`turn_end`](#turn_end-event) | `event` | Same semantics | Fires once per MODEL CALL, as in Pi — DSH calls that a step — carrying that call's own assistant message and its own tool results, with turnIndex counting model calls from zero and resetting each prompt. |
+| [`turn_end`](#turn_end-event) | `event` | Mapped, difference stated | Fires once per MODEL CALL, as in Pi — DSH calls that a step — carrying that call's own assistant message and its own tool results, with turnIndex counting model calls from zero and resetting each prompt. |
 | [`message_start`](#message_start-event) | `event` | Mapped, difference stated | Durable user, assistant, and tool-result messages are mapped without Pi-specific provider metadata. |
 | [`message_end`](#message_end-event) | `event` | Mapped, difference stated | Durable messages are observed, but message replacement is not supported. |
 | [`message_update`](#message_update-event) | `event` | Mapped, difference stated | Projected from live agent/assistant-stream frames on newer hosts and durable assistant/chunk events on older hosts, with retry-attempt isolation and canonical Pi text_delta events; reasoning is not mixed into text; Pi's full AgentMessage accumulation state is approximated. |
@@ -37,6 +40,12 @@ Every surface below names the DSH mechanism that carries it — the seam, servic
 or waterfall — so the mapping can be checked against the harness rather than
 taken on trust.
 
+### `on` <a id="on-pi"></a>
+
+`pi.*` · Mapped, difference stated
+
+Package-scoped handler registrations participate in DSH lifecycle and waterfall callbacks; dispatch copies the registration list, and each disposer removes only its own wrapper. This does not synthesize unsupported events.
+
 ### `sendMessage` <a id="sendmessage-pi"></a>
 
 `pi.*` · Mapped, difference stated
@@ -48,6 +57,18 @@ Two paths under one name. The no-turn call appends through Session.append(type, 
 `pi.*` · Same semantics
 
 The DSH agent inbox (steer or follow-up by option), with image content materialized as DSH attachments first.
+
+### `context_with_system` <a id="context_with_system-event"></a>
+
+`event` · Not available
+
+Already-entered DSH messages and assembled system/tool state cannot be rewritten through the existing pending-message transform.
+
+### `agent_before_settle` <a id="agent_before_settle-event"></a>
+
+`event` · Not available
+
+DSH turn-stopping is not assumed equivalent to Pi's durable boundary transaction.
 
 ### `agent_start` <a id="agent_start-event"></a>
 
@@ -81,9 +102,9 @@ The DSH turn/end boundary. Pi's message history on this event is reconstructed m
 
 ### `turn_end` <a id="turn_end-event"></a>
 
-`event` · Same semantics
+`event` · Mapped, difference stated
 
-The DSH step/end boundary, carrying that model call's own assistant message and the tool results belonging to it.
+The DSH step/end observation carries that call's assistant message and tool results. Pi 1.x editable boundary entries and forced continuation are not mapped; a post-fact notification does not supply a transactional control point.
 
 ### `message_start` <a id="message_start-event"></a>
 

@@ -13,7 +13,7 @@ stack (see [Verified behaviors](#verified-behaviors)).
 ## Install
 
 ```sh
-dsh plugin --profile main add pi2dsh
+dsh plugin --profile main add pi2dsh@next
 dsh plugin --profile main add @tintinweb/pi-subagents
 ```
 
@@ -101,4 +101,4 @@ and the acceptance report
 - **`/agents` opens something else in the TUI** — that is dsh-TUI's own local
   view; the package's manager is `/pi-agents`.
 - **A subagent reports "0 tool uses" but clearly worked** — fixed in
-  pi2dsh ≥ 0.16.1; upgrade the engine (`dsh plugin add pi2dsh@latest`).
+  pi2dsh@next ≥ 0.16.1; upgrade the engine (`dsh plugin add pi2dsh@next`).

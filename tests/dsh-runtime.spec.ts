@@ -1,3 +1,5 @@
+import { mountSessions } from './lib/dsh-compat.js'
+import { mountTools, executeTool } from './lib/dsh-compat.js'
 import { copyFile, cp, mkdir, mkdtemp, readFile, readdir, realpath, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -76,9 +78,9 @@ describe('an installed Pi package in the real DSH runtime', () => {
       },
     }
     const ctx = new Context()
-    await ctx.plugin(SessionStore)
+    await mountSessions(ctx)
     await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
-    await ctx.plugin(ToolRuntime)
+    await mountTools(ctx)
     await ctx.plugin(CommandRuntime)
     await ctx.plugin(SkillRegistry)
     await ctx.plugin(AgentRegistry)
@@ -102,7 +104,7 @@ describe('an installed Pi package in the real DSH runtime', () => {
     expect(assembly.tools.map(tool => tool.name)).not.toContain('pi_dynamic_removed')
 
     const signal = new AbortController().signal
-    const greeting = await ctx.tools.execute({
+    const greeting = await executeTool(ctx, {
       signal,
       callId: CallId('greet-1'),
       name: 'pi_greet',
@@ -115,7 +117,7 @@ describe('an installed Pi package in the real DSH runtime', () => {
     ])
     expect(greeting.meta).toEqual({ greeted: 'Ada' })
 
-    const blocked = await ctx.tools.execute({
+    const blocked = await executeTool(ctx, {
       signal,
       callId: CallId('greet-2'),
       name: 'pi_greet',
@@ -124,7 +126,7 @@ describe('an installed Pi package in the real DSH runtime', () => {
     expect(blocked.isError).toBe(true)
     expect(blocked.content).toEqual([{ type: 'text', text: 'Error: blocked by migrated Pi hook' }])
 
-    const piError = await ctx.tools.execute({
+    const piError = await executeTool(ctx, {
       signal,
       callId: CallId('pi-error-1'),
       name: 'pi_error',
@@ -133,7 +135,7 @@ describe('an installed Pi package in the real DSH runtime', () => {
     expect(piError.isError).toBe(true)
     expect(piError.content).toEqual([{ type: 'text', text: 'Error: PI2DSH_PI_ERROR_OK' }])
 
-    const contextProbe = await ctx.tools.execute({
+    const contextProbe = await executeTool(ctx, {
       signal,
       callId: CallId('context-probe'),
       name: 'pi_context_probe',
@@ -158,7 +160,7 @@ describe('an installed Pi package in the real DSH runtime', () => {
 
     // Pi semantics: a tool_call hook mutates event.input in place and the
     // mutated arguments reach the Pi-owned tool's execute.
-    const mutationProbe = await ctx.tools.execute({
+    const mutationProbe = await executeTool(ctx, {
       signal,
       callId: CallId('mutation-probe'),
       name: 'pi_mutation_probe',
@@ -167,7 +169,7 @@ describe('an installed Pi package in the real DSH runtime', () => {
     expect(mutationProbe.isError).toBe(false)
     expect(mutationProbe.content[0]).toMatchObject({ type: 'text', text: 'executed with mutated' })
 
-    const postBlockProbe = await ctx.tools.execute({
+    const postBlockProbe = await executeTool(ctx, {
       signal,
       callId: CallId('post-block-probe'),
       name: 'pi_post_block_probe',
@@ -178,7 +180,7 @@ describe('an installed Pi package in the real DSH runtime', () => {
       content: [{ type: 'text', text: 'blocked after execution' }],
     })
 
-    const apiProbe = await ctx.tools.execute({ signal, callId: CallId('api-probe'), name: 'pi_api_probe', arguments: {} })
+    const apiProbe = await executeTool(ctx, { signal, callId: CallId('api-probe'), name: 'pi_api_probe', arguments: {} })
     const apiValue = JSON.parse((apiProbe.content[0] as { text: string }).text) as Record<string, unknown>
     expect(apiValue).toMatchObject({
       // Load-time session mutations still fail (no live agent yet, matching
@@ -221,7 +223,7 @@ describe('an installed Pi package in the real DSH runtime', () => {
     ])
     expect(ctx.tools.schemas().map(tool => tool.name)).toContain('pi_probe')
 
-    const execProbe = await ctx.tools.execute({
+    const execProbe = await executeTool(ctx, {
       signal,
       callId: CallId('exec-probe'),
       name: 'pi_exec_probe',
@@ -235,7 +237,7 @@ describe('an installed Pi package in the real DSH runtime', () => {
       killed: false,
     })
 
-    const askProbe = await ctx.tools.execute({
+    const askProbe = await executeTool(ctx, {
       signal,
       callId: CallId('ask-probe'),
       name: 'pi_ask_probe',
@@ -249,7 +251,7 @@ describe('an installed Pi package in the real DSH runtime', () => {
       typed: 'typed',
     })
 
-    const imageProbe = await ctx.tools.execute({
+    const imageProbe = await executeTool(ctx, {
       signal,
       callId: CallId('image-probe'),
       name: 'pi_image_probe',
@@ -327,7 +329,7 @@ describe('an installed Pi package in the real DSH runtime', () => {
       expectImageContainer(storedBig, (savedBig as { mediaType?: string }).mediaType ?? 'image/png')
     }
 
-    const messageProbe = await ctx.tools.execute({
+    const messageProbe = await executeTool(ctx, {
       signal,
       callId: CallId('message-probe'),
       name: 'pi_message_probe',
@@ -399,7 +401,7 @@ describe('an installed Pi package in the real DSH runtime', () => {
     disposeAgent()
     await settle()
 
-    const probe = await ctx.tools.execute({ signal, callId: CallId('probe-1'), name: 'pi_probe', arguments: {} })
+    const probe = await executeTool(ctx, { signal, callId: CallId('probe-1'), name: 'pi_probe', arguments: {} })
     const counters = JSON.parse((probe.content[0] as { type: 'text'; text: string }).text) as Record<string, number>
     // The context-probe command really runs ctx.reload() now, which remounts
     // the extension entries once: setup-time counters (flag_default,
@@ -526,9 +528,9 @@ describe('hasUI reports whether a human can actually answer', () => {
           },
         })
       }
-      await ctx.plugin(SessionStore)
+      await mountSessions(ctx)
       await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
-      await ctx.plugin(ToolRuntime)
+      await mountTools(ctx)
       await ctx.plugin(CommandRuntime)
       await ctx.plugin(SkillRegistry)
       await ctx.plugin(AgentRegistry)
@@ -565,7 +567,7 @@ describe('hasUI reports whether a human can actually answer', () => {
           writeHead() {}, end() {},
         })
       }
-      const result = await ctx.tools.execute({
+      const result = await executeTool(ctx, {
         signal: new AbortController().signal,
         callId: CallId('hasui'),
         name: 'pi_hasui',
@@ -614,9 +616,9 @@ describe("Pi's argument gate in front of a migrated tool", () => {
       '}',
     ].join('\n'), 'utf8')
     const ctx = new Context()
-    await ctx.plugin(SessionStore)
+    await mountSessions(ctx)
     await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
-    await ctx.plugin(ToolRuntime)
+    await mountTools(ctx)
     await ctx.plugin(CommandRuntime)
     await ctx.plugin(SkillRegistry)
     await ctx.plugin(AgentRegistry)
@@ -644,7 +646,7 @@ describe("Pi's argument gate in front of a migrated tool", () => {
     // tool sees it; running no gate at all handed the tool's own code a
     // string where its schema says number.
     const ctx = await mountToolPackage('pi2dsh-arg-gate-')
-    const result = await ctx.tools.execute({
+    const result = await executeTool(ctx, {
       signal: new AbortController().signal,
       callId: CallId('typed-1'),
       name: 'pi_typed',
@@ -662,7 +664,7 @@ describe("Pi's argument gate in front of a migrated tool", () => {
 
   it('returns the violation to the model instead of running the tool on bad input', async () => {
     const ctx = await mountToolPackage('pi2dsh-arg-gate-bad-')
-    const result = await ctx.tools.execute({
+    const result = await executeTool(ctx, {
       signal: new AbortController().signal,
       callId: CallId('typed-2'),
       name: 'pi_typed',
@@ -697,9 +699,9 @@ describe("a Pi tool's own system-prompt contributions", () => {
     ].join('\n'), 'utf8')
 
     const ctx = new Context()
-    await ctx.plugin(SessionStore)
+    await mountSessions(ctx)
     await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false, personaPrefix: 'Base DSH prompt.' })
-    await ctx.plugin(ToolRuntime)
+    await mountTools(ctx)
     await ctx.plugin(CommandRuntime)
     await ctx.plugin(SkillRegistry)
     await ctx.plugin(AgentRegistry)
@@ -791,9 +793,9 @@ describe('logging in is what makes a gateway\'s models selectable', () => {
     ].join('\n'), 'utf8')
 
     const ctx = new Context()
-    await ctx.plugin(SessionStore)
+    await mountSessions(ctx)
     await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
-    await ctx.plugin(ToolRuntime)
+    await mountTools(ctx)
     await ctx.plugin(CommandRuntime)
     await ctx.plugin(SkillRegistry)
     await ctx.plugin(AgentRegistry)
@@ -888,9 +890,9 @@ describe('an OAuth-only provider has no models until logging in gives it a route
 
     const written: Array<{ ns: string, patch: unknown }> = []
     const ctx = new Context()
-    await ctx.plugin(SessionStore)
+    await mountSessions(ctx)
     await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
-    await ctx.plugin(ToolRuntime)
+    await mountTools(ctx)
     await ctx.plugin(CommandRuntime)
     await ctx.plugin(SkillRegistry)
     await ctx.plugin(AgentRegistry)
@@ -976,9 +978,9 @@ describe('a stored OAuth login is ready when a restarted host finishes mounting'
     const stored = new Map<string, string>()
     const written: Array<{ ns: string, patch: unknown }> = []
     const ctx = new Context()
-    await ctx.plugin(SessionStore)
+    await mountSessions(ctx)
     await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
-    await ctx.plugin(ToolRuntime)
+    await mountTools(ctx)
     await ctx.plugin(CommandRuntime)
     await ctx.plugin(SkillRegistry)
     await ctx.plugin(AgentRegistry)
@@ -1063,9 +1065,9 @@ describe('a host that mounts before the credentials service composes', () => {
 
     const stored = new Map<string, string>()
     const ctx = new Context()
-    await ctx.plugin(SessionStore)
+    await mountSessions(ctx)
     await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
-    await ctx.plugin(ToolRuntime)
+    await mountTools(ctx)
     await ctx.plugin(CommandRuntime)
     await ctx.plugin(SkillRegistry)
     await ctx.plugin(AgentRegistry)
@@ -1179,9 +1181,9 @@ describe('a catalog-only Pi provider is declared, not mounted twice', () => {
 
     const written: Array<{ ns: string, patch: unknown }> = []
     const ctx = new Context()
-    await ctx.plugin(SessionStore)
+    await mountSessions(ctx)
     await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
-    await ctx.plugin(ToolRuntime)
+    await mountTools(ctx)
     await ctx.plugin(CommandRuntime)
     await ctx.plugin(SkillRegistry)
     await ctx.plugin(AgentRegistry)
@@ -1296,9 +1298,9 @@ describe('a compat switch that only exists on one protocol', () => {
 
     const written: Array<{ patch: unknown }> = []
     const ctx = new Context()
-    await ctx.plugin(SessionStore)
+    await mountSessions(ctx)
     await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
-    await ctx.plugin(ToolRuntime)
+    await mountTools(ctx)
     await ctx.plugin(CommandRuntime)
     await ctx.plugin(SkillRegistry)
     await ctx.plugin(AgentRegistry)
@@ -1387,9 +1389,9 @@ describe('the credential behind the reference the profile names', () => {
 
     const stored = new Map<string, string>()
     const ctx = new Context()
-    await ctx.plugin(SessionStore)
+    await mountSessions(ctx)
     await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
-    await ctx.plugin(ToolRuntime)
+    await mountTools(ctx)
     await ctx.plugin(CommandRuntime)
     await ctx.plugin(SkillRegistry)
     await ctx.plugin(AgentRegistry)
@@ -1494,9 +1496,9 @@ describe('a Pi package-owned provider request in the real DSH runtime', () => {
     ].join('\n'), 'utf8')
 
     const ctx = new Context()
-    await ctx.plugin(SessionStore)
+    await mountSessions(ctx)
     await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
-    await ctx.plugin(ToolRuntime)
+    await mountTools(ctx)
     await ctx.plugin(CommandRuntime)
     await ctx.plugin(SkillRegistry)
     await ctx.plugin(LlmRuntime as never, {} as never)
