@@ -1,6 +1,12 @@
 # 真实插件验证
 
-## DSH 0.2.2 / Pi 1.4 开发检查点（2026-10-29）
+## DSH 0.2.2 / Pi 1.4 预览线
+
+当前已发布组合为 pi2dsh `0.28.0-next.1` / DSH `0.2.2-alpha.3`；
+发布后实际 npm 包的逐项结果以[本轮验收](../community/release-0.28.0-next.1/README.md)为准。
+以下初始 alpha.2 本地检查点保留运行时版本边界，不替代 alpha.3 npm 验收。
+
+### 初始开发检查点（2026-10-29）
 
 2026-11-03：Pi 依赖已切到 1.4.0，最终本地 verify、完整 examples、headless
 pi-subagents 和 step-seams 回归完成；缺凭证/第三方终端不兼容的项目明确保留边界。

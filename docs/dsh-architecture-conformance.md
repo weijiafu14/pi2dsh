@@ -1,7 +1,7 @@
 # Pi → DSH 架构结论
 
-**0.28 预览线（2026-11-03）**：DSH `0.2.2-alpha.2` / Pi `1.4.0` 的已实现映射及
-本地验收见[本轮记录](../community/issue-10/README.md)。新增嵌套工具调用、transcript、
+**0.28 预览线（2026-11-03）**：当前已发布补丁面向 DSH `0.2.2-alpha.3` / Pi `1.4.0`，
+发布与 npm 验收状态见[本轮记录](../community/release-0.28.0-next.1/README.md)。新增嵌套工具调用、transcript、
 MCP 注册与 UI 生命周期的具体边界写在原有架构分支中；虚拟模型、完整 loadout、
 可编辑边界等仍未完成，不能把发布预览版解释为 Pi 1.4 全能力兼容。
 

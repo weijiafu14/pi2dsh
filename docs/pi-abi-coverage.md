@@ -20,8 +20,8 @@ and validation boundaries are in the [migration checkpoint](architecture-mapping
 
 The live rules distinguish supported translations from explicit missing mappings;
 neither the dependency bump nor the presence of every top-level API name proves
-full Pi 1.4 compatibility. Current CLI/Web acceptance is recorded in
-[issue #10 evidence](../community/issue-10/README.md).
+full Pi 1.4 compatibility. Current published-package CLI/Web acceptance is recorded in
+[the preview release evidence](../community/release-0.28.0-next.1/README.md).
 
 ## Historical upstream inventory
 
