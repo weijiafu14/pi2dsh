@@ -1,5 +1,10 @@
 # Issue #10：DSH 0.2.2 / Pi 1.4 本地候选验收
 
+**当前状态另见 [next.1 发布验收](../release-0.28.0-next.1/README.md)。**
+初始 next.0 已发布并推送；npm 回归发现全新 alpha.2 宿主内部依赖漂移，
+详见 [next.0 发布后记录](../release-0.28.0-next.0/README.md)。以下保留最初本地验收，
+不是当前 npm 包全量通过声明。
+
 目标：stock npm `@deepseek-ai/dsh@0.2.2-alpha.2`，Pi `1.4.0`。
 预览线：引擎 `pi2dsh@0.28.0-next.0`、Web 套件 `dsh-work-x@0.7.0-next.0`，
 使用 `next` 通道；`latest` 保留旧宿主兼容线。发布和发布后验收状态以本目录记录为准。

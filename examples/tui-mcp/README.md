@@ -1,7 +1,7 @@
 # Advanced MCP in dsh-TUI, from the Pi ecosystem
 
 **Host boundary:** the TUI instructions below belong to the historical stable
-host line. For DSH 0.2.2-alpha.2, use the verified Web/headless paths with
+host line. For DSH 0.2.2-alpha.3, use the verified Web/headless paths with
 `pi2dsh@next` / `dsh-work-x@next`; the checked third-party TUI releases do not
 declare support for that alpha. Do not bypass their compatibility checks.
 

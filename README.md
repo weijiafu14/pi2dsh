@@ -8,7 +8,7 @@ install on DSH as the same npm packages and run unmodified — web, terminal
 and headless.
 
 ```sh
-dsh plugin add pi2dsh@next       # DSH 0.2.2-alpha.2; once
+dsh plugin add pi2dsh@next       # DSH 0.2.2-alpha.3; once
 dsh plugin add pi-mcp-adapter    # then the Pi packages you already use, straight from npm
 ```
 
@@ -23,7 +23,7 @@ Version support is explicit:
 
 | pi2dsh | DSH host | Maintenance |
 |---|---|---|
-| 0.28.0-next.0 (`next`) | 0.2.2-alpha.2 | Pi 1.4 preview: [acceptance and limits](community/issue-10/README.md) |
+| 0.28.0-next.1 (`next`) | 0.2.2-alpha.3 | Pi 1.4 preview: [acceptance and limits](community/release-0.28.0-next.1/README.md) |
 | 0.27.1 | 0.2.1-rc.2 / 0.2.1-rc.3 | [Acceptance and release status](community/release-0.27.1/README.md) |
 | 0.27.0 | 0.2.1-rc.2 | [Acceptance and release status](community/release-0.27.0/README.md) |
 | 0.26.0 | 0.2.0-rc.2 | [Release verification](community/release-0.26.0/README.md) |
@@ -40,7 +40,7 @@ For the **0.27.x / DSH 0.2.1** line, the validated terminal packages are
 The older dsh-pi-tui 0.5.1 still references removed host components; upgrade
 that terminal rather than bypassing compatibility checks with `allow-version`.
 
-For DSH 0.2.2-alpha.2, use `pi2dsh@next` (or Web suite `dsh-work-x@next`)
+For DSH 0.2.2-alpha.3, use `pi2dsh@next` (or Web suite `dsh-work-x@next`)
 with Node.js 24.9+. The published third-party terminals checked in this preview
 do not declare support for this host; Web and headless are independently tested.
 Stay on `pi2dsh@0.27.1` / `dsh-work-x@0.6.1` for DSH 0.2.1-rc.2 or rc.3.
@@ -114,7 +114,7 @@ Two installer messages worth knowing:
   pnpm's `minimumReleaseAge` skips versions published very recently. Pin it:
   `dsh plugin add pi2dsh@<version>`.
 
-This development line requires Node.js 24.9+ and DSH 0.2.2-alpha.2.
+This development line requires Node.js 24.9+ and DSH 0.2.2-alpha.3.
 The published 0.27.x line retains its Node.js 22.19+ / DSH 0.2.1 requirements.
 
 ### Engine configuration

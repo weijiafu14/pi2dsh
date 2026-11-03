@@ -1,0 +1,11 @@
+{
+  "sourceCommit": "0c5b1e0aa5a528a4681349fd195838ac77f34f61",
+  "tag": "v0.28.0-next.0",
+  "githubPushed": true,
+  "registryAvailable": true,
+  "postPublishAcceptance": "failed-on-fresh-host-graph",
+  "packages": [
+    {"name":"pi2dsh","version":"0.28.0-next.0","tag":"next","integrity":"sha512-A7GhT55vB7ruwv/nYp0rqCIGk5AOUXSyFq97l6K893oiEtgSpPBvl8f072GxKYzd08R0noouYeL5ma37hiARmg=="},
+    {"name":"dsh-work-x","version":"0.7.0-next.0","tag":"next","integrity":"sha512-2q9LHVGo/5y4Y/x8EE2067qN7H8n5mNNfjHa7mJJnaW7Nc9UXFSrofXCCzI4MUJJl1M4gbUYhDqTaOmGLIqfnQ=="}
+  ]
+}
