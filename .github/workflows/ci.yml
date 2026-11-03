@@ -17,14 +17,15 @@ jobs:
       - run: corepack prepare pnpm@11.7.0 --activate
       - uses: actions/setup-node@v4
         with:
-          node-version: 22.19.0
+          node-version: 24.18.0
           cache: pnpm
+      # The reviewed lockfile pins the published host graph; check:host verifies
+      # it. Unit/pack checks no longer consume a sibling source checkout.
       - run: pnpm install --frozen-lockfile
-      - name: Checkout pinned DeepSeek Harness
-        run: |
-          git clone https://github.com/deepseek-ai/deepseek-harness.git ../deepseek-harness
-          git -C ../deepseek-harness checkout 47f943859bef60e4160492346772ded9b24f765a
-          corepack pnpm@11.7.0 --dir ../deepseek-harness install --frozen-lockfile --ignore-scripts
+        env:
+          # Release CI must install today's explicitly pinned alpha packages.
+          # This is CI-only: user profiles retain their own age/build policy.
+          PNPM_CONFIG_MINIMUM_RELEASE_AGE: 0
       - run: pnpm verify
         env:
-          PI2DSH_DSH_ROOT: ${{ github.workspace }}/../deepseek-harness
+          PNPM_CONFIG_MINIMUM_RELEASE_AGE: 0

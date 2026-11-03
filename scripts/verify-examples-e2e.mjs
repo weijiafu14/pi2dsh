@@ -54,6 +54,7 @@ import { basename, join, resolve } from 'node:path'
 import { stageSuiteTarball } from './lib/suite-tarball.mjs'
 import { writeHostConfig, createE2eHarness, filesBelow, seedCodexLogin, authedUrl, installedCoreVersions } from './lib/e2e-harness.mjs'
 import { incompatibleHostPeers } from './lib/host-compatibility.mjs'
+import { assertMcpScaleTimeout, toolPairs } from './lib/mcp-scale-evidence.mjs'
 
 const projectRoot = resolve(new URL('..', import.meta.url).pathname)
 const dshRoot = process.env.PI2DSH_DSH_ROOT === undefined
@@ -1962,6 +1963,7 @@ const MCP_SCALE_MARKER = 'LAUNCH-MARKER-7741-ZEBRA'
 
 async function prepareMcpAtScale(scratch, profile) {
   const { home, env, runDsh } = await makeHome(scratch)
+  env.PI2DSH_MCP_CALL_LOG = join(scratch, 'mcp-server-calls.jsonl')
   const installedEngine = await runDsh(['plugin', '--profile', profile, 'add', engineSpec])
   const installedAdapter = await runDsh(['plugin', '--profile', profile, 'add', suitePackageSpec('pi-mcp-adapter')])
   await useJsonlSessions(home, profile)
@@ -1972,18 +1974,6 @@ async function prepareMcpAtScale(scratch, profile) {
   await execFile('cp', ['-R', join(projectRoot, 'examples/mcp-at-scale'), missionDir])
   await execFile('npm', ['install', '--no-fund', '--no-audit'], { cwd: join(missionDir, 'server'), env, timeout: 300_000 })
   return { home, env, missionDir, installLog: `${installedEngine.stdout}${installedEngine.stderr}${installedAdapter.stdout}${installedAdapter.stderr}` }
-}
-
-/** {call, result-block} pairs for one tool name (same join as code-nav). */
-function toolPairs(records, name) {
-  return records
-    .filter(record => record.type === 'tool/call' && record.data?.name === name)
-    .map(call => {
-      const result = records.find(record => record.type === 'tool/result'
-        && record.data?.message?.toolCallId === call.data.callId)
-      return { call, block: result?.data?.message }
-    })
-    .filter(pair => pair.block !== undefined)
 }
 
 function assertMcpScaleDiscovery(records, transcript) {
@@ -2012,30 +2002,6 @@ function assertMcpScaleDiscovery(records, transcript) {
   assert(markerHit !== undefined, `the mcp proxy never returned the launch marker:\n${JSON.stringify(proxied.map(pair => pair.block)).slice(0, 800)}`)
 }
 
-function assertMcpScaleTimeout(records, elapsedMs, transcript) {
-  const scripted = toolPairs(records, 'mcpScript')
-  assert(scripted.length > 0, `no mcpScript tool result in the session log:\n${transcript.slice(0, 600)}`)
-  const slowHit = scripted.find(({ call }) => {
-    const args = JSON.stringify(call.data?.arguments ?? '')
-    return /slow_task/u.test(args) && /timeoutMs/u.test(args)
-  })
-  assert(slowHit !== undefined, `mcpScript never targeted slow_task with a timeoutMs budget:\n${
-    JSON.stringify(scripted.map(({ call }) => call.data?.arguments)).slice(0, 800)}`)
-  const slowText = JSON.stringify(slowHit.block.content ?? '') + JSON.stringify(slowHit.block.isError ?? '')
-  assert(/timeout|timed out|abort/iu.test(slowText) || slowHit.block.isError === true,
-    `the slow_task call did not fail structurally on the budget:\n${slowText.slice(0, 600)}`)
-
-  // Life after the timeout: the follow-up proxied call must really answer.
-  const proxied = toolPairs(records, 'mcp')
-  const followUp = proxied.find(({ block }) => block.isError !== true && /tool_001 reporting in/u.test(JSON.stringify(block.content)))
-  assert(followUp !== undefined, `after the timeout, tool_001 never answered — session or server wedged:\n${
-    JSON.stringify(proxied.map(pair => pair.block)).slice(0, 800)}`)
-
-  // The budget must actually cut the wait: the tool takes ~120 s for real,
-  // so a turn that honored the 5 s budget ends far below that.
-  assert(elapsedMs < 110_000, `the timeout turn took ${Math.round(elapsedMs / 1000)}s — the ~120s tool was awaited, not budgeted`)
-}
-
 async function runMcpAtScale() {
   if (apiKey === undefined || apiKey.length === 0) {
     results.mcpAtScale = { status: 'skipped', reason: 'DEEPSEEK_API_KEY not set' }
@@ -2061,13 +2027,15 @@ async function runMcpAtScale() {
       'credential appeared in captured test artifacts')
 
     assertMcpScaleDiscovery(records, discovery.stdout)
-    assertMcpScaleTimeout(records, elapsedMs, budget.stdout)
+    const serverEvents = (await readFile(env.PI2DSH_MCP_CALL_LOG, 'utf8')).trim().split('\n').filter(Boolean).map(line => JSON.parse(line))
+    const timeoutEvidence = assertMcpScaleTimeout(records, elapsedMs, serverEvents, timeoutStart)
     results.mcpAtScale = {
       status: 'passed',
       engine: await installedEngineVersion(home, 'headless'),
       packages: ['pi-mcp-adapter'],
       server: 'many-tools (official MCP SDK, 51 tools, stdio)',
       discovery: `mcp proxy -> tool_037 -> ${MCP_SCALE_MARKER}`,
+      timeoutEvidence,
       timeout: `mcpScript timeoutMs 5000 on ~120s slow_task; turn ended in ${Math.round(elapsedMs / 1000)}s; tool_001 answered after`,
     }
   } finally {
