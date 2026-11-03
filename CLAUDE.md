@@ -10,6 +10,13 @@ pi2dsh：通用 Pi Host ABI 兼容层，让 Pi 生态插件原样跑在 DeepSeek
 
 ## 当前宿主基线（2026-10-19 用户确认，优先于下文历史双代说明）
 
+- 2026-11-03：0.28.0-next.1 / dsh-work-x 0.7.0-next.1 面向 stock DSH
+  `0.2.2-alpha.3`，Pi 目标 ABI `1.4.0`，Cordis peer 精确锁 `4.0.6-alpha.2`。
+  `next` 预览线与 0.27.x 的 `latest` 分开，不覆盖旧宿主用户。
+  全新 alpha.2 CLI 会解析到较新的 Cordis，纯官方 profile 已重现设置/会话错误；
+  不把同一个 DSH 版本字符串当成内部 prerelease 图永远相同的证明。
+  记录见 `community/release-0.28.0-next.0/` 与 `community/release-0.28.0-next.1/`。
+
 - 2026-10-26：0.27.1 同时验收 DSH `0.2.1-rc.2` 与 `0.2.1-rc.3`，
   对外 peers 使用已验证精确版本的有限并集；开发依赖与每轮测试图仍只允许一个精确版本。
   不能把开发图的单版本约束误用于对外兼容范围，也不放行未来未知版本。
@@ -194,7 +201,7 @@ pi2dsh：通用 Pi Host ABI 兼容层，让 Pi 生态插件原样跑在 DeepSeek
   文件字节级/节选搬运并注明来源 commit，logic unchanged；同名不同义的
   行为（如 registerCommand 撞名编号 /name-2 vs Pi 的 :1/:2、伴生路由的
   ctx.model 报原身）必须写进 src/compatibility.ts 判定文案。
-- **Pi 兼容面钉死单一上游版本**（当前 Pi 0.84.1；2026-08-20 拍板）：
+- **Pi 兼容面钉死单一上游版本**（当前目标 Pi 1.4.0；历史快照为 0.84.1）：
   111 条规则、vendored 源码、类型快照只对这个版本负责，上游发新版不
   自动跟。理由：追上游"发现新接口"这一环纯靠人、没有自动提醒，与其
   带着无声漂移跑，不如显式锁死。升级快照是一次显式决策：重盘上游声明

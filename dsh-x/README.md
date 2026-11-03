@@ -11,12 +11,12 @@ Settings hosts Memory/MCP, and the composer hosts the background-task controls.
 No third-party sidebar is required. The suite
 carries the [pi2dsh](https://github.com/weijiafu14/pi2dsh) engine and six
 capability packages, with pinned versions and a
-[version-specific acceptance record](../community/issue-10/README.md).
-Suite 0.7.0-next.0 pins pi2dsh 0.28.0-next.0, DSH 0.2.2-alpha.2 and Node.js 24.9+.
+[version-specific acceptance record](../community/release-0.28.0-next.1/README.md).
+Suite 0.7.0-next.1 pins pi2dsh 0.28.0-next.1, DSH 0.2.2-alpha.3 and Node.js 24.9+.
 DSH 0.2.1-rc.2 / rc.3 users remain on suite 0.6.1 / engine 0.27.1 (`latest`).
 
 一条命令，把官方 DSH 变成开箱即用的全能 agent 工作台。装完重启 dsh 即可；
-组件版本固定；本预览线适配 DSH 0.2.2-alpha.2，需要 Node.js 24.9+。
+组件版本固定；本预览线适配 DSH 0.2.2-alpha.3，需要 Node.js 24.9+。
 旧 DSH 0.2.1 用户继续装 0.6.1，不要把预览线混装进去；各项边界见验收记录。
 
 ## What the Pi packages add

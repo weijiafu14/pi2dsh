@@ -754,15 +754,27 @@ async function declareInSettings(
   providerId: string,
   profile: UnknownRecord,
 ): Promise<boolean> {
-  const settings = ctx.get?.('settings') as { update?(ns: string, patch: object): Promise<void> } | undefined
-  if (typeof settings?.update !== 'function') return false
+  const settings = ctx.get?.('settings') as {
+    update?(ns: string, patch: object): Promise<void>
+    describe?(): Array<{ ns: string }>
+  } | undefined
+  const llm = ctx.get?.('llm') as { listConfigurableProviders?(): Array<{ settingsNs: string }> } | undefined
+  const ownerPresent = settings?.describe?.().some(entry => entry.ns === 'llm-pi-ai') === true
+    || llm?.listConfigurableProviders?.().some(entry => entry.settingsNs === 'llm-pi-ai') === true
+  if (typeof settings?.update !== 'function') {
+    if (ownerPresent) throw new Error('The official llm-pi-ai adapter is present but its settings writer is unavailable')
+    return false
+  }
   try {
     await settings.update('llm-pi-ai', { providers: { [providerId]: profile } })
     return true
-  } catch {
-    // Not registered here (no official adapter in this composition), or the
-    // profile is one it refuses. Either way the mount below reports honestly.
-    return false
+  } catch (error) {
+    // A schema rejection, storage failure or host configuration bug is NOT
+    // evidence that the adapter is absent. Mounting another copy hides that
+    // original failure behind an unrelated duplicate-provider error.
+    if (!ownerPresent && error instanceof Error
+      && error.message === 'No configurable plugin entry "llm-pi-ai"') return false
+    throw error
   }
 }
 

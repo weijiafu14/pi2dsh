@@ -19,6 +19,11 @@ const EXACT_VERSION = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z-]
 export function assertHostCompatibility(manifest) {
   const expected = manifest.devDependencies?.['@deepseek-ai/dsh-agent']
   assert(typeof expected === 'string' && EXACT_VERSION.test(expected), 'test host must be an exact version')
+  const cordis = manifest.devDependencies?.['@deepseek-ai/cordis']
+  if (typeof cordis === 'string' && cordis.includes('-alpha.')) {
+    assert.equal(manifest.peerDependencies?.['@deepseek-ai/cordis'], cordis,
+      'pre-release Cordis compatibility must match the tested exact version')
+  }
   const peers = Object.entries(manifest.peerDependencies ?? {}).filter(([name]) => name.startsWith('@deepseek-ai/dsh'))
   assert(peers.length > 0, 'no DSH compatibility declaration')
   let canonical

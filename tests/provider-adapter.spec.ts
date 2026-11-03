@@ -11,6 +11,52 @@ import { dshRequestToPiContext, piEventsToDshChunks } from '../src/model-bridge.
 
 type UnknownRecord = Record<string, unknown>
 
+describe('catalog-only adapter ownership', () => {
+  it.each(['next is not a function', 'invalid provider configuration', 'No configurable plugin entry "llm-pi-ai"'])(
+    'preserves a present owner\'s settings error instead of mounting a duplicate (%s)', async message => {
+      let mounts = 0
+      let report!: (value: string) => void
+      const reported = new Promise<string>(resolve => { report = resolve })
+      const llm = {
+        registerAdapter: () => () => {},
+        listConfigurableProviders: () => [{ settingsNs: 'llm-pi-ai' }],
+      }
+      const settings = { update: async () => { throw new Error(message) } }
+      const dispose = registerPiProviderRoute({
+        llm,
+        providerId: 'probe',
+        provider: { api: 'openai-completions', baseUrl: 'https://example.invalid', models: [{ id: 'model' }] },
+        ctx: {
+          get: name => name === 'settings' ? settings : name === 'llm' ? llm : undefined,
+          plugin: () => { mounts++; throw new Error('duplicate adapter must never be mounted') },
+        },
+        host: { resolveAuth: async () => undefined, warn: report },
+      })
+      try {
+        expect(await reported).toContain(message)
+        expect(mounts).toBe(0)
+      } finally { dispose?.() }
+    },
+  )
+
+  it('does not reinterpret unknown settings failures as absence even without a directory owner', async () => {
+    let mounts = 0
+    let report!: (value: string) => void
+    const reported = new Promise<string>(resolve => { report = resolve })
+    const dispose = registerPiProviderRoute({
+      llm: { registerAdapter: () => () => {} }, providerId: 'probe',
+      provider: { api: 'openai-completions', baseUrl: 'https://example.invalid', models: [{ id: 'model' }] },
+      ctx: {
+        get: name => name === 'settings' ? { update: async () => { throw new Error('storage is read-only') } } : undefined,
+        plugin: () => { mounts++; return {} },
+      },
+      host: { resolveAuth: async () => undefined, warn: report },
+    })
+    try { expect(await reported).toContain('storage is read-only'); expect(mounts).toBe(0) }
+    finally { dispose?.() }
+  })
+})
+
 /**
  * A Pi provider fixture. Real Pi providers carry BOTH entry points — the
  * portable `streamSimple` and the per-API `stream` — so the fixture does too,

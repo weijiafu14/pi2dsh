@@ -7,7 +7,7 @@
 运行——web、终端、headless 都一样。
 
 ```sh
-dsh plugin add pi2dsh@next       # DSH 0.2.2-alpha.2；装一次
+dsh plugin add pi2dsh@next       # DSH 0.2.2-alpha.3；装一次
 dsh plugin add pi-mcp-adapter    # 之后装你在 Pi 上已经在用的包，直接用 npm 原包
 ```
 
@@ -20,7 +20,7 @@ elicitation、sampling、cancellation——经 DSH 自己的审批和渲染跑�
 
 | pi2dsh | DSH 宿主 | 维护状态 |
 |---|---|---|
-| 0.28.0-next.0（`next`） | 0.2.2-alpha.2 | Pi 1.4 预览线，[验收与边界](community/issue-10/README.md) |
+| 0.28.0-next.1（`next`） | 0.2.2-alpha.3 | Pi 1.4 预览线，[验收与边界](community/release-0.28.0-next.1/README.md) |
 | 0.27.1 | 0.2.1-rc.2 / 0.2.1-rc.3 | [验收与发布状态](community/release-0.27.1/README.md) |
 | 0.27.0 | 0.2.1-rc.2 | [验收与发布状态](community/release-0.27.0/README.md) |
 | 0.26.0 | 0.2.0-rc.2 | [发布验收与缺凭证项目](community/release-0.26.0/README.md) |
@@ -35,7 +35,7 @@ elicitation、sampling、cancellation——经 DSH 自己的审批和渲染跑�
 `@xmoon76/dsh-pi-tui@0.5.3`。旧 dsh-pi-tui 0.5.1 仍引用已删除的宿主组件，
 请升级终端，不要用 `allow-version` 绕过。
 
-DSH 0.2.2-alpha.2 使用 `pi2dsh@next`，Web 套件使用 `dsh-work-x@next`，需要
+DSH 0.2.2-alpha.3 使用 `pi2dsh@next`，Web 套件使用 `dsh-work-x@next`，需要
 Node.js 24.9+。本轮核验的第三方终端尚未声明兼容该宿主，Web 与 headless 独立验收。
 DSH 0.2.1-rc.2 / rc.3 用户继续使用 `pi2dsh@0.27.1` / `dsh-work-x@0.6.1`。
 
@@ -97,7 +97,7 @@ Pi 包（每一个都是你显式装的），用同一个桥实例挂载它们�
 - **刚发版后 add 装到了旧版本**：pnpm 的 `minimumReleaseAge` 会跳过刚发布不久
   的版本。显式钉版本即可：`dsh plugin add pi2dsh@<版本>`。
 
-当前开发线需要 Node.js 24.9+ 和 DSH 0.2.2-alpha.2。
+当前开发线需要 Node.js 24.9+ 和 DSH 0.2.2-alpha.3。
 已发布的 0.27.x 仍使用 Node.js 22.19+ / DSH 0.2.1。
 
 ### 引擎配置
