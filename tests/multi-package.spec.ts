@@ -1,3 +1,5 @@
+import { mountSessions } from './lib/dsh-compat.js'
+import { mountTools } from './lib/dsh-compat.js'
 // Two Pi packages in one profile. The engine has always mounted a list, but
 // every package registered its tool-guidance prompt section under one constant
 // name, so DSH's duplicate-name rejection took the SECOND package's whole mount
@@ -51,9 +53,9 @@ describe('more than one Pi package in a profile', () => {
     const dirs = [await stagePackage(scratch, 'pi-alpha-probe'), await stagePackage(scratch, 'pi-beta-probe')]
 
     const ctx = new Context()
-    await ctx.plugin(SessionStore)
+    await mountSessions(ctx)
     await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
-    await ctx.plugin(ToolRuntime)
+    await mountTools(ctx)
     await ctx.plugin(CommandRuntime)
     await ctx.plugin(SkillRegistry)
     await ctx.plugin(AgentRegistry)

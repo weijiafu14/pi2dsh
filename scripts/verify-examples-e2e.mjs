@@ -52,7 +52,8 @@ import { homedir, tmpdir } from 'node:os'
 import { basename, join, resolve } from 'node:path'
 
 import { stageSuiteTarball } from './lib/suite-tarball.mjs'
-import { writeHostConfig, createE2eHarness, filesBelow, seedCodexLogin, authedUrl } from './lib/e2e-harness.mjs'
+import { writeHostConfig, createE2eHarness, filesBelow, seedCodexLogin, authedUrl, installedCoreVersions } from './lib/e2e-harness.mjs'
+import { incompatibleHostPeers } from './lib/host-compatibility.mjs'
 
 const projectRoot = resolve(new URL('..', import.meta.url).pathname)
 const dshRoot = process.env.PI2DSH_DSH_ROOT === undefined
@@ -75,6 +76,24 @@ const alibabaTokenPlanKey = process.env.ALIBABA_TOKEN_PLAN_API_KEY
 // release: same fresh DSH_HOME, same README commands, but the engine comes off
 // the registry — which is the only way to catch what the tarball left out.
 const engineSpec = process.env.PI2DSH_ENGINE_SPEC ?? `file:${projectRoot}`
+let tuiCompatibility
+async function unavailableTui() {
+  if (directDshBin === undefined) return undefined
+  tuiCompatibility ??= (async () => {
+    const host = installedCoreVersions(directDshBin).get('@deepseek-ai/dsh-agent')
+    assert(host, 'stock CLI did not resolve dsh-agent')
+    const spec = process.env.PI2DSH_TUI_SPEC ?? '@deepseek-harness-tui/dsh-tui@0.14.0'
+    const metadata = await execFile('npm', ['view', spec, 'name', 'version', 'peerDependencies', '--json'], { timeout: 60_000 })
+    const manifest = JSON.parse(metadata.stdout)
+    const incompatible = incompatibleHostPeers(manifest, host)
+    return incompatible.length === 0 ? undefined : {
+      status: 'skipped',
+      reason: `${manifest.name}@${manifest.version} does not declare compatibility with DSH ${host}; no allow-version override or upstream patch used`,
+      packageSpec: `${manifest.name}@${manifest.version}`, host, incompatiblePeers: incompatible,
+    }
+  })()
+  return tuiCompatibility
+}
 // Where the browser scenarios put their screenshots. They default into the
 // run's scratch directory and are thrown away with it, because a regression run
 // should not rewrite repository assets. Point this at docs/posting-kit/assets
@@ -1284,6 +1303,8 @@ async function runCodexImageGen() {
 // examples/tui-mcp — clean installed profile + complete host-influenced MCP matrix
 // ---------------------------------------------------------------------------
 async function runTuiMcp() {
+  const unavailable = await unavailableTui()
+  if (unavailable !== undefined) { results.tuiMcp = unavailable; return }
   const scratch = await mkdtemp(join(tmpdir(), 'pi2dsh-ex-tui-mcp-'))
   try {
     const { home, env, runDsh } = await makeHome(scratch)
@@ -1372,6 +1393,8 @@ async function runTuiMcp() {
  * the examples evidence so the example regresses with the rest.
  */
 async function runSubagents() {
+  const unavailable = await unavailableTui()
+  if (unavailable !== undefined) { results.subagents = unavailable; return }
   const scratch = await mkdtemp(join(tmpdir(), 'pi2dsh-ex-subagents-'))
   const evidence = join(scratch, 'subagents.json')
   let output = ''
@@ -2167,6 +2190,7 @@ if (selected.length === 0) {
 // passed. A small pool keeps the wall-clock win without the stampede.
 const concurrency = Math.min(2, Math.max(1, Number(process.env.PI2DSH_E2E_CONCURRENCY ?? 1) || 1))
 const failures = []
+let resourceBlock
 const queue = [...selected]
 await Promise.all(Array.from({ length: Math.min(concurrency, queue.length) }, async () => {
   for (;;) {
@@ -2174,9 +2198,16 @@ await Promise.all(Array.from({ length: Math.min(concurrency, queue.length) }, as
     if (next === undefined) return
     const [name, run, key] = next
     try {
-      const disk = await statfs(tmpdir())
-      if (disk.bavail * disk.bsize < 4 * 1024 ** 3) {
-        throw new Error('E2E stopped: less than 4 GiB free on the temporary volume; free space before retrying')
+      if (resourceBlock === undefined) {
+        const disk = await statfs(tmpdir())
+        if (disk.bavail * disk.bsize < 4 * 1024 ** 3) {
+          resourceBlock = 'Less than 4 GiB free on the temporary volume; no new scenario was started. Free space before retrying.'
+        }
+      }
+      if (resourceBlock !== undefined) {
+        results[key] = { status: 'blocked', reason: resourceBlock }
+        console.error(`[examples-e2e] ${name}: BLOCKED — ${resourceBlock}`)
+        continue
       }
       await run()
       if (results[key]?.status === 'failed') {
@@ -2198,6 +2229,7 @@ await Promise.all(Array.from({ length: Math.min(concurrency, queue.length) }, as
 }))
 
 // A scenario that never reported is a hole in the run, not a pass.
+if (resourceBlock !== undefined) failures.push(`environment: ${resourceBlock}`)
 for (const [name, , key] of selected) {
   if (results[key] === undefined) {
     results[key] = { status: 'failed', error: 'the scenario reported no result' }
@@ -2235,7 +2267,7 @@ await writeFile(outputPath, `${JSON.stringify({
 
 await cleanupTestProcesses()
 if (failures.length > 0) {
-  console.error(`[examples-e2e] ${failures.length} example(s) regressed:\n${failures.map(item => `  - ${item}`).join('\n')}`)
+  console.error(`[examples-e2e] ${resourceBlock === undefined ? `${failures.length} example(s) regressed` : 'verification incomplete (resource safety gate)'}:\n${failures.map(item => `  - ${item}`).join('\n')}`)
   process.exit(1)
 }
 console.log(`[examples-e2e] evidence → ${outputPath}`)

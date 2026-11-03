@@ -6,6 +6,37 @@
 // constructor is resolved by capability, never by version sniffing.
 import AgentLoop from '@deepseek-ai/dsh-agent-loop'
 import * as llm from '@deepseek-ai/dsh-llm'
+import type { Context } from '@deepseek-ai/cordis'
+import ToolRuntime, { type ToolExecutionInput, type ToolExecutionResult } from '@deepseek-ai/dsh-tools'
+import * as NativeToolExecutor from '@deepseek-ai/dsh-tool-executor-native'
+import SessionStore from '@deepseek-ai/dsh-session'
+import SessionProjections from '@deepseek-ai/dsh-session-projection'
+
+/** Session projections must be active before AgentRegistry publishes its API. */
+export async function mountSessions(ctx: Context): Promise<void> {
+  await ctx.plugin(SessionStore)
+  await ctx.plugin(SessionProjections)
+}
+
+/** The stock 0.2.2 composition separates registration from execution. */
+export async function mountTools(ctx: Context): Promise<void> {
+  await ctx.plugin(ToolRuntime)
+  await ctx.plugin(NativeToolExecutor)
+}
+
+/** One-call batch through the real host executor, with unchanged assertions. */
+export async function executeTool(ctx: unknown, input: Omit<ToolExecutionInput, 'agent'> & { agent?: unknown }): Promise<ToolExecutionResult> {
+  const host = ctx as Context
+  const batch = await host.tools.execute({
+    calls: [{ type: 'tool-call', id: input.callId, name: input.name, arguments: JSON.stringify(input.arguments) }],
+    signal: input.signal,
+    ...(input.agent === undefined ? {} : { agent: input.agent as NonNullable<ToolExecutionInput['agent']> }),
+    ...(input.toolSet === undefined ? {} : { toolSet: input.toolSet }),
+  })
+  const result = batch.results.find(item => item.callId === input.callId)
+  if (result === undefined) throw new Error(`host executor omitted ${input.callId}`)
+  return result.result
+}
 
 type IdCtor = (id: string) => never
 
@@ -32,7 +63,7 @@ interface PluginHost { plugin(plugin: never, config?: never): Promise<unknown> }
 export async function mountAgentLoop(ctx: unknown, config: unknown = {}): Promise<void> {
   const host = ctx as PluginHost
   const inject = (AgentLoop as { inject?: readonly string[] }).inject ?? []
-  if (inject.includes('sessionProjections')) {
+  if (inject.includes('sessionProjections') && (ctx as Context).get('sessionProjections') === undefined) {
     const entry = '@deepseek-ai/dsh-session-projection'
     const provider = await import(entry) as { default: unknown }
     await host.plugin(provider.default as never)

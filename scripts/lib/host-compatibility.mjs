@@ -1,4 +1,16 @@
 import assert from 'node:assert/strict'
+import { createRequire } from 'node:module'
+
+const require = createRequire(import.meta.url)
+const { satisfies } = createRequire(require.resolve('pacote'))('semver')
+
+/** Respect upstream prerelease declarations; never manufacture support via overrides. */
+export function incompatibleHostPeers(manifest, hostVersion) {
+  return Object.entries(manifest.peerDependencies ?? {})
+    .filter(([name]) => name.startsWith('@deepseek-ai/dsh'))
+    .filter(([, range]) => !satisfies(hostVersion, range))
+    .map(([name, range]) => ({ name, range, actual: hostVersion }))
+}
 
 // Public compatibility may include several independently validated hosts.
 // The installed test graph must still use ONE exact host, never a union.

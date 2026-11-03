@@ -37,7 +37,7 @@ const AREAS = [
   { file: 'tools', title: 'Tools', members: [
     'registerTool', 'unregisterTool', 'getActiveTools', 'getAllTools', 'setActiveTools',
     'tool_execution_start', 'tool_execution_end', 'tool_execution_update', 'tool_call', 'tool_result',
-    'user_bash', 'exec',
+    'user_bash', 'exec', 'executeTool', 'tools',
   ] },
   { file: 'commands', title: 'Commands, flags and editor input', members: [
     'registerCommand', 'getCommands', 'registerShortcut', 'registerFlag', 'getFlag',
@@ -45,8 +45,8 @@ const AREAS = [
     'setEditorText', 'getEditorText', 'setEditorComponent', 'getEditorComponent',
   ] },
   { file: 'conversation', title: 'Messages, context and the agent loop', members: [
-    'sendMessage', 'sendUserMessage', 'message_start', 'message_end', 'message_update',
-    'before_agent_start', 'context', 'agent_start', 'agent_settled', 'agent_end',
+    'on', 'sendMessage', 'sendUserMessage', 'message_start', 'message_end', 'message_update',
+    'before_agent_start', 'context', 'context_with_system', 'agent_start', 'agent_settled', 'agent_end', 'agent_before_settle',
     'turn_start', 'turn_end', 'getContextUsage', 'getSystemPrompt', 'getSystemPromptOptions',
     'hasPendingMessages', 'isIdle', 'waitForIdle', 'abort', 'signal',
   ] },
@@ -54,24 +54,25 @@ const AREAS = [
     'appendEntry', 'setSessionName', 'getSessionName', 'setLabel', 'session_start',
     'session_shutdown', 'session_info_changed', 'newSession', 'fork', 'navigateTree',
     'switchSession', 'session_before_switch', 'session_before_fork', 'session_before_tree',
-    'session_tree', 'compact', 'session_before_compact', 'session_compact', 'shutdown',
+    'session_tree', 'compact', 'session_before_compact', 'session_compact', 'session_compact_failed', 'shutdown',
     'reload', 'sessionManager', 'cwd', 'mode', 'hasUI',
   ] },
   { file: 'models', title: 'Models, providers and credentials', members: [
     'registerProvider', 'unregisterProvider', 'setModel', 'getThinkingLevel', 'setThinkingLevel',
     'model', 'scopedModels', 'modelRegistry', 'hasConfiguredAuth', 'thinkingLevel',
     'model_select', 'thinking_level_select', 'before_provider_request',
-    'before_provider_headers', 'after_provider_response',
+    'before_provider_headers', 'after_provider_response', 'provider_stream_event', 'cache_warming_decision',
+    'registerVirtualModel', 'unregisterVirtualModel',
   ] },
   { file: 'interaction', title: 'Asking the user, and rendering', members: [
     'select', 'confirm', 'input', 'notify', 'editor', 'custom', 'registerMessageRenderer',
-    'registerEntryRenderer', 'registerMarkdownTransformer', 'setStatus', 'setWidget',
+    'registerEntryRenderer', 'registerMarkdownTransformer', 'registerToolRenderer', 'ui_prompt_start', 'ui_prompt_end', 'setStatus', 'setWidget',
     'setWorkingMessage', 'setWorkingVisible', 'setWorkingIndicator', 'setHiddenThinkingLabel',
     'setFooter', 'setHeader', 'setTitle', 'theme', 'getAllThemes', 'getTheme', 'setTheme',
     'getToolsExpanded', 'setToolsExpanded',
   ] },
   { file: 'environment', title: 'Project environment, skills and resources', members: [
-    'isProjectTrusted', 'project_trust', 'resources_discover', 'events',
+    'isProjectTrusted', 'project_trust', 'resources_discover', 'events', 'getSettings', 'registerMcpServer', 'unregisterMcpServer', 'getMcpServers', 'mcp_servers_change',
   ] },
 ]
 

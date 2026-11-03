@@ -7,11 +7,26 @@ each row is now a leaf in the
 contract and theoretical DSH mapping are maintained in the expandable Markdown
 [architecture matrix](architecture-mapping-matrix.md), not generated from this count.
 
-## Pinned upstream inventory
+## Current migration target
 
-Baseline: `@earendil-works/pi-coding-agent` 0.84.1.
+Development note (2026-11-03): the 0.28 candidate now installs Pi 1.4.0.
+Transcript helpers, provider construction, MCP registrations, session/message
+projection and the pre-bind runtime have been updated from that tag (4a08025).
+The historical inventory
+below does not certify that migration. An explicit `pi.on` subscription row now
+tracks unsubscribe/snapshot semantics separately from event names; its package-local
+tests do not establish Pi's cross-package dispatch contract. Current implementation
+and validation boundaries are in the [migration checkpoint](architecture-mapping-matrix.md#当前检查点与需确认的兼容边界).
 
-The current rules track **111 upstream-shaped runtime rows**:
+The live rules distinguish supported translations from explicit missing mappings;
+neither the dependency bump nor the presence of every top-level API name proves
+full Pi 1.4 compatibility. Current CLI/Web acceptance is recorded in
+[issue #10 evidence](../community/issue-10/README.md).
+
+## Historical upstream inventory
+
+The original `@earendil-works/pi-coding-agent` 0.84.1 snapshot tracked
+**111 upstream-shaped runtime rows** (not the current generated total):
 
 | Upstream surface family | Count |
 |---|---:|

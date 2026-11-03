@@ -13,7 +13,7 @@ attachments, and a browser tool view that shows the returned pixels inline.
 ## 1. Install
 
 ```sh
-dsh plugin --profile web add dsh-work-x
+dsh plugin --profile web add dsh-work-x@next
 ```
 
 The dsh-work-x suite bundles the engine (`pi2dsh`) and

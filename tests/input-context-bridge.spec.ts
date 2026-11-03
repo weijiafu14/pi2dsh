@@ -1,3 +1,5 @@
+import { mountSessions } from './lib/dsh-compat.js'
+import { mountTools, executeTool } from './lib/dsh-compat.js'
 // Input/Context Bridge contracts — Pi's before_agent_start and context events
 // on DSH's step seams. The tests drive the agent loop's REAL order, which is
 // what makes the override land on its own turn:
@@ -36,8 +38,19 @@ afterEach(async () => {
 const PROBE_EXTENSION = [
   "export default function probe(pi: any) {",
   "  const record: any = ((globalThis as any).__icb ??= {})",
+  "  record.on = pi.on",
+  "  pi.registerTool({ name: 'icb_leaf', description: 'nested leaf', parameters: { type: 'object', properties: { value: { type: 'number' } }, required: ['value'] }, outputSchema: { type: 'object', properties: { answer: { type: 'number' } }, required: ['answer'] }, execute: async (_id: string, args: any, _signal: any, update: any) => { update?.({ content: [{ type: 'text', text: 'progress' }] }); return { content: [{ type: 'text', text: String(args.value + 1) }], details: { leaf: true }, structuredContent: { answer: args.value + 1 } } } })",
+  "  pi.registerTool({ name: 'icb_nested', description: 'calls through the host', parameters: { type: 'object', properties: {} }, execute: async (_id: string, _args: any, _signal: any, _update: any, ctx: any) => {",
+  "    record.nestedTools = ctx.tools.map((tool: any) => tool.name)",
+  "    record.nestedUpdates = []; record.nested = await ctx.executeTool('icb_leaf', { value: 41 }, { onUpdate: (value: any) => record.nestedUpdates.push(value) })",
+  "    record.missingNested = await ctx.executeTool('absent_tool', {})",
+  "    record.blockedNested = await ctx.executeTool('icb_plain', {})",
+  "    const abort = new AbortController(); abort.abort(); record.abortedNested = await ctx.executeTool('icb_leaf', { value: 99 }, { signal: abort.signal })",
+  "    return record.nested.result",
+  "  } })",
+  "  pi.on('tool_call', (event: any) => { if (event.parentToolCallId) (record.nestedParents ??= []).push({ id: event.toolCallId, parent: event.parentToolCallId }) })",
   "  pi.on('before_agent_start', async (event: any) => {",
-  "    record.beforeAgentStart = { prompt: event.prompt, systemPrompt: event.systemPrompt, systemPromptOptions: event.systemPromptOptions }",
+  "    record.beforeAgentStart = { messageType: event.messageType, message: event.message, prompt: event.prompt, systemPrompt: event.systemPrompt, systemPromptOptions: event.systemPromptOptions }",
   "    return {",
   "      systemPrompt: 'OVERRIDDEN BY TEST',",
   "      message: { customType: 'test-bridge', content: 'bridge analysis result', display: true },",
@@ -103,9 +116,9 @@ async function mountedContext() {
     },
   }
   const ctx = new Context()
-  await ctx.plugin(SessionStore)
+  await mountSessions(ctx)
   await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
-  await ctx.plugin(ToolRuntime)
+  await mountTools(ctx)
   await ctx.plugin(CommandRuntime)
   await ctx.plugin(SkillRegistry)
   await ctx.plugin(AgentRegistry)
@@ -150,6 +163,53 @@ describe('input/context bridge in the real DSH runtime', () => {
     ) as unknown as { kind: string, messages: Array<{ content: Array<{ type: string, text?: string }>, source: Record<string, unknown> }> }
     return { decision, assembly }
   }
+
+  it('unsubscribes one registration and snapshots callbacks before a package dispatch', async () => {
+    const { ctx, typedCtx, agent } = await mountedContext()
+    try {
+      const record = (globalThis as Record<string, unknown>).__icb as {
+        on(event: string, handler: () => void): () => void
+      }
+      const calls: string[] = []
+      let mutated = false
+      let removeB: () => void = () => { throw new Error('registration not ready') }
+      record.on('before_agent_start', () => {
+        calls.push('A')
+        if (!mutated) {
+          mutated = true
+          removeB()
+          removeB() // disposer is idempotent
+          record.on('before_agent_start', () => { calls.push('D') })
+        }
+      })
+      removeB = record.on('before_agent_start', () => { calls.push('B') })
+      record.on('before_agent_start', () => { calls.push('C') })
+      const hello = createUserMessage({ content: [{ type: 'text', text: 'hello' }], source: { kind: 'user' } })
+      await driveStep(ctx, typedCtx as never, agent, [hello], 1)
+      expect(calls).toEqual(['A', 'B', 'C'])
+      calls.length = 0
+      await driveStep(ctx, typedCtx as never, agent, [hello], 2)
+      expect(calls).toEqual(['A', 'C', 'D'])
+    } finally { await ctx.fiber.dispose() }
+  })
+
+  it('disposes duplicate callback registrations independently without reordering them', async () => {
+    const { ctx, typedCtx, agent } = await mountedContext()
+    try {
+      const record = (globalThis as Record<string, unknown>).__icb as {
+        on(event: string, handler: () => void): () => void
+      }
+      const calls: string[] = []
+      const duplicate = () => { calls.push('same') }
+      record.on('before_agent_start', duplicate)
+      record.on('before_agent_start', () => { calls.push('middle') })
+      const removeSecond = record.on('before_agent_start', duplicate)
+      removeSecond()
+      const hello = createUserMessage({ content: [{ type: 'text', text: 'hello' }], source: { kind: 'user' } })
+      await driveStep(ctx, typedCtx as never, agent, [hello])
+      expect(calls).toEqual(['same', 'middle'])
+    } finally { await ctx.fiber.dispose() }
+  })
 
   it.each([
     [{ nextStep: [], nextTurn: [{ pending: true }] }, true],
@@ -208,6 +268,39 @@ describe('input/context bridge in the real DSH runtime', () => {
     const { assembly } = await driveStep(ctx, typedCtx as never, agent, [hello])
     // Chained, not last-wins: the second handler saw the first's override.
     expect(renderPrompt(assembly as never)).toContain('OVERRIDDEN BY TEST +CHAINED')
+  })
+
+  it('distinguishes custom-message run triggers from user prompts as Pi 1.2+ requires', async () => {
+    const { ctx, typedCtx, agent } = await mountedContext()
+    try {
+      const custom = createUserMessage({ content: [{ type: 'text', text: 'background update' }],
+        source: { kind: 'pi2dsh', plugin: 'probe', piCustomType: 'notice' },
+      })
+      await driveStep(ctx, typedCtx as never, agent, [custom], 1)
+      const record = (globalThis as Record<string, unknown>).__icb as Record<string, unknown>
+      expect(record.beforeAgentStart).toMatchObject({ messageType: 'custom', prompt: undefined,
+        message: { role: 'custom', customType: 'notice', content: [{ type: 'text', text: 'background update' }] },
+      })
+      await driveStep(ctx, typedCtx as never, agent, [createUserMessage({ content: [{ type: 'text', text: 'user question' }], source: { kind: 'user' } })], 2)
+      expect(record.beforeAgentStart).toMatchObject({ messageType: 'user', prompt: 'user question', message: undefined })
+    } finally { await ctx.fiber.dispose() }
+  })
+
+  it('executes nested tools through host policy, propagates updates, and returns failures without rejecting', async () => {
+    const { ctx, agent } = await mountedContext()
+    try {
+      const result = await executeTool(ctx, { callId: CallId('outer'), name: 'icb_nested', arguments: {}, agent, signal: new AbortController().signal })
+      expect(result.isError, JSON.stringify(result)).toBe(false)
+      expect(result.content).toEqual([{ type: 'text', text: '42' }])
+      const record = (globalThis as Record<string, unknown>).__icb as Record<string, any>
+      expect(record.nestedTools).toContain('icb_leaf')
+      expect(record.nested).toMatchObject({ toolCall: { id: 'outer/1', name: 'icb_leaf' }, isError: false, result: { structuredContent: { answer: 42 }, details: { leaf: true } } })
+      expect(record.nestedUpdates).toEqual([{ content: [{ type: 'text', text: 'progress' }] }])
+      expect(record.missingNested.isError).toBe(true)
+      expect(record.blockedNested.isError).toBe(true)
+      expect(record.abortedNested.isError).toBe(true)
+      expect(record.nestedParents).toContainEqual({ id: 'outer/1', parent: 'outer' })
+    } finally { await ctx.fiber.dispose() }
   })
 
   it('carries Pi\'s systemPromptOptions: the session cwd and the instruction files the host loaded', async () => {
@@ -284,7 +377,7 @@ describe('input/context bridge in the real DSH runtime', () => {
     }
     ;(ctx as unknown as { tools: { register(definition: unknown): () => void } }).tools.register(hostRead)
     const signal = new AbortController().signal
-    const outcome = await typedCtx.tools.execute({
+    const outcome = await executeTool(typedCtx, {
       signal, callId: CallId('host-read-1'), name: 'read', arguments: { file_path: '/repo/src/probe.ts', offset: 1 }, agent: agent as never,
     })
     expect(outcome.isError).toBe(false)
@@ -307,7 +400,7 @@ describe('input/context bridge in the real DSH runtime', () => {
       { turn: 1, step: 2, signal },
       async () => ({ kind: 'enter', messages: [] }),
     )
-    const call = async (name: string): Promise<unknown> => typedCtx.tools.execute({
+    const call = async (name: string): Promise<unknown> => executeTool(typedCtx, {
       signal, callId: CallId(`terminate-${name}`), name, arguments: {}, agent: agent as never,
     })
 

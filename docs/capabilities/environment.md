@@ -9,11 +9,16 @@ in Pi config are translated into official `dsh-mcp-client` entries by
 different case: its own transport, cache, OAuth and resource/prompt behavior
 continues to run, while pi2dsh maps only its public host surfaces into DSH.
 
-**4 upstream-shaped Pi rule rows** — 2 same semantics · 1 mapped, difference stated · 1 not available.
+**9 upstream-shaped Pi rule rows** — 4 same semantics · 4 mapped, difference stated · 1 not available.
 
 | Pi surface | Kind | Status | What it does on DSH |
 |---|---|---|---|
+| [`getSettings`](#getsettings-pi) | `pi.*` | Mapped, difference stated | Returns a detached Pi-shaped view of host default provider/model/reasoning from agentDefaultModel.currentSelection(). Pi-specific settings are not fabricated; session-local model changes do not change these defaults. |
+| [`registerMcpServer`](#registermcpserver-pi) | `pi.*` | Mapped, difference stated | Validates and records an MCP server in the Agent-shared Pi registration ledger, with extension ownership and namespace conflict checks. This is registration metadata, not an MCP connection: an installed consumer of mcp_servers_change must own connection/exposure behavior; the Pi built-in MCP extension is not automatically installed. |
+| [`unregisterMcpServer`](#unregistermcpserver-pi) | `pi.*` | Same semantics | Removes only the registering extension's MCP entry and announces the new list. |
+| [`getMcpServers`](#getmcpservers-pi) | `pi.*` | Same semantics | Returns detached copies of the Agent's registered MCP definitions in registration order. |
 | [`events`](#events-pi) | `pi.*` | Same semantics | Pi's cross-extension event bus: one shared bus per agent, so every Pi package mounted for the same agent hears every other package's emits — matching Pi's one-bus-per-session loader contract. Different agents have different buses. |
+| [`mcp_servers_change`](#mcp_servers_change-event) | `event` | Mapped, difference stated | Notifies mounted extensions when the Agent-shared MCP registration ledger changes. Startup registrations are read with getMcpServers during session_start. It does not imply servers have connected. |
 | [`project_trust`](#project_trust-event) | `event` | Not available | Project trust must remain owned by the DSH host; the handler is accepted but never consulted. |
 | [`resources_discover`](#resources_discover-event) | `event` | Mapped, difference stated | Fires right after session_start with the session cwd, as in Pi. Returned skillPaths that are directories are mounted into DSH's skills registry through the official filesystem provider (dsh-skill-filesystem), once per root per package, so dynamically discovered skills (a project's .claude/skills) list and load like static package skills. promptPaths and themePaths have no DSH seat and are reported rather than mounted; a single SKILL.md file path (no root) is reported too. |
 | [`isProjectTrusted`](#isprojecttrusted-ctx) | `ctx.*` | Same semantics | Reports the DSH host's own trust decision: true for an agent session's working directory, false for the host anchor and detached contexts. |
@@ -24,11 +29,41 @@ Every surface below names the DSH mechanism that carries it — the seam, servic
 or waterfall — so the mapping can be checked against the harness rather than
 taken on trust.
 
+### `getSettings` <a id="getsettings-pi"></a>
+
+`pi.*` · Mapped, difference stated
+
+Reads the official host default-model service; no Pi settings file or parallel settings authority.
+
+### `registerMcpServer` <a id="registermcpserver-pi"></a>
+
+`pi.*` · Mapped, difference stated
+
+Pi 1.4 McpServerRegistry and config validation; one registry per Agent event bus, disposed with the owning extension.
+
+### `unregisterMcpServer` <a id="unregistermcpserver-pi"></a>
+
+`pi.*` · Same semantics
+
+Owner-checked removal in the Agent-shared registration ledger.
+
+### `getMcpServers` <a id="getmcpservers-pi"></a>
+
+`pi.*` · Same semantics
+
+Pi 1.4 McpServerRegistry.list(); registrations in other Agents are isolated.
+
 ### `events` <a id="events-pi"></a>
 
 `pi.*` · Same semantics
 
 The bus is keyed on the owning agent in shared host state (host/anchor instances share the host bus). Each instance unwinds only its own subscriptions on dispose/reload, never the other packages'.
+
+### `mcp_servers_change` <a id="mcp_servers_change-event"></a>
+
+`event` · Mapped, difference stated
+
+Pi registration change listener to the same Agent's package dispatchers; snapshots are copied on each mutation.
 
 ### `project_trust` <a id="project_trust-event"></a>
 

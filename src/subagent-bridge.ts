@@ -84,9 +84,9 @@ export interface SubagentHost {
    */
   parentModelRoute?(): { provider?: string, model?: string } | undefined
   /**
-   * Claim a freshly created child agent for this instance: its requests join
-   * the instance's agent/request waterfall (which is what carries a per-child
-   * thinking level), and only the creating instance claims it.
+   * Claim a freshly created child agent for this instance and apply any
+   * per-child thinking choice through its native agent.model service. Only
+   * the creating instance claims this child.
    */
   adoptChildAgent?(child: unknown, thinkingLevel?: string): void
 }
@@ -1062,10 +1062,9 @@ export async function createBridgedAgentSession(
       )
     }
   }
-  // Pi's thinkingLevel option is per-child request config; DSH carries it on
-  // the instance's agent/request waterfall, which the adoption below joins the
-  // child to. An explicit 'off' must survive adoption: current DSH adapters
-  // can otherwise apply their own enabled-thinking default.
+  // Pi's thinkingLevel option belongs to this child. Adoption projects it
+  // into the child's native model selection before its first prompt. Preserve
+  // an explicit 'off' here; omission would instead ask for the host default.
   const thinkingLevel = typeof options.thinkingLevel === 'string' ? options.thinkingLevel : undefined
   host.adoptChildAgent?.(handle.agent, thinkingLevel)
   // Real Pi loads the child's extension set inside createAgentSession (the

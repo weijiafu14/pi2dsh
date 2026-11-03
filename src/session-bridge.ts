@@ -22,7 +22,7 @@ import { isPiEphemeralSession, isPiUserMessage, readSessionEvents } from './sess
 import { foldSurface } from '@deepseek-ai/dsh-session'
 import { getAgentDir } from './compat/vendor/pi-config-shim.js'
 import { fileContentForPi } from './dsh-content.js'
-import { getDefaultSessionDir } from './compat/vendor/pi-session-manager.js'
+import { getDefaultSessionDir, buildSessionProjection } from './compat/vendor/pi-session-manager.js'
 
 /** The durable seq behind a projected entry id (`dsh-<seq>`), when it has one. */
 function entrySeq(id: string): number | undefined {
@@ -514,7 +514,7 @@ export class PiSessionBridge {
     return entries
   }
 
-  /** The exact 14-method surface Pi exposes as ctx.sessionManager. */
+  /** Read-only Pi session methods over the host-authoritative visible surface. */
   readonlySessionManager(session: DshSessionLike, cwd: string): UnknownRecord {
     const entriesOf = (): PiProjectedEntry[] => this.projectEntries(session)
     const leafOf = (): PiProjectedEntry | undefined => entriesOf().at(-1)
@@ -534,6 +534,15 @@ export class PiSessionBridge {
         if (fromId === undefined) return entries
         const index = entries.findIndex(entry => entry.id === fromId)
         return index === -1 ? [] : entries.slice(0, index + 1)
+      },
+      buildSessionProjection: () => {
+        const projection = buildSessionProjection(entriesOf() as never)
+        const visible = this.visibleSeqs(session)
+        const entries = projection.entries.filter(item => {
+          const seq = entrySeq(item.sourceEntry.id)
+          return seq === undefined || visible === undefined || visible.has(seq)
+        })
+        return { ...projection, entries, messages: entries.flatMap(entry => entry.messages) }
       },
       // Pi's buildContextEntries is the COMPACTION-AWARE list — what actually
       // goes to the model. Two rules, both of them Pi's:

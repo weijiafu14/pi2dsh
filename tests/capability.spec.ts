@@ -1,3 +1,5 @@
+import { mountSessions } from './lib/dsh-compat.js'
+import { mountTools } from './lib/dsh-compat.js'
 // Capability contract: Pi session-control operations run on DSH's OWN
 // official surfaces, and what has no DSH mapping degrades legibly.
 //
@@ -51,9 +53,9 @@ function manifestFor(extensions: string[]): GeneratedRuntimeManifest {
 
 async function composeHost(options: { withSessions?: boolean } = {}): Promise<Context> {
   const ctx = new Context()
-  if (options.withSessions !== false) await ctx.plugin(SessionStore)
+  if (options.withSessions !== false) await mountSessions(ctx)
   await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
-  await ctx.plugin(ToolRuntime)
+  await mountTools(ctx)
   await ctx.plugin(CommandRuntime)
   await ctx.plugin(SkillRegistry)
   return ctx
@@ -208,15 +210,15 @@ describe('session control on a real DSH composition', () => {
     // reload really remounts: the command that just ran was re-registered.
     expect(parsed.reloadOutcome).toBe('ok')
 
-    // Three real sessions appeared (newSession + fork + navigateTree), each
-    // carrying lineage back to the probe session.
+    // Ordinary sessions/forks must not be classified as delegated children.
+    // The native prefix marker, not parentSession, owns fork inheritance.
     const after = typed.sessions!.list()
     expect(after.length).toBe(before + 3)
-    const lineage = after
-      .map(session => session.header.parentSession)
-      .filter(parent => parent !== undefined)
-    expect(lineage.every(parent => String(parent) === 'pi2dsh-capability-probe')).toBe(true)
-    expect(lineage.length).toBe(3)
+    const created = after.filter(session => String(session.id) !== 'pi2dsh-capability-probe')
+    expect(created).toHaveLength(3)
+    expect(created.every(session => session.header.parentSession === undefined && session.header.origin === undefined)).toBe(true)
+    expect(created.filter(session => session.header.isSeeded === true)).toHaveLength(2)
+    expect(created.filter(session => session.header.isSeeded === false)).toHaveLength(1)
 
     // The command survived its own reload-remount and still executes.
     const again = await typed.commands.execute(agent as never, '/cap-sessions', [], new AbortController().signal)

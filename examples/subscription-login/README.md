@@ -13,7 +13,7 @@ turn to it.
 ## 1. Install the engine
 
 ```sh
-dsh plugin --profile web add pi2dsh
+dsh plugin --profile web add pi2dsh@next
 ```
 
 Restart dsh. Nothing else is needed for the built-in accounts — `openai-codex`,

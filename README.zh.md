@@ -7,7 +7,7 @@
 运行——web、终端、headless 都一样。
 
 ```sh
-dsh plugin add pi2dsh            # 装一次
+dsh plugin add pi2dsh@next       # DSH 0.2.2-alpha.2；装一次
 dsh plugin add pi-mcp-adapter    # 之后装你在 Pi 上已经在用的包，直接用 npm 原包
 ```
 
@@ -20,18 +20,24 @@ elicitation、sampling、cancellation——经 DSH 自己的审批和渲染跑�
 
 | pi2dsh | DSH 宿主 | 维护状态 |
 |---|---|---|
+| 0.28.0-next.0（`next`） | 0.2.2-alpha.2 | Pi 1.4 预览线，[验收与边界](community/issue-10/README.md) |
 | 0.27.1 | 0.2.1-rc.2 / 0.2.1-rc.3 | [验收与发布状态](community/release-0.27.1/README.md) |
 | 0.27.0 | 0.2.1-rc.2 | [验收与发布状态](community/release-0.27.0/README.md) |
 | 0.26.0 | 0.2.0-rc.2 | [发布验收与缺凭证项目](community/release-0.26.0/README.md) |
 | 0.25.2 | 0.1.5-rc.2 | 保留检查点：[发布验收](community/release-0.25.2/README.md) |
 
-Pi 扩展语义仍固定在 0.84.1。新版引擎只针对已验证的当前 DSH 版本维护；
+已发布的 0.27.x 使用 Pi 0.84.1；0.28 候选面向 Pi 1.4.0，未实现的能力明确标注。
+新版引擎只针对已验证的当前 DSH 版本维护；
 旧版收到具体故障后，从对应发布 tag 分支修复。存量会话格式迁移由 DSH 负责。
 未经验证的新宿主版本不会自动写入兼容声明。
 
-两版宿主验证使用的终端为 `@deepseek-harness-tui/dsh-tui@0.17.0` 和
+**0.27.x / DSH 0.2.1 线**验证使用的终端为 `@deepseek-harness-tui/dsh-tui@0.17.0` 和
 `@xmoon76/dsh-pi-tui@0.5.3`。旧 dsh-pi-tui 0.5.1 仍引用已删除的宿主组件，
 请升级终端，不要用 `allow-version` 绕过。
+
+DSH 0.2.2-alpha.2 使用 `pi2dsh@next`，Web 套件使用 `dsh-work-x@next`，需要
+Node.js 24.9+。本轮核验的第三方终端尚未声明兼容该宿主，Web 与 headless 独立验收。
+DSH 0.2.1-rc.2 / rc.3 用户继续使用 `pi2dsh@0.27.1` / `dsh-work-x@0.6.1`。
 
 ## 为什么有这个项目
 
@@ -57,7 +63,7 @@ pi2dsh 是一层兼容层，把 Pi 的公开扩展 ABI 实现在 DSH 的原生�
 一次引擎，之后想装谁装谁：
 
 ```sh
-dsh plugin --profile web add pi2dsh
+dsh plugin --profile web add pi2dsh@next
 dsh plugin --profile web add pi-mcp-adapter
 ```
 
@@ -79,7 +85,7 @@ Pi 包（每一个都是你显式装的），用同一个桥实例挂载它们�
 | 装插件 | `dsh plugin add <包名>`（然后重启 dsh） |
 | 卸插件 | `dsh plugin remove <包名>`——先卸插件，再卸引擎 |
 | 升级插件 | `dsh plugin add <包名>@latest`，引擎不动 |
-| 升级引擎 | `dsh plugin add pi2dsh@latest`，插件不动 |
+| 升级预览线引擎 | `dsh plugin add pi2dsh@next`，插件不动；`latest` 保留旧宿主兼容线 |
 | 升级前先体检 | `npx pi2dsh inspect <包名>@<版本>` |
 
 两条安装期提示值得提前知道：
@@ -91,7 +97,8 @@ Pi 包（每一个都是你显式装的），用同一个桥实例挂载它们�
 - **刚发版后 add 装到了旧版本**：pnpm 的 `minimumReleaseAge` 会跳过刚发布不久
   的版本。显式钉版本即可：`dsh plugin add pi2dsh@<版本>`。
 
-需要 Node.js 22.19+ 和 DeepSeek Harness。
+当前开发线需要 Node.js 24.9+ 和 DSH 0.2.2-alpha.2。
+已发布的 0.27.x 仍使用 Node.js 22.19+ / DSH 0.2.1。
 
 ### 引擎配置
 
@@ -347,24 +354,24 @@ Pi 能力、落到哪些 DSH 机制、实际达到哪一级。
 
 ## Pi 的开放能力在 DSH 上怎么落
 
-Pi 包能碰到的每一个面，以及它落到 DSH 的什么位置。下面这些表是从桥在运行时真正
+当前已盘点的 Pi 能力、DSH 落点和支持边界。下面这些表是从桥在运行时真正
 查的那份规则生成的，所以不会和代码脱节。
 
-针对固定的 Pi 0.84.1，当前生成目录有 **111** 条上游形状的规则行。桥另外保留了一个
+当前生成目录记录版本化的运行时能力，不代表 Pi 全量能力都已支持。桥另外保留了一个
 兼容扩展 `unregisterTool`；它会出现在工具细表中，但明确不计入这个总数。
 `sessionManager` 等嵌套对象仍可能用一行代表多个方法，架构审计会明确写出这层边界。
 
 <!-- capability-table:start -->
 | 能力域 | Pi 面数 | 状态 |
 |---|---|---|
-| [工具](docs/capabilities/tools.md) | 11 | 2 语义一致 · 9 已映射并写明差异 |
+| [工具](docs/capabilities/tools.md) | 13 | 2 语义一致 · 11 已映射并写明差异 |
 | [命令、flag、编辑器输入](docs/capabilities/commands.md) | 13 | 13 已映射并写明差异 |
-| [消息、上下文、agent 循环](docs/capabilities/conversation.md) | 20 | 9 语义一致 · 11 已映射并写明差异 |
-| [会话与侧边对话](docs/capabilities/sessions.md) | 24 | 6 语义一致 · 18 已映射并写明差异 |
-| [模型、provider、凭证](docs/capabilities/models.md) | 15 | 1 语义一致 · 12 已映射并写明差异 · 2 不提供 |
-| [向用户提问与渲染](docs/capabilities/interaction.md) | 24 | 5 语义一致 · 19 已映射并写明差异 |
-| [项目环境与资源](docs/capabilities/environment.md) | 4 | 2 语义一致 · 1 已映射并写明差异 · 1 不提供 |
-| **合计** | **111** | **25 语义一致 · 83 已映射并写明差异 · 3 不提供** |
+| [消息、上下文、agent 循环](docs/capabilities/conversation.md) | 23 | 8 语义一致 · 13 已映射并写明差异 · 2 不提供 |
+| [会话与侧边对话](docs/capabilities/sessions.md) | 25 | 6 语义一致 · 18 已映射并写明差异 · 1 不提供 |
+| [模型、provider、凭证](docs/capabilities/models.md) | 19 | 2 语义一致 · 13 已映射并写明差异 · 4 不提供 |
+| [向用户提问与渲染](docs/capabilities/interaction.md) | 27 | 7 语义一致 · 20 已映射并写明差异 |
+| [项目环境与资源](docs/capabilities/environment.md) | 9 | 4 语义一致 · 4 已映射并写明差异 · 1 不提供 |
+| **合计** | **129** | **29 语义一致 · 92 已映射并写明差异 · 8 不提供** |
 <!-- capability-table:end -->
 
 另外还有 Pi 三个运行时包（`pi-coding-agent`、`pi-tui`、`pi-ai`）的 **203 个

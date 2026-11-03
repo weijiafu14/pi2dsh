@@ -9,13 +9,16 @@ and side conversations — in native Web slots. A Pi terminal component itself
 is not mounted in the browser; terminal-only factories and raw key handling
 remain headless or become an explicit Web-native projection.
 
-**24 upstream-shaped Pi rule rows** — 5 same semantics · 19 mapped, difference stated.
+**27 upstream-shaped Pi rule rows** — 7 same semantics · 20 mapped, difference stated.
 
 | Pi surface | Kind | Status | What it does on DSH |
 |---|---|---|---|
+| [`registerToolRenderer`](#registertoolrenderer-pi) | `pi.*` | Mapped, difference stated | Accepted with a host presentation notice; Pi terminal renderer resolvers are not invoked in DSH surfaces. |
 | [`registerMessageRenderer`](#registermessagerenderer-pi) | `pi.*` | Mapped, difference stated | The renderer really runs: a custom message the package sent is drawn by the package's own code and shown in the DSH web conversation. What reaches the browser is the component's rendered text, not a mounted Pi component. |
 | [`registerEntryRenderer`](#registerentryrenderer-pi) | `pi.*` | Mapped, difference stated | The renderer really runs: entries the package appended are drawn by the package's own code and shown in the DSH web conversation. What reaches the browser is the component's rendered text, not a mounted Pi component. |
 | [`registerMarkdownTransformer`](#registermarkdowntransformer-pi) | `pi.*` | Mapped, difference stated | Registration is accepted; DSH owns presentation, so the transformer is never invoked — matching Pi's non-TUI surfaces. |
+| [`ui_prompt_start`](#ui_prompt_start-event) | `event` | Same semantics | Announces the first blocking select/confirm/input/editor/custom prompt; overlapping prompts share the outer start/end pair. |
+| [`ui_prompt_end`](#ui_prompt_end-event) | `event` | Same semantics | Announces when the last overlapping blocking prompt settles, including cancellation and failure. |
 | [`notify`](#notify-ctxui) | `ctx.ui.*` | Same semantics | Captured as a command result when applicable and emitted through DSH logging at the severity the caller passed (warning and error log as warnings). |
 | [`setStatus`](#setstatus-ctxui) | `ctx.ui.*` | Same semantics | Pi's keyed status entries render in the active DSH front door: dsh-TUI's native status line, dsh-pi-tui's public footer-status slot, or package-keyed pills in the bridge's browser half. setStatus(key, undefined) removes exactly one entry. |
 | [`setWidget`](#setwidget-ctxui) | `ctx.ui.*` | Mapped, difference stated | Widgets float in DSH web's lower-right overlay stack, session-scoped: a single-line widget renders as an ambient status pill, taller content opens as a floating card on arrival and collapses to a labelled pill (diagnostics-shaped content gets product rows — file chips, severity dots, locations). setWidget(key, undefined) removes one widget. A component factory runs with a LIVE tui handle: requestRender re-renders the retained component into the same slot, and replacing or clearing the widget disposes it. |
@@ -44,6 +47,12 @@ Every surface below names the DSH mechanism that carries it — the seam, servic
 or waterfall — so the mapping can be checked against the harness rather than
 taken on trust.
 
+### `registerToolRenderer` <a id="registertoolrenderer-pi"></a>
+
+`pi.*` · Mapped, difference stated
+
+DSH owns tool presentation; Web never executes a Pi terminal renderer.
+
 ### `registerMessageRenderer` <a id="registermessagerenderer-pi"></a>
 
 `pi.*` · Mapped, difference stated
@@ -61,6 +70,18 @@ Custom entries live as Pi entry lines in the per-session Pi-format archive (DSH'
 `pi.*` · Mapped, difference stated
 
 Kept in bridge state and readable back; no DSH surface consumes it.
+
+### `ui_prompt_start` <a id="ui_prompt_start-event"></a>
+
+`event` · Same semantics
+
+Agent-shared prompt-depth tracking over native question/terminal UI calls; microtask delivery as in Pi 1.4.
+
+### `ui_prompt_end` <a id="ui_prompt_end-event"></a>
+
+`event` · Same semantics
+
+The actual UI Promise finally closes the same prompt-depth lifetime.
 
 ### `notify` <a id="notify-ctxui"></a>
 

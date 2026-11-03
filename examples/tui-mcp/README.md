@@ -1,5 +1,10 @@
 # Advanced MCP in dsh-TUI, from the Pi ecosystem
 
+**Host boundary:** the TUI instructions below belong to the historical stable
+host line. For DSH 0.2.2-alpha.2, use the verified Web/headless paths with
+`pi2dsh@next` / `dsh-work-x@next`; the checked third-party TUI releases do not
+declare support for that alpha. Do not bypass their compatibility checks.
+
 dsh-TUI already has a native `/mcp` command for DSH's official MCP client.
 This example keeps it intact and adds the published `pi-mcp-adapter` package
 for the capabilities that package owns: a full-screen server manager, lazy

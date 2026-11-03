@@ -9,7 +9,7 @@ results land in the session log in DSH's own shapes. A tool implementation can
 still call Node APIs directly, just like any trusted DSH plugin; only work
 handed to DSH's filesystem/subprocess/sandbox services inherits those providers.
 
-**11 upstream-shaped Pi rule rows** — 2 same semantics · 9 mapped, difference stated.
+**13 upstream-shaped Pi rule rows** — 2 same semantics · 11 mapped, difference stated.
 
 This page also documents **1 bridge-only compatibility extension**
 (`unregisterTool`), outside the pinned Pi ABI denominator.
@@ -28,6 +28,8 @@ This page also documents **1 bridge-only compatibility extension**
 | [`tool_call`](#tool_call-event) | `event` | Mapped, difference stated | Blocking is supported, in-place argument mutation reaches migrated Pi tools, and `terminate` follows Pi's batch rule — the loop stops after a tool batch only when every call in it was blocked asking to stop. Mutating a DSH-native tool's arguments is rejected because DSH logs arguments before policy. Host built-in file tools are shown with Pi's argument names (`file_path`→`path`, edit's `old_string`/`new_string`→`oldText`/`newText`, grep's `include`→`glob`), so extensions that read `input` by Pi's names — a path-scoped rule attaching to a matching read — see the shape they expect; migrated Pi tools pass through untouched. |
 | [`tool_result`](#tool_result-event) | `event` | Mapped, difference stated | Text replacement and success-to-error blocking are supported; arbitrary details and error recovery are not. Host built-in file tools are shown with Pi's argument names (`file_path`→`path`, edit's `old_string`/`new_string`→`oldText`/`newText`, grep's `include`→`glob`), so extensions that read `input` by Pi's names — a path-scoped rule attaching to a matching read — see the shape they expect; migrated Pi tools pass through untouched. |
 | [`user_bash`](#user_bash-event) | `event` | Mapped, difference stated | Registration is accepted; Pi's ! command surface never occurs on DSH surfaces, so the handler never fires. Loading is unaffected. |
+| [`executeTool`](#executetool-ctx) | `ctx.*` | Mapped, difference stated | Tool execute contexts run nested calls through the DSH invocation pipeline, with parent correlation, inherited cancellation, native policy, structured outcomes and Pi-tool partial updates. No separate executor or provider is created. Durable Pi nestedCalls transcript rows are not yet projected. |
+| [`tools`](#tools-ctx) | `ctx.*` | Mapped, difference stated | Tool execute contexts list the tools admitted by the host scope/step. Their executable wrappers call executeTool, never a raw tool body. Pi codemode/deferred reachability beyond host step admission is not represented. |
 
 ## How each one is built
 
@@ -106,6 +108,18 @@ The same tools/post-execute waterfall, which is where a result can still be rewr
 `event` · Mapped, difference stated
 
 The handler goes into the bridge's handler map like any other, and nothing dispatches it: no DSH seam produces Pi's ! command surface. Registration is kept rather than refused so a package that subscribes at load time still loads.
+
+### `executeTool` <a id="executetool-ctx"></a>
+
+`ctx.*` · Mapped, difference stated
+
+ToolExecutionPipeline prepare/dispatch/complete; the enclosing execution supplies its opaque parent token, rootCallId and step toolSet. Native argument names are translated back before dispatch.
+
+### `tools` <a id="tools-ctx"></a>
+
+`ctx.*` · Mapped, difference stated
+
+DSH tools.definitions(agent, toolSet) with execution through the same public pipeline.
 
 ---
 

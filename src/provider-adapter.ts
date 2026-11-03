@@ -46,6 +46,7 @@ export interface ProviderAdapterHost {
   ): Promise<UnknownRecord>
   /** The durable attachment store, when the composition mounts one. */
   resolveAttachments?(): DshAttachmentsLike | undefined
+  onProviderStreamEvent?(data: unknown, request: { provider: string, model: UnknownRecord, sessionId?: string, signal?: AbortSignal }): Promise<void>
 }
 
 export function providerCarriesTransport(value: UnknownRecord | undefined): value is PiTransportProvider & UnknownRecord {
@@ -61,7 +62,7 @@ function providerModels(provider: PiTransportProvider): UnknownRecord[] {
     // Reading only the function form made every one of those declare an empty
     // catalog, and a route with no models is refused by the host adapter.
     const models = typeof provider.getModels === 'function' ? provider.getModels() : provider.models
-    return Array.isArray(models) ? models : []
+    return Array.isArray(models) ? models.filter(model => model.type === undefined || model.type === 'chat') : []
   } catch {
     return []
   }
@@ -254,6 +255,13 @@ export function piProviderDshAdapter(providerId: string, provider: PiTransportPr
           onPayload: (payload: UnknownRecord) => host.beforeProviderRequest!(payload, {
             provider: providerId,
             model,
+            ...(typeof options.sessionId === 'string' ? { sessionId: options.sessionId } : {}),
+            ...(options.signal instanceof AbortSignal ? { signal: options.signal } : {}),
+          }),
+        }),
+        ...(host.onProviderStreamEvent === undefined ? {} : {
+          onProviderStreamEvent: (data: unknown, streamedModel?: UnknownRecord) => host.onProviderStreamEvent!(data, {
+            provider: providerId, model: streamedModel ?? model,
             ...(typeof options.sessionId === 'string' ? { sessionId: options.sessionId } : {}),
             ...(options.signal instanceof AbortSignal ? { signal: options.signal } : {}),
           }),

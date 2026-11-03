@@ -1,3 +1,5 @@
+import { mountSessions } from './lib/dsh-compat.js'
+import { mountTools } from './lib/dsh-compat.js'
 // resources_discover contract — Pi fires it right after session_start with the
 // session cwd; handlers hand back extra skill roots (pi-code: the project's
 // .claude/skills). On DSH those roots must land in the host skills registry
@@ -63,9 +65,9 @@ describe('resources_discover on DSH', () => {
       },
     }
     const ctx = new Context()
-    await ctx.plugin(SessionStore)
+    await mountSessions(ctx)
     await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
-    await ctx.plugin(ToolRuntime)
+    await mountTools(ctx)
     await ctx.plugin(CommandRuntime)
     await ctx.plugin(SkillRegistry)
     await ctx.plugin(AgentRegistry)

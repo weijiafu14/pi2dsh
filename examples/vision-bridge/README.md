@@ -14,7 +14,7 @@ loop — CLI and web — with the test images in [`test-images/`](test-images/).
 ## 1. Install the engine, then the plugin
 
 ```sh
-dsh plugin --profile web add pi2dsh
+dsh plugin --profile web add pi2dsh@next
 dsh plugin --profile web add @kassing/pi-vision
 ```
 

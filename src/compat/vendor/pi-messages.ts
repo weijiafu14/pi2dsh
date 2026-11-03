@@ -1,4 +1,4 @@
-// @ts-nocheck — vendored Pi source; checked upstream under Pi's own tsconfig.
+// @ts-nocheck — Pi v1.4.0 (4a08025), MIT (./PI-LICENSE); local imports remapped, pure upstream logic unchanged.
 /**
  * Custom message types and transformers for the coding agent.
  *
@@ -6,7 +6,8 @@
  * and provides a transformer to convert them to LLM-compatible messages.
  */
 
-import type { AgentMessage, ImageContent, Message, TextContent } from "./pi-types.ts";
+import type { AgentMessage } from "./pi-types.ts";
+import type { ImageContent, Message, TextContent } from "@earendil-works/pi-ai";
 
 export const COMPACTION_SUMMARY_PREFIX = `The conversation history before this point was compacted into the following summary:
 
@@ -55,7 +56,7 @@ export interface CustomMessage<T = unknown> {
 export interface BranchSummaryMessage {
 	role: "branchSummary";
 	summary: string;
-	fromId: string;
+	fromId: string | null;
 	timestamp: number;
 }
 
@@ -66,6 +67,7 @@ export interface CompactionSummaryMessage {
 	timestamp: number;
 }
 
+// Extend CustomAgentMessages via declaration merging
 
 /**
  * Convert a BashExecutionMessage to user message text for LLM context.
@@ -172,6 +174,7 @@ export function convertToLlm(messages: AgentMessage[]): Message[] {
 						],
 						timestamp: m.timestamp,
 					};
+				case "system":
 				case "user":
 				case "assistant":
 				case "toolResult":

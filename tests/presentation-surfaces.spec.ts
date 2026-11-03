@@ -1,3 +1,5 @@
+import { mountSessions } from './lib/dsh-compat.js'
+import { mountTools } from './lib/dsh-compat.js'
 // One test per Pi presentation surface, locked at the seam the browser half
 // actually reads.
 //
@@ -241,9 +243,9 @@ beforeAll(async () => {
       return () => {}
     },
   })
-  await ctx.plugin(SessionStore)
+  await mountSessions(ctx)
   await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
-  await ctx.plugin(ToolRuntime)
+  await mountTools(ctx)
   await ctx.plugin(CommandRuntime)
 
   const mount: Plugin.Object = {

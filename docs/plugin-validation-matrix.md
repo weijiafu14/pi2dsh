@@ -1,5 +1,19 @@
 # 真实插件验证
 
+## DSH 0.2.2 / Pi 1.4 开发检查点（2026-10-29）
+
+2026-11-03：Pi 依赖已切到 1.4.0，最终本地 verify、完整 examples、headless
+pi-subagents 和 step-seams 回归完成；缺凭证/第三方终端不兼容的项目明确保留边界。
+逐项结果与版本散列见[本轮验收](../community/issue-10/README.md)。
+不得把下列旧版本实证继承为本候选通过。新增非聊天模型调用
+的范围决策及源码证据见[架构模型检查点](architecture-mapping-matrix.md#当前检查点与需确认的兼容边界)。
+事件退订两条新断言经真实 DSH system-prompt assembly 驱动原样探针扩展，覆盖派发期间
+增删及重复回调的独立撤销；它们是公共契约测试，不是社区包功能 E2E。
+
+新增 `executeTool` 契约通过真实宿主执行管线验证嵌套 id/parent、工具拦截、未知工具、
+取消、进度和 structuredContent。MCP registry 与 UI prompt lifetime 有独立契约测试；
+不能把它们算作真实 MCP 外部授权或新 codemode 工作流通过。
+
 ## DSH rc.2 / rc.3 双宿主验收（2026-10-26）
 
 pi2dsh 0.27.1 / dsh-work-x 0.6.1 候选正在验收，结果以

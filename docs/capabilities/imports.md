@@ -16,51 +16,52 @@ that reach for host state (config directories, session storage, the model call
 inside compaction): those are re-pointed at DSH-owned locations and services,
 which is exactly where a package's Pi assumptions have to stop.
 
-**112 symbols** — 64 same semantics · 47 mapped, difference stated · 1 not available.
+**113 symbols** — 65 same semantics · 47 mapped, difference stated · 1 not available.
 
 | Symbol | Status | How it is served |
 |---|---|---|
 | `defineTool` | Same semantics | Identity helper, preserved. |
 | `CONFIG_DIR_NAME` | Mapped, difference stated | The conventional config directory name is preserved, while DSH owns the actual profile layout. |
-| `DEFAULT_MAX_LINES` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `DEFAULT_MAX_BYTES` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
+| `DEFAULT_MAX_LINES` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `DEFAULT_MAX_BYTES` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
 | `VERSION` | Mapped, difference stated | Reports a pi2dsh compatibility marker instead of a Pi release version. |
-| `CURRENT_SESSION_VERSION` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
+| `CURRENT_SESSION_VERSION` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
 | `getAgentDir` | Mapped, difference stated | Redirected to an isolated DSH-owned pi2dsh directory instead of Pi global state. |
 | `getPackageDir` | Mapped, difference stated | Resolves inside the DSH-owned pi2dsh agent directory. |
-| `formatSize` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `truncateHead` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `truncateTail` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `truncateLine` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `withFileMutationQueue` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `SessionManager` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. Sessions live under the DSH-owned pi2dsh agent directory. |
-| `parseSessionEntries` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `migrateSessionEntries` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `getLatestCompactionEntry` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `sessionEntryToContextMessages` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `buildContextEntries` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `buildSessionContext` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `loadEntriesFromFile` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `findMostRecentSession` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `getDefaultSessionDir` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `assertValidSessionId` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `convertToLlm` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `createCustomMessage` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `createBranchSummaryMessage` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `createCompactionSummaryMessage` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `bashExecutionToText` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `estimateTokens` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `calculateContextTokens` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. Pi's Usage-based total (an earlier reimplementation summed message estimates — same name, different meaning — and was replaced). |
-| `DEFAULT_COMPACTION_SETTINGS` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `serializeConversation` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `shouldCompact` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. The pure threshold check; DSH still owns automatic compaction scheduling. |
+| `formatSize` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `truncateHead` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `truncateTail` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `truncateLine` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `withFileMutationQueue` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `SessionManager` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. Sessions live under the DSH-owned pi2dsh agent directory. |
+| `parseSessionEntries` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `migrateSessionEntries` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `getLatestCompactionEntry` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `sessionEntryToContextMessages` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `buildContextEntries` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `buildSessionContext` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `buildSessionProjection` | Same semantics | Pi 1.4.0 pure canonical context projection, including context-edit records; importing this helper does not authorize editing DSH history. |
+| `loadEntriesFromFile` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `findMostRecentSession` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `getDefaultSessionDir` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `assertValidSessionId` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `convertToLlm` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `createCustomMessage` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `createBranchSummaryMessage` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `createCompactionSummaryMessage` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `bashExecutionToText` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `estimateTokens` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `calculateContextTokens` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. Pi's Usage-based total (an earlier reimplementation summed message estimates — same name, different meaning — and was replaced). |
+| `DEFAULT_COMPACTION_SETTINGS` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `serializeConversation` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `shouldCompact` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. The pure threshold check; DSH still owns automatic compaction scheduling. |
 | `compact` | Mapped, difference stated | Vendored Pi logic; the model call fills Pi's own streamFn injection point with the DSH llm bridge when the caller passes none, so summarization runs on the ONE model path. Without a mounted llm service it fails explicitly. |
-| `findCutPoint` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
+| `findCutPoint` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
 | `generateSummary` | Mapped, difference stated | Vendored Pi logic; the model call fills Pi's own streamFn injection point with the DSH llm bridge when the caller passes none, so summarization runs on the ONE model path. Without a mounted llm service it fails explicitly. |
 | `generateSummaryWithUsage` | Mapped, difference stated | Vendored Pi logic; the model call fills Pi's own streamFn injection point with the DSH llm bridge when the caller passes none, so summarization runs on the ONE model path. Without a mounted llm service it fails explicitly. |
 | `generateBranchSummary` | Mapped, difference stated | Vendored Pi logic; the model call fills Pi's own streamFn injection point with the DSH llm bridge when the caller passes none, so summarization runs on the ONE model path. Without a mounted llm service it fails explicitly. |
-| `parseFrontmatter` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. Returns Pi's public { frontmatter, body } shape with YAML-parsed values (an earlier reimplementation returned { attributes } with string values and was replaced). |
-| `stripFrontmatter` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
+| `parseFrontmatter` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. Returns Pi's public { frontmatter, body } shape with YAML-parsed values (an earlier reimplementation returned { attributes } with string values and was replaced). |
+| `stripFrontmatter` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
 | `copyToClipboard` | Mapped, difference stated | Attempts the platform clipboard command (pbcopy/clip/wl-copy/xclip); resolves false when none succeeds. |
 | `resizeImage` | Mapped, difference stated | Passes images through un-resized; Pi resizes only to save tokens, so content is preserved. |
 | `convertToPng` | Mapped, difference stated | PNG input passes through; other formats fail explicitly without Pi's wasm codec. |
@@ -82,13 +83,13 @@ which is exactly where a package's Pi assumptions have to stop.
 | `createEventBus` | Same semantics | Pi event-bus semantics: async handler isolation and unsubscribe functions. |
 | `readStoredCredential` | Mapped, difference stated | Reads Pi-style auth.json from the pi2dsh-owned agent directory; DSH credentials stay authoritative for DSH model calls. |
 | `parseSkillBlock` | Same semantics | Pi's skill_content block parser, reimplemented over the same wire shape. |
-| `wrapRegisteredTool` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. The runner argument is used exactly as Pi uses it (createContext + getActiveTools), which the pi2dsh projection provides. |
-| `hasTrustRequiringProjectResources` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. The predicate Pi's own resolveProjectTrusted short-circuits on before it emits project_trust: true for trust-requiring entries under cwd/.pi or a project-local .agents/skills up the tree, false otherwise. Extensions gating resources Pi does not look for (a .claude/ directory) import it to reproduce that decision and store their answer in the same ProjectTrustStore. |
-| `ProjectTrustStore` | Mapped, difference stated | Vendored byte-identical from Pi, so semantics match Pi exactly. The store operates on trust.json under the caller's agentDir — with the redirected getAgentDir convention that is package-visible state inside the DSH-owned pi2dsh directory. The DSH host never consults it; host trust stays a DSH decision (ctx.isProjectTrusted reports it: true for an agent session's directory, fail-closed without an agent). |
+| `wrapRegisteredTool` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. The runner argument is used exactly as Pi uses it (createContext + getActiveTools), which the pi2dsh projection provides. |
+| `hasTrustRequiringProjectResources` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. The predicate Pi's own resolveProjectTrusted short-circuits on before it emits project_trust: true for trust-requiring entries under cwd/.pi or a project-local .agents/skills up the tree, false otherwise. Extensions gating resources Pi does not look for (a .claude/ directory) import it to reproduce that decision and store their answer in the same ProjectTrustStore. |
+| `ProjectTrustStore` | Mapped, difference stated | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. The store operates on trust.json under the caller's agentDir — with the redirected getAgentDir convention that is package-visible state inside the DSH-owned pi2dsh directory. The DSH host never consults it; host trust stays a DSH decision (ctx.isProjectTrusted reports it: true for an agent session's directory, fail-closed without an agent). |
 | `DefaultResourceLoader` | Mapped, difference stated | A headless resource loader honoring overrides. Extension discovery is REAL: the default-discovered set is the host's installed Pi packages (each package's declared pi extension entry, as an absolute installed path), so a creator's own filtering code — pi-subagents' extensions/exclude_extensions/ext: machinery canonicalizes by entry basename and owning-manifest npm short name — runs unchanged and selects exactly what it selects on Pi. noExtensions empties the set; additionalExtensionPaths cannot be loaded fresh on this host and surface as per-entry errors (Pi's diagnostics shape). Skills/prompts/themes/agents-files discovery stays empty. |
 | `DefaultPackageManager` | Not available | Installing packages is owned by the DSH host and its security gates (dsh plugin add/remove behind pnpm's build-script approval). Importing it is flagged at mount time (startup check); constructing it throws a structured PiCapabilityError, and doing so during entry setup marks the package unusable. |
 | `ModelRuntime` | Mapped, difference stated | ModelRuntime.create() returns a runtime whose model calls (stream/complete/streamSimple/completeSimple) run on the ONE model path — the same DSH llm bridge pi-ai's top-level complete()/stream() use — so an extension's one-off in-process completions (a prompt-over-page fetch, a `type: prompt` hook) are real model calls on the host route. The directory and credential surface (getModels/getModel/refresh/login/registerProvider…) throws a structured PiCapabilityError: the model directory is the host llm configuration, read through ctx.modelRegistry. The constructor is private in Pi and throws here too. |
-| `createAgentSession` | Mapped, difference stated | Bridged to a genuine DSH child agent through ctx.agents with the creator-exclusive setup contribution. Newer hosts receive the live parentAgent explicitly and provide the unpublished child as the second setup argument; older hosts supply it through the child context. Child tools join a preset composition in the roster's official preference order — inherit the parent's standing composition (composeFrom), else mount the roster default — which is what keeps children tooled on roster-owned surfaces (dsh-tui disables host-layer tool rows); rosterless deployments compose from the host rows as before. The Pi tools allowlist/excludeTools become official scoped restrictions, customTools register in the child scope, delegation policy travels the official way, and the child's model resolves in three tiers — the explicit Pi model on the options, else the caller's LIVE route read from its durable session log's last request/header (so a mid-session /model switch in the DSH UI is inherited, proven live on the stock TUI), else the creation-time snapshot; a truly modelless child fails its first {{model}}-keyed prompt assembly. A per-child thinkingLevel becomes the child's own reasoningEffort through the official agent/request waterfall (never leaking to siblings or the parent). session.subscribe projects native tool-role results into tool_execution_start/end. prompt completion is correlated with the exact inbox message and claimed turn; failure, cancellation and token-limit reasons are retained in the Pi assistant stopReason/errorMessage rather than reported as successful empty output. The child model is read from request/header.header.config, The child is served its EXTENSION SET exactly as real Pi loads one: the host's installed Pi packages, filtered by the creator's resource loader (its own getExtensions applies noExtensions/extensionsOverride — the creator's code decides; no loader means Pi's default, everything discovered), mounted as per-child package instances on the child agent's own ctx before createAgentSession returns — their tools register in the child scope, their handlers see the child session, and everything unwinds with the agent (leak-free by scope, not by bookkeeping). bindExtensions() reports per-extension mount failures to the binding's onError in Pi's {extensionPath, error} shape; one timing nuance: session_start reaches child-bound packages at creation rather than at the bindExtensions call. steer() and followUp() are async per Pi's AgentSession face (consumers chain .catch on the returned promise; steer interrupts, followUp queues behind the running turn), and abort() follows Pi's contract: the child turn is cancelled AND post-abort wakes (a late tool result reaching quiescence) are re-cancelled on every opening event until the next explicit prompt(). The child exposes session.sessionManager (readonly projection) whose getSessionFile() names a durable archive (`<id>.jsonl`) in genuine Pi session-file format — a Pi header line plus any Pi-only entries, parseable by Pi's own SessionManager; getSessionFile returns a derived full transcript under the redirected sessions directory, while native resume and API reads remain authoritative in DSH; the legacy Pi-only archive remains readable for existing handles. Handing a SessionManager opened FROM such an archive back to createAgentSession reopens the SAME persisted DSH session through the registry's official resume seam, across process restarts (pi-subagents' tombstone resurrect shape). If a reopen fails, DSH's own persistence list() delivers the verdict (the check agent-loop itself uses): a POSITIVE "gone" retires the archive file so existsSync answers honestly from then on, while a composition merely lacking persistence keeps the token and fails loudly — absence of evidence never destroys a valid identity. Compositions without a loop factory fail explicitly. |
+| `createAgentSession` | Mapped, difference stated | Bridged to a genuine DSH child agent through ctx.agents with the creator-exclusive setup contribution. Newer hosts receive the live parentAgent explicitly and provide the unpublished child as the second setup argument; older hosts supply it through the child context. Child tools join a preset composition in the roster's official preference order — inherit the parent's standing composition (composeFrom), else mount the roster default — which is what keeps children tooled on roster-owned surfaces (dsh-tui disables host-layer tool rows); rosterless deployments compose from the host rows as before. The Pi tools allowlist/excludeTools become official scoped restrictions, customTools register in the child scope, delegation policy travels the official way, and the child model uses explicit Pi options or the native pending AgentModel selection; a truly modelless child fails its first {{model}}-keyed prompt assembly. A per-child thinkingLevel becomes the child's own reasoningEffort through the official child AgentModel API (never leaking to siblings or the parent). session.subscribe projects native tool-role results into tool_execution_start/end. prompt completion is correlated with the exact inbox message and claimed turn; failure, cancellation and token-limit reasons are retained in the Pi assistant stopReason/errorMessage rather than reported as successful empty output. The child model is read from request/header.header.config, The child is served its EXTENSION SET exactly as real Pi loads one: the host's installed Pi packages, filtered by the creator's resource loader (its own getExtensions applies noExtensions/extensionsOverride — the creator's code decides; no loader means Pi's default, everything discovered), mounted as per-child package instances on the child agent's own ctx before createAgentSession returns — their tools register in the child scope, their handlers see the child session, and everything unwinds with the agent (leak-free by scope, not by bookkeeping). bindExtensions() reports per-extension mount failures to the binding's onError in Pi's {extensionPath, error} shape; one timing nuance: session_start reaches child-bound packages at creation rather than at the bindExtensions call. steer() and followUp() are async per Pi's AgentSession face (consumers chain .catch on the returned promise; steer interrupts, followUp queues behind the running turn), and abort() follows Pi's contract: the child turn is cancelled AND post-abort wakes (a late tool result reaching quiescence) are re-cancelled on every opening event until the next explicit prompt(). The child exposes session.sessionManager (readonly projection) whose getSessionFile() names a durable archive (`<id>.jsonl`) in genuine Pi session-file format — a Pi header line plus any Pi-only entries, parseable by Pi's own SessionManager; getSessionFile returns a derived full transcript under the redirected sessions directory, while native resume and API reads remain authoritative in DSH; the legacy Pi-only archive remains readable for existing handles. Handing a SessionManager opened FROM such an archive back to createAgentSession reopens the SAME persisted DSH session through the registry's official resume seam, across process restarts (pi-subagents' tombstone resurrect shape). If a reopen fails, DSH's own persistence list() delivers the verdict (the check agent-loop itself uses): a POSITIVE "gone" retires the archive file so existsSync answers honestly from then on, while a composition merely lacking persistence keeps the token and fails loudly — absence of evidence never destroys a valid identity. Compositions without a loop factory fail explicitly. |
 | `createCodingTools` | Same semantics | Pi's exact tool set composed from the vendored built-in constructors. |
 | `createReadOnlyTools` | Same semantics | Pi's exact read-only tool set composed from the vendored built-in constructors. |
 | `createBashTool` | Same semantics | Pi's built-in tool constructor, vendored byte-identical with its pure-logic closure. |
@@ -113,8 +114,8 @@ which is exactly where a package's Pi assumptions have to stop.
 | `isGrepToolResult` | Same semantics | Pi's exact one-line tool-event guard, reimplemented verbatim. |
 | `isFindToolResult` | Same semantics | Pi's exact one-line tool-event guard, reimplemented verbatim. |
 | `isLsToolResult` | Same semantics | Pi's exact one-line tool-event guard, reimplemented verbatim. |
-| `loadSkills` | Mapped, difference stated | Vendored byte-identical from Pi, so semantics match Pi exactly. Real directory discovery with Pi's exact rules; default locations resolve through the redirected getAgentDir, i.e. inside the DSH-owned pi2dsh directory. |
-| `loadSkillsFromDir` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. Real directory discovery: SKILL.md roots, direct .md children, ignore files, symlink dedup, and Pi's name/description validation. |
+| `loadSkills` | Mapped, difference stated | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. Real directory discovery with Pi's exact rules; default locations resolve through the redirected getAgentDir, i.e. inside the DSH-owned pi2dsh directory. |
+| `loadSkillsFromDir` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. Real directory discovery: SKILL.md roots, direct .md children, ignore files, symlink dedup, and Pi's name/description validation. |
 | `formatSkillsForPrompt` | Same semantics | Pi's skill prompt formatter, vendored with logic unchanged. |
 | `CustomEditor` | Mapped, difference stated | Constructible headless component with Pi-exact signatures; renders plain text, never a terminal. |
 | `ToolExecutionComponent` | Mapped, difference stated | Constructible headless component with Pi-exact signatures; renders plain text, never a terminal. |
@@ -145,60 +146,60 @@ overlay is honest about not drawing it.
 
 | Symbol | Status | How it is served |
 |---|---|---|
-| `visibleWidth` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `truncateToWidth` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `wrapTextWithAnsi` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `sliceByColumn` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `sliceWithWidth` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `stripTerminalSequences` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `getOsc8LinkAtColumn` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `normalizeTerminalOutput` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `extractAnsiCode` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `getGraphemeCellRange` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `getGraphemeSegmenter` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `getWordSegmenter` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `applyBackgroundToLine` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `isWhitespaceChar` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `isPunctuationChar` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `cjkBreakRegex` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `PUNCTUATION_REGEX` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `fuzzyMatch` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `fuzzyFilter` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `parseKey` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `matchesKey` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `isKeyRelease` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `isKeyRepeat` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `decodeKittyPrintable` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `isKittyProtocolActive` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `setKittyProtocolActive` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `Key` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `getKeybindings` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. Bindings only match when a surface feeds terminal input, which DSH does not. |
-| `setKeybindings` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `KeybindingsManager` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `TUI_KEYBINDINGS` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `parseOsc11BackgroundColor` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `parseTerminalColorSchemeReport` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `renderLatex` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `getPngDimensions` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `getJpegDimensions` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `getGifDimensions` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `getWebpDimensions` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `getImageDimensions` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `calculateImageRows` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `allocateImageId` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `encodeKitty` | Mapped, difference stated | Vendored byte-identical from Pi, so semantics match Pi exactly. No DSH surface consumes the escape sequences. |
-| `encodeITerm2` | Mapped, difference stated | Vendored byte-identical from Pi, so semantics match Pi exactly. No DSH surface consumes the escape sequences. |
-| `deleteKittyImage` | Mapped, difference stated | Vendored byte-identical from Pi, so semantics match Pi exactly. No DSH surface consumes the escape sequences. |
-| `deleteAllKittyImages` | Mapped, difference stated | Vendored byte-identical from Pi, so semantics match Pi exactly. No DSH surface consumes the escape sequences. |
-| `detectCapabilities` | Mapped, difference stated | Vendored byte-identical from Pi, so semantics match Pi exactly. Headless environments report no image protocol. |
-| `getCapabilities` | Mapped, difference stated | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `setCapabilities` | Mapped, difference stated | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `resetCapabilitiesCache` | Mapped, difference stated | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `getCellDimensions` | Mapped, difference stated | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `setCellDimensions` | Mapped, difference stated | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `hyperlink` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `imageFallback` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `CombinedAutocompleteProvider` | Mapped, difference stated | Vendored byte-identical from Pi, so semantics match Pi exactly. Suggestions surface only if a DSH UI asks for them. |
+| `visibleWidth` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `truncateToWidth` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `wrapTextWithAnsi` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `sliceByColumn` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `sliceWithWidth` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `stripTerminalSequences` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `getOsc8LinkAtColumn` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `normalizeTerminalOutput` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `extractAnsiCode` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `getGraphemeCellRange` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `getGraphemeSegmenter` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `getWordSegmenter` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `applyBackgroundToLine` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `isWhitespaceChar` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `isPunctuationChar` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `cjkBreakRegex` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `PUNCTUATION_REGEX` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `fuzzyMatch` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `fuzzyFilter` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `parseKey` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `matchesKey` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `isKeyRelease` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `isKeyRepeat` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `decodeKittyPrintable` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `isKittyProtocolActive` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `setKittyProtocolActive` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `Key` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `getKeybindings` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. Bindings only match when a surface feeds terminal input, which DSH does not. |
+| `setKeybindings` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `KeybindingsManager` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `TUI_KEYBINDINGS` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `parseOsc11BackgroundColor` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `parseTerminalColorSchemeReport` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `renderLatex` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `getPngDimensions` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `getJpegDimensions` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `getGifDimensions` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `getWebpDimensions` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `getImageDimensions` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `calculateImageRows` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `allocateImageId` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `encodeKitty` | Mapped, difference stated | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. No DSH surface consumes the escape sequences. |
+| `encodeITerm2` | Mapped, difference stated | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. No DSH surface consumes the escape sequences. |
+| `deleteKittyImage` | Mapped, difference stated | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. No DSH surface consumes the escape sequences. |
+| `deleteAllKittyImages` | Mapped, difference stated | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. No DSH surface consumes the escape sequences. |
+| `detectCapabilities` | Mapped, difference stated | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. Headless environments report no image protocol. |
+| `getCapabilities` | Mapped, difference stated | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `setCapabilities` | Mapped, difference stated | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `resetCapabilitiesCache` | Mapped, difference stated | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `getCellDimensions` | Mapped, difference stated | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `setCellDimensions` | Mapped, difference stated | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `hyperlink` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `imageFallback` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `CombinedAutocompleteProvider` | Mapped, difference stated | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. Suggestions surface only if a DSH UI asks for them. |
 | `Marked` | Same semantics | Re-exported from the same marked dependency Pi uses. |
 | `CURSOR_MARKER` | Same semantics | Pi's exact APC marker; vendored width math treats it as zero-width. |
 | `Text` | Mapped, difference stated | Constructible headless component with Pi-exact signatures; renders plain text, never a terminal. |
@@ -228,10 +229,30 @@ there is exactly one model path, and a package cannot reach around it to a
 direct transport. Providers a package brings itself become real DSH routes
 through `llm.registerAdapter`.
 
-**31 symbols** — 22 same semantics · 9 mapped, difference stated.
+**51 symbols** — 42 same semantics · 9 mapped, difference stated.
 
 | Symbol | Status | How it is served |
 |---|---|---|
+| `createInitialSystemMessage` | Same semantics | Pure Pi 1.4.0 transcript/model-type logic, vendored without a model runtime or transport. |
+| `normalizeContext` | Same semantics | Pure Pi 1.4.0 transcript/model-type logic, vendored without a model runtime or transport. |
+| `getInitialSystemMessage` | Same semantics | Pure Pi 1.4.0 transcript/model-type logic, vendored without a model runtime or transport. |
+| `withoutInitialSystemMessage` | Same semantics | Pure Pi 1.4.0 transcript/model-type logic, vendored without a model runtime or transport. |
+| `getCurrentTools` | Same semantics | Pure Pi 1.4.0 transcript/model-type logic, vendored without a model runtime or transport. |
+| `getCurrentSystemMessage` | Same semantics | Pure Pi 1.4.0 transcript/model-type logic, vendored without a model runtime or transport. |
+| `getCurrentSystemPrompt` | Same semantics | Pure Pi 1.4.0 transcript/model-type logic, vendored without a model runtime or transport. |
+| `collapseSystemMessages` | Same semantics | Pure Pi 1.4.0 transcript/model-type logic, vendored without a model runtime or transport. |
+| `resolveTranscript` | Same semantics | Pure Pi 1.4.0 transcript/model-type logic, vendored without a model runtime or transport. |
+| `toToolDeclaration` | Same semantics | Pure Pi 1.4.0 transcript/model-type logic, vendored without a model runtime or transport. |
+| `declarationsEqual` | Same semantics | Pure Pi 1.4.0 transcript/model-type logic, vendored without a model runtime or transport. |
+| `getToolStateChanges` | Same semantics | Pure Pi 1.4.0 transcript/model-type logic, vendored without a model runtime or transport. |
+| `getDeclaredTools` | Same semantics | Pure Pi 1.4.0 transcript/model-type logic, vendored without a model runtime or transport. |
+| `hasToolRedefinitions` | Same semantics | Pure Pi 1.4.0 transcript/model-type logic, vendored without a model runtime or transport. |
+| `hasNonAdditiveToolChanges` | Same semantics | Pure Pi 1.4.0 transcript/model-type logic, vendored without a model runtime or transport. |
+| `resolveTranscriptTools` | Same semantics | Pure Pi 1.4.0 transcript/model-type logic, vendored without a model runtime or transport. |
+| `getSystemMessageText` | Same semantics | Pure Pi 1.4.0 transcript/model-type logic, vendored without a model runtime or transport. |
+| `renderSystemMessageUpdate` | Same semantics | Pure Pi 1.4.0 transcript/model-type logic, vendored without a model runtime or transport. |
+| `getModelType` | Same semantics | Pure Pi 1.4.0 transcript/model-type logic, vendored without a model runtime or transport. |
+| `isModelType` | Same semantics | Pure Pi 1.4.0 transcript/model-type logic, vendored without a model runtime or transport. |
 | `StringEnum` | Same semantics | Preserves Pi flat string-enum JSON Schema generation without loading provider SDKs. |
 | `envApiKeyAuth` | Same semantics | Pi 0.84.1 stored-key-first auth helper with ordered environment fallback and the original secret-prompt login contract. |
 | `anthropicMessagesApi` | Same semantics | Pi's real lazy protocol transport factory, exposed to transport-owning provider packages and then wrapped as one native DSH llm adapter. |
@@ -250,15 +271,15 @@ through `llm.registerAdapter`.
 | `getProvider` | Mapped, difference stated | Reads the bridge-local registry. |
 | `getModel` | Mapped, difference stated | Resolves no Pi model objects; DSH owns model routing. |
 | `getModels` | Mapped, difference stated | Returns an empty list; DSH owns model routing. |
-| `complete` | Mapped, difference stated | Real model calls through the DSH llm bridge (the host installs it at mount); without a mounted llm service the call fails explicitly. Provider SDKs are never loaded. Pi package transports receive systemPrompt from either the legacy explicit slot or the leading DSH system message; unsupported in-history system updates fail explicitly. |
+| `complete` | Mapped, difference stated | Real model calls through the DSH llm bridge (the host installs it at mount); without a mounted llm service the call fails explicitly. Provider SDKs are never loaded. Pi package transports receive systemPrompt from either the legacy explicit slot or the leading DSH system message; Pi 1.x system updates and native developer tool updates retain their transcript positions; standalone Pi calls with in-history tool-definition changes fail explicitly. |
 | `completeSimple` | Mapped, difference stated | Legacy pi-ai/compat unified-options completion on the same DSH llm route; reasoning maps to native reasoningEffort, omitted optional thinking requests off where supported, and cancellation and token limits pass through. Missing host llm fails explicitly. |
 | `streamSimple` | Mapped, difference stated | Legacy pi-ai/compat unified-options streaming on the same DSH llm route, with native reasoningEffort, cancellation and token limits. |
-| `stream` | Mapped, difference stated | Real streaming model calls through the DSH llm bridge (the host installs it at mount); without a mounted llm service the call fails explicitly. Provider SDKs are never loaded. Pi package transports receive systemPrompt from either the legacy explicit slot or the leading DSH system message; unsupported in-history system updates fail explicitly. |
+| `stream` | Mapped, difference stated | Real streaming model calls through the DSH llm bridge (the host installs it at mount); without a mounted llm service the call fails explicitly. Provider SDKs are never loaded. Pi package transports receive systemPrompt from either the legacy explicit slot or the leading DSH system message; Pi 1.x system updates and native developer tool updates retain their transcript positions; standalone Pi calls with in-history tool-definition changes fail explicitly. |
 | `Type` | Same semantics | Re-exported from the same typebox dependency Pi resolves for extensions. |
-| `uuidv7` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `isContextOverflow` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `isRecoverableLength` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
-| `isRetryableAssistantError` | Same semantics | Vendored byte-identical from Pi, so semantics match Pi exactly. |
+| `uuidv7` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `isContextOverflow` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `isRecoverableLength` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
+| `isRetryableAssistantError` | Same semantics | Vendored upstream Pi logic; each source file records its provenance. See the versioned ABI audit for migration coverage. |
 | `contentText` | Same semantics | Pi's text-block joiner, reimplemented with identical semantics. |
 | `clampThinkingLevel` | Same semantics | Pi's clamping walk over the extended thinking-level ladder. |
 | `getSupportedThinkingLevels` | Same semantics | Pi's thinkingLevelMap filter, preserved. |

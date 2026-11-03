@@ -19,7 +19,7 @@ Everything below is copy-paste runnable against the bundled
 ## 1. Install the engine, then the plugins
 
 ```sh
-dsh plugin --profile headless add pi2dsh
+dsh plugin --profile headless add pi2dsh@next
 dsh plugin --profile headless add @ff-labs/pi-fff pi-lens
 ```
 

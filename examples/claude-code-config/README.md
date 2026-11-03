@@ -26,7 +26,7 @@ CLAUDE.md @imports        ───▶  before_agent_start        ──▶  sys
 ## Install
 
 ```sh
-dsh plugin --profile web add pi2dsh
+dsh plugin --profile web add pi2dsh@next
 dsh plugin --profile web add pi-code
 ```
 

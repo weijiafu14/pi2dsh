@@ -21,7 +21,7 @@ this exact flow.
 ## 1. Install dsh-work-x
 
 ```sh
-dsh plugin --profile web add dsh-work-x
+dsh plugin --profile web add dsh-work-x@next
 ```
 
 One install: the suite carries the pi2dsh engine, pi-btw, and the web

@@ -19,7 +19,7 @@ thinking level, project and context usage. It is what this example installs,
 and what the automated regression drives.
 
 ```sh
-dsh plugin --profile web add dsh-work-x
+dsh plugin --profile web add dsh-work-x@next
 dsh plugin --profile web add pi-powerline-footer
 ```
 

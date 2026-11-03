@@ -8,7 +8,7 @@ install on DSH as the same npm packages and run unmodified — web, terminal
 and headless.
 
 ```sh
-dsh plugin add pi2dsh            # once
+dsh plugin add pi2dsh@next       # DSH 0.2.2-alpha.2; once
 dsh plugin add pi-mcp-adapter    # then the Pi packages you already use, straight from npm
 ```
 
@@ -23,20 +23,27 @@ Version support is explicit:
 
 | pi2dsh | DSH host | Maintenance |
 |---|---|---|
+| 0.28.0-next.0 (`next`) | 0.2.2-alpha.2 | Pi 1.4 preview: [acceptance and limits](community/issue-10/README.md) |
 | 0.27.1 | 0.2.1-rc.2 / 0.2.1-rc.3 | [Acceptance and release status](community/release-0.27.1/README.md) |
 | 0.27.0 | 0.2.1-rc.2 | [Acceptance and release status](community/release-0.27.0/README.md) |
 | 0.26.0 | 0.2.0-rc.2 | [Release verification](community/release-0.26.0/README.md) |
 | 0.25.2 | 0.1.5-rc.2 | Frozen checkpoint: [release evidence](community/release-0.25.2/README.md) |
 
-Pi extension semantics remain pinned to 0.84.1. New engine releases target the
+Published 0.27.x uses Pi 0.84.1; the 0.28 candidate targets Pi 1.4.0 with explicitly
+documented capability limits. New engine releases target the
 validated current DSH line; historical fixes start from their release tag when
 needed. DSH owns stored-session format migration. An untested host version is
 not included in the compatibility declaration.
 
-For either supported DSH version, the validated terminal packages are
+For the **0.27.x / DSH 0.2.1** line, the validated terminal packages are
 `@deepseek-harness-tui/dsh-tui@0.17.0` and `@xmoon76/dsh-pi-tui@0.5.3`.
 The older dsh-pi-tui 0.5.1 still references removed host components; upgrade
 that terminal rather than bypassing compatibility checks with `allow-version`.
+
+For DSH 0.2.2-alpha.2, use `pi2dsh@next` (or Web suite `dsh-work-x@next`)
+with Node.js 24.9+. The published third-party terminals checked in this preview
+do not declare support for this host; Web and headless are independently tested.
+Stay on `pi2dsh@0.27.1` / `dsh-work-x@0.6.1` for DSH 0.2.1-rc.2 or rc.3.
 
 ## Why this exists
 
@@ -68,7 +75,7 @@ remains.
 One engine, then whatever plugins you want:
 
 ```sh
-dsh plugin --profile web add pi2dsh
+dsh plugin --profile web add pi2dsh@next
 dsh plugin --profile web add pi-mcp-adapter
 ```
 
@@ -93,7 +100,7 @@ Day-to-day:
 | Add a plugin | `dsh plugin add <pkg>` (then restart dsh) |
 | Remove a plugin | `dsh plugin remove <pkg>` — remove plugins before removing the engine |
 | Upgrade a plugin | `dsh plugin add <pkg>@latest` — the engine is untouched |
-| Upgrade the engine | `dsh plugin add pi2dsh@latest` — your plugins are untouched |
+| Upgrade the preview engine | `dsh plugin add pi2dsh@next` — your plugins are untouched; `latest` remains the older host line |
 | Check a plugin before upgrading | `npx pi2dsh inspect <pkg>@<version>` |
 
 Two installer messages worth knowing:
@@ -107,7 +114,8 @@ Two installer messages worth knowing:
   pnpm's `minimumReleaseAge` skips versions published very recently. Pin it:
   `dsh plugin add pi2dsh@<version>`.
 
-Requires Node.js 22.19+ and DeepSeek Harness.
+This development line requires Node.js 24.9+ and DSH 0.2.2-alpha.2.
+The published 0.27.x line retains its Node.js 22.19+ / DSH 0.2.1 requirements.
 
 ### Engine configuration
 
@@ -407,12 +415,12 @@ now resolved by the rc.8 profile schema.
 
 ## Pi capabilities on DSH
 
-Every surface a Pi package can touch, and what it maps onto. These tables are
+Tracked Pi extension surfaces, their DSH mappings and current limits. These tables are
 generated from the rules the bridge consults at runtime, so they cannot drift
 from the code.
 
-For pinned Pi 0.84.1, the generated catalog has **111 upstream-shaped rule
-rows**. The bridge also keeps one
+The generated catalog tracks the versioned runtime surfaces, not a claim of
+complete Pi support. The bridge also keeps one
 documented compatibility extension, `unregisterTool`; it appears on the tools
 detail page but is deliberately outside that total. Nested objects such as the
 session manager can expose several methods behind one row; the architecture
@@ -421,14 +429,14 @@ audit states this boundary explicitly.
 <!-- capability-table:start -->
 | Area | Pi surfaces | Status |
 |---|---|---|
-| [Tools](docs/capabilities/tools.md) | 11 | 2 same semantics · 9 mapped, difference stated |
+| [Tools](docs/capabilities/tools.md) | 13 | 2 same semantics · 11 mapped, difference stated |
 | [Commands, flags, editor input](docs/capabilities/commands.md) | 13 | 13 mapped, difference stated |
-| [Messages, context, agent loop](docs/capabilities/conversation.md) | 20 | 9 same semantics · 11 mapped, difference stated |
-| [Sessions & side conversations](docs/capabilities/sessions.md) | 24 | 6 same semantics · 18 mapped, difference stated |
-| [Models, providers, credentials](docs/capabilities/models.md) | 15 | 1 same semantics · 12 mapped, difference stated · 2 not available |
-| [Asking the user, rendering](docs/capabilities/interaction.md) | 24 | 5 same semantics · 19 mapped, difference stated |
-| [Project environment & resources](docs/capabilities/environment.md) | 4 | 2 same semantics · 1 mapped, difference stated · 1 not available |
-| **Total** | **111** | **25 same semantics · 83 mapped, difference stated · 3 not available** |
+| [Messages, context, agent loop](docs/capabilities/conversation.md) | 23 | 8 same semantics · 13 mapped, difference stated · 2 not available |
+| [Sessions & side conversations](docs/capabilities/sessions.md) | 25 | 6 same semantics · 18 mapped, difference stated · 1 not available |
+| [Models, providers, credentials](docs/capabilities/models.md) | 19 | 2 same semantics · 13 mapped, difference stated · 4 not available |
+| [Asking the user, rendering](docs/capabilities/interaction.md) | 27 | 7 same semantics · 20 mapped, difference stated |
+| [Project environment & resources](docs/capabilities/environment.md) | 9 | 4 same semantics · 4 mapped, difference stated · 1 not available |
+| **Total** | **129** | **29 same semantics · 92 mapped, difference stated · 8 not available** |
 <!-- capability-table:end -->
 
 Plus **203 imported symbols** from Pi's three runtime packages

@@ -1,3 +1,5 @@
+import { mountSessions } from './lib/dsh-compat.js'
+import { mountTools } from './lib/dsh-compat.js'
 import { describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import AgentRegistry from '@deepseek-ai/dsh-agent'
@@ -24,15 +26,15 @@ describe('DSH 0.2 published service contracts', () => {
     expect(await runtimeInternals.resolveHostModelAuth({ get: name => services[name] }, 'unknown'))
       .toEqual({ ok: false })
   })
-  it('refuses unsupported developer history instead of silently losing instructions', async () => {
+  it('preserves developer instructions as Pi 1.x system updates', async () => {
     await expect(dshRequestToPiContext({ messages: [{ role: 'developer', content: [{ type: 'text', text: 'keep this restriction' }] }] }))
-      .rejects.toMatchObject({ code: 'UNSUPPORTED_CONTENT' })
+      .resolves.toMatchObject({ messages: [{ role: 'system', content: [{ type: 'text', text: 'keep this restriction' }] }] })
   })
   it('surfaces a failed native child turn to Pi consumers instead of completing with empty history', async () => {
     const ctx = new Context()
-    await ctx.plugin(SessionStore)
+    await mountSessions(ctx)
     await ctx.plugin(SystemPrompt, {})
-    await ctx.plugin(ToolRuntime)
+    await mountTools(ctx)
     await ctx.plugin(LlmRuntime)
     await ctx.plugin(AgentRegistry)
     await mountAgentLoop(ctx)

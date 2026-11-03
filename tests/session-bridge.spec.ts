@@ -1,3 +1,4 @@
+import { mountSessions } from './lib/dsh-compat.js'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
@@ -39,7 +40,7 @@ describe("buildContextEntries is the model's view, not the whole log", () => {
     // so a package built context out of history the model can no longer see —
     // and the longer the session runs, the further the two drift apart.
     const ctx = new Context()
-    await ctx.plugin(SessionStore)
+    await mountSessions(ctx)
     const sessions = (ctx as unknown as {
       sessions: { create(id: unknown, options?: unknown): DshSession }
     }).sessions
@@ -58,9 +59,11 @@ describe("buildContextEntries is the model's view, not the whole log", () => {
     const bridge = new PiSessionBridge()
     const manager = bridge.readonlySessionManager(session as never, scratch) as unknown as {
       buildContextEntries(): unknown[]
+      buildSessionProjection(): { entries: unknown[], messages: unknown[] }
       getEntries(): unknown[]
     }
     expect(manager.buildContextEntries()).toHaveLength(3)
+    expect(manager.buildSessionProjection().messages).toHaveLength(3)
 
     // A real compaction: summary event, then the replacement that shadows the
     // range — the same shape DSH's own compaction engine appends.
@@ -85,6 +88,8 @@ describe("buildContextEntries is the model's view, not the whole log", () => {
     const texts = JSON.stringify(after)
     expect(texts).not.toContain('the old question')
     expect(texts).not.toContain('the old follow-up')
+    expect(JSON.stringify(manager.buildSessionProjection())).not.toContain('the old question')
+    expect(JSON.stringify(manager.buildSessionProjection())).toContain('the live question')
     expect(texts).toContain('summary of the old exchange')
     expect(texts).toContain('the live question')
 

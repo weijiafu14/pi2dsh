@@ -1,0 +1,35 @@
+{
+  "date": "2026-11-03",
+  "engineVersion": "0.28.0-next.0",
+  "source": "local unpublished candidate",
+  "piVersion": "1.4.0",
+  "dshVersion": "0.2.2-alpha.2",
+  "nodeVersion": "v24.18.0",
+  "verify": {
+    "exitCode": 0,
+    "files": 43,
+    "tests": 405,
+    "hostGraph": "91 DSH packages, all 0.2.2-alpha.2",
+    "typecheck": true,
+    "capabilityDocs": true,
+    "publint": true,
+    "packedInstall": true,
+    "testScriptSyntax": true
+  },
+  "tarball": {
+    "path": ".artifacts/pi2dsh-0.28.0-next.0.tgz",
+    "sha256": "9f92aa6a2605ba0d528208b26669597e7f25874addcdd80113712d55b9eb489e"
+  },
+  "publication": {
+    "npm": false,
+    "pushed": false,
+    "issueReplied": false
+  },
+  "cleanup": {
+    "npmCacheCleanedWithApproval": true,
+    "pnpmStorePreserved": true,
+    "ownedTestProcessesRemaining": 0,
+    "temporaryCliAndUpstreamCheckoutRemoved": true,
+    "receiptsAndScreenshotsArchived": true
+  }
+}

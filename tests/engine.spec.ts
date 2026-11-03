@@ -1,3 +1,5 @@
+import { mountSessions } from './lib/dsh-compat.js'
+import { mountTools, executeTool } from './lib/dsh-compat.js'
 // Engine contract: `dsh plugin add pi2dsh` mounts ONE bridge that discovers
 // and hosts every Pi package the user added to the profile. Discovery is
 // manifest-driven (the profile's direct dependencies — each one an explicit
@@ -154,9 +156,9 @@ describe('engine mounting on a real DSH composition', () => {
       delete process.env.PI_CODING_AGENT_DIR
       const root = await makeProfile({})
       const ctx = new Context()
-      await ctx.plugin(SessionStore)
+      await mountSessions(ctx)
       await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
-      await ctx.plugin(ToolRuntime)
+      await mountTools(ctx)
       await ctx.plugin(CommandRuntime)
       await ctx.plugin(SkillRegistry)
       ;(ctx as unknown as { baseUrl: string }).baseUrl = `file://${root}/cordis.yml`
@@ -201,9 +203,9 @@ describe('engine mounting on a real DSH composition', () => {
     })
 
     const ctx = new Context()
-    await ctx.plugin(SessionStore)
+    await mountSessions(ctx)
     await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
-    await ctx.plugin(ToolRuntime)
+    await mountTools(ctx)
     await ctx.plugin(CommandRuntime)
     await ctx.plugin(SkillRegistry)
     ;(ctx as unknown as { baseUrl: string }).baseUrl = `file://${root}/cordis.yml`
@@ -220,7 +222,7 @@ describe('engine mounting on a real DSH composition', () => {
     })
     const agent = { id: session.id, session, steer() {}, inject() {}, followup() {}, whenIdle: () => Promise.resolve() }
     await mountAgentRuntime(ctx, agent)
-    const result = await typedCtx.tools.execute({
+    const result = await executeTool(typedCtx, {
       signal: new AbortController().signal,
       callId: CallId('engine-probe'),
       name: 'engine_probe',
@@ -228,7 +230,7 @@ describe('engine mounting on a real DSH composition', () => {
       agent: agent as never,
     })
     expect(result.isError ?? false).toBe(false)
-    expect(result.content[0]?.text).toBe('engine-mounted')
+    expect(result.content[0]).toMatchObject({ type: 'text', text: 'engine-mounted' })
   })
 
   interface LlmFace {
@@ -239,9 +241,9 @@ describe('engine mounting on a real DSH composition', () => {
 
   async function makeLlmContext(root: string): Promise<{ ctx: Context, llm: LlmFace, TextAdapter: new (models: Array<Record<string, unknown>>) => unknown }> {
     const ctx = new Context()
-    await ctx.plugin(SessionStore)
+    await mountSessions(ctx)
     await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
-    await ctx.plugin(ToolRuntime)
+    await mountTools(ctx)
     await ctx.plugin(CommandRuntime)
     await ctx.plugin(SkillRegistry)
     const { default: LlmRuntime, LlmAdapter: Adapter } = await import('@deepseek-ai/dsh-llm')
@@ -269,9 +271,9 @@ describe('engine mounting on a real DSH composition', () => {
   it('mounts the built-in OAuth login command before any community Pi package is installed', async () => {
     const root = await makeProfile({})
     const ctx = new Context()
-    await ctx.plugin(SessionStore)
+    await mountSessions(ctx)
     await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
-    await ctx.plugin(ToolRuntime)
+    await mountTools(ctx)
     await ctx.plugin(CommandRuntime)
     await ctx.plugin(SkillRegistry)
     ;(ctx as unknown as { baseUrl: string }).baseUrl = `file://${root}/cordis.yml`
@@ -320,9 +322,9 @@ describe('engine mounting on a real DSH composition', () => {
   const loginCommandNames = async (withAuthorization: boolean, lateTerminal = false): Promise<string[]> => {
     const root = await makeProfile({})
     const ctx = new Context()
-    await ctx.plugin(SessionStore)
+    await mountSessions(ctx)
     await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
-    await ctx.plugin(ToolRuntime)
+    await mountTools(ctx)
     await ctx.plugin(CommandRuntime)
     await ctx.plugin(SkillRegistry)
     const provider = ctx as unknown as { provide(name: string, value: unknown): void }
@@ -398,9 +400,9 @@ describe('engine mounting on a real DSH composition', () => {
     await installFixturePackage(root, 'pi-oauth-a', { type: 'module', pi: { extensions: ['index.mjs'] } }, { 'index.mjs': oauthExtension('provider-a') })
     await installFixturePackage(root, 'pi-oauth-b', { type: 'module', pi: { extensions: ['index.mjs'] } }, { 'index.mjs': oauthExtension('provider-b') })
     const ctx = new Context()
-    await ctx.plugin(SessionStore)
+    await mountSessions(ctx)
     await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
-    await ctx.plugin(ToolRuntime)
+    await mountTools(ctx)
     await ctx.plugin(CommandRuntime)
     await ctx.plugin(SkillRegistry)
     ;(ctx as unknown as { baseUrl: string }).baseUrl = `file://${root}/cordis.yml`
@@ -441,9 +443,9 @@ describe('engine mounting on a real DSH composition', () => {
       ].join('\n'),
     })
     const ctx = new Context()
-    await ctx.plugin(SessionStore)
+    await mountSessions(ctx)
     await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
-    await ctx.plugin(ToolRuntime)
+    await mountTools(ctx)
     await ctx.plugin(CommandRuntime)
     await ctx.plugin(SkillRegistry)
     let routeHandler: ((req: Record<string, unknown>, res: Record<string, unknown>) => Promise<void>) | undefined
@@ -520,9 +522,9 @@ describe('engine mounting on a real DSH composition', () => {
     })
 
     const ctx = new Context()
-    await ctx.plugin(SessionStore)
+    await mountSessions(ctx)
     await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
-    await ctx.plugin(ToolRuntime)
+    await mountTools(ctx)
     await ctx.plugin(CommandRuntime)
     await ctx.plugin(SkillRegistry)
     ;(ctx as unknown as { baseUrl: string }).baseUrl = `file://${root}/cordis.yml`
@@ -564,7 +566,7 @@ describe('engine mounting on a real DSH composition', () => {
       await new Promise(resolve => setTimeout(resolve, 50))
     }
     expect(named).toEqual(['anchor-probe'])
-    const result = await typedCtx.tools.execute({
+    const result = await executeTool(typedCtx, {
       signal,
       callId: CallId('anchor-probe-call'),
       name: 'anchor_probe_tool',
@@ -599,9 +601,9 @@ describe('engine mounting on a real DSH composition', () => {
     })
 
     const ctx = new Context()
-    await ctx.plugin(SessionStore)
+    await mountSessions(ctx)
     await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
-    await ctx.plugin(ToolRuntime)
+    await mountTools(ctx)
     await ctx.plugin(CommandRuntime)
     await ctx.plugin(SkillRegistry)
     ;(ctx as unknown as { baseUrl: string }).baseUrl = `file://${root}/cordis.yml`
@@ -618,16 +620,14 @@ describe('engine mounting on a real DSH composition', () => {
     await mountAgentRuntime(ctx, agentB)
 
     const execute = async (agent: Record<string, unknown>): Promise<string | undefined> => {
-      const result = await (ctx as unknown as {
-        tools: { execute(request: Record<string, unknown>): Promise<{ content: Array<{ text?: string }> }> }
-      }).tools.execute({
+      const result = await executeTool(ctx, {
         signal: new AbortController().signal,
         callId: CallId(`probe-${String(agent.id)}`),
         name: 'agent_isolation_probe',
         arguments: {},
         agent,
       })
-      return result.content[0]?.text
+      return (result.content[0]?.type === 'text' ? result.content[0].text : undefined)
     }
 
     const a = await execute(agentA)
@@ -729,9 +729,7 @@ describe('engine mounting on a real DSH composition', () => {
     const session = sessions.create(SessionId('pi2dsh-ledger-agent'), { meta: { createdAt: Date.now(), cwd: root } })
     const agent: Record<string, unknown> = { id: session.id, session, steer() {}, inject() {}, followup() {}, whenIdle: () => Promise.resolve() }
     await mountAgentRuntime(ctx, agent)
-    await (ctx as unknown as {
-      tools: { execute(request: Record<string, unknown>): Promise<unknown> }
-    }).tools.execute({
+    await executeTool(ctx, {
       signal: new AbortController().signal,
       callId: CallId('drop-gw-overlay'),
       name: 'drop_gw_overlay',
@@ -782,9 +780,9 @@ describe('engine mounting on a real DSH composition', () => {
     })
 
     const ctx = new Context()
-    await ctx.plugin(SessionStore)
+    await mountSessions(ctx)
     await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
-    await ctx.plugin(ToolRuntime)
+    await mountTools(ctx)
     await ctx.plugin(CommandRuntime)
     await ctx.plugin(SkillRegistry)
     ;(ctx as unknown as { baseUrl: string }).baseUrl = `file://${root}/cordis.yml`
@@ -801,16 +799,14 @@ describe('engine mounting on a real DSH composition', () => {
     await mountAgentRuntime(ctx, agentB)
 
     const execute = async (agent: Record<string, unknown>, name: string): Promise<string | undefined> => {
-      const result = await (ctx as unknown as {
-        tools: { execute(request: Record<string, unknown>): Promise<{ content: Array<{ text?: string }> }> }
-      }).tools.execute({
+      const result = await executeTool(ctx, {
         signal: new AbortController().signal,
         callId: CallId(`bus-${name}-${String(agent.id)}`),
         name,
         arguments: {},
         agent,
       })
-      return result.content[0]?.text
+      return (result.content[0]?.type === 'text' ? result.content[0].text : undefined)
     }
 
     await execute(agentA, 'bus_send')
@@ -859,9 +855,9 @@ describe('engine mounting on a real DSH composition', () => {
     })
 
     const ctx = new Context()
-    await ctx.plugin(SessionStore)
+    await mountSessions(ctx)
     await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
-    await ctx.plugin(ToolRuntime)
+    await mountTools(ctx)
     await ctx.plugin(CommandRuntime)
     await ctx.plugin(SkillRegistry)
     // Human interaction demands the exact live registry agent, so this
@@ -893,9 +889,7 @@ describe('engine mounting on a real DSH composition', () => {
     }).agents
     const { agent } = await registry.create({ sessionId: SessionId('pi2dsh-dialog-cancel') })
 
-    const result = await (ctx as unknown as {
-      tools: { execute(request: Record<string, unknown>): Promise<{ content: Array<{ text?: string }> }> }
-    }).tools.execute({
+    const result = await executeTool(ctx, {
       signal: new AbortController().signal,
       callId: CallId('dialog-cancel'),
       name: 'dialog_cancel_probe',
@@ -906,7 +900,7 @@ describe('engine mounting on a real DSH composition', () => {
     // happened), and Pi's contract held: a dismissed dialog resolves
     // undefined, it does not throw at the package.
     expect(sawSignal).toBe(true)
-    expect(result.content[0]?.text).toBe('answer:undefined')
+    expect((result.content[0]?.type === 'text' ? result.content[0].text : undefined)).toBe('answer:undefined')
     expect(seenQuestion).toEqual({
       id: 'pi2dsh-input',
       question: 'Complete example OAuth',
@@ -957,9 +951,9 @@ describe('engine mounting on a real DSH composition', () => {
     })
 
     const ctx = new Context()
-    await ctx.plugin(SessionStore)
+    await mountSessions(ctx)
     await ctx.plugin(SystemPrompt, { includeHarnessIdentity: false })
-    await ctx.plugin(ToolRuntime)
+    await mountTools(ctx)
     await ctx.plugin(CommandRuntime)
     await ctx.plugin(SkillRegistry)
     ;(ctx as unknown as { baseUrl: string }).baseUrl = `file://${root}/cordis.yml`
@@ -1002,16 +996,14 @@ describe('engine mounting on a real DSH composition', () => {
       // The host is intact: a fresh agent mounts and executes normally.
       const survivor = makeAgent('pi2dsh-race-survivor')
       await mountAgentRuntime(ctx, survivor)
-      const result = await (ctx as unknown as {
-        tools: { execute(request: Record<string, unknown>): Promise<{ content: Array<{ text?: string }> }> }
-      }).tools.execute({
+      const result = await executeTool(ctx, {
         signal: new AbortController().signal,
         callId: CallId('race-probe'),
         name: 'race_probe',
         arguments: {},
         agent: survivor,
       })
-      expect(result.content[0]?.text).toBe('alive')
+      expect((result.content[0]?.type === 'text' ? result.content[0].text : undefined)).toBe('alive')
     } finally {
       process.off('unhandledRejection', onRejection)
     }
