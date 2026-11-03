@@ -1,0 +1,28 @@
+{
+  "generatedAt": "2026-11-03T12:55:13.898Z",
+  "startedAt": "2026-11-03T12:54:45.748Z",
+  "scenario": "pi-subagents-child-tools",
+  "cliSpec": "@deepseek-ai/dsh@0.2.2-alpha.3",
+  "engineSpec": "pi2dsh@0.28.0-next.1",
+  "subagentsSpec": "@tintinweb/pi-subagents@0.20.0",
+  "status": "passed",
+  "cliVersion": "0.2.2-alpha.3",
+  "engineVersion": "0.28.0-next.1",
+  "parentAgentToolCalls": 1,
+  "parentToolCalls": [
+    "Agent"
+  ],
+  "childToolCalls": [
+    "bash",
+    "read"
+  ],
+  "childRequestToolCounts": [
+    5
+  ],
+  "markerLanded": true,
+  "tui": {
+    "status": "skipped",
+    "reason": "Published TUI peers do not declare DSH 0.2.2-alpha.3 compatibility; headless child-tools tested independently"
+  },
+  "scratch": "/tmp/pi2dsh-subagents-e2e.Vs7RMu"
+}

@@ -1,0 +1,23 @@
+{
+  "checkedAt": "2026-11-03T12:14:05.563Z",
+  "commit": "45d185f",
+  "tag": "v0.28.0-next.1",
+  "packages": [
+    {
+      "name": "pi2dsh",
+      "version": "0.28.0-next.1",
+      "distTags": { "latest": "0.27.1", "next": "0.28.0-next.1" },
+      "publishedAt": "2026-11-03T12:10:56.455Z",
+      "integrity": "sha512-X1Ih0klXSMZuSts3llaZqJZxw3X/TPGyQYwPoJyCMZaarCrJpuU3JIOzLmyqeSRs3t/JfPdxJC9ibCEI0x7h0A==",
+      "localTarballMatches": true
+    },
+    {
+      "name": "dsh-work-x",
+      "version": "0.7.0-next.1",
+      "distTags": { "latest": "0.6.1", "next": "0.7.0-next.1" },
+      "publishedAt": "2026-11-03T12:12:00.094Z",
+      "integrity": "sha512-CgYj8zRdokb9cAD+0P0fHbr7z1EZikWKbXccti8bpddsybMywFtrY+GXnUGaJFHinjuEKNF9XwcoTwyiZ4+8iw==",
+      "localTarballMatches": true
+    }
+  ]
+}

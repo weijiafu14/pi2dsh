@@ -1,0 +1,21 @@
+{
+  "publishedEngine": "pi2dsh@0.28.0-next.1",
+  "publishedSuite": "dsh-work-x@0.7.0-next.1",
+  "host": "@deepseek-ai/dsh@0.2.2-alpha.3",
+  "harnessCommit": "f680517d39576367c3f936e9b6ae6ee98e367488",
+  "verifyReleaseExitCode": 0,
+  "unitTests": { "files": 44, "passed": 416, "failed": 0 },
+  "examples": { "passed": 13, "partial": 1, "skipped": 6, "failed": 0 },
+  "stepSeams": "passed with the exact npm engine",
+  "headlessSubagents": "passed; parent Agent call, child bash/read and marker file independently verified",
+  "ci": {
+    "conclusion": "success",
+    "url": "https://github.com/weijiafu14/pi2dsh/actions/runs/41639373959",
+    "headSha": "f680517d39576367c3f936e9b6ae6ee98e367488"
+  },
+  "notes": [
+    "This is the second complete npm regression, after correcting and strengthening MCP timeout evidence matching.",
+    "The first complete run is retained separately and is not rewritten as passed.",
+    "Missing credentials and unsupported third-party TUI peers remain explicit partial/skipped results."
+  ]
+}

@@ -13,7 +13,8 @@ stock Web 同样无法写设置或创建会话。alpha.3 已同步新的核心�
 
 ## 0.28 开发候选：DSH 0.2.2 / Pi 1.4（2026-10-29）
 
-目标为 stock DSH `0.2.2-alpha.2` 与 Pi `1.4.0`；本地可运行场景验收完成，未发布。
+初始候选目标为 stock DSH `0.2.2-alpha.2` 与 Pi `1.4.0`；以下为当时的本地检查点，
+当前发布组合及 npm 验收状态以上方 next.1 记录为准。
 `v0.27.1` 保留为旧宿主检查点，不在新主线分裂旧/新宿主两套运行路径。
 2026-11-03：DSH 依赖、Pi 开发依赖已实际切换到上述版本；provider factory、transcript
 纯逻辑、MCP registry、session/message 纯逻辑及 pre-bind runtime 更新到 Pi 1.4 来源。

@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "pi2dshCommit": "45d185ff2c0b5967e74d270f0c69000edf28434c",
+  "dshCommit": "npm:@deepseek-ai/dsh@0.2.2-alpha.3",
+  "results": {
+    "mcpAtScale": {
+      "status": "passed",
+      "engine": {
+        "version": "0.28.0-next.1",
+        "from": "registry",
+        "spec": "pi2dsh@0.28.0-next.1"
+      },
+      "packages": [
+        "pi-mcp-adapter"
+      ],
+      "server": "many-tools (official MCP SDK, 51 tools, stdio)",
+      "discovery": "mcp proxy -> tool_037 -> LAUNCH-MARKER-7741-ZEBRA",
+      "timeout": "mcpScript timeoutMs 5000 on ~120s slow_task; turn ended in 18s; tool_001 answered after"
+    }
+  }
+}
