@@ -14,6 +14,8 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { z } from 'zod'
+import { appendFile } from 'node:fs/promises'
+import { randomUUID } from 'node:crypto'
 
 const MARKER = 'LAUNCH-MARKER-7741-ZEBRA'
 
@@ -43,7 +45,16 @@ server.tool(
   'Simulates a long-running job: resolves after roughly two minutes.',
   {},
   async () => {
+    // Optional test witness, not a mock response: prove the real protocol
+    // request reached this handler. Never record parameters or credentials.
+    const auditPath = process.env.PI2DSH_MCP_CALL_LOG
+    const id = randomUUID()
+    const record = async phase => {
+      if (auditPath) await appendFile(auditPath, `${JSON.stringify({ id, tool: 'slow_task', phase, at: Date.now() })}\n`)
+    }
+    await record('started')
     await new Promise(resolve => setTimeout(resolve, 120_000))
+    await record('completed')
     return { content: [{ type: 'text', text: 'slow_task finally finished' }] }
   },
 )
