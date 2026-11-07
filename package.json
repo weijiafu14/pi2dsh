@@ -31,9 +31,11 @@
       "types": "./dist/credentials-oauth.d.mts",
       "default": "./dist/credentials-oauth.mjs"
     },
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./locale/*.json": "./locale/*.json"
   },
   "files": [
+    "locale",
     "dist",
     "cordis.patch.yml",
     "README.md",

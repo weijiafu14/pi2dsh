@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Pi 扩展宿主 (pi2dsh)",
+    "description": "Pi 扩展宿主：把未改动的 Pi 扩展当原生 DSH 插件跑"
+  }
+}
